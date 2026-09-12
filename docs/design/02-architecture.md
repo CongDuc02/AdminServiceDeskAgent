@@ -1,6 +1,6 @@
 # System Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.3 · **Trạng thái:** Draft để xác thực với người dùng · **v0.3:** sửa ở Phase 3 theo phép — xem mục ngày 2026-09-12 (lần 4) của `CHANGELOG.md`
+**Phiên bản:** 0.5 · **Trạng thái:** Draft để xác thực với người dùng · **v0.3–0.5:** sửa ở Phase 3 và các vòng sửa Phase 3 theo phép — xem các mục ngày 2026-09-12 (lần 4, lần 5, lần 6) của `CHANGELOG.md`
 
 > File này chốt kiến trúc mức component: thành phần nào tồn tại, chạy ở đâu trên Render, phụ thuộc gì, và luồng dữ liệu đi qua chúng thế nào. File này **không** đổi state machine hay entity đã chốt ở `00-domain.md`, không chọn agent/tool cụ thể (Phase 3), không thiết kế bảng/cột (Phase 4).
 
@@ -37,7 +37,7 @@ Mười thành phần theo yêu cầu của `_PLAN.md`. Bốn trong số đó (`
 
 ### 1.4 `orchestrator`
 
-- **Trách nhiệm:** graph LangGraph — node/edge cho phân loại, thu slot, retrieval, sinh nội dung tự do; `interrupt` tại hai cổng HITL (`PENDING_APPROVAL`, `PENDING_SEAL`); resume qua checkpointer.
+- **Trách nhiệm:** graph LangGraph — node/edge cho phân loại, thu slot, retrieval, sinh nội dung tự do; `interrupt` tại **sáu** điểm chờ người thật, trong đó chỉ **hai** là cổng HITL (`PENDING_APPROVAL`, `PENDING_SEAL`) — danh sách ở mục LangGraph design của `03-agents.md`; resume qua checkpointer, bằng job ghi cùng giao dịch với quyết định của người (ADR-010).
 - **Công nghệ:** LangGraph, checkpointer trên PostgreSQL. Chạy như thư viện dùng chung, gọi từ `api` (lượt chat đồng bộ) và từ `queue_worker` (job nền). Xem ADR-005 cho lý do đầy đủ.
 - **Lý do:** bắt buộc theo `CLAUDE.md`; ADR-005 giải thích vì sao không cần service riêng.
 - **Không thuộc:** không tự gọi LLM provider (qua `ai_gateway`); không tự ghi PostgreSQL/Object Storage (qua `tool_layer`); không giữ trạng thái trong bộ nhớ tiến trình giữa hai lượt gọi — mọi trạng thái sống ở checkpointer.
@@ -278,7 +278,7 @@ stateDiagram-v2
 | `SIGNED` | `api`/`tool_layer`, permission `document.sign` |
 | `PENDING_SEAL` | `tool_layer`, tự động khi `requires_seal = true` |
 | `SEALED` | `api`/`tool_layer`, permission `document.apply_seal` |
-| `ISSUED` | `api`/`tool_layer`, permission `document.issue`, giao dịch nguyên tử trên `document_register` |
+| `ISSUED` | `queue_worker` qua `tool_layer`, trong node `finalize_issue` — hoàn tất lệnh phát hành do người mang permission `document.issue` ra ở `api`. Cấp số nguyên tử trên `document_register` diễn ra trong `finalize_issue`, không trong luồng request (mục Tool Registry của `03-agents.md`) |
 | `REVOKED` | `api`/`tool_layer`, hai permission tách rời `document.revoke_initiate`/`document.revoke_confirm` |
 | `SUPERSEDED` | `api`/`tool_layer` |
 | `ARCHIVED` | `queue_worker` (Cron Job theo thời hạn lưu trữ, `TBD` — A-010) |
@@ -382,19 +382,23 @@ sequenceDiagram
     participant TL as tool_layer
     participant ORC as orchestrator
     participant DB as postgresql
+    participant Worker as queue_worker
 
     CB->>API: Mo hang doi, xem document PENDING_APPROVAL
     CB->>API: Gui quyet dinh
     API->>TL: Kiem permission tuong ung
     alt Duyet noi dung
         TL->>DB: document -> APPROVED, audit_event
-        TL->>ORC: Resume graph tai node dinh tuyen ky
+        TL->>DB: Enqueue job resume_document_graph (cung giao dich, ADR-010)
+        Worker->>ORC: Resume graph tai node dinh tuyen ky
     else Yeu cau sua - noi dung soan sai (FREE_CONTENT)
         TL->>DB: document -> CHANGES_REQUESTED, request giu nguyen IN_REVIEW
-        TL->>ORC: Resume graph, sinh lai dung cac bien nguoi duyet chon (ADR-009)
+        TL->>DB: Enqueue job resume_document_graph (cung giao dich, ADR-010)
+        Worker->>ORC: Resume graph, sinh lai dung cac bien nguoi duyet chon (ADR-009)
     else Yeu cau sua - du lieu khai sai hoac thieu (SLOT_DATA)
         TL->>DB: document -> CHANGES_REQUESTED, request -> CHANGES_REQUESTED
-        TL->>ORC: Resume graph, cho nhan vien bo sung va gui lai (gioi han A-022, Phase 8)
+        TL->>DB: Enqueue job resume_document_graph (cung giao dich, ADR-010)
+        Worker->>ORC: Resume graph, cho nhan vien bo sung va gui lai (gioi han A-022, Phase 8)
     else Tu choi kem ly do
         TL->>DB: document -> REJECTED, request -> REJECTED
     end
@@ -408,18 +412,25 @@ sequenceDiagram
     participant API as api
     participant TL as tool_layer
     participant DB as postgresql
+    participant Worker as queue_worker
+    participant ORC as orchestrator
 
     CB->>API: Dong dau (PENDING_SEAL -> SEALED)
     API->>TL: Kiem permission document.apply_seal
     TL->>DB: Ghi seal_register, document -> SEALED
     CB->>API: Cap so va phat hanh
     API->>TL: Kiem permission document.issue
-    TL->>DB: Giao dich nguyen tu lay so tu document_register
-    alt Giao dich thanh cong
+    TL->>DB: Ghi lenh phat hanh + enqueue job finalize_issue (cung giao dich, ADR-010)
+    TL-->>CB: Xac nhan da ghi lenh, document van SEALED, chua co so
+    Worker->>ORC: Chay finalize_issue
+    ORC->>TL: document_number_assign - giao dich nguyen tu lay so tu document_register
+    ORC->>TL: Render ban cuoi co so va ngay, kiem approved_content_hash
+    alt Hoan tat thanh cong
         TL->>DB: document -> ISSUED, gan document_number
     else That bai sau khi da lay so
         TL->>DB: Danh dau so la VOIDED kem ly do, khong tai su dung
-        TL-->>CB: Bao loi, document giu nguyen o SEALED
+        TL->>DB: Document giu nguyen o SEALED, ghi ly do dung qua document_halt_record
+        TL-->>CB: Bao loi qua thong bao, khong qua loi goi dong bo
     end
 ```
 

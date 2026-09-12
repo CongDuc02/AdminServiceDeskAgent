@@ -1,6 +1,6 @@
 # GLOSSARY — BO-19 Admin Service Desk Agent
 
-**Phiên bản:** 0.9 · **Chốt tại:** Phase 0, bổ sung ở Phase 2 và Phase 3
+**Phiên bản:** 0.11 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3 và các vòng sửa Phase 3
 
 > Đây là danh sách tên chuẩn. Từ Phase 1 trở đi, mọi tài liệu, diagram, DDL, endpoint và prompt phải dùng **đúng** các định danh trong file này. Muốn đổi tên thì sửa file này trước, rồi ghi vào [`CHANGELOG.md`](./CHANGELOG.md).
 
@@ -117,7 +117,7 @@ Quá hạn SLA **không** phải trạng thái. Đó là điều kiện dẫn xu
 
 Định danh dạng `entity.action`. Danh mục đầy đủ, gói theo vai trò và quy tắc tách biệt trách nhiệm ở mục Permission và vai trò của `00-domain.md`.
 
-`request.create` · `request.create_on_behalf` · `request.read_own` · `request.read_assigned` · `request.read_all` · `request.supply_info` · `request.cancel_own` · `document.approve_content` · `document.request_changes` · `document.reject` · `document.sign` · `document.apply_seal` · `document.issue` · `document.revoke_initiate` · `document.revoke_confirm` · `template.manage` · `employee.import` · `booking.confirm` `[Should]` · `delegation.manage` `[Should]` · `audit.read_own` · `audit.read_all`
+`request.create` · `request.create_on_behalf` · `request.read_own` · `request.read_assigned` · `request.read_all` · `request.supply_info` · `request.cancel_own` · `document.approve_content` · `document.request_changes` · `document.reject` · `document.sign` · `document.apply_seal` · `document.issue` · `document.revoke_initiate` · `document.revoke_confirm` · `template.manage` · `procedure.manage` · `employee.import` · `booking.confirm` `[Should]` · `delegation.manage` `[Should]` · `audit.read_own` · `audit.read_all`
 
 `document.issue` và `document.apply_seal` là hai permission tách rời, không bao giờ gộp. **Không tồn tại** permission xoá hay sửa `audit_event`.
 
@@ -248,7 +248,12 @@ Tên **agent**, **node LangGraph** cụ thể bên trong `orchestrator`, và **t
 
 **Node tất định** — `intake_graph`: `load_turn` · `route_intent` · `resume_context` · `ask_clarification` · `open_request` · `propose_values` · `check_completeness` · `ask_missing` · `offer_submit` · `render_reply`. `document_graph`: `prepare_draft` · `validate_free_content` · `render_draft` · `check_review_readiness` · `submit_for_review` · `route_review` · `reopen_draft` · `compute_targets` · `halt_for_human` · `route_signing` · `route_after_signature` · `finalize_issue` · `notify_issued`
 
-**Tool của `tool_layer`** — `employee_lookup` · `request_open` · `request_slots_write` · `request_slots_read` · `request_transition` · `prior_attempt_lookup` · `procedure_retrieval` · `template_fetch` · `document_draft_save` · `review_readiness_check` · `document_transition` · `signing_route` · `docx_render` · `pdf_export` · `notification_send` · `document_number_assign` · `room_availability_check` `[Should]`
+**Tool của `tool_layer`, theo nhóm được gọi** — bảng đầy đủ, kèm vị trí so với cổng HITL, ở mục Tool Registry của `03-agents.md`:
+
+- `intake_agent`: `employee_lookup` · `request_open` · `request_slots_write` · `request_slots_read` · `request_transition` · `prior_attempt_lookup` · `procedure_retrieval` · `room_availability_check` `[Should]`
+- `drafting_agent`, toàn bộ trước cổng 1: `template_fetch` · `request_slots_read` · `document_draft_save` · `review_readiness_check` · `document_transition` (ba chuyển đổi trước cổng) · `docx_render` và `pdf_export` (bản nháp)
+- Node tất định sau cổng, không thuộc agent nào: `signing_route` · `document_number_assign` · `document_transition` (sang `ISSUED`) · `docx_render` và `pdf_export` (bản cuối) · `notification_send`
+- Node dùng chung của `document_graph`: `notification_send` và `document_halt_record` (cùng gọi từ `halt_for_human`)
 
 Node `open_request` gọi tool `request_open`; hai tên khác nhau có chủ đích — một là bước của graph, một là thao tác của `tool_layer`.
 
@@ -280,3 +285,4 @@ Node `open_request` gọi tool `request_open`; hai tên khác nhau có chủ đ�
 | **`change_reason`** | Lý do sửa, văn bản tự do, bắt buộc. Tới `revise_free_content` như dữ liệu, chỉ cho biến đã chọn |
 | **`approved_content_hash`** | Hash ghi lúc duyệt nội dung, kiểm lại ở `finalize_issue` để thực thi INV-01 |
 | **Danh sách nạp** | Danh sách input tự khai của prompt module, dùng để nạp dữ liệu và kiểm prompt. Quên khai thì mất chức năng, không rò dữ liệu |
+| **Khoảng hoàn tất phát hành** · cờ `issue_in_progress` | Từ lúc `document_issue` ghi lệnh phát hành tới lúc `finalize_issue` commit `ISSUED` hoặc bỏ cuộc. Document đứng yên ở `SIGNED`/`SEALED`; phần đầu chưa có `document_number`. Là **cờ dẫn xuất** như `sla_breached`, **không** phải trạng thái. Hiển thị thuộc Phase 8 |

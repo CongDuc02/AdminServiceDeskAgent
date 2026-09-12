@@ -41,7 +41,7 @@ Yêu cầu sửa được phân loại **bắt buộc** bởi người duyệt t
 
 - A-022 có đơn vị đo rõ, và tách thành **hai trần độc lập, hai đơn vị khác nhau**:
   - Trần số vòng `CHANGES_REQUESTED` của một `document` — đơn vị là **vòng**, chặn vòng qua lại giữa người và hệ thống, bất kể mỗi vòng tốn bao nhiêu token.
-  - Token budget mỗi `request` — nguyên tử chi phí là **một lần sinh một biến nội dung tự do**. Một vòng có thể tốn 0 token (sửa `SLOT_DATA` chỉ chạm biến điền thẳng).
+  - Token budget mỗi `request` — nguyên tử chi phí là **một lời gọi LLM sinh một biến nội dung tự do**. Một biến trong một vòng có thể tốn nhiều hơn một lời gọi — sửa lỗi parse, sinh lại sau khi trượt kiểm; cận trên ở mục Đơn vị render lại của `03-agents.md`. Một vòng có thể tốn 0 token (sửa `SLOT_DATA` chỉ chạm biến điền thẳng).
 - Người duyệt chỉ phải đọc lại phần mình yêu cầu sửa. Văn bản đã được chấp nhận ở vòng trước không bị viết lại âm thầm.
 
 **Tiêu cực và cái phải chấp nhận**

@@ -7,7 +7,7 @@ Chạy **tuần tự, mỗi phase một phiên Claude Code mới** (tránh conte
 | 0   | Domain Discovery            | `00-domain.md`, `GLOSSARY.md`         | —         | ☑          |
 | 1   | PRD                         | `01-prd.md`                           | 0         | ☑          |
 | 2   | System Architecture         | `02-architecture.md`                  | 1         | ☑          |
-| 3   | Agent & Tool Architecture   | `03-agents.md`                        | 2         | ☐          |
+| 3   | Agent & Tool Architecture   | `03-agents.md`                        | 2         | ☑          |
 | 4   | Data Architecture           | `04-data.md`, `contracts/schema.sql`  | 1, 3      | ☐          |
 | 5   | API Spec                    | `05-api.md`, `contracts/openapi.yaml` | 4         | ☐          |
 | 6   | Project Structure (BE + FE) | `06-structure.md`                     | 2, 5      | ☐          |
