@@ -37,7 +37,7 @@ Sequence diagram (c) của `02-architecture.md` vẽ `tool_layer` gọi thẳng 
 **Tiêu cực và cái phải chấp nhận**
 
 - Có độ trễ bằng một chu kỳ poll giữa quyết định của người và trạng thái kế tiếp (ví dụ `APPROVED → PENDING_SIGNATURE`). Chấp nhận được vì bước kế tiếp cũng chờ người.
-- Sequence diagram (c) của `02-architecture.md` đang vẽ hướng gọi không khớp ADR này — xem Open Questions của `03-agents.md`.
+- Sequence diagram (c) của `02-architecture.md` từng vẽ `tool_layer` gọi thẳng `orchestrator`; đã được vẽ lại theo ADR này ở vòng sửa Phase 3 (mục ngày 2026-09-12, lần 5 của `CHANGELOG.md`).
 
 **Điều kiện đảo ngược** — đo ở `observability`, dùng lại metric đã yêu cầu cho ADR-004: độ trễ từ lúc enqueue tới lúc bắt đầu xử lý, **tách riêng loại job `resume_document_graph`**. Nếu độ trễ này thành thứ người dùng phàn nàn, thì phần phải xét lại là chu kỳ poll của ADR-004, không phải quay về Option A hay B.
 

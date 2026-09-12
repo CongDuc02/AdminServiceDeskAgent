@@ -667,3 +667,118 @@ Nhóm F chấm việc nhận ra ngoài phạm vi; nhóm J chấm phần hướng
 - **Sequence (c) vẽ `tool_layer` gọi `orchestrator`**, ngược chiều component diagram và tạo vòng phụ thuộc. ADR-010 là cách làm không tạo vòng. Nhánh mới thêm vào (c) giữ kiểu mũi tên cũ; vẽ lại cần phép riêng.
 - **Lý do hybrid search trong `CLAUDE.md`** ("mã nhân viên và tên riêng") không có đối tượng; kênh lexical có việc khác. Không tự sửa `CLAUDE.md`.
 - **A-033** — quyền nạp kho quy trình.
+
+
+---
+
+## 2026-09-12 (lần 5) — Vòng sửa Phase 3 theo review
+
+Không sang Phase 4. Năm ADR (ADR-006 → ADR-010) được duyệt, quyết định giữ nguyên. `_PLAN.md` giữ Phase 3 ở ☐ cho tới khi anh duyệt diff của vòng này.
+
+### Tiền lệ: "Việc đã làm không xin phép"
+
+Báo cáo Phase 3 xếp ba thay đổi vào mục *"anh chưa cho phép tường minh — cần anh chấp nhận"*, trong khi cả ba **đã được ghi vào file**: cạnh `queue_worker → ai_gateway` trong component diagram, nhãn cạnh checkpoint trong data flow diagram, và mục 1.3 của `02-architecture.md`. Nội dung ba thay đổi được chấp nhận; cách báo cáo thì không.
+
+**Quy tắc từ nay — báo cáo có hai loại mục, không bao giờ trộn:**
+
+| Loại | Điều kiện | Cách viết |
+|---|---|---|
+| **Đã sửa — xin duyệt sau** | Thay đổi đã nằm trong file | "Đã sửa, đây là diff, xin duyệt" |
+| **Cần cho phép trước** | Chưa đụng tới file | "Chưa làm, xin phép" |
+
+Trộn hai loại vào một mục làm người đọc không suy ra được trạng thái thật của repo từ báo cáo. Đây cùng họ lỗi với *"cơ chế có trên giấy nhưng không bao giờ kích hoạt"* ghi ở mục lần 3 phía trên: báo cáo trông như đang xin phép trong khi việc đã làm xong.
+
+#### Bản nới — 2026-09-12 (lần 6)
+
+Những thứ sau tính là **một phần** của sửa đổi đã được duyệt, không phải vượt phạm vi, nên **không** cần xin duyệt riêng:
+
+- nâng số phiên bản ở header của file bị sửa;
+- thêm participant, node hay nhãn mà sơ đồ bắt buộc phải có để vẽ được sửa đổi đã duyệt;
+- sửa một câu ở file khác đã trở thành **sai** vì chính sửa đổi đã duyệt — ví dụ câu hệ quả của ADR-010 sau khi sequence diagram (c) được vẽ lại.
+
+Chúng **vẫn phải được liệt kê trong diff**, chỉ không xếp vào mục "xin duyệt sau".
+
+Lý do nới: nếu không, mọi báo cáo về sau sẽ ngập mục "xin duyệt sau" bằng những dòng không ai cần đọc, và mục đó mất tác dụng cảnh báo đúng lúc nó cần có tác dụng.
+
+### Tám việc sửa theo review
+
+| # | Việc | File |
+|---|---|---|
+| B1 | Mục `orchestrator` còn ghi "interrupt tại hai cổng HITL" → sáu điểm `interrupt`, trong đó hai là cổng HITL. Rà cả file: không còn số đếm cũ nào khác | `02-architecture.md` |
+| B2 | Chốt **một** nơi cấp số: `finalize_issue`, trong `queue_worker`. `document_issue` chỉ ghi lệnh phát hành. Nhánh `VOIDED` treo ở `finalize_issue`. Việc này đổi hành vi so với sequence diagram (d) — báo cáo, chưa sửa (d) | `03-agents.md` |
+| B3 | Thêm cạnh sinh lại sau `validate_free_content` và bảng cạnh điều kiện cho `document_graph`; state thêm `regenerated_variables` | `03-agents.md` |
+| B4 | Bỏ `notification_send` khỏi `intake_agent` | `03-agents.md` |
+| B5 | Tool Registry thêm mục "Ai được gọi tool nào" với nhóm node tất định sau cổng; rút các tool sau cổng khỏi `drafting_agent`; `document_number_assign` có dòng riêng | `03-agents.md`, `GLOSSARY.md` |
+| B6 | Viết lại đúng chiều rủi ro của khoá content-addressed; ràng buộc ghi-một-lần neo vào A-021 | `03-agents.md`, `ASSUMPTIONS.md` |
+| B7 | Ràng buộc thứ tự giữa thời hạn đóng phiên và thời hạn `EXPIRED`, không đặt số | `03-agents.md`, `ASSUMPTIONS.md` (A-010, A-014) |
+| B8 | Thread kẹt tách khỏi A-034 thành A-035, owner Phase 4; bộ phát hiện thread kẹt thêm dạng (2) | `03-agents.md`, `ASSUMPTIONS.md` |
+
+### Quyết định của anh được nạp
+
+- **C1** — Vẽ lại mũi tên resume ở sequence diagram (c) theo ADR-010: `tool_layer` enqueue job, `queue_worker` resume. Không đụng phần còn lại của (c). Dòng hệ quả tương ứng của ADR-010 cập nhật theo.
+- **C2** — Thêm `procedure.manage` vào danh mục permission ở `00-domain.md`, đúng một dòng; tên giữ nguyên vì hợp quy ước `entity.action` với entity viết tắt, như `booking.confirm`, `audit.read_all`. A-033 → `Đã chốt`, kèm lý do.
+- **C4** — A-027 không chặn Phase 4, vector collection phải đúng cả khi kho rỗng. A-028: trần chiều `vector(n)`, n ≤ 1024, không `halfvec`; `model_id` và `dimension` là dữ liệu cấu hình; danh sách ứng viên và hai benchmark ghi lại, không chọn. A-030 thêm lối thoát biểu diễn thưa của BGE-M3.
+- **D1** — A-036: phạm vi áp dụng của Nghị định 30/2020/NĐ-CP, chỉ ghi tên văn bản.
+- **D2** — A-010: tên bốn văn bản cần lấy bản gốc, giữ `[CẦN XÁC MINH]`, không suy ra thời hạn nào.
+
+### Nguồn đã đặt vào `docs/reference/`
+
+`pgvector-dimension-limits.md` — trích nguyên văn README và CHANGELOG của pgvector, ghim theo commit. Một chi tiết lệch với cách diễn đạt trong review: trần 2,000 chiều cho index `vector` có từ bản **0.4.0**, không phải 0.7.0; bản 0.7.0 thêm `halfvec` và việc index `bit`. Con số thì khớp.
+
+Thông số năm model ứng viên và hai benchmark do anh cung cấp **chưa có bản gốc** trong `docs/reference/`, nên được ghi kèm `[CẦN XÁC MINH]` theo cùng quy tắc trích dẫn.
+
+### Hai nhận định sai của tôi được sửa
+
+1. **Rủi ro của `docx_render` (B6).** Báo cáo Phase 3 nói timestamp nhúng trong file làm khoá lệch. Sai chiều: khoá là hash trên input. Rủi ro thật là cùng khoá, khác byte, tức ghi đè. Cùng lỗi đó nằm ở bước 3 của cơ chế INV-01 trong `03-agents.md`, câu "render tất định là điều kiện của bước 2" — đã sửa; bước 2 so giá trị biến, không so file.
+2. **Sequence diagram (d).** Open Questions của Phase 3 nói tách phát hành thành lệnh cộng job "không mâu thuẫn về hành vi". Sai: thời điểm và kênh báo lỗi đã khác. Đã ghi lại đúng trong Open Questions.
+
+### Mâu thuẫn mới phát hiện khi sửa — ghi Open Questions, không sửa
+
+- `halt_for_human` ghi lý do dừng vào DB nhưng không tool nào trong registry làm việc đó.
+- Nhân viên quay lại trong hạn ở một `chat_session` **mới**: `load_turn` chỉ đọc `request` gắn với phiên hiện tại, nên EC-CV-04 chưa được phủ trong ca này — độc lập với B7, nhưng B7 làm nó lộ ra.
+- A-028: "không sửa DDL" chỉ đứng được nếu hiểu là không sửa **định nghĩa cột**; mỗi model vẫn cần một lệnh tạo index.
+- `procedure.manage` chưa nằm trong gói vai trò nào.
+- Bảng chủ sở hữu chuyển đổi của `document` ở `02-architecture.md` vẫn ghi `ISSUED` do `api`/`tool_layer`; theo B2 thì do `finalize_issue` trong `queue_worker`. Cùng cụm với (d), chưa sửa.
+
+Một mâu thuẫn **đã sửa** ngay trong phạm vi B3: thêm cạnh sinh lại làm sai câu "mọi chu trình trong `document_graph` đều đi qua một `interrupt`" ở Agent Registry. Câu đó giờ nêu ngoại lệ và giới hạn của nó.
+
+
+---
+
+## 2026-09-12 (lần 6) — Vòng sửa Phase 3, lần 2
+
+Diff lần 5 được duyệt có điều kiện: làm xong sáu việc G dưới đây. `_PLAN.md` giữ Phase 3 ở ☐ cho tới lượt duyệt cuối. Không sang Phase 4.
+
+### Tiền lệ được nới
+
+Bản nới của tiền lệ "Việc đã làm không xin phép" được ghi **ngay dưới tiền lệ cũ**, trong mục lần 5 phía trên, để hai bản đọc liền nhau. Tóm tắt: nâng số phiên bản, thêm participant/node/nhãn mà sơ đồ bắt buộc phải có, và sửa câu ở file khác đã thành sai vì chính sửa đổi đã duyệt — tính là một phần của sửa đổi đã duyệt. Vẫn liệt kê trong diff, nhưng không xếp vào mục "xin duyệt sau".
+
+### Sáu việc G
+
+| # | Việc | File |
+|---|---|---|
+| G1 | Đặt tên khoảng giữa lệnh phát hành và `ISSUED`: **khoảng hoàn tất phát hành**, cờ dẫn xuất `issue_in_progress` — không phải trạng thái mới; document đứng yên ở `SIGNED`/`SEALED`. Khoảng có hai đoạn: chưa có số, rồi đã có số mà chưa phát hành. Hiển thị giao Phase 8 | `03-agents.md`, `GLOSSARY.md` |
+| G2 | Nguyên tử chi phí đổi thành **một lời gọi LLM sinh một biến**. Cận trên (1 + R) × V × 2 × 2 | `03-agents.md`, `ASSUMPTIONS.md` (A-022), ADR-009 |
+| G3 | Kiểm lại nguồn trước khi sửa — kết quả **bác lại** nhận định của review (xem dưới). A-028 giữ cách hiểu cũ, ghi rõ chỗ nhận định kia không khớp nguồn; file tham chiếu thêm câu truy vấn mẫu cùng mục FAQ | `ASSUMPTIONS.md`, `docs/reference/pgvector-dimension-limits.md` |
+| G4 | A-037: phiên bản pgvector trên Render, owner người triển khai, hạn trước Phase 4 | `ASSUMPTIONS.md`; A-030 và file tham chiếu trỏ sang |
+| G5 | Tool `document_halt_record`, đủ chín cột. `halt_for_human` không còn ghi DB ngoài `tool_layer` | `03-agents.md`, `GLOSSARY.md` |
+| G6 | Sequence diagram (d): phần phát hành vẽ theo B2 — ghi lệnh, enqueue `finalize_issue`, cấp số trong `queue_worker`. **Nhánh `VOIDED` giữ nguyên.** Phần đóng dấu không đổi. Bảng chủ sở hữu chuyển đổi: dòng `ISSUED` | `02-architecture.md` |
+
+### G3 — nguồn bác lại một nhận định của review
+
+Review cho rằng cột `vector` không khai chiều thì không đánh index được. Mục 4 của `docs/reference/pgvector-dimension-limits.md`, trích nguyên văn README đã ghim, nói khác: cột đó **đánh index được** bằng index biểu thức ép về `vector(n)` cộng điều kiện giới hạn các dòng cùng số chiều, và nguồn có sẵn lệnh mẫu. Nhận định kia đúng ở chỗ không index trực tiếp được cột thô, nhưng bỏ qua đường index biểu thức. Vì vậy A-028 đi theo nhánh (c) của review: giữ cách hiểu "không alter định nghĩa cột", nêu rõ chỗ lệch. Phương án "một collection = một model = một cột `vector(n)`" cũng đứng được; nguồn không bắt buộc cách nào, việc chọn thuộc Phase 4.
+
+### G4 — hai mốc phiên bản, không gộp
+
+Review nói bản pgvector cũ hơn 0.7.0 thì trần 1024 thành ràng buộc cứng. Theo nguồn đã ghim, bản cũ hơn 0.7.0 chỉ mất `halfvec` và việc index `bit`; trần index của `vector` vẫn là 2,000 kể từ 0.4.0. Trần 1024 chỉ thành ràng buộc cứng đúng nghĩa với bản **cũ hơn 0.4.0**. A-037 ghi tách hai mốc.
+
+### G2 — thêm một hệ số ngoài hệ số review nêu
+
+Review nêu hệ số 2 từ lần sinh lại sau khi trượt kiểm. Cùng lập luận áp cho **lần sửa lỗi parse đúng một lần**, đã có trong failure handling của `drafting_agent` từ bản 0.1: mỗi lần sinh — kể cả lần sinh lại — có thể tốn thêm một lời gọi sửa parse. Cận trên vì vậy có hai hệ số 2, không phải một. Cũng ghi rõ số 1 cộng thêm của vòng soạn đầu, và rằng retry do lỗi gọi model nằm ngoài cận. Phần này vượt đúng chữ của G2, nên xếp vào mục "xin duyệt sau" của báo cáo.
+
+### H — không sửa, đã có owner
+
+- **A-038** — hai ràng buộc kéo ngược nhau quanh `chat_session`: ràng buộc thứ tự thời hạn (A-010, A-014) và việc `load_turn` chỉ đọc `request` của phiên hiện tại. Owner Phase 8, cùng cụm A-029.
+- **A-039** — `procedure.manage` chưa nằm trong gói vai trò nào. Owner Phase 9.
+
+Hai mục này được ghi thành giả định có owner vì `ASSUMPTIONS.md` là nơi duy nhất giữ owner và hạn của câu hỏi mở; Open Questions của `03-agents.md` trỏ về đó.

@@ -1,6 +1,6 @@
 # Phase 0 — Domain Discovery
 
-**Dự án:** BO-19 — Admin Service Desk Agent · **Phiên bản:** 0.9 · **Trạng thái:** Draft chờ duyệt
+**Dự án:** BO-19 — Admin Service Desk Agent · **Phiên bản:** 0.10 · **Trạng thái:** Draft chờ duyệt
 
 > File này chốt **từ vựng nghiệp vụ**: có những loại yêu cầu nào, mỗi loại cần dữ liệu gì, văn bản đi qua những trạng thái nào, ai được làm gì. Từ Phase 1 trở đi mọi tài liệu phải dùng đúng tên ở đây và ở [`GLOSSARY.md`](./GLOSSARY.md). File này **không** chọn công nghệ, **không** thiết kế API, **không** định nghĩa agent hay tool.
 
@@ -389,6 +389,7 @@ Mô hình hoá theo **permission**, không theo vai trò cứng. Vai trò chỉ 
 | `document.revoke_initiate` | Khởi tạo thu hồi văn bản đã phát hành | — |
 | `document.revoke_confirm` | Xác nhận thu hồi | — |
 | `template.manage` | Quản lý mẫu văn bản và phiên bản mẫu | — |
+| `procedure.manage` | Nạp, thay phiên bản và gỡ tài liệu của kho quy trình hành chính (`procedure_document`); người nạp cam kết tài liệu không chứa dữ liệu cá nhân | — |
 | `employee.import` | Import CSV hồ sơ nhân viên | — |
 | `booking.confirm` | Xác nhận hoặc từ chối đặt phòng | `[Should]` |
 | `delegation.manage` | Lập và thu hồi uỷ quyền | `[Should]` |
