@@ -6,7 +6,7 @@
 
 **Quy ước:** định danh kỹ thuật viết `snake_case` cho entity/trường, `UPPER_SNAKE_CASE` cho giá trị enum và trạng thái, `entity.action` cho permission. Diễn giải bằng tiếng Việt, thuật ngữ kỹ thuật giữ nguyên tiếng Anh.
 
-**Ưu tiên:** file này không ghi mức MoSCoW — mức ưu tiên chốt một lần ở PRD mục 5. Nhãn `[Should]`/`[Could]` chỉ đánh dấu hạng mục sẽ bị cắt khỏi Sprint đầu.
+**Ưu tiên:** file này không ghi mức MoSCoW — mức ưu tiên chốt một lần ở mục Scope & priority của PRD. Nhãn `[Should]`/`[Could]` chỉ đánh dấu hạng mục sẽ bị cắt khỏi Sprint đầu.
 
 ---
 
@@ -25,7 +25,7 @@
 | `seal_action` | Lần sử dụng con dấu | Một lần đóng một loại dấu lên một văn bản đích |
 | `room` | Phòng họp | Tài nguyên đặt được, có sức chứa và thiết bị |
 | `room_booking` | Lượt đặt phòng | `[Should]` Artifact của một `request` loại `ROOM_BOOKING`, có máy trạng thái riêng |
-| `approval_step` | Bước duyệt | Một lần một người được yêu cầu duyệt, ký hoặc duyệt dấu. Mang cờ `self_approved` và `self_approval_reason` khi rơi vào đường thoát ở `00-domain.md` mục 7.3 |
+| `approval_step` | Bước duyệt | Một lần một người được yêu cầu duyệt, ký hoặc duyệt dấu. Mang cờ `self_approved` và `self_approval_reason` khi rơi vào đường thoát ở mục Tách biệt trách nhiệm của `00-domain.md` |
 | `permission` | Quyền | Đơn vị phân quyền nhỏ nhất, dạng `entity.action`. Vai trò chỉ là gói permission |
 | `audit_event` | Sự kiện kiểm toán | Bản ghi bất biến về một hành động có ảnh hưởng nghiệp vụ. Có mức `severity` |
 | `delegation` | Uỷ quyền | Cho phép một người hành động thay người khác trong một khoảng thời gian |
@@ -40,7 +40,7 @@
 | `ADMIN_OFFICER` | Cán bộ hành chính | Duyệt, duyệt dấu, cấp số, phát hành, quản lý mẫu văn bản |
 | `SIGNER` | Người ký cấp trên | `[Should]` Ký và duyệt ở cấp cao hơn. Chưa có trong Sprint đầu |
 
-Vai trò là **gói permission**, không phải đơn vị phân quyền. Mọi kiểm tra quyền phải hỏi permission, không hỏi tên vai trò. Danh mục permission và gói theo vai trò ở `00-domain.md` mục 7.
+Vai trò là **gói permission**, không phải đơn vị phân quyền. Mọi kiểm tra quyền phải hỏi permission, không hỏi tên vai trò. Danh mục permission và gói theo vai trò ở mục Permission và vai trò của `00-domain.md`.
 
 ---
 
@@ -112,7 +112,7 @@ Quá hạn SLA **không** phải trạng thái. Đó là điều kiện dẫn xu
 
 ## 7. Permission
 
-Định danh dạng `entity.action`. Danh mục đầy đủ, gói theo vai trò và quy tắc tách biệt trách nhiệm ở `00-domain.md` mục 7.
+Định danh dạng `entity.action`. Danh mục đầy đủ, gói theo vai trò và quy tắc tách biệt trách nhiệm ở mục Permission và vai trò của `00-domain.md`.
 
 `request.create` · `request.create_on_behalf` · `request.read_own` · `request.read_assigned` · `request.read_all` · `request.supply_info` · `request.cancel_own` · `document.approve_content` · `document.request_changes` · `document.reject` · `document.sign` · `document.apply_seal` · `document.issue` · `document.revoke_initiate` · `document.revoke_confirm` · `template.manage` · `employee.import` · `booking.confirm` `[Should]` · `delegation.manage` `[Should]` · `audit.read_own` · `audit.read_all`
 
@@ -134,7 +134,7 @@ Quá hạn SLA **không** phải trạng thái. Đó là điều kiện dẫn xu
 | `PER` | `PERSONAL` | Nhận dạng một cá nhân cụ thể |
 | `RES` | `RESTRICTED` | Định danh pháp lý, hoặc nội dung suy ra được tình trạng sức khoẻ, pháp lý, tài chính |
 
-Là thuộc tính của **dữ liệu**, không suy ra từ tên trường hay từ `slot_source`. Mọi rule về mask log, mask prompt gửi LLM, và giữ hay xoá khi `EXPIRED` đều key theo đây. Bảng gán cụ thể ở `00-domain.md` mục 3.
+Là thuộc tính của **dữ liệu**, không suy ra từ tên trường hay từ `slot_source`. Mọi rule về mask log, mask prompt gửi LLM, và giữ hay xoá khi `EXPIRED` đều key theo đây. Bảng gán cụ thể ở mục Slot schema của `00-domain.md`.
 
 **`seal_type` — loại dấu**
 
@@ -151,7 +151,7 @@ Là thuộc tính của **dữ liệu**, không suy ra từ tên trường hay t
 
 **`operating_mode` — chế độ vận hành của hệ thống**
 
-`NON_PRODUCTION` (chế độ phi sản xuất — bắt buộc chừng nào A-018 còn `Mở`) · `PRODUCTION`. Chuyển sang `PRODUCTION` là quyết định có người ký, không phải cờ cấu hình. Xem `00-domain.md` mục 6.2
+`NON_PRODUCTION` (chế độ phi sản xuất — bắt buộc chừng nào A-018 còn `Mở`) · `PRODUCTION`. Chuyển sang `PRODUCTION` là quyết định có người ký, không phải cờ cấu hình. Xem mục Chế độ phi sản xuất của `00-domain.md`
 
 **`register_series` — dải số của `document_register`**
 
@@ -159,7 +159,7 @@ Là thuộc tính của **dữ liệu**, không suy ra từ tên trường hay t
 
 **`audit_severity` — mức của `audit_event`**
 
-`INFO` (hành động bình thường) · `WARNING` (hành động đúng luật nhưng cần người khác nhìn thấy, ví dụ tự duyệt theo đường thoát ở `00-domain.md` mục 7.3)
+`INFO` (hành động bình thường) · `WARNING` (hành động đúng luật nhưng cần người khác nhìn thấy, ví dụ tự duyệt theo đường thoát ở mục Tách biệt trách nhiệm của `00-domain.md`)
 
 **`document_register_entry_status` — trạng thái dòng sổ văn bản**
 
@@ -174,13 +174,13 @@ Là thuộc tính của **dữ liệu**, không suy ra từ tên trường hay t
 | **Slot** | Một trường dữ liệu mà agent phải thu thập đủ trước khi xử lý yêu cầu |
 | **Cổng HITL** | Điểm trong vòng đời bắt buộc dừng chờ người thật quyết định. Có đúng hai cổng, **tách rời nhau**: `PENDING_APPROVAL` và `PENDING_SEAL` |
 | **Artifact** | Vật do một `request` tạo ra và có máy trạng thái riêng: `document`, `room_booking` `[Should]`, `seal_action` |
-| **Tách biệt trách nhiệm** | Người **thụ hưởng** một yêu cầu không được duyệt chính yêu cầu đó. Căn cứ là `beneficiary_employee_id == approver_employee_id`, không phải người tạo. Chi tiết ở `00-domain.md` mục 7.3 |
+| **Tách biệt trách nhiệm** | Người **thụ hưởng** một yêu cầu không được duyệt chính yêu cầu đó. Căn cứ là `beneficiary_employee_id == approver_employee_id`, không phải người tạo. Chi tiết ở mục Tách biệt trách nhiệm của `00-domain.md` |
 | **Người thụ hưởng** | Cột `beneficiary_employee_id` của `request` — nhân viên mà kết quả yêu cầu phục vụ. Mặc định bằng người tạo, khác đi khi nhập hộ |
 | **Tự duyệt** | `approval_step.self_approved = true` — trường hợp người thụ hưởng buộc phải tự duyệt vì không còn ai đủ quyền. Luôn kèm `self_approval_reason`, `audit_event` mức `WARNING` và hiển thị riêng trên dashboard |
 | **Provenance hồ sơ** | Ràng buộc `source` + `synced_at` phải hiển thị cho người duyệt với mọi giá trị nguồn `HR_PROFILE` |
 | **Khung thể thức** | Phần văn bản do pháp luật quy định: quốc hiệu, tiêu ngữ, tên cơ quan, số và ký hiệu, nơi nhận, phần chữ ký. Nằm trong `template`, agent không sinh và không sửa (ADR-001) |
 | **Nội dung tự do** | Phần thay đổi theo từng yêu cầu: lý do, mục đích, nội dung công việc. Là phần duy nhất prompt LLM được sinh ra |
-| **Chế độ phi sản xuất** | `operating_mode = NON_PRODUCTION` — watermark không gỡ được, dải số `TRIAL`, không đóng dấu thật. Bắt buộc chừng nào chưa có người nghiệm thu thể thức. Chi tiết ở `00-domain.md` mục 6.2 |
+| **Chế độ phi sản xuất** | `operating_mode = NON_PRODUCTION` — watermark không gỡ được, dải số `TRIAL`, không đóng dấu thật. Bắt buộc chừng nào chưa có người nghiệm thu thể thức. Chi tiết ở mục Chế độ phi sản xuất của `00-domain.md` |
 | **Cấp số** | Gán `document_number` từ `document_register`, chỉ xảy ra tại thời điểm chuyển sang `ISSUED` |
 | **Lỗ hổng số** | Số đã cấp nhưng không gắn được với văn bản nào. Được đánh dấu `VOIDED`, không tái sử dụng |
 | **Thu hồi** | Đánh dấu văn bản đã phát hành mất hiệu lực. Không phải xoá |
@@ -191,6 +191,6 @@ Là thuộc tính của **dữ liệu**, không suy ra từ tên trường hay t
 
 ## 10. Tên chưa chốt
 
-Trong sơ đồ `erDiagram` ở `00-domain.md` mục 4, tên entity viết HOA theo thông lệ Mermaid: `REQUEST` là `request`, `SEAL_ACTION` là `seal_action`, và tương tự cho các entity còn lại. Chỉ là khác biệt hiển thị, không phải tên khác.
+Trong sơ đồ `erDiagram` ở mục Quan hệ giữa các entity của `00-domain.md`, tên entity viết HOA theo thông lệ Mermaid: `REQUEST` là `request`, `SEAL_ACTION` là `seal_action`, và tương tự cho các entity còn lại. Chỉ là khác biệt hiển thị, không phải tên khác.
 
 Tên **agent**, **node LangGraph** và **tool** chưa xuất hiện ở đây vì thuộc Phase 3. Tên **bảng** và **cột** cụ thể thuộc Phase 4; các định danh entity ở mục 1 là tên logic, Phase 4 có thể ánh xạ sang tên bảng khác nhưng phải ghi rõ ánh xạ đó.

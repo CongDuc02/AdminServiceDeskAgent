@@ -37,11 +37,11 @@ Sau khi tôi duyệt outline:
 - Ghi file đúng đường dẫn trong `_PLAN.md`
 - Áp dụng toàn bộ luật ở mục 4 và ràng buộc domain ở mục 5 của `CLAUDE.md`
 - Cập nhật `ASSUMPTIONS.md`, `GLOSSARY.md`, tạo ADR nếu có quyết định công nghệ mới
-- Ưu tiên MoSCoW chỉ khai báo **một lần** ở PRD mục 5; phase khác chỉ tham chiếu tên feature. Cần đánh dấu hạng mục có thể cắt khỏi Sprint đầu thì dùng `[Should]` / `[Could]`, không dùng `[MVP]` / `[ADVANCED]`
+- Ưu tiên MoSCoW chỉ khai báo **một lần** ở mục Scope & priority của PRD; phase khác chỉ tham chiếu tên feature. Cần đánh dấu hạng mục có thể cắt khỏi Sprint đầu thì dùng `[Should]` / `[Could]`, không dùng `[MVP]` / `[ADVANCED]`
 
 ### Bước 4 — Tự kiểm tra trước khi báo cáo
 
-Chạy checklist DoD chung trong `CLAUDE.md` mục 7 cộng DoD riêng của phase trong `_PLAN.md`. Nêu rõ từng mục đạt hay không. Nếu có mục không đạt, sửa rồi kiểm lại — không báo cáo khi còn mục hở.
+Chạy checklist DoD chung trong mục Definition of Done cho mọi phase của `CLAUDE.md` cộng DoD riêng của phase trong `_PLAN.md`. Nêu rõ từng mục đạt hay không. Nếu có mục không đạt, sửa rồi kiểm lại — không báo cáo khi còn mục hở.
 
 Kiểm tra thêm:
 

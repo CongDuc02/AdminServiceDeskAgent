@@ -1,10 +1,10 @@
 # PRD — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.5 · **Trạng thái:** Draft để xác thực với người dùng · **Primary persona:** Cán bộ hành chính
+**Phiên bản:** 0.6 · **Trạng thái:** Draft để xác thực với người dùng · **Primary persona:** Cán bộ hành chính
 
 > Sản phẩm tiếp nhận yêu cầu hành chính bằng hội thoại, soạn sẵn văn bản từ mẫu đã duyệt và đưa vào hàng đợi duyệt của phòng hành chính. Sản phẩm **không** tự phát hành, **không** tự đóng dấu, và **không** thẩm định thể thức văn bản.
 
-Tên entity, trạng thái, permission và loại yêu cầu trong file này dùng đúng [`GLOSSARY.md`](./GLOSSARY.md). Quyết định `D-xxx` và giả định `A-xxx` tham chiếu [`00-domain.md`](./00-domain.md) mục 9 và [`ASSUMPTIONS.md`](./ASSUMPTIONS.md).
+Tên entity, trạng thái, permission và loại yêu cầu trong file này dùng đúng [`GLOSSARY.md`](./GLOSSARY.md). Quyết định `D-xxx` và giả định `A-xxx` tham chiếu mục Quyết định đã chốt trong Phase 0 của [`00-domain.md`](./00-domain.md) và [`ASSUMPTIONS.md`](./ASSUMPTIONS.md).
 
 ## 1. Problem statement
 
@@ -92,8 +92,8 @@ Metric chia **hai loại**, và chỉ loại thứ nhất là cổng nghiệm th
 | **Could** | Bản tiếng Anh của giấy xác nhận công tác; memory yêu cầu định kỳ | Tiện ích, không gỡ pain point nào ở mục 1 |
 | **Won't** | Chữ ký số | Cần tích hợp CA và quản lý chứng thư; `SIGNED` trong Sprint đầu là ghi nhận sự kiện ký tay (A-003) |
 | **Won't** | Điều khiển thiết bị đóng dấu, sinh ảnh dấu | Con dấu là dấu vật lý; hệ thống quản lý quy trình duyệt và nhật ký, không thay thao tác vật lý (A-004) |
-| **Won't** | Tích hợp HRM/ERP thật, SSO doanh nghiệp, multi-tenant, mobile app, i18n | Ngoài phạm vi đề bài (`CLAUDE.md` §2); mỗi cái kéo theo một trục phức tạp không phục vụ pain point nào ở mục 1 |
-| **Won't** | Graph database | SQL cộng vector đủ cho mọi truy vấn trong phạm vi này; thêm vào là thêm một hệ thống phải vận hành mà không đổi lại được gì (`CLAUDE.md` §2) |
+| **Won't** | Tích hợp HRM/ERP thật, SSO doanh nghiệp, multi-tenant, mobile app, i18n | Ngoài phạm vi đề bài (mục Phạm vi của `CLAUDE.md`); mỗi cái kéo theo một trục phức tạp không phục vụ pain point nào ở mục 1 |
+| **Won't** | Graph database | SQL cộng vector đủ cho mọi truy vấn trong phạm vi này; thêm vào là thêm một hệ thống phải vận hành mà không đổi lại được gì (mục Phạm vi của `CLAUDE.md`) |
 | **Won't** | Agent tự thẩm định thể thức văn bản | Khung thể thức nằm trong template, không do model sinh và không do model kiểm (ADR-001). Đây là loại trừ có chủ đích, không phải thiếu sót |
 
 ## 6. Features & acceptance criteria
@@ -117,7 +117,7 @@ Yêu cầu xuyên suốt — HITL, tách biệt trách nhiệm, chế độ phi 
 
 - Agent phân loại yêu cầu về đúng `request_type` hoặc hỏi lại khi mô tả nhập nhằng. Khi không chắc, agent **hỏi**, không đoán.
 - Yêu cầu ngoài hai loại đang hỗ trợ được báo rõ là chưa hỗ trợ, kèm hướng xử lý thủ công. Agent không cố ép vào một loại gần giống.
-- Agent thu thập slot theo schema ở `00-domain.md` mục 3, và chỉ chuyển yêu cầu sang `SUBMITTED` khi **đủ điều kiện xử lý** theo định nghĩa dưới đây.
+- Agent thu thập slot theo schema ở mục Slot schema của `00-domain.md`, và chỉ chuyển yêu cầu sang `SUBMITTED` khi **đủ điều kiện xử lý** theo định nghĩa dưới đây.
 - **Nhiều nhu cầu trong một lượt** (EC-CV-01): một `request` mang đúng một `request_type`, nên hai nhu cầu phải thành hai `request`. Agent nhận ra và nêu rõ cả hai, xử lý **tuần tự**, không bao giờ im lặng bỏ qua nhu cầu thứ hai và không gộp hai nhu cầu vào một văn bản.
 - **Đổi loại giữa chừng** (EC-CV-02): slot đã thu của loại cũ **không được mang sang** loại mới, kể cả khi trùng tên. Agent xác nhận việc đổi loại và nêu rõ thông tin nào phải hỏi lại.
 - **Quay lại sau gián đoạn** (EC-CV-04): trong hạn thì khôi phục đúng trạng thái đã thu và nhắc lại còn thiếu gì; sau khi `EXPIRED` thì nói rõ yêu cầu đã hết hạn trước khi bắt đầu lại, **không** âm thầm dùng tiếp dữ liệu cũ. Đây là ca mà persona nhân viên ở mục 3 gần như chắc chắn rơi vào.
@@ -166,7 +166,7 @@ Một `document` chỉ được rời `DRAFT` sang `PENDING_APPROVAL` khi đồn
 3. Phần nội dung tự do do LLM sinh đã được ghi vào đúng biến của nó, không tràn ra phần khung.
 4. `requires_seal` và `seal_type` đã được xác định theo `request_type` và `recipient_org`.
 
-**Biến agent không bao giờ được tự điền:** `document_number` và `issued_date` — chỉ sinh tại thời điểm `ISSUED` (`00-domain.md` mục 6); `signer_user_id` — do định tuyến duyệt quyết định; và mọi giá trị thuộc khung thể thức, vốn nằm trong template chứ không phải biến.
+**Biến agent không bao giờ được tự điền:** `document_number` và `issued_date` — chỉ sinh tại thời điểm `ISSUED` (mục Cấp số văn bản của `00-domain.md`); `signer_user_id` — do định tuyến duyệt quyết định; và mọi giá trị thuộc khung thể thức, vốn nằm trong template chứ không phải biến.
 
 **Bị coi là KHÔNG đủ điều kiện trình duyệt:**
 
@@ -220,7 +220,7 @@ Một `document` chỉ được rời `DRAFT` sang `PENDING_APPROVAL` khi đồn
 **Pain point giải quyết:** không có; đây là feature xử lý sự cố, không gỡ pain point nào ở mục 1.
 **Request type:** `WORK_CONFIRMATION`, `INTRODUCTION_LETTER`.
 
-**Vì sao là Should, không phải Must.** Trạng thái `REVOKED` **bắt buộc tồn tại** trong mô hình dữ liệu và máy trạng thái — đó là ràng buộc domain ở `CLAUDE.md` §5 và đã chốt ở `00-domain.md` mục 5.2, không thương lượng. Nhưng "trạng thái phải tồn tại" và "màn hình thu hồi có trong Sprint đầu" là hai việc khác nhau. Ở `NON_PRODUCTION`, mọi văn bản đều mang watermark *không có giá trị pháp lý* và mang số từ dải `TRIAL`, nên **không có văn bản nào đang có hiệu lực để mà thu hồi**. Feature này chỉ trở nên cần thiết cùng lúc với milestone sản xuất.
+**Vì sao là Should, không phải Must.** Trạng thái `REVOKED` **bắt buộc tồn tại** trong mô hình dữ liệu và máy trạng thái — đó là ràng buộc domain ở mục Ràng buộc domain bắt buộc phải xử lý của `CLAUDE.md` và đã chốt ở mục Vòng đời `document` của `00-domain.md`, không thương lượng. Nhưng "trạng thái phải tồn tại" và "màn hình thu hồi có trong Sprint đầu" là hai việc khác nhau. Ở `NON_PRODUCTION`, mọi văn bản đều mang watermark *không có giá trị pháp lý* và mang số từ dải `TRIAL`, nên **không có văn bản nào đang có hiệu lực để mà thu hồi**. Feature này chỉ trở nên cần thiết cùng lúc với milestone sản xuất.
 
 Nghĩa vụ phải giữ ở Sprint đầu **không nằm ở đây mà nằm trong AC của F3 (Must)**: mô hình dữ liệu hỗ trợ `REVOKED` và `SUPERSEDED`, không có đường xoá cứng `document` đã `ISSUED`, và số đã cấp không tái sử dụng. Đặt ở F3 để cắt F5 không làm mất bất biến.
 
@@ -262,6 +262,8 @@ Hệ thống **không giả định** tổ chức có từ hai người duyệt 
 
 ### NFR-03 — Chế độ phi sản xuất
 
+**Vì sao chế độ này tồn tại.** Tổ chức **không có ai có thẩm quyền nghiệm thu thể thức** văn bản do hệ thống phát hành. Đây là kết luận đã chốt (A-018, D-009), **không phải một ô chờ lấp** — phase sau không hỏi lại. Hệ quả trực tiếp: residual risk của RISK-01 không có người gánh, nên hệ thống không được phép phát hành văn bản có giá trị pháp lý. Chế độ phi sản xuất là cách **xử lý** hệ quả đó, không phải cách bỏ ngỏ nó.
+
 Chừng nào A-018 còn `Mở`, `operating_mode = NON_PRODUCTION` và ba ràng buộc sau bắt buộc đồng thời (D-009):
 
 1. Mọi văn bản mang watermark `BẢN THỬ NGHIỆM — KHÔNG CÓ GIÁ TRỊ PHÁP LÝ` **trong bản render**, không phải một lớp hiển thị của giao diện.
@@ -278,7 +280,7 @@ Nhân viên dùng hệ thống vài lần mỗi năm nên không có thói quen 
 
 Nhân viên chỉ xem được yêu cầu của mình.
 
-**Mask theo `slot_sensitivity`, không theo danh sách tên trường.** Slot mức `RES` bị mask trong log và trong prompt gửi LLM, chỉ xuất hiện ở bản render cuối; slot mức `PER` bị mask trong log. Quy tắc key theo thuộc tính dữ liệu ở `00-domain.md` mục 3, nên thêm một slot mới là gán độ nhạy cho nó, không phải nhớ bổ sung tên nó vào một danh sách viết tay ở đây. Cùng thuộc tính đó quyết định dữ liệu nào bị xoá khi `request` `EXPIRED` (A-014). Nội dung do người dùng nhập được đối xử là **dữ liệu, không phải chỉ dẫn**. Nghĩa vụ theo Nghị định 13/2023/NĐ-CP xử lý ở mức mục đích thu thập, thời hạn lưu và quyền của chủ thể; thời hạn lưu cụ thể `TBD` (A-010). Không trích dẫn điều khoản vì văn bản gốc chưa có trong `docs/reference/` — `[CẦN XÁC MINH]`.
+**Mask theo `slot_sensitivity`, không theo danh sách tên trường.** Slot mức `RES` bị mask trong log và trong prompt gửi LLM, chỉ xuất hiện ở bản render cuối; slot mức `PER` bị mask trong log. Quy tắc key theo thuộc tính dữ liệu ở mục Slot schema của `00-domain.md`, nên thêm một slot mới là gán độ nhạy cho nó, không phải nhớ bổ sung tên nó vào một danh sách viết tay ở đây. Cùng thuộc tính đó quyết định dữ liệu nào bị xoá khi `request` `EXPIRED` (A-014). Nội dung do người dùng nhập được đối xử là **dữ liệu, không phải chỉ dẫn**. Nghĩa vụ theo Nghị định 13/2023/NĐ-CP xử lý ở mức mục đích thu thập, thời hạn lưu và quyền của chủ thể; thời hạn lưu cụ thể `TBD` (A-010). Không trích dẫn điều khoản vì văn bản gốc chưa có trong `docs/reference/` — `[CẦN XÁC MINH]`.
 
 ### NFR-06 — Chi phí LLM
 
@@ -290,10 +292,10 @@ Model rẻ cho phân loại và trích slot, model mạnh cho soạn nội dung 
 
 Bộ eval **dẫn xuất** chứ không chọn số tròn. Có hai nguồn dẫn xuất, và mỗi ca phải chỉ được về một trong hai:
 
-1. **Bảng edge case ở `00-domain.md` mục 8** — mỗi edge case áp dụng được cho phạm vi Sprint đầu sinh ít nhất một ca.
+1. **Bảng edge case ở mục Edge case nghiệp vụ của `00-domain.md`** — mỗi edge case áp dụng được cho phạm vi Sprint đầu sinh ít nhất một ca.
 2. **Hai định nghĩa vận hành ở F1 và F2** — mỗi ca "bị coi là KHÔNG đạt" sinh ít nhất một ca. Nguồn này tồn tại vì bảng edge case Phase 0 không đặc tả tới mức **từng biến của template**; nếu chỉ dẫn xuất từ nguồn 1 thì định nghĩa "Văn bản đủ điều kiện trình duyệt" có độ phủ eval bằng không.
 
-Mọi ca thuộc **tầng hội thoại và phân loại** đều dẫn xuất từ nguồn 1 — nhóm `EC-CV-xx` ở `00-domain.md` mục 8, bổ sung ở phiên bản 0.6 của file đó. Trước đó chúng không có nguồn Phase 0 nào; cách xử lý là **sửa Phase 0 rồi dẫn xuất lại**, không phải giữ chúng như ngoại lệ ở Phase 1.
+Mọi ca thuộc **tầng hội thoại và phân loại** đều dẫn xuất từ nguồn 1 — nhóm `EC-CV-xx` ở mục Edge case nghiệp vụ của `00-domain.md`, bổ sung ở phiên bản 0.6 của file đó. Trước đó chúng không có nguồn Phase 0 nào; cách xử lý là **sửa Phase 0 rồi dẫn xuất lại**, không phải giữ chúng như ngoại lệ ở Phase 1.
 
 | Nhóm | Cách dẫn xuất | Nguồn | Ca |
 |---|---|---|---|
@@ -347,36 +349,7 @@ Sprint đầu done khi:
 
 M7 và milestone sản xuất **không** thuộc Definition of Done này.
 
-## 9. Open questions
-
-| Câu hỏi cần chốt | Owner | Hạn |
-|---|---|---|
-| Số liệu baseline: số yêu cầu mỗi tháng theo loại, thời gian xử lý hiện tại, tỷ lệ phải làm lại (A-002) | PO | Trước khi chốt PRD |
-| Hình hài buổi UAT: bao nhiêu người thật, bao nhiêu ca kịch bản, ai chấm | PO + Trưởng phòng Hành chính | Trước grooming F1 |
-| Đáp án chuẩn cho 31 ca eval | Trưởng phòng Hành chính | Trước UAT |
-| Ngưỡng M1, M2, M3 có chấp nhận được không, hay cần nới sau lần đo đầu | PO + Trưởng phòng Hành chính | Trước khi đo |
-| Giá trị định dạng số và ký hiệu văn bản (A-009) | PO | Trước Phase 4 |
-| Trần `copies_count` và trần khoảng hiệu lực giấy giới thiệu (A-011) | Trưởng phòng Hành chính | Trước grooming F1 |
-| Một văn bản mẫu thật đã phát hành cho mỗi loại, để đối chiếu ngược template (A-018) | PO | Trước Phase 7 |
-
-**Không nằm trong bảng này:** ai nghiệm thu thể thức văn bản. Câu trả lời là **không có ai**, đã chốt ở D-009. Đây là kết luận cuối, không phải câu hỏi mở.
-
-## 10. Sign-off
-
-PRD chỉ chuyển từ **Draft → Approved** khi đủ các xác nhận dưới đây. Mỗi người ký xác nhận đúng phạm vi trách nhiệm của mình. **Ô "Người" chỉ điền khi có người thật đảm nhận** — chưa có thì để trống, không điền tạm một vai trò.
-
-| Vai trò | Phạm vi xác nhận | Người | Ngày | Trạng thái |
-|---|---|---|---|---|
-| PO | Nội dung, ưu tiên MoSCoW, ngưỡng M1–M3 khả thi về nghiệp vụ | — | — | ☐ Chờ ký |
-| Tech Lead | Khả thi kỹ thuật trong capacity team, gồm AC cứng của F6 | — | — | ☐ Chờ ký |
-| Trưởng phòng Hành chính | Đúng nghiệp vụ hành chính; duyệt đáp án chuẩn 31 ca eval và hai định nghĩa vận hành ở F1, F2 | — | — | ☐ Chờ ký |
-| **Nghiệm thu thể thức văn bản** | Văn bản phát hành đúng thể thức theo Nghị định 30/2020/NĐ-CP | **Không có** | — | ☐ **Không ký được** |
-
-Dòng cuối không phải ô chờ lấp. Không có người đảm nhận là kết luận đã chốt (A-018, D-009), và hệ quả của nó đã được xử lý bằng NFR-03 chứ không bỏ ngỏ. **Phase sau không hỏi lại.**
-
-Nếu PO và Tech Lead là cùng một người, ghi thẳng tên đó vào cả hai ô kèm ghi chú: một người giữ hai ô ký làm yếu kiểm tra chéo giữa "nên làm gì" và "làm được gì", và đó là hạn chế được chấp nhận có ý thức chứ không phải thủ tục đã hoàn thành.
-
-## 11. Risk register
+## 9. Risk register
 
 *(Mục này bổ sung so với `docs/reference/sample_prd.md` — lý do ở cuối file.)*
 
@@ -392,8 +365,12 @@ Nếu PO và Tech Lead là cùng một người, ghi thẳng tên đó vào cả
 
 ---
 
-**Lý do thêm mục 11 so với mẫu:** `sample_prd.md` là PRD của một sản phẩm tra cứu — sai thì người dùng đọc lại nguồn và tự sửa. BO-19 phát hành văn bản có giá trị pháp lý và sử dụng con dấu, nên có một lớp rủi ro không hồi phục được mà mẫu không cần đến. Risk register tồn tại để những rủi ro đó được ghi tên, có mitigation, có trigger phát hiện, và quan trọng nhất là **có phần còn lại sau mitigation được nói thẳng** thay vì để người đọc tưởng đã xử lý xong.
+**Lý do thêm mục Risk register so với mẫu:** `sample_prd.md` là PRD của một sản phẩm tra cứu — sai thì người dùng đọc lại nguồn và tự sửa. BO-19 phát hành văn bản có giá trị pháp lý và sử dụng con dấu, nên có một lớp rủi ro không hồi phục được mà mẫu không cần đến. Risk register tồn tại để những rủi ro đó được ghi tên, có mitigation, có trigger phát hiện, và quan trọng nhất là **có phần còn lại sau mitigation được nói thẳng** thay vì để người đọc tưởng đã xử lý xong.
 
 ## Open Questions
 
-Xem mục 9. Không có câu hỏi nào ngoài bảng đó.
+**Không có câu hỏi mở nào chỉ tồn tại trong PRD.**
+
+Mọi câu hỏi chưa có lời giải đều nằm ở [`ASSUMPTIONS.md`](./ASSUMPTIONS.md), mỗi dòng có **Owner** và **Hạn** riêng. PRD **không** giữ bản sao của bảng đó — một câu hỏi có hai chỗ ghi hạn là một câu hỏi sẽ có hai hạn khác nhau.
+
+Các giả định PRD này phụ thuộc trực tiếp: A-002 (baseline), A-009 (định dạng số), A-011 (trần `copies_count` và trần hiệu lực), A-017 (ngưỡng `synced_at`), A-018 (nghiệm thu thể thức), A-019 (ngưỡng metric Cảnh báo), A-020 (hình hài UAT), A-023 (đáp án chuẩn bộ eval).

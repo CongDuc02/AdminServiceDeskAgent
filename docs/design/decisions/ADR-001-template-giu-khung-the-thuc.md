@@ -1,6 +1,6 @@
 # ADR-001 — Khung thể thức nằm trong template `.docx`, agent chỉ điền biến
 
-**Trạng thái:** Accepted · **Ngày:** 2026-09-11 · **Quyết định bởi:** Product Owner · **Liên quan:** `00-domain.md` mục 6, A-009, A-018
+**Trạng thái:** Accepted · **Ngày:** 2026-09-11 · **Quyết định bởi:** Product Owner · **Liên quan:** mục Cấp số văn bản của `00-domain.md`, A-009, A-018
 
 ---
 
@@ -52,7 +52,7 @@ Cấm viết số điều, khoản, điểm hay phụ lục của Nghị định
 - Thể thức trở thành thứ **kiểm tra được bằng mắt một lần** khi duyệt template, thay vì phải kiểm tra lại trên từng văn bản sinh ra.
 - Phase 7 thu hẹp đáng kể: chỉ còn lo phần nội dung tự do, nơi mà sai sót có thể sửa được.
 - Chi phí LLM giảm — không sinh lại phần khung lặp đi lặp lại ở mọi văn bản.
-- Template versioning (đã có trong `CLAUDE.md` §5) trở thành cơ chế quản lý thể thức: đổi thể thức là ra phiên bản template mới, có vết.
+- Template versioning (đã có trong mục Ràng buộc domain bắt buộc phải xử lý của `CLAUDE.md`) trở thành cơ chế quản lý thể thức: đổi thể thức là ra phiên bản template mới, có vết.
 
 **Tiêu cực và cái phải chấp nhận**
 
@@ -63,10 +63,10 @@ Cấm viết số điều, khoản, điểm hay phụ lục của Nghị định
 
 **Rủi ro còn lại sau khi đã giảm thiểu**
 
-Hệ thống **không bao giờ tự khẳng định một văn bản đúng thể thức**. Chốt kiểm soát là HITL: cán bộ hành chính duyệt tại cổng `PENDING_APPROVAL` trước khi phát hành. Residual risk sau chốt này: nếu bản thân template sai thể thức **và** cán bộ hành chính không phát hiện khi duyệt, văn bản sai vẫn được phát hành. Không có lớp kiểm soát tự động nào phía sau — hệ thống không có khả năng thẩm định thể thức. Rủi ro này được chấp nhận có ý thức, và sẽ vào risk register ở PRD mục 11.
+Hệ thống **không bao giờ tự khẳng định một văn bản đúng thể thức**. Chốt kiểm soát là HITL: cán bộ hành chính duyệt tại cổng `PENDING_APPROVAL` trước khi phát hành. Residual risk sau chốt này: nếu bản thân template sai thể thức **và** cán bộ hành chính không phát hiện khi duyệt, văn bản sai vẫn được phát hành. Không có lớp kiểm soát tự động nào phía sau — hệ thống không có khả năng thẩm định thể thức. Rủi ro này được chấp nhận có ý thức, và sẽ vào mục Risk register của PRD.
 
 ## Rejected alternatives
 
-**Option A — LLM sinh toàn bộ văn bản.** Bị loại vì đặt rủi ro pháp lý không hồi phục được vào tay một thành phần bất định. Thể thức không có lý do gì phải sinh động: nó cố định theo loại văn bản. Dùng model để tái tạo một thứ cố định là đổi tính đúng đắn lấy sự tiện lợi, sai hướng với ràng buộc "sai thể thức = văn bản vô hiệu" ở `CLAUDE.md` §1. Thêm nữa, muốn viết được prompt này thì phải mô tả thể thức bằng chữ trong prompt, mà tại thời điểm này chưa ai xác minh được thể thức — nghĩa là prompt sẽ được viết từ trí nhớ của model.
+**Option A — LLM sinh toàn bộ văn bản.** Bị loại vì đặt rủi ro pháp lý không hồi phục được vào tay một thành phần bất định. Thể thức không có lý do gì phải sinh động: nó cố định theo loại văn bản. Dùng model để tái tạo một thứ cố định là đổi tính đúng đắn lấy sự tiện lợi, sai hướng với ràng buộc "sai thể thức = văn bản vô hiệu" ở mục Bối cảnh đề tài của `CLAUDE.md`. Thêm nữa, muốn viết được prompt này thì phải mô tả thể thức bằng chữ trong prompt, mà tại thời điểm này chưa ai xác minh được thể thức — nghĩa là prompt sẽ được viết từ trí nhớ của model.
 
 **Option C — Lai, cho LLM chỉnh khung khi thấy cần.** Bị loại vì nó xoá sạch lợi ích của Option B mà vẫn giữ nguyên chi phí. Một khi model được phép chạm vào khung, không còn kiểm tra được thể thức ở mức template nữa, và người duyệt lại phải soi lại từng văn bản. "Khi thấy cần" cũng không phải một điều kiện định nghĩa được, nên không kiểm thử được ở Phase 10.

@@ -448,3 +448,67 @@ Phần thuộc sản phẩm vào NFR-06: **hành vi khi chạm trần là cam k�
 | 4 | **Lưu trữ bản render (A-021)** kèm ràng buộc bất biến ở `SEALED`/`ISSUED`; phải nêu cơ chế bảo đảm, không chỉ khẳng định |
 | 8 | **Cơ chế dừng khi chạm trần (A-022)** — trạng thái và giao diện của tình huống dừng |
 | 11 | **Định cỡ A-022**, chỉ sau khi Phase 3 chốt đơn vị và Phase 8 chốt cơ chế |
+
+
+---
+
+## 2026-09-12 — Bỏ mục Open questions và Sign-off khỏi PRD; luật tham chiếu theo tên
+
+### Tiền đề ban đầu bị chính khảo sát bác bỏ
+
+Yêu cầu xuất phát là *"bỏ mục 9 vì nó thừa"*. Khảo sát trước khi sửa cho kết quả **ngược lại**: mục 9 đang **gánh** thông tin không nơi nào khác giữ.
+
+| | Mất nếu xoá thẳng |
+|---|---|
+| Hạn | **6/7 dòng** — chỉ A-009 có hạn ghi ở nơi khác |
+| Owner | **3/7 dòng** |
+| Cả nội dung câu hỏi | **1 dòng** — ba con số của buổi UAT: bao nhiêu người, bao nhiêu ca, ai chấm |
+
+Cảm giác "thừa" đến từ việc `ASSUMPTIONS.md` **thiếu cột Owner và Hạn**, nên thông tin đó buộc phải trú ở PRD. **Trùng lặp là triệu chứng, không phải bệnh.**
+
+Vì vậy thứ tự thi hành là bắt buộc: **sửa `ASSUMPTIONS.md` đủ cột trước**, rồi mục 9 mới thực sự thừa và xoá được. Làm ngược là mất thông tin. Ghi lại vì đây là lần đầu một bước khảo sát đảo ngược chính đề bài của nó — và lý do nó phát hiện được là vì khảo sát đi trước thao tác sửa.
+
+### `ASSUMPTIONS.md` v0.9 — thêm Owner và Hạn
+
+Bảng lên **7 cột**, 23 giả định, đã sắp xếp lại theo ID (trước đó lộn xộn do chèn dần).
+
+- Giả định đã đóng — A-005, A-006, A-007 (`Đã chốt`) và A-016 (`Bác bỏ`) — ghi `—` ở cả hai cột. Để trống sẽ trông như còn treo.
+- Ô **để trống** là thông tin thật: **chưa có ai nhận** hoặc **chưa có mốc**. Hiện 11/23 giả định không có owner — đó là hiện trạng, không phải chỗ chờ điền cho đẹp.
+- Owner và Hạn từng nhúng trong văn xuôi cột *Cách xác minh* (A-009, A-018, A-020, A-021, A-022) đã được rút ra cột riêng, tránh hai nơi giữ cùng một thông tin.
+- **A-023 mới** — đáp án chuẩn cho 31 ca eval, owner Trưởng phòng Hành chính, hạn trước UAT. Trước đây chỉ tồn tại ở mục 9 của PRD.
+- **A-020** nạp thêm ba con số của buổi UAT, thứ không tồn tại ở bất kỳ đâu khác.
+
+### PRD v0.6 — bỏ hai mục, đánh số lại
+
+| Việc | Chi tiết |
+|---|---|
+| Mục Open questions | **Xoá hẳn, kể cả tiêu đề.** Mục `## Open Questions` cuối file gánh vai trò theo mục Definition of Done cho mọi phase của `CLAUDE.md`, trỏ thẳng sang `ASSUMPTIONS.md` và liệt kê 8 giả định PRD phụ thuộc |
+| Mục Sign-off | **Xoá bảng.** Đoạn giải thích được nâng vào NFR-03 |
+| Risk register | 11 → **9**, không phải 10 |
+
+**Vì sao 9 chứ không phải 10:** chỉ thị ban đầu là "đổi 11 → 10" dựa trên phương án giữ tiêu đề mục 9. Phương án đó đã bị thay bằng xoá hẳn cả hai mục, nên đích đúng là 9. Đánh số 10 sẽ để lại lỗ ở vị trí 9.
+
+**NFR-03 giờ tự giải thích được.** Trước đây nó mở bằng *"Chừng nào A-018 còn Mở…"* rồi liệt kê ba ràng buộc kỹ thuật — **trỏ mã giả định mà không bao giờ nói mã đó là gì**, nên người đọc PRD thấy ba ràng buộc treo lơ lửng không nguyên nhân. Nay mở bằng một đoạn nói thẳng: tổ chức không có ai nghiệm thu thể thức, nên residual risk của RISK-01 không có người gánh, nên hệ thống không được phép phát hành văn bản có giá trị pháp lý.
+
+**Hai thứ bị bỏ cùng bảng Sign-off, báo cáo để anh quyết có cần giữ:** (a) câu *"PRD chỉ chuyển Draft → Approved khi đủ các xác nhận"* — PRD nay không còn cổng duyệt nào được phát biểu; (b) ghi chú *"một người giữ hai ô ký làm yếu kiểm tra chéo"* — mất chỗ bám khi không còn bảng ký.
+
+### Luật mới: tham chiếu chéo theo TÊN MỤC
+
+Thêm **luật 12** vào mục Luật viết tài liệu của `CLAUDE.md`. Đây là lớp lỗi thứ tư cùng họ được ghi thành luật:
+
+| Lần | Khoá tham chiếu vào thứ có thể đổi |
+|---|---|
+| 1 | `[ADVANCED]` hardcode trong `_PLAN.md` và `CLAUDE.md` |
+| 2 | Danh sách tên trường nhạy cảm viết tay trong NFR-05 |
+| 3 | Nhóm eval gom theo nguồn dẫn xuất thay vì theo tiêu chí chấm |
+| 4 | **Số mục trong tham chiếu chéo file** |
+
+Quét **50 tham chiếu chéo file theo số** trong 8 file, chuyển hết sang tên mục. Tham chiếu trong cùng một file giữ nguyên số — luật chỉ áp cho tham chiếu chéo.
+
+Không giữ ngoại lệ cho `PRD mục 5`. **Lệch với cách diễn đạt anh nêu:** anh đề xuất *"quy ước MoSCoW ở PRD"*, tôi dùng *"mục Scope & priority của PRD"* vì cả 7 ngữ cảnh đều đã có chữ MoSCoW ngay trước đó — dùng cụm kia sẽ thành *"khai báo một lần ở quy ước MoSCoW ở PRD"*. Ý định bỏ ngoại lệ được giữ nguyên.
+
+### `_PLAN.md`
+
+Bảng cấu trúc PRD bỏ hai hàng, Risk register về 9. DoD riêng Phase 1 **thay chứ không bỏ** vế cũ: *"mọi câu hỏi mở có Owner và Hạn trong `ASSUMPTIONS.md`"* cộng *"việc nghiệm thu thể thức được ghi nhận là không có người đảm nhận"* — vế thứ hai bắt buộc, không có nó thì việc "không ai ký" tuột khỏi mọi điều kiện nghiệm thu.
+
+Kèm một mâu thuẫn cũ phát hiện khi sửa bảng: hàng `| 2 | Goals & metrics |` vẫn ghi *"Gắn với một pilot cụ thể"*, trái với A-020. Đã sửa cho khớp.

@@ -4,7 +4,7 @@
 
 > File này chốt **từ vựng nghiệp vụ**: có những loại yêu cầu nào, mỗi loại cần dữ liệu gì, văn bản đi qua những trạng thái nào, ai được làm gì. Từ Phase 1 trở đi mọi tài liệu phải dùng đúng tên ở đây và ở [`GLOSSARY.md`](./GLOSSARY.md). File này **không** chọn công nghệ, **không** thiết kế API, **không** định nghĩa agent hay tool.
 
-**Quy ước ưu tiên:** ưu tiên MoSCoW được khai báo **đúng một lần** ở PRD mục 5 (Phase 1). File này không lặp lại mức ưu tiên; chỗ nào cần đánh dấu hạng mục có thể cắt khỏi Sprint đầu thì dùng `[Should]` hoặc `[Could]`. Hạng mục **không** mang nhãn nào là hạng mục nằm trong Sprint đầu.
+**Quy ước ưu tiên:** ưu tiên MoSCoW được khai báo **đúng một lần** ở mục Scope & priority của PRD (Phase 1). File này không lặp lại mức ưu tiên; chỗ nào cần đánh dấu hạng mục có thể cắt khỏi Sprint đầu thì dùng `[Should]` hoặc `[Could]`. Hạng mục **không** mang nhãn nào là hạng mục nằm trong Sprint đầu.
 
 **Quy ước ký hiệu:** `✔` bắt buộc · `○` tuỳ chọn · `[ĐỀ XUẤT]` do tôi thêm ngoài đề bài · `TBD` chưa có dữ liệu thật, đã ghi vào [`ASSUMPTIONS.md`](./ASSUMPTIONS.md).
 
@@ -41,7 +41,7 @@ Bốn loại đầu lấy nguyên từ đề bài. Hai loại cuối là `[ĐỀ
 | `INCOME_CONFIRMATION` `[ĐỀ XUẤT]` | Giấy xác nhận thu nhập | `document` | `tpl_income_confirmation` | `ADMIN_OFFICER` + phê duyệt dữ liệu lương | Có — dấu tròn | TBD | `[Could]` |
 | `BUSINESS_TRIP_ORDER` `[ĐỀ XUẤT]` | Quyết định cử đi công tác | `document` | `tpl_business_trip_order` | `SIGNER` | Có — dấu tròn | TBD | `[Could]` |
 
-Cột **Phạm vi** chỉ đánh dấu hạng mục sẽ bị cắt khỏi Sprint đầu. Mức MoSCoW đầy đủ chốt ở PRD mục 5.
+Cột **Phạm vi** chỉ đánh dấu hạng mục sẽ bị cắt khỏi Sprint đầu. Mức MoSCoW đầy đủ chốt ở mục Scope & priority của PRD.
 
 **Lý do đề xuất thêm hai loại:** `INCOME_CONFIRMATION` là đích đến khi nhân viên xin xác nhận công tác nhưng thật ra cần chứng minh thu nhập (EC-WC-03) — không có loại này thì agent không có chỗ để định tuyến sang. `BUSINESS_TRIP_ORDER` là loại đầu tiên mà người duyệt **không** phải cán bộ hành chính, dùng để kiểm chứng thiết kế định tuyến nhiều cấp. Cả hai đều là đề xuất của tôi, chưa được xác nhận là có thật trong nghiệp vụ của tổ chức (A-015).
 
@@ -54,7 +54,7 @@ Xin con dấu tồn tại ở **hai hình thái khác nhau** và chúng được
 | **Cái gì** | `requires_seal` là **thuộc tính của `document`** | `SEAL_REQUEST` là **loại yêu cầu độc lập** |
 | **Áp dụng cho** | Văn bản do hệ thống sinh | Văn bản do bên ngoài soạn, nhân viên tải lên |
 | **Cơ chế** | Cổng HITL `PENDING_SEAL` trong vòng đời `document`, **tách rời** cổng duyệt nội dung `PENDING_APPROVAL` | Một `request` riêng, sinh `seal_action` trỏ tới `external_document` |
-| **Vì sao ở mức đó** | HITL trước khi dùng dấu là ràng buộc bắt buộc của `CLAUDE.md` §1, không thể hoãn (A-006) | Đụng tính năng upload file ngoài, hiện nằm ngoài phạm vi Sprint đầu |
+| **Vì sao ở mức đó** | HITL trước khi dùng dấu là ràng buộc bắt buộc của mục Bối cảnh đề tài của `CLAUDE.md`, không thể hoãn (A-006) | Đụng tính năng upload file ngoài, hiện nằm ngoài phạm vi Sprint đầu |
 
 Hệ quả: nhân viên **không** phải tự xin dấu cho giấy xác nhận của chính mình — văn bản nội bộ tự đi qua `PENDING_SEAL`. Và dù ở hình thái nào, permission dùng dấu là `document.apply_seal`, tách riêng khỏi `document.issue` (mục 7).
 
@@ -297,7 +297,7 @@ stateDiagram-v2
 
 **Ba bất biến của vòng đời này:**
 
-1. Không có đường nào đi từ `DRAFT` tới `ISSUED` mà không qua `PENDING_APPROVAL`, và khi `requires_seal = true` thì không có đường nào tới `ISSUED` mà không qua `PENDING_SEAL`. Không có nhánh auto-approve, kể cả khi confidence cao (`CLAUDE.md` §1).
+1. Không có đường nào đi từ `DRAFT` tới `ISSUED` mà không qua `PENDING_APPROVAL`, và khi `requires_seal = true` thì không có đường nào tới `ISSUED` mà không qua `PENDING_SEAL`. Không có nhánh auto-approve, kể cả khi confidence cao (mục Bối cảnh đề tài của `CLAUDE.md`).
 2. **Hai cổng HITL là hai quyết định riêng biệt.** Duyệt nội dung không đồng nghĩa với cho phép dùng dấu. Chúng dùng hai permission khác nhau và được ghi hai `audit_event` khác nhau, kể cả khi cùng một người thực hiện cả hai.
 3. Từ `APPROVED` trở đi nội dung văn bản bất biến. Muốn sửa thì quay lại qua `CHANGES_REQUESTED`; nếu đã `ISSUED` thì phải `REVOKED` rồi phát hành văn bản mới — không sửa tại chỗ.
 
@@ -345,7 +345,7 @@ Thể thức **không** do agent sinh và **không** thuộc Phase 7. Khung th�
 
 **Quy tắc trích dẫn pháp lý:** cấm viết số điều, khoản, điểm hay phụ lục của Nghị định 30/2020/NĐ-CP **từ trí nhớ**. Chỉ trích dẫn khi văn bản gốc đã có trong `docs/reference/`. Chưa có thì ghi `[CẦN XÁC MINH]` và chỉ mô tả ở mức nguyên tắc. Áp dụng cho mọi phase.
 
-**Xử lý rủi ro thể thức:** hệ thống **không bao giờ tự khẳng định** một văn bản đúng thể thức. Chốt kiểm soát duy nhất là HITL — cán bộ hành chính duyệt tại cổng `PENDING_APPROVAL` trước khi phát hành. **Residual risk** sau chốt này: nếu template sai thể thức **và** người duyệt không phát hiện, văn bản sai vẫn được phát hành; không có lớp kiểm soát tự động nào phía sau. Rủi ro này được chấp nhận có ý thức và là nguyên liệu cho risk register ở PRD mục 11 (Phase 1).
+**Xử lý rủi ro thể thức:** hệ thống **không bao giờ tự khẳng định** một văn bản đúng thể thức. Chốt kiểm soát duy nhất là HITL — cán bộ hành chính duyệt tại cổng `PENDING_APPROVAL` trước khi phát hành. **Residual risk** sau chốt này: nếu template sai thể thức **và** người duyệt không phát hiện, văn bản sai vẫn được phát hành; không có lớp kiểm soát tự động nào phía sau. Rủi ro này được chấp nhận có ý thức và là nguyên liệu cho mục Risk register của PRD (Phase 1).
 
 **Sổ theo dõi con dấu** (`seal_register`) là sổ riêng, ghi mọi `seal_action` kể cả trên văn bản ngoài. Không dùng chung dãy số với sổ văn bản. Hệ thống chỉ quản lý quy trình duyệt và nhật ký, không điều khiển thiết bị đóng dấu và không sinh ảnh dấu (A-004).
 
@@ -512,14 +512,14 @@ Mỗi loại yêu cầu có tối thiểu 2 ca ở chiều thứ hai. Toàn bộ
 
 | ID | Quyết định | Nguồn |
 |---|---|---|
-| D-001 | Ưu tiên MoSCoW khai báo một lần ở PRD mục 5. Phase khác chỉ tham chiếu tên feature; cần đánh dấu thì dùng `[Should]`/`[Could]` | Anh chốt, 2026-09-11 |
+| D-001 | Ưu tiên MoSCoW khai báo một lần ở mục Scope & priority của PRD. Phase khác chỉ tham chiếu tên feature; cần đánh dấu thì dùng `[Should]`/`[Could]` | Anh chốt, 2026-09-11 |
 | D-002 | Hồ sơ nhân viên là bảng `employee` trên PostgreSQL, import thủ công CSV, có cột `source` và `synced_at`. Agent chỉ **đề xuất** giá trị `HR_PROFILE`; nhân viên xác nhận; người duyệt thấy nguồn và thời điểm. Đưa vào định nghĩa "Yêu cầu đủ điều kiện xử lý" ở Phase 1 | Anh chốt, 2026-09-11 |
 | D-003 | Tách đôi bài toán con dấu: `requires_seal` là thuộc tính của `document` với cổng HITL `PENDING_SEAL` riêng, nằm trong Sprint đầu; `SEAL_REQUEST` là loại yêu cầu độc lập cho văn bản ngoài, ở mức `[Could]` | Anh chốt, 2026-09-11 |
 | D-004 | Đúng **một** máy trạng thái cho `request`, dùng chung mọi loại yêu cầu. Chỉ tách máy trạng thái cho artifact: `document`, và `room_booking` `[Should]` | Anh chốt, 2026-09-11 |
 | D-005 | Mô hình hoá theo permission chứ không role cứng. `document.issue` và `document.apply_seal` tách rời | Anh chốt, 2026-09-11 |
 | D-006 | Căn cứ chặn của tách biệt trách nhiệm là `beneficiary_employee_id == approver_employee_id`, **không** phải người tạo yêu cầu — nhập hộ rồi duyệt là hợp lệ. Không giả định tổ chức có hai người duyệt: có đường thoát tự duyệt nhưng bắt buộc lý do, cờ `self_approved`, audit mức `WARNING`, hiện trên dashboard. Cấm mọi phương án tự động bỏ qua kiểm tra. Chi tiết ở Phase 8 | Anh chốt, 2026-09-11 |
 | D-007 | Khung thể thức nằm trong template `.docx` do người soạn; agent chỉ điền biến; prompt Phase 7 chỉ sinh nội dung tự do. Thể thức không thuộc phạm vi Phase 7 → **ADR-001** | Anh chốt, 2026-09-11 |
-| D-008 | Phase 4 thiết kế `document_register` với định dạng số **cấu hình được ngay từ đầu**. Owner xác minh: định dạng số trước Phase 4, mẫu `.docx` trước Phase 7. Nghiệm thu thể thức chưa có người có thẩm quyền — để ô Sign-off ở trạng thái chờ, không bịa owner. Cấm trích dẫn điều khoản ND 30/2020 từ trí nhớ. A-009 giữ mức rủi ro cao, mitigation là HITL, residual risk ghi rõ ở mục 6.1 | Anh chốt, 2026-09-11 |
+| D-008 | Phase 4 thiết kế `document_register` với định dạng số **cấu hình được ngay từ đầu**. Owner xác minh: định dạng số trước Phase 4, mẫu `.docx` trước Phase 7. Nghiệm thu thể thức chưa có người có thẩm quyền — ghi nhận ở NFR-03 của PRD là không có người đảm nhận, cấm bịa owner. Cấm trích dẫn điều khoản ND 30/2020 từ trí nhớ. A-009 giữ mức rủi ro cao, mitigation là HITL, residual risk ghi rõ ở mục 6.1 | Anh chốt, 2026-09-11 |
 | D-009 | Không có ai nghiệm thu thể thức — câu trả lời cuối, A-018 đóng ở trạng thái `Mở` vĩnh viễn cho tới khi có người. Hệ quả: hệ thống chỉ chạy ở **chế độ phi sản xuất** (watermark không gỡ được · dải số `TRIAL` riêng · không đóng dấu thật). Tháo chế độ là quyết định có người ký, không phải cờ cấu hình. Vào NFR ở Phase 1 | Anh chốt, 2026-09-11 |
 | D-010 | `document` được render **tại thời điểm `request` chuyển sang `SUBMITTED`** — đủ hai biên: không bao giờ **trước** `SUBMITTED`, và không hoãn tới sau đó. *Không trước:* yêu cầu chưa đủ điều kiện xử lý theo định nghĩa ở PRD F1, render sẽ tạo ra đúng thứ ADR-001 muốn tránh — một artifact trông như văn bản thật nhưng không phải; và mỗi lần sửa slot phải render lại, tốn token cho thứ chưa chắc được gửi. *Không hoãn tới `IN_REVIEW`:* `IN_REVIEW` không phải trạng thái do hệ thống điều khiển — nó phụ thuộc việc có người mở hàng đợi hay không, nên yêu cầu gửi chiều thứ Sáu sẽ không có văn bản tới sáng thứ Hai mà không vì bất kỳ lý do kỹ thuật nào. Văn bản tồn tại trước khi có người nhận xử lý là **điều mong muốn**: cán bộ mở hàng đợi là thấy bản nháp sẵn. Hệ quả: ở `EXPIRED` **không tồn tại file nháp nào**. Tính năng cho nhân viên xem trước, nếu cần, là một feature riêng có tên và ở mức `[Could]`, **không** phải hệ quả ngầm của việc render sớm | Anh chốt, 2026-09-11 |
 
@@ -527,9 +527,9 @@ Mỗi loại yêu cầu có tối thiểu 2 ca ở chiều thứ hai. Toàn bộ
 
 ## 10. Đã đối chiếu những gì
 
-- `CLAUDE.md` §1 — HITL bắt buộc: hai cổng `PENDING_APPROVAL` và `PENDING_SEAL` tách rời, cộng ba bất biến ở mục 5.2.
-- `CLAUDE.md` §2 — phạm vi: không thêm loại yêu cầu nào ngoài đề bài trừ hai loại `[ĐỀ XUẤT]` đã ghi lý do; không có graph database.
-- `CLAUDE.md` §5 — ràng buộc domain: thể thức văn bản (mục 6, có `[CẦN XÁC MINH]`), dữ liệu cá nhân (mục 3.1 và A-010), cấp số (mục 6), vòng đời đủ nhánh thu hồi (mục 5.2), định tuyến duyệt (mục 7).
+- Mục Bối cảnh đề tài của `CLAUDE.md` — HITL bắt buộc: hai cổng `PENDING_APPROVAL` và `PENDING_SEAL` tách rời, cộng ba bất biến ở mục 5.2.
+- Mục Phạm vi của `CLAUDE.md` — phạm vi: không thêm loại yêu cầu nào ngoài đề bài trừ hai loại `[ĐỀ XUẤT]` đã ghi lý do; không có graph database.
+- Mục Ràng buộc domain bắt buộc phải xử lý của `CLAUDE.md` — ràng buộc domain: thể thức văn bản (mục 6, có `[CẦN XÁC MINH]`), dữ liệu cá nhân (mục 3.1 và A-010), cấp số (mục 6), vòng đời đủ nhánh thu hồi (mục 5.2), định tuyến duyệt (mục 7).
 - `_PLAN.md` — quy ước ưu tiên mới ở đầu file; DoD riêng Phase 0 về edge case.
 - `docs/reference/sample_prd.md` — học quy ước MoSCoW, cách gọi tên giả thuyết chưa kiểm chứng, cách để `TBD` thay vì bịa số. Không lấy nội dung nghiệp vụ kế toán.
 - Không có phase nào trước Phase 0 nên không có mâu thuẫn liên phase cần kiểm.
@@ -543,12 +543,12 @@ Mỗi loại yêu cầu có tối thiểu 2 ca ở chiều thứ hai. Toàn bộ
 
 Toàn bộ câu hỏi của Phase 0 đã được trả lời: Q1, Q2, Q3, Q5 → D-002 đến D-005 · Q4 → A-014 · Q6 → D-006 · Q7 đã sửa trong `CLAUDE.md` · Q8 → D-007, D-008, ADR-001 · Q9 → D-009.
 
-Riêng Q9 — *ai nghiệm thu thể thức văn bản* — có câu trả lời là **không có ai**. Đây là kết luận cuối, không phải khoảng trống chờ lấp. Phase sau **không hỏi lại**; thay vào đó áp dụng chế độ phi sản xuất ở mục 6.2 và để ô Sign-off tương ứng ở PRD mục 10 trống người ký.
+Riêng Q9 — *ai nghiệm thu thể thức văn bản* — có câu trả lời là **không có ai**. Đây là kết luận cuối, không phải khoảng trống chờ lấp. Phase sau **không hỏi lại**; thay vào đó áp dụng chế độ phi sản xuất ở mục 6.2 và để NFR-03 của PRD ghi nhận là không có người đảm nhận.
 
 Những thứ còn chưa xác minh đều là **giả định có cách xác minh và có người làm**, không phải câu hỏi chặn thiết kế. Danh sách đầy đủ ở [`ASSUMPTIONS.md`](./ASSUMPTIONS.md); ba cái Phase 1 sẽ chạm tới sớm nhất:
 
 | Mã | Chưa có gì | Ai gỡ |
 |---|---|---|
-| A-002 | Số liệu vận hành thật — không có baseline cho metric ở PRD mục 2 | Product Owner, phỏng vấn phòng hành chính |
+| A-002 | Số liệu vận hành thật — không có baseline cho metric ở mục Goals & metrics của PRD | Product Owner, phỏng vấn phòng hành chính |
 | A-009 | Giá trị định dạng số và ký hiệu văn bản | Product Owner, trước Phase 4 |
 | A-018 | Người nghiệm thu thể thức — đã trả lời là không có; cách thay thế là xin văn bản mẫu thật để đối chiếu ngược | Product Owner |

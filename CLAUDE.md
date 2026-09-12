@@ -57,7 +57,7 @@ Không được phép sinh: hàm có thân xử lý, prompt gọi LLM thật, co
 
 > **Quy ước ưu tiên:** dùng **MoSCoW** (Must / Should / Could / Won't) theo `docs/reference/sample_prd.md`, không dùng P0/P1/P2. Ánh xạ: "Cơ bản" → Must · "Nâng cao" → Should hoặc Could · phần dưới đây → Won't.
 >
-> Mức MoSCoW **khai báo đúng một lần** ở PRD mục 5. Các phase khác chỉ tham chiếu tên feature; chỗ nào cần đánh dấu hạng mục sẽ bị cắt khỏi Sprint đầu thì dùng nhãn `[Should]` hoặc `[Could]`. Nhãn `[MVP]`/`[ADVANCED]` đã bỏ hẳn.
+> Mức MoSCoW **khai báo đúng một lần** ở mục Scope & priority của PRD. Các phase khác chỉ tham chiếu tên feature; chỗ nào cần đánh dấu hạng mục sẽ bị cắt khỏi Sprint đầu thì dùng nhãn `[Should]` hoặc `[Could]`. Nhãn `[MVP]`/`[ADVANCED]` đã bỏ hẳn.
 
 ### Ngoài phạm vi (không thiết kế trừ khi tôi yêu cầu)
 
@@ -91,6 +91,7 @@ Không được phép sinh: hàm có thân xử lý, prompt gọi LLM thật, co
 9. **Tài liệu tham chiếu trong `docs/reference/` là chuẩn format, không phải nội dung.** `sample_prd.md` là PRD của một dự án khác (trợ lý tra cứu kế toán). Học **cấu trúc, giọng văn, mức chi tiết, quy ước** của nó; tuyệt đối không bê nội dung nghiệp vụ kế toán, persona, metric hay pain point sang BO-19. Nếu một mục trong mẫu không áp dụng được cho BO-19, nói rõ trong một dòng thay vì bịa nội dung cho đầy.
 10. **Không nhồi.** Thà 1 trang chính xác còn hơn 5 trang lấp chỗ. Cấm viết mục kiểu "N/A cho hệ thống này" — nếu một mục không áp dụng thì nói rõ trong một dòng và giải thích tại sao.
 11. **Không tự ý sửa `CLAUDE.md`.** File này chỉ được sửa khi tôi cho phép **từng lần một**, và sau khi sửa phải **báo cáo diff** đầy đủ trong phần báo cáo cuối phase. Cho phép ở lần trước không có giá trị cho lần sau. Phát hiện `CLAUDE.md` sai hay mâu thuẫn thì **báo cáo và chờ**, không tự sửa. Riêng `docs/design/` thì được ghi tự do theo `_PLAN.md`.
+12. **Tham chiếu chéo giữa các file trỏ theo TÊN MỤC, không theo số mục.** Viết *"mục Risk register của PRD"*, không viết *"PRD mục 11"*. Số mục là toạ độ vị trí — nó dịch chuyển mỗi lần thêm hoặc bớt một mục, và mọi tham chiếu khoá vào nó đều gãy âm thầm. Tên mục không dịch chuyển. **Không có ngoại lệ**, kể cả với mục ổn định lâu nay: một quy tắc không ngoại lệ dễ tuân thủ hơn một quy tắc có một ngoại lệ phải nhớ. Trong cùng một file thì vẫn được trỏ theo số.
 
 ---
 

@@ -2,28 +2,28 @@
 
 Chạy **tuần tự, mỗi phase một phiên Claude Code mới** (tránh context rot). Sau mỗi phase tôi đọc và duyệt trước khi sang phase kế.
 
-| # | Phase | File đích | Phụ thuộc | Trạng thái |
-|---|---|---|---|---|
-| 0 | Domain Discovery | `00-domain.md`, `GLOSSARY.md` | — | ☑ |
-| 1 | PRD | `01-prd.md` | 0 | ☐ |
-| 2 | System Architecture | `02-architecture.md` | 1 | ☐ |
-| 3 | Agent & Tool Architecture | `03-agents.md` | 2 | ☐ |
-| 4 | Data Architecture | `04-data.md`, `contracts/schema.sql` | 1, 3 | ☐ |
-| 5 | API Spec | `05-api.md`, `contracts/openapi.yaml` | 4 | ☐ |
-| 6 | Project Structure (BE + FE) | `06-structure.md` | 2, 5 | ☐ |
-| 7 | Prompt Architecture | `07-prompts.md` | 3 | ☐ |
-| 8 | HITL & Approval Workflow | `08-hitl.md` | 3, 4 | ☐ |
-| 9 | Security & Guardrails | `09-security.md` | 5, 8 | ☐ |
-| 10 | Evaluation Framework | `10-eval.md` | 3, 7 | ☐ |
-| 11 | Ops, Cost & Deployment | `11-ops.md` | tất cả | ☐ |
-| 12 | Roadmap | `12-roadmap.md` | tất cả | ☐ |
-| 13 | Consistency Audit | `13-audit.md` | tất cả | ☐ |
+| #   | Phase                       | File đích                             | Phụ thuộc | Trạng thái |
+| --- | --------------------------- | ------------------------------------- | --------- | ---------- |
+| 0   | Domain Discovery            | `00-domain.md`, `GLOSSARY.md`         | —         | ☑          |
+| 1   | PRD                         | `01-prd.md`                           | 0         | ☑          |
+| 2   | System Architecture         | `02-architecture.md`                  | 1         | ☐          |
+| 3   | Agent & Tool Architecture   | `03-agents.md`                        | 2         | ☐          |
+| 4   | Data Architecture           | `04-data.md`, `contracts/schema.sql`  | 1, 3      | ☐          |
+| 5   | API Spec                    | `05-api.md`, `contracts/openapi.yaml` | 4         | ☐          |
+| 6   | Project Structure (BE + FE) | `06-structure.md`                     | 2, 5      | ☐          |
+| 7   | Prompt Architecture         | `07-prompts.md`                       | 3         | ☐          |
+| 8   | HITL & Approval Workflow    | `08-hitl.md`                          | 3, 4      | ☐          |
+| 9   | Security & Guardrails       | `09-security.md`                      | 5, 8      | ☐          |
+| 10  | Evaluation Framework        | `10-eval.md`                          | 3, 7      | ☐          |
+| 11  | Ops, Cost & Deployment      | `11-ops.md`                           | tất cả    | ☐          |
+| 12  | Roadmap                     | `12-roadmap.md`                       | tất cả    | ☐          |
+| 13  | Consistency Audit           | `13-audit.md`                         | tất cả    | ☐          |
 
 ---
 
 ## Quy ước ưu tiên — áp dụng cho mọi phase
 
-Ưu tiên MoSCoW được **khai báo đúng một lần** ở PRD mục 5 (Phase 1). Các phase khác **chỉ tham chiếu tên feature**, không lặp lại mức ưu tiên. Khi cần đánh dấu một hạng mục có thể cắt khỏi Sprint đầu thì dùng `[Should]` hoặc `[Could]` — không dùng `[MVP]`, `[ADVANCED]`, `P0`/`P1`/`P2`.
+Ưu tiên MoSCoW được **khai báo đúng một lần** ở mục Scope & priority của PRD (Phase 1). Các phase khác **chỉ tham chiếu tên feature**, không lặp lại mức ưu tiên. Khi cần đánh dấu một hạng mục có thể cắt khỏi Sprint đầu thì dùng `[Should]` hoặc `[Could]` — không dùng `[MVP]`, `[ADVANCED]`, `P0`/`P1`/`P2`.
 
 ---
 
@@ -49,24 +49,22 @@ Chạy **tuần tự, mỗi phase một phiên Claude Code mới** (tránh conte
 
 ### Cấu trúc bắt buộc
 
-| # | Mục | Ghi chú riêng cho BO-19 |
-|---|---|---|
-| — | Header | Phiên bản · Trạng thái · Primary persona · blockquote một câu: sản phẩm làm gì và **không** làm gì |
-| 1 | Problem statement | Bảng pain point 4 cột: pain point / quy trình hiện tại gãy ở đâu / tác động / root cause. Kèm **giả thuyết baseline cần kiểm chứng** và cách kiểm chứng |
-| 2 | Goals & metrics | Gắn với một pilot cụ thể, mỗi metric có con số và cách đo |
-| 3 | Persona | Primary persona viết dạng văn xuôi; vai trò liên quan nêu riêng, không nhận là primary |
-| 4 | Input | Bảng chiều input × phạm vi MVP |
-| 5 | Scope & priority | **MoSCoW**: Must / Should / Could / Won't |
-| 6 | Features & AC | Mỗi feature ghi rõ *pain point nào được giải quyết*; AC cấp feature |
-| 7 | Non-functional requirements | Gồm HITL là mục con riêng. **Bắt buộc có thêm hai mục con:** (a) tách biệt trách nhiệm theo `beneficiary_employee_id` cùng đường thoát tự duyệt (D-006); (b) **chế độ phi sản xuất** — watermark không gỡ được, dải số `TRIAL`, không đóng dấu thật, tháo chế độ là quyết định có người ký (D-009, `00-domain.md` mục 6.2) |
-| 8 | Definition of Done | Hành trình end-to-end + Must features đạt AC + đạt metric mục 2 |
-| 9 | Open questions | Bảng câu hỏi / owner / hạn |
-| 10 | Sign-off | Bảng vai trò / **phạm vi xác nhận** / trạng thái. Ô nghiệm thu thể thức văn bản để **trống người ký** — không có ai, đây là kết luận cuối chứ không phải chờ lấp; cấm bịa owner và cấm hỏi lại (D-009) |
-| 11 | Risk register | *(bổ sung so với mẫu)* `RISK-xx`: likelihood, impact, mitigation, trigger phát hiện, **residual risk còn lại sau mitigation**. A-009 vào đây ở mức cao với mitigation là HITL — nguyên liệu ở `00-domain.md` mục 6.1 |
+| #   | Mục                         | Ghi chú riêng cho BO-19                                                                                                                                                                                                                                                                                                                        |
+| --- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| —   | Header                      | Phiên bản · Trạng thái · Primary persona · blockquote một câu: sản phẩm làm gì và **không** làm gì                                                                                                                                                                                                                                             |
+| 1   | Problem statement           | Bảng pain point 4 cột: pain point / quy trình hiện tại gãy ở đâu / tác động / root cause. Kèm **giả thuyết baseline cần kiểm chứng** và cách kiểm chứng                                                                                                                                                                                        |
+| 2   | Goals & metrics             | **Không có pilot** (A-020) — neo vào một buổi UAT có kịch bản và bộ eval offline. Tách hai loại: **Bất biến** là cổng nghiệm thu, **Cảnh báo** thì không. Mỗi metric có nguồn đo                                                                                                                                                               |
+| 3   | Persona                     | Primary persona viết dạng văn xuôi; vai trò liên quan nêu riêng, không nhận là primary                                                                                                                                                                                                                                                         |
+| 4   | Input                       | Bảng chiều input × phạm vi MVP                                                                                                                                                                                                                                                                                                                 |
+| 5   | Scope & priority            | **MoSCoW**: Must / Should / Could / Won't                                                                                                                                                                                                                                                                                                      |
+| 6   | Features & AC               | Mỗi feature ghi rõ _pain point nào được giải quyết_; AC cấp feature                                                                                                                                                                                                                                                                            |
+| 7   | Non-functional requirements | Gồm HITL là mục con riêng. **Bắt buộc có thêm hai mục con:** (a) tách biệt trách nhiệm theo `beneficiary_employee_id` cùng đường thoát tự duyệt (D-006); (b) **chế độ phi sản xuất** — watermark không gỡ được, dải số `TRIAL`, không đóng dấu thật, tháo chế độ là quyết định có người ký (D-009, mục Chế độ phi sản xuất của `00-domain.md`) |
+| 8   | Definition of Done          | Hành trình end-to-end + Must features đạt AC + đạt metric mục 2                                                                                                                                                                                                                                                                                |
+| 9   | Risk register               | _(bổ sung so với mẫu)_ `RISK-xx`: likelihood, impact, mitigation, trigger phát hiện, **residual risk còn lại sau mitigation**. A-009 vào đây ở mức cao với mitigation là HITL — nguyên liệu ở mục Thể thức văn bản của `00-domain.md`                                                                                                          |
 
 ### Quy ước kế thừa từ mẫu — bắt buộc tuân thủ
 
-- **MoSCoW thay cho `[MVP]`/`[ADVANCED]`.** Ánh xạ đề bài: mục "Cơ bản" → **Must**; "Nâng cao" → **Should** hoặc **Could**; phần ngoài phạm vi ở `CLAUDE.md` mục 2 → **Won't**, và Won't phải ghi *lý do* chứ không chỉ liệt kê.
+- **MoSCoW thay cho `[MVP]`/`[ADVANCED]`.** Ánh xạ đề bài: mục "Cơ bản" → **Must**; "Nâng cao" → **Should** hoặc **Could**; phần ngoài phạm vi ở mục Phạm vi của `CLAUDE.md` → **Won't**, và Won't phải ghi _lý do_ chứ không chỉ liệt kê.
 - **AC cấp feature là cam kết. User story chỉ là gợi ý phân rã, chưa chốt.** Chép nguyên tinh thần khối "Quy ước" ở mục 6 của mẫu. Không gán P0/P1/P2 cho story.
 - **Yêu cầu xuyên suốt khai báo một lần ở NFR, cấm lặp ở AC từng feature** (ví dụ: mọi văn bản đều phải qua HITL trước khi phát hành — nói một lần ở mục 7).
 - **Thành thật về evidence.** Mọi con số chưa đo được phải gọi đúng tên là giả thuyết và kèm cách kiểm chứng. Cấm bịa số nhân viên, số yêu cầu/tháng, thời gian xử lý hiện tại.
@@ -74,7 +72,7 @@ Chạy **tuần tự, mỗi phase một phiên Claude Code mới** (tránh conte
 
 ### Định nghĩa vận hành bắt buộc
 
-Mẫu PRD định nghĩa chính xác "đủ căn cứ" và nêu rõ trường hợp nào *không* đạt. BO-19 phải có hai định nghĩa tương đương, ở mức chi tiết ngang vậy:
+Mẫu PRD định nghĩa chính xác "đủ căn cứ" và nêu rõ trường hợp nào _không_ đạt. BO-19 phải có hai định nghĩa tương đương, ở mức chi tiết ngang vậy:
 
 1. **"Yêu cầu đủ điều kiện xử lý"** — slot nào bắt buộc, thiếu thì agent phải hỏi lại; tuyệt đối cấm suy diễn giá trị từ ngữ cảnh hay từ hồ sơ nhân viên khi người dùng chưa xác nhận.
 2. **"Văn bản đủ điều kiện trình duyệt"** — biến template nào bắt buộc có giá trị thật, biến nào agent không bao giờ được tự điền, điều kiện nào khiến bản nháp bị chặn không cho vào hàng đợi duyệt.
@@ -85,7 +83,7 @@ Cả hai định nghĩa phải nêu rõ **trường hợp bị coi là KHÔNG đ
 
 Đặc tả ngay trong NFR như mẫu: số lượng yêu cầu mẫu và **phân bố cố định** theo request type × (đủ điều kiện / thiếu thông tin / không đủ điều kiện theo quy chế / ngoài phạm vi). Nêu ai duyệt đáp án chuẩn. Phân bố phải chốt trước khi đo.
 
-**DoD riêng:** mọi feature truy vết được tới ít nhất một pain point ở mục 1 **và** ít nhất một request type ở Phase 0; mọi metric ở mục 2 có cách đo; bảng Sign-off và Open questions không để trống.
+**DoD riêng:** mọi feature truy vết được tới ít nhất một pain point ở mục 1 **và** ít nhất một request type ở Phase 0; mọi metric ở mục 2 có cách đo; **mọi câu hỏi mở có Owner và Hạn trong `ASSUMPTIONS.md`** — PRD không giữ bản sao; **việc nghiệm thu thể thức văn bản được ghi nhận là không có người đảm nhận**, không để nó tuột khỏi mọi điều kiện nghiệm thu.
 
 ---
 
