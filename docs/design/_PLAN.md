@@ -6,7 +6,7 @@ Chạy **tuần tự, mỗi phase một phiên Claude Code mới** (tránh conte
 | --- | --------------------------- | ------------------------------------- | --------- | ---------- |
 | 0   | Domain Discovery            | `00-domain.md`, `GLOSSARY.md`         | —         | ☑          |
 | 1   | PRD                         | `01-prd.md`                           | 0         | ☑          |
-| 2   | System Architecture         | `02-architecture.md`                  | 1         | ☐          |
+| 2   | System Architecture         | `02-architecture.md`                  | 1         | ☑          |
 | 3   | Agent & Tool Architecture   | `03-agents.md`                        | 2         | ☐          |
 | 4   | Data Architecture           | `04-data.md`, `contracts/schema.sql`  | 1, 3      | ☐          |
 | 5   | API Spec                    | `05-api.md`, `contracts/openapi.yaml` | 4         | ☐          |
@@ -109,13 +109,20 @@ Tool Registry — mỗi tool: mục đích, input schema, output schema, side ef
 
 **Đơn vị render lại — phải trả lời, không được mặc định:** khi văn bản quay về `DRAFT` qua `CHANGES_REQUESTED`, một lần sửa có bắt buộc render lại **toàn bộ** không, hay sửa được **từng phần** nội dung tự do mà không gọi LLM lại từ đầu? Câu trả lời quyết định đơn vị đo của A-022 và cách Phase 11 định cỡ chi phí. Cấm mặc định mỗi vòng là một lần render đầy đủ.
 
-**LangGraph design:** state schema (TypedDict đầy đủ field), sơ đồ node/edge, conditional edge, vị trí `interrupt`, chiến lược checkpointer trên PostgreSQL, cách resume sau nhiều ngày, xử lý khi schema state thay đổi giữa chừng.
+**LangGraph design:** state schema (TypedDict đầy đủ field), sơ đồ node/edge, conditional edge, vị trí `interrupt`, chiến lược checkpointer trên PostgreSQL, cách resume sau nhiều ngày, xử lý khi schema state thay đổi giữa chừng. **Checkpoint là kho PII** (mục Data flow diagram của `02-architecture.md`): phải nêu cách xoá slot `RES` khi `request` `EXPIRED` (A-014) trong **mọi** checkpoint, kể cả lịch sử checkpoint của các bước trước — xoá khỏi `request` mà không xoá khỏi lịch sử state là chưa xoá.
 
 Memory: working / session / long-term (hồ sơ & thói quen yêu cầu của nhân viên) / vector. Nêu rõ **khi nào đọc, khi nào ghi, thời hạn lưu, ai xoá được**. Không thiết kế graph memory.
 
 Retrieval: nguồn dữ liệu, chunk strategy, embedding model tiếng Việt, hybrid search, metadata filter theo phòng ban/mức bảo mật, chống rò rỉ tài liệu ngoài quyền.
 
-**DoD riêng:** mỗi tool có side effect ghi dữ liệu phải chỉ rõ nó nằm trước hay sau cổng HITL.
+**Nghĩa vụ allowlist input — kế thừa từ NFR-05 đã sửa ở Phase 2, bắt buộc với mọi agent và node có gọi LLM:**
+
+- Input phải khai **tường minh, liệt kê đích danh từng slot**, dùng đúng tên ở mục Slot schema của `00-domain.md`. Ví dụ khai đúng: `purpose`, `recipient_org`, `work_content`.
+- **Cấm khai gộp**: "nhận context của request", "nhận thông tin yêu cầu", "toàn bộ state", hay một kiểu dữ liệu bao trùm như `request: Request`. Khai gộp làm allowlist mất tác dụng mà vẫn trông như đang tuân thủ.
+- LangGraph mặc định truyền **toàn bộ state** vào mọi node, nên allowlist không đặt được ở chữ ký hàm của node — nó phải được thực thi tại điểm lắp prompt trong `ai_gateway`. Node nhìn thấy cả state thì chưa phải vi phạm; prompt chứa slot ngoài danh sách khai báo mới là vi phạm.
+- Input **không phải slot** — tin nhắn thô của người dùng, lịch sử hội thoại, đoạn retrieval — cũng phải khai đích danh loại input, kèm hai thông tin: phạm vi (chỉ lượt hiện tại, hay bao nhiêu lượt trước) và loại dữ liệu nó có thể mang theo. Đây là lỗ lớn nhất của allowlist theo slot: node phân loại và node trích slot bắt buộc phải đọc text thô, mà text thô thì mang theo được mọi thứ, kể cả dữ liệu `RES` chưa kịp gán vào slot nào.
+
+**DoD riêng:** mỗi tool có side effect ghi dữ liệu phải chỉ rõ nó nằm trước hay sau cổng HITL; mỗi agent/node gọi LLM có danh sách input đích danh, không dòng nào khai gộp.
 
 ---
 
@@ -147,7 +154,7 @@ Cây thư mục backend FastAPI + frontend React, mỗi thư mục một dòng t
 
 **Phạm vi:** prompt **chỉ sinh phần nội dung tự do** — lý do, mục đích, nội dung công việc cụ thể. Khung thể thức (quốc hiệu, tiêu ngữ, tên cơ quan, số và ký hiệu, nơi nhận, phần chữ ký) nằm trong template `.docx`, **không** thuộc Phase 7 và không được mô tả trong prompt (ADR-001, D-007). Mẫu `.docx` đúng thể thức do Product Owner chuẩn bị trước phase này.
 
-Prompt dạng module (system / role / task / context / output contract / guardrail), có versioning và biến truyền vào. Mỗi prompt: mục tiêu, biến input, output format (JSON Schema), guardrail, failure mode, ví dụ few-shot **đánh dấu rõ là dữ liệu giả**. Nêu chiến lược ép JSON hợp lệ và xử lý khi parse lỗi.
+Prompt dạng module (system / role / task / context / output contract / guardrail), có versioning và biến truyền vào. Mỗi prompt: mục tiêu, biến input (liệt kê đích danh theo nghĩa vụ allowlist ở Phase 3, cấm khai gộp), output format (JSON Schema), guardrail, failure mode, ví dụ few-shot **đánh dấu rõ là dữ liệu giả**. Nêu chiến lược ép JSON hợp lệ và xử lý khi parse lỗi.
 
 ---
 
@@ -174,6 +181,19 @@ Golden dataset (nguồn, kích thước, cách gán nhãn, ai gán), metric cho 
 ## Phase 11 — Ops, Cost & Deployment
 
 Môi trường dev/staging/prod trên Render, cold start, worker nền, cron, migration, backup & restore, observability (trace của một request xuyên agent, log schema, metric, alert), dashboard SLA & tồn đọng, mô hình chi phí LLM theo request type kèm giả định giá (ghi vào ASSUMPTIONS), ngưỡng cảnh báo và cơ chế cắt chi phí. **Định cỡ A-022:** trần số lần render lại và token budget mỗi request — chỉ định cỡ được **sau khi** Phase 3 chốt đơn vị render lại và Phase 8 chốt cơ chế dừng; định cỡ trước đó là định cỡ sai đơn vị.
+
+**Chỗ quan sát cho điều kiện đảo ngược của ADR ở Phase 2.** ADR-002, ADR-004 và ADR-005 chỉ nêu _hình dạng_ tín hiệu, không có ngưỡng, vì A-002 chưa có số liệu tải. Nhưng một tín hiệu không có chỗ đo thì không bao giờ phát ra, và điều kiện đảo ngược khi đó chỉ còn là trang trí. Thiết kế observability phải có chỗ quan sát cho từng tín hiệu dưới đây. Chưa cần ngưỡng — chỉ cần metric **tồn tại**, để khi có số liệu thật thì đặt được ngưỡng lên nó.
+
+| ADR     | Hình dạng tín hiệu                                 | Chỗ phải quan sát được                                                                                                                                                    |
+| ------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ADR-002 | Truy vấn nghiệp vụ chậm đi đúng lúc retrieval tăng | Latency truy vấn nghiệp vụ và số truy vấn retrieval, đặt **trên cùng một trục thời gian**. Nhìn riêng từng metric thì không thấy được tương quan                          |
+| ADR-002 | Reindex embedding làm chậm ghi giao dịch           | Thời lượng mỗi lần reindex, và latency ghi giao dịch trong cửa sổ reindex so với ngoài cửa sổ                                                                             |
+| ADR-004 | Tranh khoá trên bảng job                           | Thời gian chờ khoá trên bảng job của `queue_worker`                                                                                                                       |
+| ADR-004 | Độ trễ dispatch không chấp nhận được               | Khoảng thời gian từ lúc enqueue tới lúc bắt đầu xử lý, tách theo loại job                                                                                                 |
+| ADR-004 | Vòng poll chiếm IO đáng kể                         | Tỷ trọng truy vấn và IO do vòng poll gây ra, trên tổng tải của `postgresql`                                                                                               |
+| ADR-005 | Một lượt graph tiến sát giới hạn thời gian request | **Phân phối** thời lượng một lượt chạy `orchestrator` trong luồng request của `api` — nhìn phần đuôi, không nhìn trung bình — đặt cạnh giới hạn thời gian request (A-025) |
+
+**Hai điều kiện đảo ngược không phải tín hiệu vận hành**, nên không đo ở observability mà ở `ASSUMPTIONS.md`: ADR-002 phải xét lại khi A-001 bị bác bỏ; ADR-003 kích hoạt khi A-024 đóng. Hai điều kiện này phát ra khi một giả định đổi trạng thái, không phải khi một metric vượt ngưỡng.
 
 ---
 

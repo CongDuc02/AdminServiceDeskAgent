@@ -1,6 +1,6 @@
 # GLOSSARY — BO-19 Admin Service Desk Agent
 
-**Phiên bản:** 0.7 · **Chốt tại:** Phase 0
+**Phiên bản:** 0.8 · **Chốt tại:** Phase 0, bổ sung ở Phase 2
 
 > Đây là danh sách tên chuẩn. Từ Phase 1 trở đi, mọi tài liệu, diagram, DDL, endpoint và prompt phải dùng **đúng** các định danh trong file này. Muốn đổi tên thì sửa file này trước, rồi ghi vào [`CHANGELOG.md`](./CHANGELOG.md).
 
@@ -194,3 +194,24 @@ Là thuộc tính của **dữ liệu**, không suy ra từ tên trường hay t
 Trong sơ đồ `erDiagram` ở mục Quan hệ giữa các entity của `00-domain.md`, tên entity viết HOA theo thông lệ Mermaid: `REQUEST` là `request`, `SEAL_ACTION` là `seal_action`, và tương tự cho các entity còn lại. Chỉ là khác biệt hiển thị, không phải tên khác.
 
 Tên **agent**, **node LangGraph** và **tool** chưa xuất hiện ở đây vì thuộc Phase 3. Tên **bảng** và **cột** cụ thể thuộc Phase 4; các định danh entity ở mục 1 là tên logic, Phase 4 có thể ánh xạ sang tên bảng khác nhưng phải ghi rõ ánh xạ đó.
+
+---
+
+## 11. Thành phần kiến trúc hệ thống — chốt ở Phase 2
+
+Tên chuẩn của các thành phần trong `02-architecture.md`. Từ Phase 3 trở đi, agent/tool/node phải nói rõ chúng thuộc thành phần nào trong danh sách này, dùng đúng tên.
+
+| Định danh | Vai trò | Ghi chú |
+|---|---|---|
+| `client` | Giao diện React SPA | Không tự validate business rule |
+| `api` | FastAPI, điểm vào REST + SSE, AuthN/AuthZ | — |
+| `ai_gateway` | Gọi LLM, model routing rẻ/mạnh, ép input theo allowlist của prompt module | Không phải service riêng — module trong tiến trình `api`/`queue_worker` |
+| `orchestrator` | LangGraph: node/edge, `interrupt`, resume qua checkpointer | Thư viện dùng chung `api` và `queue_worker`, không phải service riêng (ADR-005) |
+| `tool_layer` | Mọi thao tác có side effect qua permission check | — |
+| `vector_store` | Embedding + hybrid search trên kho mẫu và quy định | `pgvector` trong cùng `postgresql`, không phải service riêng (ADR-002) |
+| `postgresql` | Nguồn sự thật cho entity, `document_register`, `seal_register`, `audit_event`, checkpoint, bảng job | — |
+| `object_storage` | Lưu bản gốc template và bản render `.docx`/`.pdf` | S3-compatible, vendor `TBD` (ADR-003, A-024) |
+| `queue_worker` | Job nền: render sau `SUBMITTED`, quét hạn, thông báo | Bảng job trong `postgresql` (ADR-004) |
+| `observability` | Log kỹ thuật, trace, metric | **Khác** `audit_event` — log cho kỹ sư vận hành, không phải nhật ký nghiệp vụ |
+
+Tên **agent**, **node LangGraph** cụ thể bên trong `orchestrator`, và **tool** cụ thể bên trong `tool_layer`, vẫn thuộc Phase 3 — mục này chỉ chốt tên các thành phần hạ tầng bao quanh chúng.

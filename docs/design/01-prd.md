@@ -1,6 +1,6 @@
 # PRD — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.6 · **Trạng thái:** Draft để xác thực với người dùng · **Primary persona:** Cán bộ hành chính
+**Phiên bản:** 0.8 · **Trạng thái:** Draft để xác thực với người dùng · **Primary persona:** Cán bộ hành chính
 
 > Sản phẩm tiếp nhận yêu cầu hành chính bằng hội thoại, soạn sẵn văn bản từ mẫu đã duyệt và đưa vào hàng đợi duyệt của phòng hành chính. Sản phẩm **không** tự phát hành, **không** tự đóng dấu, và **không** thẩm định thể thức văn bản.
 
@@ -280,7 +280,19 @@ Nhân viên dùng hệ thống vài lần mỗi năm nên không có thói quen 
 
 Nhân viên chỉ xem được yêu cầu của mình.
 
-**Mask theo `slot_sensitivity`, không theo danh sách tên trường.** Slot mức `RES` bị mask trong log và trong prompt gửi LLM, chỉ xuất hiện ở bản render cuối; slot mức `PER` bị mask trong log. Quy tắc key theo thuộc tính dữ liệu ở mục Slot schema của `00-domain.md`, nên thêm một slot mới là gán độ nhạy cho nó, không phải nhớ bổ sung tên nó vào một danh sách viết tay ở đây. Cùng thuộc tính đó quyết định dữ liệu nào bị xoá khi `request` `EXPIRED` (A-014). Nội dung do người dùng nhập được đối xử là **dữ liệu, không phải chỉ dẫn**. Nghĩa vụ theo Nghị định 13/2023/NĐ-CP xử lý ở mức mục đích thu thập, thời hạn lưu và quyền của chủ thể; thời hạn lưu cụ thể `TBD` (A-010). Không trích dẫn điều khoản vì văn bản gốc chưa có trong `docs/reference/` — `[CẦN XÁC MINH]`.
+**Mask trong log vận hành theo `slot_sensitivity`, không theo danh sách tên trường.** Slot mức `RES` và `PER` không xuất hiện dạng thật trong log kỹ thuật (log, trace, metric) — đây là log cho kỹ sư vận hành, khác với `audit_event`, vốn là nhật ký nghiệp vụ bất biến cho người dùng và kiểm toán, không nằm trong phạm vi mask này. Quy tắc key theo thuộc tính dữ liệu ở mục Slot schema của `00-domain.md`, nên thêm một slot mới là gán độ nhạy cho nó, không phải nhớ bổ sung tên nó vào một danh sách viết tay ở đây. Cùng thuộc tính đó quyết định dữ liệu nào bị xoá khi `request` `EXPIRED` (A-014).
+
+**Sửa nguyên tắc cho prompt gửi LLM — phát hiện ở Phase 2, hệ quả ngoài dự kiến của việc thêm `slot_sensitivity` ở vòng A-014.** Bản trước viết "slot mức `RES` bị mask... trong prompt gửi LLM", nhưng đây là phát biểu **sai**: slot `RES` `purpose` và `work_content` chính là dữ liệu mà bước sinh nội dung tự do ở F2 phải đọc để soạn văn bản — che nó thì bước đó không làm được việc. Nguyên tắc đúng không phải "che thứ nhạy cảm" mà là **tối thiểu hoá theo nhu cầu từng bước**: mỗi prompt module (Phase 7) khai báo tường minh danh sách slot nó cần làm input; tầng gọi LLM (`ai_gateway`, mục System Architecture của `02-architecture.md`) chỉ đưa đúng danh sách đó vào prompt, bất kể mức nhạy cảm cao hay thấp của từng slot. Một slot `RES` như `national_id` không xuất hiện trong bất kỳ prompt sinh nội dung nào vì không bước nào khai cần nó; một slot `RES` như `purpose` xuất hiện đúng ở bước cần nó. Vi phạm là khi một prompt module nhận slot ngoài danh sách nó tự khai — không phải khi nó nhận một slot có độ nhạy cao.
+
+**`slot_sensitivity` không mất vai trò mà chuyển sang chỗ khác.** Sau khi sửa, `slot_sensitivity` không còn quyết định slot nào được vào prompt gửi LLM — allowlist của prompt module làm việc đó. Nhưng nó vẫn là căn cứ duy nhất cho ba quyết định khác:
+
+1. Slot nào bị mask trong log kỹ thuật.
+2. Slot nào bị xoá giá trị khi `request` `EXPIRED` (A-014).
+3. Slot nào hiển thị ở dạng nào trên màn hình duyệt. Quy tắc hiển thị cụ thể **chưa được đặc tả ở đâu cả** — thuộc Phase 8 (màn hình duyệt) và Phase 9.
+
+Tức là có **hai cơ chế riêng dựa trên cùng một thuộc tính dữ liệu**, và cơ chế này không thay cơ chế kia. Một slot có thể vừa được allowlist cho vào prompt, vừa bị mask trong log của chính lời gọi đó — `purpose` rơi đúng vào trường hợp này. Thiết kế nào coi allowlist là đã xử lý xong độ nhạy — ví dụ bỏ mask log cho slot đã được phép vào prompt — là sai. Allowlist chỉ giới hạn slot nào **đi ra** khỏi hệ thống tới LLM provider; nó không làm slot đó bớt nhạy cảm. `purpose` đã gửi đi vẫn là dữ liệu `RES`, chỉ khác là giờ nó nằm ở một bên thứ ba.
+
+Nội dung do người dùng nhập được đối xử là **dữ liệu, không phải chỉ dẫn**. Nghĩa vụ theo Nghị định 13/2023/NĐ-CP xử lý ở mức mục đích thu thập, thời hạn lưu và quyền của chủ thể; thời hạn lưu cụ thể `TBD` (A-010). Không trích dẫn điều khoản vì văn bản gốc chưa có trong `docs/reference/` — `[CẦN XÁC MINH]`.
 
 ### NFR-06 — Chi phí LLM
 

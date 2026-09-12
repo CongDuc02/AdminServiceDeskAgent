@@ -512,3 +512,91 @@ Không giữ ngoại lệ cho `PRD mục 5`. **Lệch với cách diễn đạt 
 Bảng cấu trúc PRD bỏ hai hàng, Risk register về 9. DoD riêng Phase 1 **thay chứ không bỏ** vế cũ: *"mọi câu hỏi mở có Owner và Hạn trong `ASSUMPTIONS.md`"* cộng *"việc nghiệm thu thể thức được ghi nhận là không có người đảm nhận"* — vế thứ hai bắt buộc, không có nó thì việc "không ai ký" tuột khỏi mọi điều kiện nghiệm thu.
 
 Kèm một mâu thuẫn cũ phát hiện khi sửa bảng: hàng `| 2 | Goals & metrics |` vẫn ghi *"Gắn với một pilot cụ thể"*, trái với A-020. Đã sửa cho khớp.
+
+
+---
+
+## 2026-09-12 (lần 2) — Phase 2: System Architecture
+
+**Tạo mới:** `docs/design/02-architecture.md`; `decisions/ADR-002-pgvector-trong-postgresql.md`; `decisions/ADR-003-object-storage-s3-compatible.md`; `decisions/ADR-004-queue-worker-bang-job-postgresql.md`; `decisions/ADR-005-orchestrator-trong-tien-trinh.md`.
+
+**Sửa:** `01-prd.md` → v0.7 (NFR-05); `GLOSSARY.md` → v0.8 (mục 11 mới); `ASSUMPTIONS.md` → v0.10 (A-024, A-025).
+
+### Mâu thuẫn thật tìm thấy giữa Phase 1 và Phase 2 — sửa ở file gốc, không vá ở đây
+
+**Hệ quả ngoài dự kiến của vòng thêm `slot_sensitivity` (v0.7 của `00-domain.md`/`GLOSSARY.md`).** Khi đó NFR-05 được viết lại để key theo `slot_sensitivity`, và câu "slot mức `RES` bị mask... trong log **và trong prompt gửi LLM**" được viết như một hệ quả tự nhiên của việc thêm cột độ nhạy. Không ai kiểm lại câu đó với F2: bước sinh nội dung tự do **phải đọc** đúng hai slot `RES` là `purpose` và `work_content` để soạn văn bản. Che chúng khỏi prompt thì bước đó không thực hiện được — đây không phải cách diễn đạt mơ hồ, mà là hai yêu cầu chốt ở hai phase khác nhau **phủ định lẫn nhau theo nghĩa đen**.
+
+**Xử lý theo đúng tiền lệ đã lập (lần đầu ở mục `2026-09-11 (lần 3) — bổ sung chiều EC-CV-xx`):** chẩn đoán tới gốc, sửa ở file gốc (`01-prd.md`, nơi NFR-05 thuộc về), không vá bằng một ghi chú ngoại lệ ở `02-architecture.md`.
+
+**Nguyên tắc đúng, thay cho nguyên tắc sai:** không phải "che theo độ nhạy" mà là **tối thiểu hoá theo nhu cầu từng bước** — mỗi prompt module (Phase 7) tự khai danh sách slot nó cần, tầng gọi LLM (`ai_gateway`) chỉ gửi đúng danh sách đó, bất kể độ nhạy cao hay thấp của từng slot. Quy tắc mask trong **log kỹ thuật** (khác `audit_event`) theo `slot_sensitivity` giữ nguyên, không bị ảnh hưởng — chỉ phần "trong prompt gửi LLM" bị viết lại.
+
+**Vì sao đây là lỗi thật, không phải cách đọc khác nhau của cùng một ý:** nếu giữ nguyên câu cũ, Phase 7 và Phase 9 sẽ thiết kế output validation và guardrail theo đúng một quy tắc mà chính sản phẩm không thể vận hành được — phát hiện muộn hơn (ví dụ khi viết prompt thật ở Phase 7) sẽ tốn công sửa ngược nhiều phase.
+
+### Bốn ADR mới — mỗi cái có điều kiện đảo ngược và lý do loại riêng, không dùng chung khuôn
+
+| ADR | Quyết định | Vì sao không chỉ là "gộp vào Postgres cho đơn giản" |
+|---|---|---|
+| ADR-002 | `vector_store` = `pgvector` trong `postgresql`, không phải vector DB riêng | Lý do loại chính không phải chi phí mà là **hai nguồn sự thật cho cùng một khái niệm phiên bản `template`** nếu tách metadata và embedding ra hai hệ thống |
+| ADR-003 | `object_storage` = S3-compatible ngoài Render, **bất biến đảm bảo ở tầng ứng dụng** (khoá đối tượng content-addressed), không dựa vào Object Lock của vendor | Vendor cụ thể còn `TBD` (A-024) — chốt kiến trúc phụ thuộc một tính năng chưa xác minh sẽ lặp lại đúng lỗi "bịa số liệu/tính năng chưa xác minh" mà `CLAUDE.md` cấm, chỉ khác tầng |
+| ADR-004 | `queue_worker` = bảng job trong `postgresql`, không thêm Redis/Celery | Lý do chính là **tính nguyên tử của D-010** (enqueue job render phải cùng giao dịch với transition `SUBMITTED`) — Redis phá vỡ tính nguyên tử đó trừ khi thêm outbox pattern, tức thêm phức tạp để giải quyết đúng vấn đề Postgres đã giải quyết sẵn |
+| ADR-005 | `orchestrator` là thư viện dùng chung trong `api`/`queue_worker`, không phải service riêng | Lý do không phải "tiết kiệm một service" mà là: checkpointer PostgreSQL (đã bắt buộc theo domain) đã xoá bỏ **tiền đề duy nhất** từng biện minh cho việc tách riêng (giữ trạng thái trong bộ nhớ) — quyết định không cần đi tới bước so sánh chi phí/lợi ích |
+
+Cả bốn ADR đều bị soi lại theo đúng yêu cầu: "khi mọi quyết định cùng một hướng thì cần kiểm là lập luận hay quán tính." Mỗi ADR nêu **hình dạng tín hiệu đảo ngược** (không phải ngưỡng số, vì A-002 chưa có số liệu tải) và một đoạn Rejected alternatives viết theo lý do riêng của chính nó.
+
+**Phát hiện đáng chú ý ở ADR-005:** điều kiện đảo ngược không dẫn tới "tách `orchestrator` thành service riêng" — nó dẫn tới "đổi tiến trình nào gọi `orchestrator`" (từ luồng request của `api` sang `queue_worker`). Lý do kỹ thuật để tách riêng (giữ trạng thái trong bộ nhớ) không tồn tại ở bất kỳ kịch bản nào trong phạm vi đã biết, kể cả khi giới hạn thời gian request của Render hoá ra thấp.
+
+### `GLOSSARY.md` — mục 11 mới
+
+Chốt tên chuẩn 10 thành phần kiến trúc (`client`, `api`, `ai_gateway`, `orchestrator`, `tool_layer`, `vector_store`, `postgresql`, `object_storage`, `queue_worker`, `observability`) để Phase 3 trở đi dùng đúng tên khi gán agent/tool/node vào từng thành phần.
+
+### `ASSUMPTIONS.md` — A-024, A-025
+
+Hai giả định mới, cùng mẫu owner/hạn đã có từ v0.9: A-024 (nhà cung cấp `object_storage`, owner Product Owner, hạn trước Phase 11); A-025 (giới hạn thời gian request của Render, owner Phase 11/người triển khai, hạn trước khi lên `PRODUCTION`).
+
+
+---
+
+## 2026-09-12 (lần 3) — Phase 2 v0.2: duyệt ADR, bổ sung NFR-05, neo nghĩa vụ vào Phase 3 và Phase 11
+
+### Duyệt
+
+Anh duyệt **ADR-002, ADR-003, ADR-004, ADR-005** và cách sửa **NFR-05 tại gốc**. Bản ghi đầy đủ của bốn ADR — quyết định, lý do loại riêng của từng cái, điều kiện đảo ngược — và của việc sửa NFR-05 như một hệ quả ngoài dự kiến của vòng A-014 đã nằm ở mục **lần 2** ngay trên. Mục này không chép lại, chỉ ghi phần phát sinh sau khi duyệt.
+
+### 1. NFR-05 — `slot_sensitivity` chuyển chỗ, không mất vai trò (`01-prd.md` v0.8)
+
+Bản sửa ở lần 2 để lại một cách hiểu nguy hiểm: allowlist đã **thay** `slot_sensitivity`. Không phải vậy. Thuộc tính này thôi quyết định cái gì vào prompt, nhưng vẫn là căn cứ duy nhất của ba quyết định khác: mask log kỹ thuật · xoá khi `EXPIRED` · hiển thị trên màn hình duyệt. Như vậy có **hai cơ chế riêng trên cùng một thuộc tính**. Viết rõ để Phase 9 không thiết kế như thể độ nhạy đã bị allowlist thay thế.
+
+Ví dụ chốt được đưa vào NFR-05: `purpose` vừa được allowlist cho vào prompt, vừa bị mask trong log của chính lời gọi đó. Bỏ mask log cho một slot vì nó đã được phép vào prompt là sai.
+
+**Một chỗ mới lộ ra, chưa giải:** quyết định thứ ba — hiển thị trên màn hình duyệt theo độ nhạy — **chưa được đặc tả ở đâu cả**. NFR-05 nêu nó như một việc thuộc Phase 8 và Phase 9, không tự đặt quy tắc.
+
+### 2. Sơ đồ data flow sai cùng kiểu lỗi — phát hiện khi viết mục 1 (`02-architecture.md` v0.2)
+
+Viết xong câu *"allowlist không làm slot bớt nhạy cảm"* thì chính sơ đồ data flow của tôi ở lần 2 vi phạm nó: luồng `ai_gateway` → LLM provider **không bị tô PII**, với lý do *"nó chỉ mang đúng những gì bước đó cần"* — tức là coi allowlist như thứ thay cho độ nhạy. Đã sửa:
+
+- Tô hai mức: **đỏ** cho PII không bị giới hạn theo bước, **cam** cho PII đã được allowlist giới hạn. LLM provider được gọi đúng tên là bên thứ ba.
+- **Thêm checkpoint của `orchestrator`** — sơ đồ cũ bỏ sót nó. State LangGraph lưu mọi slot đã thu, nên checkpoint là một kho PII chứ không phải dữ liệu kỹ thuật.
+- Thêm `observability` để thấy chỗ hai cơ chế gặp nhau.
+
+**Hệ quả mới phát sinh từ việc thêm checkpoint:** rule xoá slot `RES` khi `EXPIRED` (A-014) phải xoá cả trong checkpoint, **kể cả lịch sử checkpoint các bước trước**. Nếu không, giá trị đã xoá khỏi `request` vẫn còn nguyên trong lịch sử state. Chưa giải ở Phase 2, đã neo vào mục LangGraph design của Phase 3 trong `_PLAN.md`.
+
+### 3. `_PLAN.md` Phase 3 — nghĩa vụ allowlist, neo trước khi chạy
+
+Mọi agent/node gọi LLM phải khai input **đích danh từng slot**. **Cấm khai gộp** ("context của request", "thông tin yêu cầu", `request: Request`), vì khai gộp làm allowlist mất tác dụng mà vẫn trông như tuân thủ. Kèm hai điểm kỹ thuật khiến nghĩa vụ này dễ bị vô hiệu hoá mà không ai để ý:
+
+- LangGraph mặc định truyền **toàn bộ state** vào mọi node, nên allowlist phải thực thi tại điểm lắp prompt trong `ai_gateway`, không đặt ở chữ ký hàm của node được.
+- Input **không phải slot** — tin nhắn thô, lịch sử hội thoại, đoạn retrieval — là lỗ lớn nhất của allowlist theo slot. Node phân loại bắt buộc đọc text thô, mà text thô mang được mọi thứ. Phải khai đích danh loại input, phạm vi và loại dữ liệu nó có thể mang theo.
+
+DoD riêng Phase 3 thêm vế tương ứng. Mục LangGraph design của Phase 3 thêm việc xoá slot `RES` trong mọi checkpoint. Phase 7 thêm một dòng trỏ về nghĩa vụ này, vì prompt module thuộc về Phase 7.
+
+### 4. `_PLAN.md` Phase 11 — chỗ quan sát cho điều kiện đảo ngược
+
+Điều kiện đảo ngược không có ngưỡng số là chấp nhận được — bịa ngưỡng còn tệ hơn, cùng lý do đã gỡ EC-WC-04 và ngưỡng 90 ngày. Nhưng một tín hiệu **không có chỗ đo thì không bao giờ phát ra**, và khi đó điều kiện đảo ngược chỉ còn là trang trí. Phase 11 giờ phải có chỗ quan sát cho **sáu tín hiệu vận hành** của ADR-002, ADR-004, ADR-005. Chưa cần ngưỡng — chỉ cần metric **tồn tại**.
+
+**Hai điều kiện đảo ngược không phải tín hiệu vận hành**, nên được tách riêng: ADR-002 xét lại khi A-001 bị bác bỏ; ADR-003 kích hoạt khi A-024 đóng. Hai điều kiện này phát ra khi một giả định đổi trạng thái, không phải khi metric vượt ngưỡng. Chỗ đo của chúng là `ASSUMPTIONS.md`, không phải observability.
+
+**Quy tắc ghi lại cho mọi ADR về sau:** điều kiện đảo ngược phải chỉ ra được chỗ đo nó. Tín hiệu vận hành đo ở observability; tín hiệu nghiệp vụ đo bằng một giả định trong `ASSUMPTIONS.md`.
+
+### Một họ lỗi mới
+
+Mục 3 và mục 4 cùng một họ lỗi: **cơ chế có trên giấy nhưng không bao giờ kích hoạt**. Allowlist khai gộp thì lọc được gì? Không gì cả. Điều kiện đảo ngược không có chỗ đo thì bao giờ phát ra? Không bao giờ. Cả hai đều trông như đã tuân thủ. Họ lỗi này khác với họ *"khoá tham chiếu vào thứ có thể đổi"* ghi ở mục ngày 2026-09-12 phía trên, nên ghi riêng.
