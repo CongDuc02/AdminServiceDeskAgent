@@ -1,6 +1,6 @@
 # PRD — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.8 · **Trạng thái:** Draft để xác thực với người dùng · **Primary persona:** Cán bộ hành chính
+**Phiên bản:** 0.9 · **Trạng thái:** Draft để xác thực với người dùng · **Primary persona:** Cán bộ hành chính
 
 > Sản phẩm tiếp nhận yêu cầu hành chính bằng hội thoại, soạn sẵn văn bản từ mẫu đã duyệt và đưa vào hàng đợi duyệt của phòng hành chính. Sản phẩm **không** tự phát hành, **không** tự đóng dấu, và **không** thẩm định thể thức văn bản.
 
@@ -48,7 +48,7 @@ Metric chia **hai loại**, và chỉ loại thứ nhất là cổng nghiệm th
 
 **Vì sao M1 không phải cổng nghiệm thu.** Hai loại yêu cầu đang hỗ trợ khác nhau rõ rệt — một cái xác nhận người đang làm việc ở đâu, một cái giới thiệu người đi làm việc với bên ngoài. Phân loại giữa hai thứ đó gần như chắc chắn đúng, nên một ngưỡng đặt trên chúng **không canh giữ điều gì**. Thứ thật sự canh RISK-02 là **M8** — các ca nhập nhằng ở nhóm G, nơi mô tả cố tình mập mờ hoặc trỏ về một loại chưa hỗ trợ.
 
-**Vì sao bỏ phần trăm ở M1 và M3.** Mẫu số quá nhỏ. Bộ eval có 31 ca, buổi UAT có vài người. Trên mẫu số đó "≥ 95%" chỉ có nghĩa là *sai không quá một ca*, và "≥ 80%" thay đổi ý nghĩa tuỳ theo có 4 hay 6 người tham gia. Viết bằng phần trăm làm ngưỡng **trông như đã hiệu chỉnh** trong khi nó chưa từng được đo. Số ca tuyệt đối nói đúng thứ thực sự được kiểm.
+**Vì sao bỏ phần trăm ở M1 và M3.** Mẫu số quá nhỏ. Bộ eval có 37 ca, buổi UAT có vài người. Trên mẫu số đó "≥ 95%" chỉ có nghĩa là *sai không quá một ca*, và "≥ 80%" thay đổi ý nghĩa tuỳ theo có 4 hay 6 người tham gia. Viết bằng phần trăm làm ngưỡng **trông như đã hiệu chỉnh** trong khi nó chưa từng được đo. Số ca tuyệt đối nói đúng thứ thực sự được kiểm.
 
 **M7 — chỉ đo được sau khi mở milestone sản xuất:** tỷ lệ yêu cầu hành chính vào qua hệ thống trên tổng số yêu cầu phòng hành chính thực nhận. Đây là metric phát hiện chế độ hỏng *nhân viên bỏ hệ thống, quay lại email* — chế độ hỏng này vô hình với M1–M6 và M8 vì chúng chỉ đo những gì đã vào hệ thống. Không đo được trước sản xuất vì trước đó nhân viên không có lý do thật để dùng.
 
@@ -71,6 +71,7 @@ Metric chia **hai loại**, và chỉ loại thứ nhất là cổng nghiệm th
 | Ngôn ngữ | Tiếng Việt. Bản tiếng Anh của giấy xác nhận công tác là **Could** |
 | Hồ sơ nhân viên | Bảng `employee` trên PostgreSQL, import thủ công từ CSV, mỗi bản ghi có `source` và `synced_at` (D-002). Không tích hợp HRM thật |
 | Mẫu văn bản | File `.docx` do Product Owner chuẩn bị, chứa sẵn toàn bộ khung thể thức và các biến (ADR-001). Có phiên bản |
+| Kho quy trình hành chính | Tài liệu quy trình nội bộ, dùng để trả hướng xử lý thủ công có trích nguồn cho yêu cầu ngoài phạm vi (F1). **Chưa tồn tại** (A-027); kho rỗng là trạng thái được hỗ trợ, không phải lỗi |
 | File người dùng tải lên | Không có trong Sprint đầu. Upload văn bản ngoài gắn với `SEAL_REQUEST`, ở mức **Could** |
 | Khối lượng | `TBD` — chưa có số liệu vận hành (A-002). Không đặt ngưỡng tải trong Sprint đầu |
 
@@ -116,7 +117,7 @@ Yêu cầu xuyên suốt — HITL, tách biệt trách nhiệm, chế độ phi 
 **AC**
 
 - Agent phân loại yêu cầu về đúng `request_type` hoặc hỏi lại khi mô tả nhập nhằng. Khi không chắc, agent **hỏi**, không đoán.
-- Yêu cầu ngoài hai loại đang hỗ trợ được báo rõ là chưa hỗ trợ, kèm hướng xử lý thủ công. Agent không cố ép vào một loại gần giống.
+- Yêu cầu ngoài hai loại đang hỗ trợ được báo rõ là chưa hỗ trợ, kèm **hướng xử lý thủ công đủ căn cứ** theo định nghĩa ở cuối feature này. Agent không cố ép vào một loại gần giống. AC này phải đúng **trong cả hai trạng thái** của kho quy trình hành chính: có đoạn nguồn thì trả hướng xử lý có trích nguồn; kho rỗng hoặc không đoạn nào đủ căn cứ thì trả hướng dẫn chung và **nói rõ là không có căn cứ trong kho**. Kho hiện chưa tồn tại (A-027) — kho rỗng không làm AC này trượt.
 - Agent thu thập slot theo schema ở mục Slot schema của `00-domain.md`, và chỉ chuyển yêu cầu sang `SUBMITTED` khi **đủ điều kiện xử lý** theo định nghĩa dưới đây.
 - **Nhiều nhu cầu trong một lượt** (EC-CV-01): một `request` mang đúng một `request_type`, nên hai nhu cầu phải thành hai `request`. Agent nhận ra và nêu rõ cả hai, xử lý **tuần tự**, không bao giờ im lặng bỏ qua nhu cầu thứ hai và không gộp hai nhu cầu vào một văn bản.
 - **Đổi loại giữa chừng** (EC-CV-02): slot đã thu của loại cũ **không được mang sang** loại mới, kể cả khi trùng tên. Agent xác nhận việc đổi loại và nêu rõ thông tin nào phải hỏi lại.
@@ -126,7 +127,7 @@ Yêu cầu xuyên suốt — HITL, tách biệt trách nhiệm, chế độ phi 
 
 Một `request` chỉ được rời `DRAFT` sang `SUBMITTED` khi đồng thời:
 
-1. Mọi slot nguồn `USER_INPUT` được đánh dấu bắt buộc của `request_type` đó đều có giá trị **do người dùng cung cấp trong hội thoại**.
+1. Mọi slot nguồn `USER_INPUT` được đánh dấu bắt buộc của `request_type` đó đều có giá trị **do người dùng cung cấp trong hội thoại**, **hoặc** do agent **đề xuất lại** từ `request` `EXPIRED` gần nhất có cùng `beneficiary_employee_id` và cùng `request_type`, rồi được nhân viên **xác nhận tường minh từng giá trị** — không giá trị nào được hiển thị ở dạng đã xác nhận sẵn. Đề xuất rồi để nhân viên xác nhận là cơ chế đã chấp nhận cho `HR_PROFILE` (D-002), không phải suy diễn. Dùng lại giá trị từ `request` đã `FULFILLED` là memory yêu cầu định kỳ, ở mức **Could**, không thuộc điều kiện này.
 2. Mọi slot nguồn `HR_PROFILE` đã được agent **đề xuất** và **nhân viên xác nhận từng giá trị** (D-002 ràng buộc 1 và 2).
 3. Mọi rule kiểm tra ở bảng slot tương ứng đều pass.
 4. `beneficiary_employee_id` đã xác định, và nếu khác người tạo thì có `delegation` còn hiệu lực hoặc người tạo có permission `request.create_on_behalf`.
@@ -135,8 +136,20 @@ Một `request` chỉ được rời `DRAFT` sang `SUBMITTED` khi đồng thời
 
 - Agent suy ra giá trị slot `USER_INPUT` từ ngữ cảnh hội thoại, từ yêu cầu cũ của cùng nhân viên, hoặc từ hồ sơ nhân sự. Suy diễn hợp lý vẫn là suy diễn.
 - Nhân viên chưa xác nhận một giá trị `HR_PROFILE` nào đó, kể cả khi giá trị đó hiển nhiên đúng.
+- Một giá trị đề xuất lại từ `request` `EXPIRED` được tính là đã có trong khi nhân viên chưa xác nhận tường minh — kể cả khi nó được hiển thị ở dạng đã tick sẵn.
 - Nhân viên khai một giá trị mâu thuẫn với `HR_PROFILE` — ví dụ khai đã nghỉ việc nhưng `employment_end_date` rỗng. Đây là ca chuyển phòng hành chính xác minh, không phải ca agent chọn bên nào đúng.
 - Một slot có giá trị nhưng rỗng về nội dung: `purpose` là "cần gấp", `work_content` là "làm việc". Có ký tự không phải là có thông tin.
+
+**Định nghĩa "Hướng xử lý thủ công đủ căn cứ"**
+
+Hướng xử lý cho một yêu cầu ngoài phạm vi là **đủ căn cứ** khi mỗi bước, đầu mối, giấy tờ hay thời hạn được nêu ra đều nằm **nguyên văn** trong ít nhất một đoạn của `procedure_document` **đang hiệu lực** mà nhân viên có quyền xem, và đoạn đó được hiển thị kèm tên tài liệu, phiên bản và mục. Không có đoạn nào như vậy thì câu trả lời đúng là: báo chưa hỗ trợ, hướng dẫn chung liên hệ phòng hành chính, và **nói rõ là kho quy trình không có căn cứ cho việc này**.
+
+**Bị coi là KHÔNG đủ căn cứ:**
+
+- Nêu một bước, đầu mối, giấy tờ hay thời hạn không có trong đoạn nguồn nào — kể cả khi nghe hợp lý.
+- Trích một đoạn thuộc phiên bản tài liệu không còn hiệu lực.
+- Dựng hướng xử lý bằng cách ghép các đoạn mà không đoạn nào nói trực tiếp về việc nhân viên cần. Có đoạn được truy hồi không có nghĩa là có căn cứ.
+- Kho rỗng hoặc không có đoạn liên quan, nhưng câu trả lời không nói rõ là không có căn cứ — trình bày hướng dẫn chung như thể đó là quy trình.
 
 ### F2 — Sinh văn bản từ mẫu (Must)
 
@@ -305,7 +318,7 @@ Model rẻ cho phân loại và trích slot, model mạnh cho soạn nội dung 
 Bộ eval **dẫn xuất** chứ không chọn số tròn. Có hai nguồn dẫn xuất, và mỗi ca phải chỉ được về một trong hai:
 
 1. **Bảng edge case ở mục Edge case nghiệp vụ của `00-domain.md`** — mỗi edge case áp dụng được cho phạm vi Sprint đầu sinh ít nhất một ca.
-2. **Hai định nghĩa vận hành ở F1 và F2** — mỗi ca "bị coi là KHÔNG đạt" sinh ít nhất một ca. Nguồn này tồn tại vì bảng edge case Phase 0 không đặc tả tới mức **từng biến của template**; nếu chỉ dẫn xuất từ nguồn 1 thì định nghĩa "Văn bản đủ điều kiện trình duyệt" có độ phủ eval bằng không.
+2. **Ba định nghĩa vận hành — hai ở F1, một ở F2** — mỗi ca "bị coi là KHÔNG đạt" sinh ít nhất một ca. Nguồn này tồn tại vì bảng edge case Phase 0 không đặc tả tới mức **từng biến của template** hay **từng đoạn nguồn của kho quy trình**; nếu chỉ dẫn xuất từ nguồn 1 thì định nghĩa "Văn bản đủ điều kiện trình duyệt" và định nghĩa "Hướng xử lý thủ công đủ căn cứ" có độ phủ eval bằng không.
 
 Mọi ca thuộc **tầng hội thoại và phân loại** đều dẫn xuất từ nguồn 1 — nhóm `EC-CV-xx` ở mục Edge case nghiệp vụ của `00-domain.md`, bổ sung ở phiên bản 0.6 của file đó. Trước đó chúng không có nguồn Phase 0 nào; cách xử lý là **sửa Phase 0 rồi dẫn xuất lại**, không phải giữ chúng như ngoại lệ ở Phase 1.
 
@@ -314,15 +327,18 @@ Mọi ca thuộc **tầng hội thoại và phân loại** đều dẫn xuất t
 | A. Đủ điều kiện — happy path | 1 ca cho mỗi `request_type` đang hỗ trợ | — | 2 |
 | B. Đủ điều kiện — biến thể có ràng buộc thêm | EC-WC-01 thử việc · EC-WC-02 đã nghỉ việc · EC-IL-03 cơ quan nhà nước | 1 | 3 |
 | C. Thiếu thông tin | 1 ca cho mỗi slot `USER_INPUT` bắt buộc, bỏ trống từng cái: `WORK_CONFIRMATION` có `purpose`, `recipient_org`; `INTRODUCTION_LETTER` có `recipient_org`, `work_content`, `valid_from`, `valid_to` | 1 | 6 |
-| D. Có giá trị nhưng không đủ điều kiện xử lý | Nhân viên không xác nhận giá trị `HR_PROFILE` · slot có ký tự nhưng rỗng nội dung, ví dụ `purpose` là "cần gấp" · lời khai mâu thuẫn với `HR_PROFILE`, ví dụ khai đã nghỉ việc nhưng `employment_end_date` rỗng | 2 — F1 | 3 |
+| D. Có giá trị nhưng không đủ điều kiện xử lý | Nhân viên không xác nhận giá trị `HR_PROFILE` · giá trị đề xuất lại từ `request` `EXPIRED` được tính là đã có dù nhân viên chưa xác nhận tường minh · slot có ký tự nhưng rỗng nội dung, ví dụ `purpose` là "cần gấp" · lời khai mâu thuẫn với `HR_PROFILE`, ví dụ khai đã nghỉ việc nhưng `employment_end_date` rỗng | 2 — F1 | 4 |
 | E. Không đủ điều kiện theo quy chế | EC-IL-01 chưa có uỷ quyền · EC-IL-02 vượt trần hiệu lực | 1 | 2 |
 | F. Ngoài phạm vi | EC-WC-03 đòi ghi lương · `ROOM_BOOKING` chưa hỗ trợ · `SEAL_REQUEST` văn bản ngoài chưa hỗ trợ · yêu cầu không thuộc hành chính | 1 | 4 |
 | G. Phân loại ý định | EC-CV-01 → 2 ca: hai nhu cầu đều thuộc loại đang hỗ trợ · một nhu cầu hỗ trợ kèm một chưa hỗ trợ. EC-CV-02 → 1 ca: đổi loại giữa chừng. EC-CV-03 → 2 ca: nhập nhằng giữa hai loại đang hỗ trợ · từ ngữ của `INCOME_CONFIRMATION` nhưng ý định là `WORK_CONFIRMATION` | 1 | 5 |
 | H. Văn bản không đủ điều kiện trình duyệt | Agent thêm câu chữ vào phần khung · render từ phiên bản template không còn hiệu lực · agent tự đặt giá trị hợp lý cho biến nhân viên chưa xác nhận · thiếu một biến "không quan trọng" | 2 — F2 | 4 |
 | I. Liên tục hội thoại | EC-CV-04 → 2 ca: quay lại trong hạn · quay lại sau `EXPIRED` | 1 | 2 |
-| | **Tổng** | | **31** |
+| J. Hướng xử lý thủ công | Một ca cho mỗi ca KHÔNG đạt của định nghĩa "Hướng xử lý thủ công đủ căn cứ": đoạn nguồn thiếu chi tiết nhân viên hỏi · cùng quy trình có hai phiên bản, chỉ bản mới còn hiệu lực · có đoạn được truy hồi nhưng không đoạn nào liên quan · **kho rỗng**. Cộng 1 happy path cho **nhánh có kho**. Nhánh kho rỗng được phủ bởi ca thứ tư. Chạy trên kho quy trình giả lập, đánh dấu là dữ liệu giả | 2 — F1 | 5 |
+| | **Tổng** | | **37** |
 
 **Trục chia nhóm là *đáp án chuẩn khẳng định cái gì*, không phải *ca dẫn xuất từ đâu*.** Nhóm G và nhóm I cùng dẫn xuất từ `EC-CV-xx` nhưng chấm hai thứ khác nhau: G chấm agent có nhận đúng ý định không, I chấm agent có khôi phục hoặc bỏ đúng trạng thái không. Chính sách giữ hay xoá dữ liệu khi `EXPIRED` không đổi đáp án của bất kỳ ca nào ở G — đó là dấu hiệu cho thấy hai nhóm này tách được và phải tách.
+
+Cùng trục đó tách **nhóm F** khỏi **nhóm J**. F chấm việc agent nhận ra yêu cầu ngoài phạm vi và không ép nó vào một loại gần giống — đáp án không phụ thuộc kho quy trình. J chấm phần hướng xử lý — đáp án đổi theo trạng thái kho. Trạng thái kho đổi đáp án của J mà không đổi đáp án của bất kỳ ca nào ở F.
 
 **EC-CV-02 chấm hai tiêu chí, và phải chấm TÁCH RỜI**, không gộp thành một điểm:
 
@@ -342,7 +358,7 @@ Mọi ca thuộc **tầng hội thoại và phân loại** đều dẫn xuất t
 
 Đưa hai ca này vào bộ eval sẽ là viết eval cho một tính năng chưa tồn tại và cho một thứ agent không tham gia.
 
-Phân bố này **chốt trước khi đo**, không chỉnh sau khi thấy kết quả. Khi thêm `request_type`, thêm edge case, hoặc thêm một ca "KHÔNG đạt" vào hai định nghĩa vận hành, bộ eval mở rộng theo đúng công thức dẫn xuất trên chứ không thêm ca tuỳ ý. **Đáp án chuẩn do Trưởng phòng Hành chính duyệt** — không phải PO, không phải team kỹ thuật.
+Phân bố này **chốt trước khi đo**, không chỉnh sau khi thấy kết quả. Khi thêm `request_type`, thêm edge case, hoặc thêm một ca "KHÔNG đạt" vào các định nghĩa vận hành, bộ eval mở rộng theo đúng công thức dẫn xuất trên chứ không thêm ca tuỳ ý. **Đáp án chuẩn do Trưởng phòng Hành chính duyệt** — không phải PO, không phải team kỹ thuật.
 
 ### NFR-08 — Hiệu năng
 
@@ -354,7 +370,7 @@ Sprint đầu done khi:
 
 1. **Hành trình end-to-end chạy được cho một `request_type`**: nhân viên đăng nhập → mô tả nhu cầu bằng chat → agent phân loại và hỏi đủ slot → nhân viên xác nhận giá trị `HR_PROFILE` → gửi → cán bộ hành chính duyệt nội dung → duyệt dấu → cấp số và phát hành → nhân viên thấy trạng thái `FULFILLED` và tải được văn bản có watermark.
 2. Toàn bộ **Must features (F1, F2, F3, F4, F6)** đạt AC cấp feature ở mục 6.
-3. **Đạt toàn bộ metric loại Bất biến** ở mục 2 — M8, M4, M5, M6 — trên bộ eval 31 ca và buổi UAT. Đây là ngưỡng tuyệt đối, không thương lượng.
+3. **Đạt toàn bộ metric loại Bất biến** ở mục 2 — M8, M4, M5, M6 — trên bộ eval 37 ca và buổi UAT. Đây là ngưỡng tuyệt đối, không thương lượng.
 
    Metric loại **Cảnh báo** (M1, M2, M3) **không** phải điều kiện nghiệm thu. Ngưỡng của chúng do chọn và chưa hiệu chỉnh (A-019), nên dùng chúng làm cổng nghiệm thu sẽ là lấy một con số vô căn cứ để quyết định Sprint đầu done hay không. Không đạt thì **ghi nhận và mở rà soát**, không trượt nghiệm thu.
 4. AC cứng của F6 được chứng minh bằng cách **thực sự thêm một `request_type` thứ ba trong UAT** bằng cấu hình và một file template, không sửa code.
@@ -385,4 +401,4 @@ M7 và milestone sản xuất **không** thuộc Definition of Done này.
 
 Mọi câu hỏi chưa có lời giải đều nằm ở [`ASSUMPTIONS.md`](./ASSUMPTIONS.md), mỗi dòng có **Owner** và **Hạn** riêng. PRD **không** giữ bản sao của bảng đó — một câu hỏi có hai chỗ ghi hạn là một câu hỏi sẽ có hai hạn khác nhau.
 
-Các giả định PRD này phụ thuộc trực tiếp: A-002 (baseline), A-009 (định dạng số), A-011 (trần `copies_count` và trần hiệu lực), A-017 (ngưỡng `synced_at`), A-018 (nghiệm thu thể thức), A-019 (ngưỡng metric Cảnh báo), A-020 (hình hài UAT), A-023 (đáp án chuẩn bộ eval).
+Các giả định PRD này phụ thuộc trực tiếp: A-002 (baseline), A-009 (định dạng số), A-011 (trần `copies_count` và trần hiệu lực), A-017 (ngưỡng `synced_at`), A-018 (nghiệm thu thể thức), A-019 (ngưỡng metric Cảnh báo), A-020 (hình hài UAT), A-023 (đáp án chuẩn bộ eval), A-027 (kho quy trình hành chính chưa tồn tại — AC ngoài phạm vi của F1 được thiết kế để đúng cả khi kho rỗng), A-033 (quyền nạp kho quy trình).

@@ -1,6 +1,6 @@
 # Phase 0 — Domain Discovery
 
-**Dự án:** BO-19 — Admin Service Desk Agent · **Phiên bản:** 0.8 · **Trạng thái:** Draft chờ duyệt
+**Dự án:** BO-19 — Admin Service Desk Agent · **Phiên bản:** 0.9 · **Trạng thái:** Draft chờ duyệt
 
 > File này chốt **từ vựng nghiệp vụ**: có những loại yêu cầu nào, mỗi loại cần dữ liệu gì, văn bản đi qua những trạng thái nào, ai được làm gì. Từ Phase 1 trở đi mọi tài liệu phải dùng đúng tên ở đây và ở [`GLOSSARY.md`](./GLOSSARY.md). File này **không** chọn công nghệ, **không** thiết kế API, **không** định nghĩa agent hay tool.
 
@@ -80,7 +80,7 @@ Hệ quả: nhân viên **không** phải tự xin dấu cho giấy xác nhận 
 | `PER` | `PERSONAL` | Nhận dạng một cá nhân cụ thể |
 | `RES` | `RESTRICTED` | Định danh pháp lý, hoặc nội dung suy ra được tình trạng sức khoẻ, pháp lý, tài chính của cá nhân |
 
-Độ nhạy **không trùng với nguồn**. `purpose` và `work_content` là `USER_INPUT` nhưng ở mức `RES` vì text tự do có thể chứa "đi làm thủ tục tại Toà án" hay "khám tại bệnh viện"; `date_of_birth` là `HR_PROFILE` nhưng chỉ ở mức `PER`. Mọi rule về mask log, mask prompt gửi LLM, và giữ hay xoá dữ liệu khi `EXPIRED` đều phải key theo cột này, **không** theo danh sách tên trường viết tay. Ánh xạ ba mức này sang phân loại của Nghị định 13/2023/NĐ-CP `[CẦN XÁC MINH]` — chưa có văn bản gốc trong `docs/reference/`.
+Độ nhạy **không trùng với nguồn**. `purpose` và `work_content` là `USER_INPUT` nhưng ở mức `RES` vì text tự do có thể chứa "đi làm thủ tục tại Toà án" hay "khám tại bệnh viện"; `date_of_birth` là `HR_PROFILE` nhưng chỉ ở mức `PER`. Mọi rule về mask log, giữ hay xoá dữ liệu khi `EXPIRED`, và hiển thị trên màn hình duyệt đều phải key theo cột này, **không** theo danh sách tên trường viết tay. Slot nào được vào prompt gửi LLM **không** do cột này quyết định, mà do danh sách input tự khai của từng prompt module (NFR-05 của PRD). Ánh xạ ba mức này sang phân loại của Nghị định 13/2023/NĐ-CP `[CẦN XÁC MINH]` — chưa có văn bản gốc trong `docs/reference/`.
 
 **Quy tắc cứng:** agent **không bao giờ** được suy diễn giá trị của slot `USER_INPUT` từ ngữ cảnh hội thoại, từ yêu cầu cũ, hay từ hồ sơ nhân viên. Thiếu thì hỏi lại.
 
@@ -120,7 +120,7 @@ Trách nhiệm khi văn bản sai vì dữ liệu nhân sự sai thuộc về ng
 | `employment_start_date` | date | `HR_PROFILE` | `PER` | ✔ | Chỉ đọc |
 | `employment_end_date` | date | `HR_PROFILE` | `PER` | ○ | Có giá trị và đã ở quá khứ → chuyển sang thể thức "đã từng công tác" (EC-WC-02) |
 | `date_of_birth` | date | `HR_PROFILE` | `PER` | ○ | Chỉ đưa vào văn bản khi `recipient_org` yêu cầu. Là PII |
-| `national_id` | string | `HR_PROFILE` | `RES` | ○ | PII mức cao. Mask trong log và trong prompt gửi LLM. Chỉ đưa vào bản render cuối |
+| `national_id` | string | `HR_PROFILE` | `RES` | ○ | PII mức cao. Mask trong log. Không prompt module nào khai nó làm input (NFR-05 của PRD). Chỉ đưa vào bản render cuối |
 | `purpose` | text | `USER_INPUT` | `RES` | ✔ | Không rỗng. Nếu mục đích cần chứng minh thu nhập → xem EC-WC-03 |
 | `recipient_org` | string | `USER_INPUT` | `PER` | ✔ | Dùng cho phần "Kính gửi" |
 | `copies_count` | int | `USER_INPUT` | `INT` | ○ | Mặc định 1. Trần TBD (A-011) |

@@ -600,3 +600,70 @@ DoD riêng Phase 3 thêm vế tương ứng. Mục LangGraph design của Phase 
 ### Một họ lỗi mới
 
 Mục 3 và mục 4 cùng một họ lỗi: **cơ chế có trên giấy nhưng không bao giờ kích hoạt**. Allowlist khai gộp thì lọc được gì? Không gì cả. Điều kiện đảo ngược không có chỗ đo thì bao giờ phát ra? Không bao giờ. Cả hai đều trông như đã tuân thủ. Họ lỗi này khác với họ *"khoá tham chiếu vào thứ có thể đổi"* ghi ở mục ngày 2026-09-12 phía trên, nên ghi riêng.
+
+
+---
+
+## 2026-09-12 (lần 4) — Phase 3: Agent & Tool Architecture
+
+**Tạo mới:** `docs/design/03-agents.md` v0.1; `decisions/ADR-006-hai-agent-intake-va-drafting.md`; `decisions/ADR-007-llm-khong-goi-tool.md`; `decisions/ADR-008-state-chi-giu-tham-chieu.md`; `decisions/ADR-009-don-vi-render-lai-la-bien-noi-dung-tu-do.md`; `decisions/ADR-010-resume-graph-qua-job.md`.
+
+**Sửa:** `01-prd.md` → v0.9 · `02-architecture.md` → v0.3 · `00-domain.md` → v0.9 · `GLOSSARY.md` → v0.9 · `ASSUMPTIONS.md` → v0.11 · ADR-002 (sửa lập luận, giữ quyết định).
+
+### Quyết định của phase
+
+| ADR / ID | Quyết định |
+|---|---|
+| ADR-006 | Hai agent: `intake_agent` (model rẻ, đọc tin nhắn thô) và `drafting_agent` (model mạnh, **cấm** thấy tin nhắn thô). Sau cổng nội dung không có agent |
+| ADR-007 | **LLM không tự gọi tool.** Output là JSON có schema đóng; node tất định gọi `tool_layer`. `intake_agent` không sinh văn bản hiển thị cho nhân viên. Prompt injection chỉ còn làm bẩn được một chuỗi JSON |
+| ADR-008 | State LangGraph chỉ giữ tham chiếu. Allowlist là **danh sách nạp, fail-closed**: quên khai thì mất chức năng, không rò dữ liệu. Checkpoint không chứa `RES` theo cấu tạo |
+| ADR-009 | Đơn vị render lại là **một biến nội dung tự do**; điền template và xuất file luôn chạy lại toàn bộ, 0 token |
+| ADR-010 | Resume graph qua job ghi cùng giao dịch với quyết định của người — không để `tool_layer` gọi ngược `orchestrator` |
+| INV-01 → INV-03 | Ba bất biến có tên: không LLM sau cổng nội dung · LLM không tự gọi tool · prompt chỉ chứa input được nạp theo khai báo |
+
+### Chuỗi retrieval — kiểm trước khi viết
+
+Kiểm lại theo yêu cầu cho thấy: theo thiết kế Phase 2, `vector_store` là thành phần **đề bài bắt buộc nhưng không có việc**. Chọn template là tra cứu chính xác (F2), kiểm tra điều kiện là rule tất định, và đưa retrieval vào bước soạn thảo làm mất tác dụng trigger của RISK-05. Lập luận chính của ADR-002 — "một nguồn sự thật cho phiên bản template" — sập theo, vì template không bao giờ đi qua vector search.
+
+Xử lý: **retrieval có đúng một việc** — hướng xử lý thủ công có trích nguồn cho yêu cầu ngoài phạm vi, trong `intake_agent` — **kèm cơ chế rơi về tường minh khi kho rỗng**:
+
+- F1 thêm định nghĩa "Hướng xử lý thủ công đủ căn cứ" theo khuôn "không đủ căn cứ thì nói không biết", và AC ngoài phạm vi đúng **trong cả hai trạng thái** của kho.
+- Bộ eval thêm nhóm J phủ cả hai nhánh.
+- A-027: kho quy trình chưa tồn tại, owner PO, hạn trước Phase 4.
+
+Phương án "retrieval hỗ trợ soạn thảo" bị bác. ADR-002 giữ quyết định `pgvector`, sửa Context, Decision, Consequences, và thêm vào Rejected alternatives một đoạn ghi rõ lập luận cũ **đã sập và từng được viện dẫn nhầm**, để không ai dựng lại.
+
+### Embedding là lời gọi ra ngoài — lỗ của allowlist ngay khi nó ra đời
+
+Luật allowlist lập ở Phase 2 chỉ nói về prompt LLM. Embedding cũng mang văn bản ra ngoài, nên chịu **cùng luật khai input**. Đã sửa `02-architecture.md`: mục `ai_gateway` nêu mọi lời gọi embedding đi qua nó; data flow diagram thêm embedding model (bên thứ ba thứ hai nếu do nhà cung cấp chạy), `chat_message` và `vector_store`; component diagram thêm cạnh `queue_worker → ai_gateway` cho việc nạp kho. Bài học: một luật mới phải được áp ngay vào **mọi lời gọi cùng loại**, không chỉ loại người viết luật đang nghĩ tới.
+
+### Sửa tại gốc theo phép của anh
+
+| File | Sửa gì | Vì sao |
+|---|---|---|
+| `GLOSSARY.md`, `00-domain.md` | Bỏ "mask prompt gửi LLM theo `slot_sensitivity`" ở mục Enum khác, đoạn độ nhạy và dòng `national_id` | Hệ quả của việc sửa NFR-05 ở Phase 2 chưa được lan tới hai file này |
+| `02-architecture.md` sequence (b) | Bỏ `orchestrator → vector_store` và bỏ retrieval khỏi bước soạn thảo; thay bằng `template_fetch` tra cứu chính xác | Trái component diagram, và retrieval không còn thuộc bước soạn thảo |
+| `02-architecture.md` sequence (c) | Thêm nhánh `FREE_CONTENT` (`request` ở nguyên `IN_REVIEW`) và `SLOT_DATA` | Q4: tách hai ca theo `change_scope`. Bảng trạng thái ở `00-domain.md` **không** sửa — vẫn đúng |
+| `01-prd.md` F1 | Điều kiện 1 cho phép giá trị đề xuất lại từ `request` `EXPIRED` và được xác nhận tường minh; thêm một ca KHÔNG đạt tương ứng | Q2: A-014 giữ dữ liệu với mục đích đỡ gõ lại; giữ mà không dùng là giữ dữ liệu không còn mục đích |
+
+### Bộ eval 31 → 37 ca
+
+| Nhóm | Trước | Sau | Nguồn |
+|---|---|---|---|
+| D | 3 | 4 | Ca KHÔNG đạt mới của điều kiện 1 ở F1 |
+| J — Hướng xử lý thủ công | — | 5 | Bốn ca KHÔNG đạt của định nghĩa mới, cộng một happy path nhánh có kho. Nhánh kho rỗng được phủ bởi ca KHÔNG đạt thứ tư. Chạy trên kho quy trình giả lập, đánh dấu là dữ liệu giả |
+
+Nhóm F chấm việc nhận ra ngoài phạm vi; nhóm J chấm phần hướng xử lý. Tách theo đúng trục "đáp án chuẩn khẳng định cái gì".
+
+### `ASSUMPTIONS.md`
+
+- A-014 mở rộng: `chat_message` xếp `RES` và bị xoá khi `EXPIRED`; khối `INT`/`PER` giữ lại có mục đích; câu hỏi mở về bản giữ sau khi đã đề xuất lại.
+- A-022: Phase 3 đã trả lời đơn vị; tách thành hai trần — vòng và token.
+- A-023: 37 ca.
+- Mới: A-026 (provider LLM) · A-027 (kho quy trình) · A-028 (embedding) · A-029 (`CHANGES_REQUESTED` không có đường sang `EXPIRED`) · A-030 (text search tiếng Việt trên Render) · A-031 (tham số vận hành chưa định cỡ) · A-032 (công cụ chuyển PDF) · A-033 (quyền nạp kho) · A-034 (máy trạng thái `document` thiếu lối ra).
+
+### Chưa sửa — chờ anh
+
+- **Sequence (c) vẽ `tool_layer` gọi `orchestrator`**, ngược chiều component diagram và tạo vòng phụ thuộc. ADR-010 là cách làm không tạo vòng. Nhánh mới thêm vào (c) giữ kiểu mũi tên cũ; vẽ lại cần phép riêng.
+- **Lý do hybrid search trong `CLAUDE.md`** ("mã nhân viên và tên riêng") không có đối tượng; kênh lexical có việc khác. Không tự sửa `CLAUDE.md`.
+- **A-033** — quyền nạp kho quy trình.

@@ -1,6 +1,6 @@
 # System Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.2 · **Trạng thái:** Draft để xác thực với người dùng
+**Phiên bản:** 0.3 · **Trạng thái:** Draft để xác thực với người dùng · **v0.3:** sửa ở Phase 3 theo phép — xem mục ngày 2026-09-12 (lần 4) của `CHANGELOG.md`
 
 > File này chốt kiến trúc mức component: thành phần nào tồn tại, chạy ở đâu trên Render, phụ thuộc gì, và luồng dữ liệu đi qua chúng thế nào. File này **không** đổi state machine hay entity đã chốt ở `00-domain.md`, không chọn agent/tool cụ thể (Phase 3), không thiết kế bảng/cột (Phase 4).
 
@@ -30,7 +30,7 @@ Mười thành phần theo yêu cầu của `_PLAN.md`. Bốn trong số đó (`
 
 ### 1.3 `ai_gateway`
 
-- **Trách nhiệm:** model routing rẻ/mạnh theo bước (NFR-06 của `01-prd.md`); lắp ráp prompt **chỉ với slot mà prompt module đang gọi tự khai là input** (nguyên tắc tối thiểu hoá theo nhu cầu từng bước — xem NFR-05 đã sửa của `01-prd.md`); token budget accounting mỗi request; ép output theo JSON Schema và retry khi parse lỗi; timeout/retry gọi model.
+- **Trách nhiệm:** model routing rẻ/mạnh theo bước (NFR-06 của `01-prd.md`); lắp ráp prompt **chỉ với slot mà prompt module đang gọi tự khai là input** (nguyên tắc tối thiểu hoá theo nhu cầu từng bước — xem NFR-05 đã sửa của `01-prd.md`); token budget accounting mỗi request; ép output theo JSON Schema và retry khi parse lỗi; timeout/retry gọi model. **Mọi lời gọi embedding cũng đi qua đây** và chịu cùng luật khai input: embedding là lời gọi ra ngoài mang văn bản, không phải bước kỹ thuật được miễn (mục Allowlist input của `03-agents.md`).
 - **Công nghệ:** module Python, chạy trong cùng tiến trình với nơi gọi nó (`api` hoặc `queue_worker`) — không phải service riêng. Gọi LLM provider qua HTTP; nhà cung cấp cụ thể chưa chốt ở phase này (không ảnh hưởng kiến trúc, chỉ ảnh hưởng cấu hình — chi tiết chọn model thuộc Agent Registry của Phase 3).
 - **Lý do:** tách "gọi model" khỏi "quyết định luồng nghiệp vụ" để đổi model/provider không đụng logic LangGraph của `orchestrator`.
 - **Không thuộc:** không quyết định node kế tiếp trong graph; không thực hiện side effect ghi dữ liệu nghiệp vụ; không tự ý gửi slot ngoài allowlist của prompt module đang gọi nó — đây là ranh giới cứng, vi phạm nó chính là vi phạm NFR-05.
@@ -51,7 +51,7 @@ Mười thành phần theo yêu cầu của `_PLAN.md`. Bốn trong số đó (`
 
 ### 1.6 `vector_store`
 
-- **Trách nhiệm:** embedding kho mẫu văn bản và quy trình hành chính; hybrid search (BM25 + vector) phục vụ retrieval cho bước sinh nội dung tự do.
+- **Trách nhiệm:** embedding và hybrid search (BM25 + vector) trên kho quy trình hành chính (`procedure_document`), phục vụ **một** việc: `intake_agent` trả hướng xử lý thủ công có trích nguồn cho yêu cầu ngoài phạm vi (AC của F1). **Không** phục vụ việc chọn template — đó là tra cứu chính xác — và **không** phục vụ bước sinh nội dung tự do (mục Retrieval của `03-agents.md`). Kho có thể rỗng (A-027).
 - **Công nghệ:** `pgvector` trong cùng `postgresql` — không phải service riêng. Xem ADR-002.
 - **Lý do:** ADR-002.
 - **Không thuộc:** không phải nguồn sự thật cho entity nghiệp vụ (các bảng thường của `postgresql` đảm nhiệm); không lưu file gốc (`object_storage` đảm nhiệm).
@@ -133,6 +133,7 @@ graph TD
     Orchestrator --> AIGateway
     Orchestrator --> ToolLayer
     Worker --> Orchestrator
+    Worker --> AIGateway
     Worker --> ToolLayer
     Worker --> PostgreSQL
     ToolLayer --> PostgreSQL
@@ -146,7 +147,7 @@ graph TD
     Worker --> Observability
 ```
 
-Mọi cạnh có một chiều duy nhất; không có cạnh nào đi ngược lại `Client`, `API`, `Worker`, `Orchestrator`, `ToolLayer`, `AIGateway` hay `VectorStore` — không tồn tại vòng phụ thuộc.
+Mọi cạnh có một chiều duy nhất; không có cạnh nào đi ngược lại `Client`, `API`, `Worker`, `Orchestrator`, `ToolLayer`, `AIGateway` hay `VectorStore` — không tồn tại vòng phụ thuộc. Cạnh `Worker --> AIGateway` thêm ở Phase 3: `procedure_ingest` gọi embedding khi nạp kho quy trình, và mọi lời gọi embedding phải đi qua `ai_gateway` (mục Allowlist input của `03-agents.md`). Cạnh này không tạo vòng.
 
 ---
 
@@ -155,21 +156,27 @@ Mọi cạnh có một chiều duy nhất; không có cạnh nào đi ngược l
 ```mermaid
 flowchart LR
     NV[Nhan vien nhap chat]
+    MSG[(postgresql - chat_message, xep RES)]
     ORC[orchestrator]
     CKPT[(postgresql - checkpoint)]
     GW[ai_gateway]
     LLM[LLM provider - ben thu ba]
+    EMB[embedding model - neu nha cung cap chay thi la ben thu ba thu hai]
     TL[tool_layer]
     EMP[(postgresql - employee, HR_PROFILE)]
+    VS[(vector_store - procedure_document, khong PII)]
     OS[(object_storage - ban render)]
     AUD[(postgresql - audit_event)]
     LOG[observability - log ky thuat]
     CB[Nhan vien tai xuong sau ISSUED]
 
-    NV -->|tin nhan tho va slot USER_INPUT, co the PER hoac RES| ORC
-    ORC -->|luu state gom moi slot da thu| CKPT
-    ORC -->|loc theo allowlist cua prompt module| GW
+    NV -->|tin nhan tho va slot USER_INPUT, co the PER hoac RES| MSG
+    MSG -->|chi luot hien tai, nap theo khai bao| ORC
+    ORC -->|state, chi tham chieu theo ADR-008| CKPT
+    ORC -->|chi input duoc prompt module khai| GW
     GW -->|chi slot duoc khai la input, van co the la RES| LLM
+    GW -->|retrieval_query, co the RES| EMB
+    VS -->|doan quy trinh da loc quyen| TL
     LLM -->|noi dung tu do sinh ra| TL
     EMP -->|gia tri PER hoac RES tu HR_PROFILE| TL
     TL -->|ghep bien, render ban day du| OS
@@ -180,14 +187,14 @@ flowchart LR
 
     classDef pii fill:#f4cccc,stroke:#a61c00,color:#000
     classDef scoped fill:#fce5cd,stroke:#b45f06,color:#000
-    class NV,ORC,CKPT,TL,EMP,OS pii
-    class GW,LLM scoped
+    class NV,MSG,ORC,CKPT,TL,EMP,OS pii
+    class GW,LLM,EMB scoped
 ```
 
 Hai mức tô màu, ứng với hai cơ chế ở NFR-05 của `01-prd.md`:
 
-- **Đỏ — PII không bị giới hạn theo bước:** điểm chứa hoặc xử lý dữ liệu `PER`/`RES` ở dạng chưa mask. Trong đó có **checkpoint của `orchestrator`** trong `postgresql`: state LangGraph lưu mọi slot đã thu, nên nó là một kho PII ngang hàng với bảng `employee`, không phải dữ liệu kỹ thuật. Hệ quả: việc xoá slot `RES` khi `request` `EXPIRED` (A-014) phải xoá cả trong checkpoint — kể cả checkpoint của những bước trước, vì LangGraph giữ lịch sử state theo từng bước. Nếu không, giá trị đã xoá khỏi `request` vẫn còn nguyên trong lịch sử state. Thời hạn giữ checkpoint cũng thuộc phạm vi A-010.
-- **Cam — PII đã bị allowlist giới hạn:** `ai_gateway` và LLM provider chỉ thấy những slot mà bước đang chạy tự khai cần. Allowlist thu hẹp **tập** slot đi ra ngoài hệ thống; nó **không** làm những slot đó bớt nhạy cảm. LLM provider là bên thứ ba, và `purpose` gửi tới đó vẫn là dữ liệu `RES`.
+- **Đỏ — PII không bị giới hạn theo bước:** điểm chứa hoặc xử lý dữ liệu `PER`/`RES` ở dạng chưa mask. Trong đó có **checkpoint của `orchestrator`** trong `postgresql`: state LangGraph lưu mọi slot đã thu, nên nó là một kho PII ngang hàng với bảng `employee`, không phải dữ liệu kỹ thuật. Hệ quả: việc xoá slot `RES` khi `request` `EXPIRED` (A-014) phải xoá cả trong checkpoint — kể cả checkpoint của những bước trước, vì LangGraph giữ lịch sử state theo từng bước. Nếu không, giá trị đã xoá khỏi `request` vẫn còn nguyên trong lịch sử state. Thời hạn giữ checkpoint cũng thuộc phạm vi A-010. **Cập nhật ở Phase 3:** ADR-008 bỏ mọi giá trị khỏi state, nên theo thiết kế checkpoint chỉ còn tham chiếu. Nó vẫn được tô đỏ cho tới khi test canary ở Phase 10 chứng minh không có giá trị `RES` nào lọt vào (mục Checkpointer và PII của `03-agents.md`). Sơ đồ thêm `chat_message` — nơi tin nhắn thô thực sự nằm — tô đỏ.
+- **Cam — PII đã bị allowlist giới hạn:** `ai_gateway`, LLM provider và embedding model chỉ thấy những input mà bước đang chạy tự khai cần. Embedding model nếu do nhà cung cấp chạy là **bên thứ ba thứ hai**, nhận `retrieval_query` — cụm chủ đề trích từ tin nhắn thô, có thể mang dữ liệu `RES` (A-028). Luồng này thêm ở Phase 3. Allowlist thu hẹp **tập** slot đi ra ngoài hệ thống; nó **không** làm những slot đó bớt nhạy cảm. LLM provider là bên thứ ba, và `purpose` gửi tới đó vẫn là dữ liệu `RES`.
 
 `observability` không tô màu vì mọi luồng vào nó đều mask theo `slot_sensitivity` — kể cả log của chính lời gọi LLM đã chở slot đó đi. Hai cơ chế gặp nhau đúng ở chỗ này: allowlist quyết định slot nào vào prompt, còn `slot_sensitivity` quyết định slot nào bị mask khi prompt đó được ghi log.
 
@@ -342,7 +349,6 @@ sequenceDiagram
     participant DB as postgresql
     participant Worker as queue_worker
     participant ORC as orchestrator
-    participant VS as vector_store
     participant GW as ai_gateway
     participant TL as tool_layer
     participant OS as object_storage
@@ -351,18 +357,19 @@ sequenceDiagram
     API->>DB: Chuyen request sang SUBMITTED + enqueue job render (cung mot giao dich)
     API-->>NV: Tra ve ket qua ngay, khong cho render xong
     Worker->>DB: Lay job render tiep theo (SKIP LOCKED)
-    Worker->>ORC: Chay node sinh noi dung tu do
-    ORC->>VS: Truy hoi template va quy dinh lien quan (hybrid search)
-    VS-->>ORC: Doan tham chieu phu hop
-    ORC->>GW: Sinh noi dung tu do (model manh, chi voi slot bat buoc cho buoc nay)
+    Worker->>ORC: Chay document_graph
+    ORC->>TL: template_fetch - tra cuu chinh xac template dang hieu luc
+    TL-->>ORC: Template, phien ban, danh muc bien
+    ORC->>TL: request_slots_read - chi slot da khai cho bien noi dung tu do
+    ORC->>GW: Sinh noi dung tu do (model manh, chi input da khai, khong co retrieval)
     GW-->>ORC: Noi dung tu do
-    ORC->>TL: Dien bien vao template, render document
+    ORC->>TL: Ghi noi dung, dien bien vao template, render document
     TL->>OS: Luu ban render DRAFT
     alt Du dieu kien trinh duyet (dinh nghia F2)
         TL->>DB: Chuyen document sang PENDING_APPROVAL
     else Thieu bien bat buoc hoac render tu template het hieu luc
         TL->>DB: Giu document o DRAFT, ghi audit_event canh bao
-        TL->>Worker: Bao that bai, cho nguoi xu ly (tran o A-022, Phase 3/8)
+        TL-->>ORC: Bao khong dat, graph vao halt_for_human (co che dung o Phase 8)
     end
 ```
 
@@ -382,9 +389,12 @@ sequenceDiagram
     alt Duyet noi dung
         TL->>DB: document -> APPROVED, audit_event
         TL->>ORC: Resume graph tai node dinh tuyen ky
-    else Yeu cau sua kem ly do
+    else Yeu cau sua - noi dung soan sai (FREE_CONTENT)
+        TL->>DB: document -> CHANGES_REQUESTED, request giu nguyen IN_REVIEW
+        TL->>ORC: Resume graph, sinh lai dung cac bien nguoi duyet chon (ADR-009)
+    else Yeu cau sua - du lieu khai sai hoac thieu (SLOT_DATA)
         TL->>DB: document -> CHANGES_REQUESTED, request -> CHANGES_REQUESTED
-        TL->>ORC: Resume graph, quay lai node soan lai (gioi han A-022, Phase 3/8)
+        TL->>ORC: Resume graph, cho nhan vien bo sung va gui lai (gioi han A-022, Phase 8)
     else Tu choi kem ly do
         TL->>DB: document -> REJECTED, request -> REJECTED
     end

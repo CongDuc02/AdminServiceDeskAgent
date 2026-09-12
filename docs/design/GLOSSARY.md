@@ -1,6 +1,6 @@
 # GLOSSARY — BO-19 Admin Service Desk Agent
 
-**Phiên bản:** 0.8 · **Chốt tại:** Phase 0, bổ sung ở Phase 2
+**Phiên bản:** 0.9 · **Chốt tại:** Phase 0, bổ sung ở Phase 2 và Phase 3
 
 > Đây là danh sách tên chuẩn. Từ Phase 1 trở đi, mọi tài liệu, diagram, DDL, endpoint và prompt phải dùng **đúng** các định danh trong file này. Muốn đổi tên thì sửa file này trước, rồi ghi vào [`CHANGELOG.md`](./CHANGELOG.md).
 
@@ -29,6 +29,9 @@
 | `permission` | Quyền | Đơn vị phân quyền nhỏ nhất, dạng `entity.action`. Vai trò chỉ là gói permission |
 | `audit_event` | Sự kiện kiểm toán | Bản ghi bất biến về một hành động có ảnh hưởng nghiệp vụ. Có mức `severity` |
 | `delegation` | Uỷ quyền | Cho phép một người hành động thay người khác trong một khoảng thời gian |
+| `chat_session` | Phiên hội thoại | Một cuộc chat của nhân viên với `intake_agent`. Sinh được 0..n `request` nối tiếp (EC-CV-01, EC-CV-02). Thêm ở Phase 3 |
+| `chat_message` | Tin nhắn | Một lượt trong `chat_session`. Văn bản tin nhắn xếp `RES` vì mang được mọi thứ; bị xoá khi `request` gắn với nó `EXPIRED` (A-014). Thêm ở Phase 3 |
+| `procedure_document` | Tài liệu quy trình | Tài liệu quy trình hành chính nội bộ, nạp vào `vector_store` để trả hướng xử lý thủ công có trích nguồn. Có phiên bản; không chứa PII. Kho có thể rỗng (A-027). Thêm ở Phase 3 |
 
 ---
 
@@ -134,7 +137,7 @@ Quá hạn SLA **không** phải trạng thái. Đó là điều kiện dẫn xu
 | `PER` | `PERSONAL` | Nhận dạng một cá nhân cụ thể |
 | `RES` | `RESTRICTED` | Định danh pháp lý, hoặc nội dung suy ra được tình trạng sức khoẻ, pháp lý, tài chính |
 
-Là thuộc tính của **dữ liệu**, không suy ra từ tên trường hay từ `slot_source`. Mọi rule về mask log, mask prompt gửi LLM, và giữ hay xoá khi `EXPIRED` đều key theo đây. Bảng gán cụ thể ở mục Slot schema của `00-domain.md`.
+Là thuộc tính của **dữ liệu**, không suy ra từ tên trường hay từ `slot_source`. Ba quyết định key theo đây: mask trong log kỹ thuật, giữ hay xoá khi `EXPIRED`, và cách hiển thị trên màn hình duyệt. **Slot nào được vào prompt gửi LLM không do thuộc tính này quyết định**, mà do danh sách input tự khai của từng prompt module (NFR-05 của `01-prd.md`, ADR-008). Bảng gán cụ thể ở mục Slot schema của `00-domain.md`.
 
 **`seal_type` — loại dấu**
 
@@ -193,7 +196,7 @@ Là thuộc tính của **dữ liệu**, không suy ra từ tên trường hay t
 
 Trong sơ đồ `erDiagram` ở mục Quan hệ giữa các entity của `00-domain.md`, tên entity viết HOA theo thông lệ Mermaid: `REQUEST` là `request`, `SEAL_ACTION` là `seal_action`, và tương tự cho các entity còn lại. Chỉ là khác biệt hiển thị, không phải tên khác.
 
-Tên **agent**, **node LangGraph** và **tool** chưa xuất hiện ở đây vì thuộc Phase 3. Tên **bảng** và **cột** cụ thể thuộc Phase 4; các định danh entity ở mục 1 là tên logic, Phase 4 có thể ánh xạ sang tên bảng khác nhưng phải ghi rõ ánh xạ đó.
+Tên **agent**, **node LangGraph** và **tool** chốt ở mục 12, từ Phase 3. Tên **bảng** và **cột** cụ thể thuộc Phase 4; các định danh entity ở mục 1 là tên logic, Phase 4 có thể ánh xạ sang tên bảng khác nhưng phải ghi rõ ánh xạ đó.
 
 ---
 
@@ -208,10 +211,72 @@ Tên chuẩn của các thành phần trong `02-architecture.md`. Từ Phase 3 t
 | `ai_gateway` | Gọi LLM, model routing rẻ/mạnh, ép input theo allowlist của prompt module | Không phải service riêng — module trong tiến trình `api`/`queue_worker` |
 | `orchestrator` | LangGraph: node/edge, `interrupt`, resume qua checkpointer | Thư viện dùng chung `api` và `queue_worker`, không phải service riêng (ADR-005) |
 | `tool_layer` | Mọi thao tác có side effect qua permission check | — |
-| `vector_store` | Embedding + hybrid search trên kho mẫu và quy định | `pgvector` trong cùng `postgresql`, không phải service riêng (ADR-002) |
+| `vector_store` | Embedding + hybrid search trên kho quy trình hành chính (`procedure_document`) | `pgvector` trong cùng `postgresql`, không phải service riêng (ADR-002). Chỉ phục vụ hướng xử lý thủ công của `intake_agent`; không phục vụ chọn template hay soạn thảo — sửa ở Phase 3 |
 | `postgresql` | Nguồn sự thật cho entity, `document_register`, `seal_register`, `audit_event`, checkpoint, bảng job | — |
 | `object_storage` | Lưu bản gốc template và bản render `.docx`/`.pdf` | S3-compatible, vendor `TBD` (ADR-003, A-024) |
 | `queue_worker` | Job nền: render sau `SUBMITTED`, quét hạn, thông báo | Bảng job trong `postgresql` (ADR-004) |
 | `observability` | Log kỹ thuật, trace, metric | **Khác** `audit_event` — log cho kỹ sư vận hành, không phải nhật ký nghiệp vụ |
 
 Tên **agent**, **node LangGraph** cụ thể bên trong `orchestrator`, và **tool** cụ thể bên trong `tool_layer`, vẫn thuộc Phase 3 — mục này chỉ chốt tên các thành phần hạ tầng bao quanh chúng.
+
+---
+
+## 12. Agent, graph, node, tool — chốt ở Phase 3
+
+Định nghĩa đầy đủ ở `03-agents.md`. Từ Phase 4 trở đi mọi file dùng đúng các tên này.
+
+**Bất biến**
+
+| ID | Tên | Nội dung ngắn |
+|---|---|---|
+| `INV-01` | Không LLM sau cổng nội dung | Từ `PENDING_APPROVAL` trở đi, không lời gọi LLM nào sửa document trừ khi nó quay về `DRAFT`; bản phát hành chỉ khác bản đã duyệt ở tập biến `SYSTEM` mang cờ *điền sau duyệt* |
+| `INV-02` | LLM không tự gọi tool | ADR-007 |
+| `INV-03` | Prompt chỉ chứa input được nạp theo danh sách tự khai | ADR-008 — allowlist là danh sách nạp, fail-closed |
+
+**Agent và graph**
+
+| Định danh | Loại | Ghi chú |
+|---|---|---|
+| `intake_agent` | Agent | Model rẻ; chạy trong `intake_graph` |
+| `drafting_agent` | Agent | Model mạnh; chạy trong `document_graph` |
+| `intake_graph` | Graph | Thread `intake:{chat_session_id}` |
+| `document_graph` | Graph | Thread `document:{document_id}` |
+
+**Lời gọi ra model** — `classify_intent` · `extract_slots` · `select_procedure_passages` · `draft_free_content` · `revise_free_content` (LLM) · `embed_query` · `embed_corpus_chunk` (embedding)
+
+**Node `interrupt`** — `await_content_review` (cổng HITL số 1) · `await_signature` · `await_seal` (cổng HITL số 2) · `await_issue` · `await_resubmission` · `await_human_takeover`
+
+**Node tất định** — `intake_graph`: `load_turn` · `route_intent` · `resume_context` · `ask_clarification` · `open_request` · `propose_values` · `check_completeness` · `ask_missing` · `offer_submit` · `render_reply`. `document_graph`: `prepare_draft` · `validate_free_content` · `render_draft` · `check_review_readiness` · `submit_for_review` · `route_review` · `reopen_draft` · `compute_targets` · `halt_for_human` · `route_signing` · `route_after_signature` · `finalize_issue` · `notify_issued`
+
+**Tool của `tool_layer`** — `employee_lookup` · `request_open` · `request_slots_write` · `request_slots_read` · `request_transition` · `prior_attempt_lookup` · `procedure_retrieval` · `template_fetch` · `document_draft_save` · `review_readiness_check` · `document_transition` · `signing_route` · `docx_render` · `pdf_export` · `notification_send` · `document_number_assign` · `room_availability_check` `[Should]`
+
+Node `open_request` gọi tool `request_open`; hai tên khác nhau có chủ đích — một là bước của graph, một là thao tác của `tool_layer`.
+
+**Thao tác cổng** — chỉ đi vào từ `api` với người thật làm tác nhân: `request_submit` · `document_approve_content` · `document_request_changes` · `document_reject` · `document_sign` · `document_apply_seal` · `document_issue` · `document_revoke_initiate` · `document_revoke_confirm` · `booking_confirm` `[Should]`
+
+**Thao tác vận hành** — `expire_request` · `checkpoint_purge` · `procedure_ingest`
+
+**Loại job** — `render_document` · `resume_document_graph` · `finalize_issue`
+
+**Biến nội dung tự do**
+
+| Định danh | `request_type` | Slot input đã khai |
+|---|---|---|
+| `purpose_statement` | `WORK_CONFIRMATION` | `purpose` |
+| `work_content_statement` | `INTRODUCTION_LETTER` | `work_content` |
+
+**Enum**
+
+- `change_scope` — `FREE_CONTENT` (nội dung soạn sai; `request` ở nguyên `IN_REVIEW`) · `SLOT_DATA` (dữ liệu khai sai hoặc thiếu; `request` về `CHANGES_REQUESTED`). Bắt buộc ở `document_request_changes`
+- `procedure_visibility` — `ORG_WIDE` · `DEPARTMENT_ONLY`
+
+**Thuật ngữ**
+
+| Thuật ngữ | Nghĩa |
+|---|---|
+| **Biến nội dung tự do** | Biến của template mà giá trị do `drafting_agent` sinh. Là đơn vị render lại (ADR-009) |
+| **Cờ điền sau duyệt** | Đánh dấu trong danh mục biến của template cho biến `SYSTEM` được điền sau cổng nội dung (`document_number`, `issued_date`, `signer_user_id` và biến suy ra từ nó) |
+| **`change_targets`** | Danh sách biến hoặc slot người duyệt chọn khi yêu cầu sửa. LLM không tự quyết danh sách này |
+| **`change_reason`** | Lý do sửa, văn bản tự do, bắt buộc. Tới `revise_free_content` như dữ liệu, chỉ cho biến đã chọn |
+| **`approved_content_hash`** | Hash ghi lúc duyệt nội dung, kiểm lại ở `finalize_issue` để thực thi INV-01 |
+| **Danh sách nạp** | Danh sách input tự khai của prompt module, dùng để nạp dữ liệu và kiểm prompt. Quên khai thì mất chức năng, không rò dữ liệu |
