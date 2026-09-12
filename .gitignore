@@ -1,0 +1,47 @@
+# --- Python / FastAPI ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# --- Node / React ---
+node_modules/
+.pnpm-store/
+dist/
+build/
+.vite/
+.eslintcache
+
+# --- Env & secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Databases / local data ---
+*.sqlite3
+*.db
+pgdata/
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Claude Code local settings ---
+.claude/settings.local.json
