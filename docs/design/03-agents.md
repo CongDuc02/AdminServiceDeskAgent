@@ -1,6 +1,6 @@
 # Agent & Tool Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.8 · **Trạng thái:** Draft chờ duyệt · **v0.2–0.3:** hai vòng sửa theo review — xem các mục ngày 2026-09-12 (lần 5, lần 6) của `CHANGELOG.md` · **v0.4:** sửa ở Phase 4 theo phép K1 và J2 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.5:** danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1) — mục ngày 2026-09-13 (lần 2) · **v0.6:** tool `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.7:** thao tác `request_slot_confirm` (mục 5.4 mới, mục 5.4 và 5.5 cũ đánh số lại thành 5.5 và 5.6), failure handling của `intake_agent` — mục ngày 2026-09-13 (lần 4) · **v0.8:** mục 5.7, bản kê thao tác do endpoint gọi — vòng duyệt Phase 5 (A2), mục ngày 2026-09-13 (lần 5)
+**Phiên bản:** 0.8 · **Trạng thái:** Draft chờ duyệt · **v0.2–0.3:** hai vòng sửa theo review — xem các mục ngày 2026-09-12 (lần 5, lần 6) của `CHANGELOG.md` · **v0.4:** sửa ở Phase 4 theo phép K1 và J2 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.5:** danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1) — mục ngày 2026-09-13 (lần 2) · **v0.6:** tool `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.7:** thao tác `request_slot_confirm` (mục 5.4 mới, mục 5.4 và 5.5 cũ đánh số lại thành 5.5 và 5.6), failure handling của `intake_agent` — mục ngày 2026-09-13 (lần 4) · **v0.8:** mục 5.7, bản kê thao tác do endpoint gọi — vòng duyệt Phase 5 (A2), mục ngày 2026-09-13 (lần 5) · **v0.9:** danh sách ngoại lệ đóng có ba mục, thêm `llm_usage` (ADR-019) — Phase 6, mục ngày 2026-09-13 (lần 8)
 
 > File này chốt agent nào tồn tại, mỗi agent được đọc gì, gọi tool nào, chạy trên graph LangGraph nào, dừng ở đâu chờ người, nhớ gì và quên gì. File này **không** viết nội dung prompt (Phase 7), **không** thiết kế bảng/cột (Phase 4), **không** thiết kế màn hình duyệt hay cơ chế dừng khi chạm trần (Phase 8).
 
@@ -145,12 +145,13 @@ Mỗi biến nội dung tự do là một mục khai riêng. Hai biến của Sp
 
 Mọi tool thuộc `tool_layer`. Mọi tool ghi sinh `audit_event` trong cùng giao dịch — không node nào ghi `audit_event` trực tiếp. Timeout theo ba lớp: tool chỉ đọc/ghi `postgresql` · tool chạm `object_storage` · tool chuyển đổi file. Giá trị cụ thể của cả ba lớp: `TBD` (A-031), bị chặn trên bởi giới hạn thời gian request (A-025) với tool chạy trong luồng `api`.
 
-**Ngoại lệ của luật "mọi ghi dữ liệu đi qua `tool_layer`" — danh sách đóng.** Chỉ hai thứ được ghi `postgresql` mà không qua `tool_layer`:
+**Ngoại lệ của luật "mọi ghi dữ liệu đi qua `tool_layer`" — danh sách đóng.** Chỉ ba thứ được ghi `postgresql` mà không qua `tool_layer`:
 
 1. Bảng checkpoint của checkpointer LangGraph.
 2. `graph_thread` — sổ thread, cạnh bảng checkpoint (mục Bảng chi tiết của `04-data.md`).
+3. `llm_usage` — sổ kế toán token, do `ai_gateway` ghi (ADR-019).
 
-Cả hai do lớp chạy graph của `orchestrator` ghi, không do node nào; là sổ sách kỹ thuật nên không sinh `audit_event`. **Ràng buộc bù:** `graph_thread` chỉ chứa định danh thread, trạng thái và mốc thời gian — không chứa PII, không chứa quyết định nghiệp vụ. **Thêm mục thứ ba vào danh sách này phải có ADR.**
+Hai mục đầu do lớp chạy graph của `orchestrator` ghi, không do node nào. Mục thứ ba do `ai_gateway` ghi, và đó là **bảng duy nhất** `ai_gateway` được ghi. Cả ba là sổ sách kỹ thuật nên không sinh `audit_event`. **Ràng buộc bù:** `graph_thread` chỉ chứa định danh thread, trạng thái và mốc thời gian — không chứa PII, không chứa quyết định nghiệp vụ; `llm_usage` không chứa văn bản prompt, văn bản output hay giá trị slot — không có cột nào dành cho chúng, và các cột mã bị `CHECK` khoá (chỗ hở còn lại ở ADR-019). **Thêm mục thứ tư vào danh sách này phải có ADR.**
 
 **Cột "Vị trí so với cổng HITL"** dùng bốn giá trị: *Trước `SUBMITTED`* (dữ liệu của nhân viên, chưa có văn bản) · *Trước cổng 1* (trước `PENDING_APPROVAL`) · *Giữa hai cổng* · *Sau mọi cổng*.
 

@@ -1,6 +1,6 @@
 # API Spec — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.4 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 5 — mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md` · **v0.3:** vòng duyệt Phase 5 lần 2 — mục ngày 2026-09-13 (lần 6) · **v0.4:** đóng Phase 5 — mục ngày 2026-09-13 (lần 7)
+**Phiên bản:** 0.4 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 5 — mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md` · **v0.3:** vòng duyệt Phase 5 lần 2 — mục ngày 2026-09-13 (lần 6) · **v0.4:** đóng Phase 5 — mục ngày 2026-09-13 (lần 7) · **v0.5:** `manifest.required_fonts` và mã lỗi `TEMPLATE_FONTS_INVALID` (ADR-015) — Phase 6, mục ngày 2026-09-13 (lần 8)
 
 > File này chốt contract giữa `client` và `api`: endpoint REST, hai stream SSE, xác thực, lỗi chuẩn hoá, phân trang, idempotency và cách xử lý hai người thao tác cùng lúc. Contract máy đọc được nằm ở [`contracts/openapi.yaml`](./contracts/openapi.yaml). File này **không** thiết kế cấu trúc code (Phase 6), màn hình duyệt, bảng mã lý do hay cơ chế tiếp quản (Phase 8), chi tiết AuthZ, rate limit và vòng đời credential (Phase 9), và **không** định cỡ tham số vận hành (Phase 11).
 
@@ -311,6 +311,7 @@ Không có endpoint đánh dấu đã đọc. Cột `notification.read_at` và `
 | POST | `/templates/{template_id}/versions/{template_version_id}/actions/activate` | `template_version_activate` | `SYNC` | — | `ActivateBody` → `TemplateVersion` |
 
 - **`manifest`** khai danh mục biến: tên biến, loại (`DIRECT_SLOT` · `FREE_CONTENT` · `SYSTEM`), slot nguồn, cờ điền sau duyệt, `variable_guidance`, `max_length`, và **danh sách input tự khai** của từng biến nội dung tự do. Server đối chiếu `manifest` với biến tìm thấy trong file và với slot schema, theo đúng các phép kiểm lúc tải lên ở mục Template của `04-data.md`. Lệch thì trả `TEMPLATE_VARIABLES_INVALID`, kèm tên từng biến và mã lỗi con — F6: "nêu rõ thiếu biến nào". Hệ thống **không** kiểm thể thức (ADR-001).
+- **`manifest.required_fonts`** — thêm ở Phase 6 (ADR-015, A-058): tên họ font mà template cần. Lúc tải lên, server kiểm hai điều: mọi font mà file `.docx` khai dùng có trong danh sách (`NOT_IN_MANIFEST`), và mọi font trong danh sách có mặt trong image đang chạy `api` (`NOT_INSTALLED`). `activate` kiểm lại điều thứ hai. Lệch thì trả `TEMPLATE_FONTS_INVALID`, kèm tên font và mã con. Phép kiểm `NOT_INSTALLED` trong `api` chỉ đúng chừng nào `api` và `queue_worker` dùng chung một image (ADR-015); tách image thì phép kiểm phải chuyển chỗ.
 - Phiên bản là bất biến. Đổi danh sách input của một biến là tải lên phiên bản mới, và việc đó sinh `audit_event` vì nó đổi dữ liệu nào rời hệ thống (mục Allowlist input của `03-agents.md`).
 
 **Hồ sơ nhân viên** — `employee.import`.
@@ -529,12 +530,13 @@ Nguồn duy nhất của danh mục. `openapi.yaml` khai đúng tập này dư�
 | `REQUEST_NOT_READY` | 422 | `submit` mà chưa đủ điều kiện xử lý | Bổ sung hoặc xác nhận các mục được nêu | `missing_slots`, `unconfirmed_slots`, `failed_rules` |
 | `CHANGE_TARGET_INVALID` | 422 | `change_targets` có tên không phải biến hay slot của văn bản đó | Chọn lại phạm vi sửa | `targets` |
 | `TEMPLATE_VARIABLES_INVALID` | 422 | `manifest` lệch với file hoặc với slot schema | Sửa template hoặc `manifest` | `variables[]`: `variable_name`, `code` |
+| `TEMPLATE_FONTS_INVALID` | 422 | File dùng font ngoài `required_fonts`, hoặc font trong `required_fonts` không có trong image — lúc tải lên và lúc kích hoạt. Thêm ở Phase 6 (ADR-015) | Sửa template, hoặc bổ sung font vào image rồi thử lại | `fonts[]`: `font_name`, `code` |
 | `IMPORT_ROWS_INVALID` | 422 | Có dòng CSV sai; **không ghi dòng nào** | Sửa các dòng được nêu | `rows[]`: `row_number`, `column`, `code` |
 | `DESTRUCTIVE_CONFIRMATION_REQUIRED` | 422 | Đổi độ nhạy mang tính phá huỷ mà thiếu `expected_erase_count` | Xem bản xem trước trước khi xác nhận | `erase_count` |
 | `INTERNAL_ERROR` | 500 | Lỗi không lường trước, **và** mọi mã lỗi nội bộ ở mục 4.2 lọt tới `api` | Thử lại sau; báo `trace_id` nếu lặp lại | — |
 | `FILE_UNAVAILABLE` | 503 | Object mất hoặc lệch checksum lúc tải (ADR-014) | Liên hệ phòng hành chính | — |
 
-Mã con của `fields[].code`: `REQUIRED` · `BLANK` · `INVALID_FORMAT` · `OUT_OF_RANGE` · `NOT_ALLOWED` · `TOO_LONG`. Mã con của `variables[].code`: `MISSING_REQUIRED` · `NOT_IN_FILE` · `NOT_IN_MANIFEST` · `INPUT_NOT_ALLOWED` · `SOURCE_SLOT_UNKNOWN`. Mã con của `rows[].code` dùng đúng tập của `fields[].code`.
+Mã con của `fields[].code`: `REQUIRED` · `BLANK` · `INVALID_FORMAT` · `OUT_OF_RANGE` · `NOT_ALLOWED` · `TOO_LONG`. Mã con của `variables[].code`: `MISSING_REQUIRED` · `NOT_IN_FILE` · `NOT_IN_MANIFEST` · `INPUT_NOT_ALLOWED` · `SOURCE_SLOT_UNKNOWN`. Mã con của `rows[].code` dùng đúng tập của `fields[].code`. Mã con của `fonts[].code`: `NOT_IN_MANIFEST` · `NOT_INSTALLED`.
 
 ### 4.2 Mã lỗi của tool và thao tác — cái nào lộ ra client
 

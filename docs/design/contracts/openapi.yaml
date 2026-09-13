@@ -926,6 +926,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /templates/{template_id}/versions/{template_version_id}/source:
@@ -1584,7 +1585,7 @@ components:
     Unprocessable:
       description: |
         VALIDATION_FAILED · SELF_APPROVAL_REASON_REQUIRED · REQUEST_NOT_READY · CHANGE_TARGET_INVALID ·
-        TEMPLATE_VARIABLES_INVALID · IMPORT_ROWS_INVALID · DESTRUCTIVE_CONFIRMATION_REQUIRED
+        TEMPLATE_VARIABLES_INVALID · TEMPLATE_FONTS_INVALID · IMPORT_ROWS_INVALID · DESTRUCTIVE_CONFIRMATION_REQUIRED
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
@@ -1748,6 +1749,7 @@ components:
         - REQUEST_NOT_READY
         - CHANGE_TARGET_INVALID
         - TEMPLATE_VARIABLES_INVALID
+        - TEMPLATE_FONTS_INVALID
         - IMPORT_ROWS_INVALID
         - DESTRUCTIVE_CONFIRMATION_REQUIRED
         - INTERNAL_ERROR
@@ -1758,6 +1760,10 @@ components:
     VariableErrorCode:
       type: string
       enum: [MISSING_REQUIRED, NOT_IN_FILE, NOT_IN_MANIFEST, INPUT_NOT_ALLOWED, SOURCE_SLOT_UNKNOWN]
+    FontErrorCode:
+      description: NOT_IN_MANIFEST — file .docx khai dùng font không có trong required_fonts. NOT_INSTALLED — font trong required_fonts không có mặt trong image đang chạy phép kiểm (ADR-015)
+      type: string
+      enum: [NOT_IN_MANIFEST, NOT_INSTALLED]
     ErrorEnvelope:
       type: object
       additionalProperties: false
@@ -1810,6 +1816,15 @@ components:
             properties:
               variable_name: { type: string }
               code: { $ref: '#/components/schemas/VariableErrorCode' }
+        fonts:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [font_name, code]
+            properties:
+              font_name: { type: string }
+              code: { $ref: '#/components/schemas/FontErrorCode' }
         rows:
           type: array
           items:
@@ -2540,13 +2555,18 @@ components:
           items: { $ref: '#/components/schemas/SlotName' }
     TemplateVersion:
       type: object
-      required: [id, template_id, version_no, status, uploaded_by_employee_id, activated_at, retired_at, created_at, row_version, variables]
+      required: [id, template_id, version_no, status, uploaded_by_employee_id, required_fonts, activated_at, retired_at, created_at, row_version, variables]
       properties:
         id: { $ref: '#/components/schemas/Uuid' }
         template_id: { $ref: '#/components/schemas/Uuid' }
         version_no: { type: integer, minimum: 1 }
         status: { $ref: '#/components/schemas/TemplateVersionStatus' }
         uploaded_by_employee_id: { $ref: '#/components/schemas/Uuid' }
+        required_fonts:
+          description: Manifest font của phiên bản (ADR-015)
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1 }
         activated_at:
           anyOf:
             - $ref: '#/components/schemas/Timestamp'
@@ -2600,12 +2620,18 @@ components:
     TemplateManifest:
       type: object
       additionalProperties: false
-      required: [variables]
+      required: [variables, required_fonts]
       properties:
         variables:
           type: array
           minItems: 1
           items: { $ref: '#/components/schemas/TemplateVariableDecl' }
+        required_fonts:
+          description: Tên họ font mà template cần. Phải phủ mọi font file .docx khai dùng, và mọi font phải có trong image (ADR-015)
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, minLength: 1 }
     TemplateVersionUpload:
       type: object
       required: [file, manifest]

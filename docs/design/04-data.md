@@ -1,6 +1,6 @@
 # Data Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.3 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 4 (S–V) — mục ngày 2026-09-13 (lần 2) của `CHANGELOG.md` · **v0.3:** `render_integrity_check` — mục ngày 2026-09-13 (lần 3)
+**Phiên bản:** 0.3 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 4 (S–V) — mục ngày 2026-09-13 (lần 2) của `CHANGELOG.md` · **v0.3:** `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.4:** ai ghi `llm_usage` và mã `BUDGET_UNAVAILABLE` (ADR-019), `template_version.required_fonts` (ADR-015), kết quả xác minh A-045 và A-047 — Phase 6, mục ngày 2026-09-13 (lần 8)
 
 > File này chốt mô hình dữ liệu vật lý: bảng, cột, ràng buộc, index, quyền trên cơ sở dữ liệu, lưu trữ file, vector collection và chính sách xoá dữ liệu cá nhân. Contract DDL nằm ở [`contracts/schema.sql`](./contracts/schema.sql). File này **không** thiết kế API (Phase 5), màn hình duyệt hay bảng mã lý do (Phase 8), AuthZ chi tiết (Phase 9), và **không** định cỡ thời hạn hay tham số vận hành (Phase 11).
 
@@ -302,6 +302,7 @@ Không có index ngoài khoá chính.
 | `status` | text | — | — | `UPLOADED` · `ACTIVE` · `RETIRED` |
 | `source_object_key` | text | — | — | FK tới `stored_object_commit`: bản gốc `.docx` bất biến (F6) |
 | `uploaded_by_employee_id` | uuid | — | — | FK |
+| `required_fonts` | text[] | — | — | **Manifest font:** tên họ font mà phiên bản này cần, ít nhất một (`ck_template_version_fonts`). Không sửa được — đổi font là tải phiên bản mới. Thêm ở Phase 6 (ADR-015, A-058) |
 | `activated_at` | timestamptz | ✔ | — | Bắt buộc khi đã từng `ACTIVE` |
 | `retired_at` | timestamptz | ✔ | — | Có khi và chỉ khi `RETIRED` |
 
@@ -318,7 +319,7 @@ Không có index ngoài khoá chính.
 
 **`template_variable_input`** — PK (`template_version_id`, `variable_name`, `slot_name`). Chỉ thêm. Khoá ngoại ghép tới `template_variable` **qua cả cột `kind`**, cộng `CHECK (variable_kind = 'FREE_CONTENT')`: DB từ chối khai input cho một biến không phải nội dung tự do.
 
-**Kiểm lúc tải lên, không biểu diễn được bằng DDL** — vì phiên bản bất biến nên chỉ cần kiểm một lần: mọi `slot_name` khai làm input là slot nguồn `USER_INPUT` của đúng `request_type` (mục Allowlist input của `03-agents.md`); mọi `source_slot_name` tồn tại trong slot schema; đủ biến bắt buộc theo cấu hình loại yêu cầu (AC của F6).
+**Kiểm lúc tải lên, không biểu diễn được bằng DDL** — vì phiên bản bất biến nên chỉ cần kiểm một lần: mọi `slot_name` khai làm input là slot nguồn `USER_INPUT` của đúng `request_type` (mục Allowlist input của `03-agents.md`); mọi `source_slot_name` tồn tại trong slot schema; đủ biến bắt buộc theo cấu hình loại yêu cầu (AC của F6); mọi font mà file `.docx` khai dùng có trong `required_fonts`, và mọi font trong `required_fonts` có mặt trong image đang chạy phép kiểm (ADR-015).
 
 | Index | Lý do |
 |---|---|
@@ -543,11 +544,13 @@ Cột: `actor_employee_id` (—, luôn là người thật), `delegation_id` ✔
 
 **`graph_thread` chỉ chứa định danh thread, trạng thái và mốc thời gian — không chứa PII, không chứa quyết định nghiệp vụ.** Đây là ràng buộc bù cho việc nó được ghi ngoài `tool_layer` (U1).
 
-**Ai ghi `graph_thread`:** lớp chạy graph của `orchestrator`, cùng loại với checkpointer — **không** phải một node, **không** đi qua `tool_layer`, **không** sinh `audit_event`, vì đây là sổ sách kỹ thuật chứ không phải hành động nghiệp vụ. Nó là một trong **hai** mục của danh sách ngoại lệ đóng ghi ở mục Tool Registry của `03-agents.md`; thêm mục thứ ba phải có ADR. Nó có ghi cùng giao dịch với checkpoint của thư viện được hay không là `[CẦN XÁC MINH]`. Nếu không, `graph_thread` có thể trễ sau checkpoint một nhịp, và bộ phát hiện thread kẹt có thể báo nhầm trong khoảng đó — chấp nhận được vì bộ phát hiện chỉ cảnh báo, không tự sửa.
+**Ai ghi `graph_thread`:** lớp chạy graph của `orchestrator`, cùng loại với checkpointer — **không** phải một node, **không** đi qua `tool_layer`, **không** sinh `audit_event`, vì đây là sổ sách kỹ thuật chứ không phải hành động nghiệp vụ. Nó là một trong **ba** mục của danh sách ngoại lệ đóng ghi ở mục Tool Registry của `03-agents.md`; thêm mục thứ tư phải có ADR. **Đã xác minh ở Phase 6 (A-045):** checkpointer yêu cầu kết nối `autocommit=True` (`docs/reference/langgraph-checkpoint-postgres.md`), nên checkpoint **không** ghi cùng giao dịch với `graph_thread` hay bất kỳ bảng ứng dụng nào. Vì vậy `graph_thread` có thể trễ sau checkpoint một nhịp, và bộ phát hiện thread kẹt có thể báo nhầm trong khoảng đó — chấp nhận được vì bộ phát hiện chỉ cảnh báo, không tự sửa.
 
 **`notification`** — `recipient_employee_id`, `event_code`, `request_id` ✔, `document_id` ✔, `dedupe_key`; `UNIQUE (recipient_employee_id, event_code, dedupe_key)` là idempotency của `notification_send`. Chỉ mang mã và tham chiếu. Ứng dụng chỉ sửa được `pushed_at`, `read_at`.
 
 **`llm_usage` — ràng buộc cứng, ghim ngay tại định nghĩa (P3):** bảng này chứa mã lời gọi, tier, phiên bản prompt module, số token, kết quả, tham chiếu `request`/`chat_session`/`document`/phiên bản tài liệu quy trình và `trace_id` — **TUYỆT ĐỐI KHÔNG** chứa văn bản prompt, văn bản output hay bất kỳ giá trị slot nào. Cùng luật với `audit_event`. Debug chi phí dùng `trace_id` để nhảy sang log kỹ thuật đã mask của `observability`, không bao giờ bằng cách thêm cột văn bản vào đây. `CHECK` buộc mỗi dòng có ít nhất một chủ budget (`request`, `chat_session` hoặc lần nạp kho), và buộc hai lời gọi embedding đi với tier `EMBEDDING`. **Không** có `CHECK` ghép lời gọi LLM với tier rẻ hay mạnh: có hạ tier được không là câu hỏi của Phase 10, và một ràng buộc DB khoá câu trả lời lại sẽ thành thứ phải sửa migration khi câu trả lời đổi.
+
+**Ai ghi `llm_usage`:** `ai_gateway` — module sổ budget của nó, không phải node, **không** đi qua `tool_layer`, **không** sinh `audit_event`, vì đây là sổ sách kỹ thuật chứ không phải hành động nghiệp vụ. Nó là một trong **ba** mục của danh sách ngoại lệ đóng ghi ở mục Tool Registry của `03-agents.md`, và là **bảng duy nhất** `ai_gateway` được đọc hay ghi (ADR-019). Mỗi dòng được ghi trong một giao dịch riêng của `ai_gateway`, commit trước khi kết quả về tới node — kể cả dòng của hai ca từ chối `BUDGET_EXCEEDED` và `ALLOWLIST_REJECTED`, nên node chết ngay sau đó thì dòng vẫn còn. **`outcome` thêm mã `BUDGET_UNAVAILABLE` ở Phase 6:** không đọc được số token đã tiêu thì lời gọi bị từ chối, và ca đó không được ghi nhầm thành `BUDGET_EXCEEDED` (ADR-019).
 
 **`operating_mode_change`** — `from_mode`, `to_mode` (khác nhau), `decided_by_employee_id`, `decision_reference` (tham chiếu văn bản quyết định có người ký, không rỗng), `effective_at` (`UNIQUE`). Chỉ thêm. Chế độ hiện hành là dòng có `effective_at` lớn nhất đã tới; **chưa có dòng nào nghĩa là `NON_PRODUCTION`**, nên một cơ sở dữ liệu mới luôn khởi đầu ở chế độ an toàn. Cơ chế ký và xác nhận thuộc Phase 9 và Phase 11.
 
@@ -990,7 +993,7 @@ Giao Phase 8, cùng cụm với A-029.
 
 ### 8.6 Vòng đời checkpoint
 
-- Bảng checkpoint của LangGraph **không** nằm trong `schema.sql`. Chúng được tạo và cấp quyền theo migration của thư viện; bảng nào, quyền nào, và thư viện có ghi cùng giao dịch với bảng ứng dụng không là `[CẦN XÁC MINH]` (A-045).
+- Bảng checkpoint của LangGraph **không** nằm trong `schema.sql`. **Đã xác minh ở Phase 6 (A-045, `docs/reference/langgraph-checkpoint-postgres.md`):** thư viện tạo bốn bảng — `checkpoint_migrations`, `checkpoints`, `checkpoint_blobs`, `checkpoint_writes` — bằng hàm `setup()` của nó, với kết nối `autocommit=True`, nên checkpoint không ghi cùng giao dịch với bảng ứng dụng. Thứ tự chạy, role chạy và quyền cấp cho `bo19_app` ở mục Migration và checkpointer của `06-structure.md`.
 - Checkpoint chỉ chứa tham chiếu (ADR-008); test canary ở Phase 10 kiểm điều đó.
 - `graph_thread` là sổ để purge. Thread `intake` kết thúc khi `chat_session` đóng — nhàn rỗi hoặc `REQUEST_EXPIRED`. Thread `document` kết thúc khi graph tới `END` — `ISSUED`, `REJECTED`, hoặc `ARCHIVED` sau `request_cancel`. Thread kết thúc chuyển `ENDED`; job `checkpoint_purge` xoá mọi checkpoint của `thread_id` đó rồi chuyển `PURGED`.
 
@@ -1005,7 +1008,7 @@ Giao Phase 8, cùng cụm với A-029.
 - **A-014 (3)** — bản giữ trên `request` `EXPIRED` sau khi đã được đề xuất lại: mục 8.3.
 - **P5** — không version `request_type` là an toàn, sau khi `document_free_content` mang `template_version_id` riêng (mục 3.2).
 
-**Điều kiện chặn — A-047.** `schema.sql` chưa từng được áp lên một PostgreSQL thật; mới qua parser, và parser không kiểm ngữ nghĩa. Chủ: Phase 6. Hạn: **trước khi viết bất kỳ dòng code nào của Phase 6**. Đây là điều kiện chặn, không phải việc nên làm.
+**Điều kiện chặn — A-047, thu hẹp ở Phase 6.** `schema.sql` đã được áp lên PostgreSQL 16.2 cùng pgvector 0.6.2 ở máy local, và các phép kiểm phủ định quyền của `bo19_app` đều đạt; **chưa áp trên Render**. Kết quả, phiên bản và giới hạn của phép thử ở mục Xác minh contract của `06-structure.md`.
 
 **Còn mở — mỗi mục có owner và hạn ở `ASSUMPTIONS.md`:**
 
