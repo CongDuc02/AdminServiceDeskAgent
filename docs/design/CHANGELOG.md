@@ -909,3 +909,81 @@ Anh cho phép chuyển việc đọc lại object để kiểm checksum của b�
 Sơ đồ, bảng cạnh điều kiện, bước của `finalize_issue` và danh sách tool cấm của `drafting_agent` được sửa theo bản nới F3: không sửa thì chúng thành thiếu hoặc sai so với tool mới.
 
 Không đổi máy trạng thái: trượt kiểm thì `document` đứng yên ở trạng thái lúc kiểm. Cách tiếp quản sau khi trượt kiểm thuộc Phase 8, cùng bảng mã lý do dừng.
+
+
+---
+
+## 2026-09-13 (lần 4) — Phase 5: API Spec
+
+**Tạo mới:** `docs/design/05-api.md` v0.1 · `docs/design/contracts/openapi.yaml` · `decisions/ADR-013-sse-tin-hieu-va-session-cookie.md` · `decisions/ADR-014-tai-file-qua-api.md`.
+
+**Sửa:** `03-agents.md` → v0.7 · `GLOSSARY.md` → v0.15 · `ASSUMPTIONS.md` → v0.16. `_PLAN.md` và `02-architecture.md` không đổi; Phase 5 giữ ☐.
+
+### Ràng buộc cho Phase 6 — đọc trước khi thiết kế cấu trúc dự án
+
+**`client` phải được phục vụ cùng origin với `api`.** Cookie `SameSite=Strict` cộng header `X-BO19-CSRF` của ADR-013 chỉ đứng khi hai bên cùng origin. Điều này thu hẹp lựa chọn "phục vụ tĩnh hoặc build riêng" ở mục Ánh xạ sang đơn vị triển khai trên Render của `02-architecture.md`: build riêng thì vẫn phải được phục vụ dưới cùng origin với `api`. Theo chỉ thị, `02-architecture.md` không sửa ở phase này; ràng buộc sống ở Consequences của ADR-013 và ở dòng này. Hai subdomain mặc định của Render có cùng site hay không: A-049.
+
+### Tiền lệ: lỗi tiền đề của một ADR bị bắt trước khi viết
+
+Bước lập kế hoạch viết "`EventSource` không gửi được header, nên phải dùng cookie", và chỉ thị ADR-013 được dựng trên câu đó. Rà lại trước khi viết cho thấy câu đó **không ép được quyết định** — stream lượt chat đã là `POST` đọc bằng `fetch`, nên bearer token vẫn làm được — và bản thân nó là kiến thức nền tảng web viết từ trí nhớ. ADR-013 giữ quyết định cookie nhưng thay lý do, theo thứ tự: credential ngoài vùng JS đọc được; một cơ chế xác thực cho REST và hai stream; tự nối lại của `EventSource` chỉ là lý do phụ, gắn A-051.
+
+Cùng họ với tiền lệ "kiểm nguồn trước khi sửa" ở mục Phase 4. Khác ở chỗ lần này lỗi nằm ở chính người đề xuất, và nó đã đi vào chỉ thị trước khi bị bắt.
+
+### Quyết định của phase
+
+| ID | Quyết định |
+|---|---|
+| ADR-013 | Hai stream SSE tách riêng: stream lượt chat — response của `POST`, sống một lượt, bản có thẩm quyền là `chat_message`; và stream tín hiệu — `GET` dài, chỉ mang "chủ đề X có thay đổi", không id sự kiện, không `Last-Event-ID`. Phát hiện thay đổi bằng **số đếm** (`notification`) và **dấu vân tay** (`id`, `row_version`), không bằng timestamp. Session cookie `HttpOnly`, `SameSite=Strict`, header `X-BO19-CSRF` |
+| ADR-014 | Tải file đi qua `api`: kiểm quyền tại lúc tải, so checksum trước byte đầu tiên, ghi `audit_event`. Không dùng URL ký sẵn |
+| Idempotency | `Idempotency-Key` bằng uuid của dòng chính mà lệnh ghi tạo ra. Khi trùng, kiểm đúng ba điều — cùng tác nhân, cùng đối tượng, cùng loại thao tác. Lệch thì 409 và **không** trả nội dung dòng. Không so payload: lần ghi đầu thắng |
+| Thời gian chờ của F4 | Định nghĩa bằng `status_changed_at`, không bằng `due_at` đang để trống; hàng đợi duyệt dùng cột của `document` |
+| `request_type.manage` | Tên cho endpoint cấu hình loại yêu cầu; từ chối mọi người; **không** vào danh mục permission cho tới Phase 9 |
+| Mã lỗi nội bộ | Không bao giờ ra khỏi `api`. Bảng lộ/không lộ ở mục Mã lỗi của `05-api.md` |
+
+### Sửa file phase trước — trong phạm vi anh cho phép
+
+| File | Sửa gì | Phép |
+|---|---|---|
+| `03-agents.md` | Mục 5.4 mới: thao tác `request_slot_confirm`, nhóm thứ ba cạnh thao tác cổng và thao tác vận hành | B2 (c) |
+| `03-agents.md` | Mục 5.4 và 5.5 cũ đánh số lại thành 5.5 và 5.6; bảy tham chiếu nội bộ trỏ theo | Bản nới F3 — hệ quả trực tiếp của việc chèn mục |
+| `03-agents.md` | `request_slots_write`: bỏ nhánh `(tên slot, hành động xác nhận)` khỏi input; cột Mục đích bỏ "ghi xác nhận" | B2 (a); cột Mục đích theo bản nới F3 |
+| `03-agents.md` | Mục 7.3 bước 3 trỏ sang `request_slot_confirm` | B2 (b) |
+| `03-agents.md` | Failure handling của `intake_agent`: "không đổi dữ liệu nghiệp vụ", đúng một `chat_message` của agent mang mã khuôn lỗi, ba cái cấm | Mục 5 của phản hồi |
+| `03-agents.md` | Câu liệt kê các nhóm thao tác ở cuối mục "Ai được gọi tool nào", và bảng ánh xạ sang thành phần kiến trúc: thêm nhóm mới | Bản nới F3 |
+| `GLOSSARY.md` | Mục 8: mười sáu enum nâng từ `04-data.md`, cộng một dòng chờ Phase 8. Mục 12: hai nhóm thao tác mới. Mục 13 mới: tên của API | D |
+| `ASSUMPTIONS.md` | A-025, A-031, A-038 bổ sung. **A-042 nâng lên mức chặn nghiệm thu.** Thêm A-048 → A-054 | B1, B3, C, và các phát hiện dưới đây |
+
+**Hai chỗ phải kiểm theo chỉ thị B2:**
+
+- *Mã lỗi nào của `request_slots_write` chỉ phục vụ nhánh xác nhận:* **không có**. Cả bốn mã — `EVIDENCE_MISMATCH`, `RULE_FAILED`, `NOT_EDITABLE`, `SLOT_NOT_ALLOWED` — đều phục vụ việc ghi giá trị.
+- *`PendingQuestion.kind = CONFIRM_PROPOSALS` có còn đúng không:* **còn đúng**. Agent vẫn là bên hỏi, không còn là bên ghi. State có thể cũ sau thao tác xác nhận; node đầu của lượt sau đọc lại DB, nên không cần sửa mục State schema. Một câu nói điều này nằm trong mục 5.4 mới.
+
+### Đã sửa — xin duyệt sau (vượt đúng chữ của chỉ thị)
+
+1. **Failure handling thêm một câu về những gì đã ghi trước lỗi.** Ba cái cấm đúng với nhánh lỗi, nhưng `open_request` chạy trước `extract_slots`: lượt lỗi ở `extract_slots` đã có một `request` vừa tạo. Câu thêm nói những ghi đó đứng nguyên, không hoàn tác, và idempotent theo tin nhắn. Không có câu này thì câu mới bị đọc thành lời hứa hoàn tác.
+2. **`request_slot_confirm` đưa `NEEDS_INFO → DRAFT` khi hàm kiểm đạt.** Không có bước này thì nhân viên xác nhận xong vẫn kẹt ở `NEEDS_INFO`, vì `request_submit` chỉ nhận `DRAFT`, và phải gõ thêm một lượt chat chỉ để graph chuyển trạng thái.
+3. **Mười ba thao tác của `tool_layer` được đặt tên** ở mục Endpoint của `05-api.md` và mục 12 của `GLOSSARY.md`. Luật "mọi ghi đi qua `tool_layer`" cộng danh sách ngoại lệ đóng buộc mỗi lệnh ghi do endpoint gây ra phải có tên; không có tên thì Phase 13 không truy vết được.
+4. **Khi trùng khoá idempotency, tác nhân được đọc từ `audit_event` của lần tạo** nếu bảng không có cột người thực hiện — ví dụ `template`.
+
+### Phát hiện mới — ghi `ASSUMPTIONS.md`, không tự sửa
+
+- **A-052** — nhập hộ chưa đi được hết đường: không thao tác nào đặt người thụ hưởng khác người tạo cho `WORK_CONFIRMATION`; và người thụ hưởng không phải người tạo thì không xem được yêu cầu của chính mình.
+- **A-053** — bảng nghĩa `CANCELLED` ở `00-domain.md` rộng hơn sơ đồ.
+- **A-054** — không thao tác nào đưa `document` sang `SUPERSEDED`.
+- **A-048 → A-051** — credential; cùng site trên domain Render; stream qua proxy của Render; hành vi nền tảng web và framework mà contract dựa vào.
+- Không có ràng buộc một phiên `OPEN` cho mỗi nhân viên — ghi thêm vào A-038.
+- Hai thứ tự không có index: `GET /requests?scope=ALL` — AC Must của F4 — và `GET /issue-queue`. Đề xuất `ix_request_waiting` và `ix_document_awaiting_issue` ở Open Questions của `05-api.md`; **không** thêm vào `schema.sql`.
+
+### Cần anh cho phép trước — chưa làm
+
+- Thêm hai dòng vào bảng chỗ quan sát của Phase 11 trong `_PLAN.md`: tải poll tín hiệu (ADR-013), và phân phối thời lượng tải file (ADR-014).
+- Thêm mười ba thao tác đặt tên ở Phase 5 vào mục Tool Registry của `03-agents.md`, nếu anh muốn đó là bản kê đầy đủ.
+- Bảng chủ sở hữu chuyển đổi của `request` ở `02-architecture.md` ghi `DRAFT` do `orchestrator` sở hữu; nay `request_slot_confirm` cũng đưa `NEEDS_INFO → DRAFT`.
+
+### Đã kiểm
+
+- `openapi.yaml` qua `openapi-spec-validator` 0.9.0 (OpenAPI 3.1.0): đạt.
+- Đối chiếu tự động `05-api.md` ↔ `openapi.yaml`: 48 endpoint có contract khớp đúng 48 operation; bốn endpoint `[NGOÀI-OPENAPI]` không lọt vào `openapi.yaml`; 31 mã lỗi khớp; mọi lệnh ghi có header CSRF, khai `x-bo19-execution` và `x-bo19-idempotency-key`; operation khai khoá thì có header `Idempotency-Key`, và ngược lại.
+- Sơ đồ Mermaid duy nhất của `05-api.md` render được bằng mermaid-cli 10.9.1.
+- Tham chiếu chéo file theo số mục trong các file mới và file đã sửa: không có.
+- **Chưa kiểm:** contract chưa chạy trên server nào — chưa có code (DESIGN MODE). Mọi hành vi nền tảng mà contract dựa vào nằm ở A-049 → A-051.
