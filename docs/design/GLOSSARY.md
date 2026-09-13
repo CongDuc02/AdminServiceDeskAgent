@@ -1,6 +1,6 @@
 # GLOSSARY — BO-19 Admin Service Desk Agent
 
-**Phiên bản:** 0.11 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3 và các vòng sửa Phase 3
+**Phiên bản:** 0.14 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4 và vòng duyệt Phase 4
 
 > Đây là danh sách tên chuẩn. Từ Phase 1 trở đi, mọi tài liệu, diagram, DDL, endpoint và prompt phải dùng **đúng** các định danh trong file này. Muốn đổi tên thì sửa file này trước, rồi ghi vào [`CHANGELOG.md`](./CHANGELOG.md).
 
@@ -32,6 +32,12 @@
 | `chat_session` | Phiên hội thoại | Một cuộc chat của nhân viên với `intake_agent`. Sinh được 0..n `request` nối tiếp (EC-CV-01, EC-CV-02). Thêm ở Phase 3 |
 | `chat_message` | Tin nhắn | Một lượt trong `chat_session`. Văn bản tin nhắn xếp `RES` vì mang được mọi thứ; bị xoá khi `request` gắn với nó `EXPIRED` (A-014). Thêm ở Phase 3 |
 | `procedure_document` | Tài liệu quy trình | Tài liệu quy trình hành chính nội bộ, nạp vào `vector_store` để trả hướng xử lý thủ công có trích nguồn. Có phiên bản; không chứa PII. Kho có thể rỗng (A-027). Thêm ở Phase 3 |
+| `procedure_chunk` | Đoạn quy trình | Đơn vị trích dẫn của `procedure_document`: đường dẫn mục cộng văn bản nguyên văn. `select_procedure_passages` trả id của nó; embedding sống trên nó. Thêm ở Phase 4 |
+| `decision_record` | Bản ghi quyết định | Hành động đã xảy ra của người thật tại một thao tác cổng — gửi, huỷ, duyệt, yêu cầu sửa, từ chối, ký, đóng dấu, ra lệnh phát hành, thu hồi, tiếp quản. Bất biến. `ReviewSignal.decision_record_id` trỏ tới nó. **Khác** `approval_step`: `approval_step` là việc yêu cầu một người hành động. Lệnh phát hành là một `decision_record` loại `ISSUE_ORDERED`. Thêm ở Phase 4 |
+| `document_render` | Bản render | Một lần render `document` ra cặp `.docx`/`.pdf`. Tích luỹ, không đè. Bản gắn với duyệt nội dung và bản phát hành được **ghim** và không bao giờ bị xoá. Thêm ở Phase 4 |
+| `document_halt` | Bản ghi dừng | Một lần `document_graph` dừng có kiểm soát tại `halt_for_human`, do tool `document_halt_record` ghi. Chỉ mang mã. Thêm ở Phase 4 |
+| `operating_mode_change` | Quyết định đổi chế độ vận hành | Một lần đổi `operating_mode`, mang người quyết định và tham chiếu văn bản có người ký (D-009). Chưa có bản ghi nào nghĩa là `NON_PRODUCTION`. Không phải `decision_record` vì không thuộc `request` nào. Thêm ở Phase 4 |
+| `notification` | Thông báo | Thông báo trong ứng dụng do `notification_send` ghi. Chỉ mang mã và tham chiếu, không mang giá trị slot. Thêm ở Phase 4 |
 
 ---
 
@@ -97,7 +103,7 @@ Quá hạn SLA **không** phải trạng thái. Đó là điều kiện dẫn xu
 | `ISSUED` | Đã phát hành | `document.issue` · thời điểm duy nhất cấp `document_number` |
 | `REVOKED` | Đã thu hồi | Mất hiệu lực, vẫn truy xuất được |
 | `SUPERSEDED` | Bị thay thế | Trỏ tới văn bản thay thế |
-| `ARCHIVED` | Đã lưu trữ | |
+| `ARCHIVED` | Đã lưu trữ | Hai đường vào khác loại: văn bản đã đi hết vòng đời, hoặc bản nháp bị bỏ vì `request` bị huỷ khi `document` đang `CHANGES_REQUESTED`. Đường thứ hai bắt buộc `archive_reason` (mục Vòng đời `document` của `00-domain.md`) |
 
 ---
 
@@ -168,6 +174,14 @@ Là thuộc tính của **dữ liệu**, không suy ra từ tên trường hay t
 
 `ASSIGNED` (đã cấp cho một văn bản) · `VOIDED` (đã huỷ, không tái sử dụng)
 
+**`decision_kind` — loại của `decision_record`** *(thêm ở Phase 4)*
+
+`SUBMITTED` · `RESUBMITTED` · `REQUEST_CANCELLED` · `APPROVED` · `CHANGES_REQUESTED` · `REJECTED` · `SIGNED` · `SEALED` · `ISSUE_ORDERED` · `REVOKE_INITIATED` · `REVOKE_CONFIRMED` · `TAKEOVER_RESOLVED` · `BOOKING_CONFIRMED` `[Should]`. `ReviewSignal.kind` ở `03-agents.md` là tập con — những loại đánh thức `document_graph`
+
+**`archive_reason` — mã lý do khi `document` vào `ARCHIVED`** *(thêm ở Phase 4)*
+
+Bắt buộc ở đường vào từ `CHANGES_REQUESTED`. Bảng mã thuộc Phase 8
+
 ---
 
 ## 9. Thuật ngữ nghiệp vụ
@@ -196,7 +210,7 @@ Là thuộc tính của **dữ liệu**, không suy ra từ tên trường hay t
 
 Trong sơ đồ `erDiagram` ở mục Quan hệ giữa các entity của `00-domain.md`, tên entity viết HOA theo thông lệ Mermaid: `REQUEST` là `request`, `SEAL_ACTION` là `seal_action`, và tương tự cho các entity còn lại. Chỉ là khác biệt hiển thị, không phải tên khác.
 
-Tên **agent**, **node LangGraph** và **tool** chốt ở mục 12, từ Phase 3. Tên **bảng** và **cột** cụ thể thuộc Phase 4; các định danh entity ở mục 1 là tên logic, Phase 4 có thể ánh xạ sang tên bảng khác nhưng phải ghi rõ ánh xạ đó.
+Tên **agent**, **node LangGraph** và **tool** chốt ở mục 12, từ Phase 3. Tên **bảng** và **cột** cụ thể thuộc Phase 4; các định danh entity ở mục 1 là tên logic, Phase 4 có thể ánh xạ sang tên bảng khác nhưng phải ghi rõ ánh xạ đó. Ánh xạ đã ghi ở mục Nguyên tắc dữ liệu của `04-data.md`.
 
 ---
 
@@ -252,16 +266,28 @@ Tên **agent**, **node LangGraph** cụ thể bên trong `orchestrator`, và **t
 
 - `intake_agent`: `employee_lookup` · `request_open` · `request_slots_write` · `request_slots_read` · `request_transition` · `prior_attempt_lookup` · `procedure_retrieval` · `room_availability_check` `[Should]`
 - `drafting_agent`, toàn bộ trước cổng 1: `template_fetch` · `request_slots_read` · `document_draft_save` · `review_readiness_check` · `document_transition` (ba chuyển đổi trước cổng) · `docx_render` và `pdf_export` (bản nháp)
-- Node tất định sau cổng, không thuộc agent nào: `signing_route` · `document_number_assign` · `document_transition` (sang `ISSUED`) · `docx_render` và `pdf_export` (bản cuối) · `notification_send`
+- Node tất định sau cổng, không thuộc agent nào: `render_integrity_check` *(thêm ở Phase 4 — kiểm toàn vẹn byte của bản render ngay trước người hay bước đầu tiên dựa vào byte)* · `signing_route` · `document_number_assign` · `document_transition` (sang `ISSUED`) · `docx_render` và `pdf_export` (bản cuối) · `notification_send`
 - Node dùng chung của `document_graph`: `notification_send` và `document_halt_record` (cùng gọi từ `halt_for_human`)
 
 Node `open_request` gọi tool `request_open`; hai tên khác nhau có chủ đích — một là bước của graph, một là thao tác của `tool_layer`.
 
-**Thao tác cổng** — chỉ đi vào từ `api` với người thật làm tác nhân: `request_submit` · `document_approve_content` · `document_request_changes` · `document_reject` · `document_sign` · `document_apply_seal` · `document_issue` · `document_revoke_initiate` · `document_revoke_confirm` · `booking_confirm` `[Should]`
+**Thao tác cổng** — chỉ đi vào từ `api` với người thật làm tác nhân: `request_submit` · `request_cancel` *(thêm ở Phase 4)* · `document_approve_content` · `document_request_changes` · `document_reject` · `document_sign` · `document_apply_seal` · `document_issue` · `document_revoke_initiate` · `document_revoke_confirm` · `booking_confirm` `[Should]`
 
-**Thao tác vận hành** — `expire_request` · `checkpoint_purge` · `procedure_ingest`
+**Thao tác vận hành** — `expire_request` · `checkpoint_purge` · `procedure_ingest` · `object_claim_reconcile` *(thêm ở Phase 4)*
 
-**Loại job** — `render_document` · `resume_document_graph` · `finalize_issue`
+**Thao tác cấu hình** *(thêm ở Phase 4)* — `slot_sensitivity_change`: đổi độ nhạy của một slot trong luồng cấu hình của F6. Nâng lên `RES` là thao tác **phá huỷ**: xoá hồi tố giá trị trên `request` `EXPIRED`
+
+**Loại job** — `render_document` · `resume_document_graph` · `finalize_issue` · `checkpoint_purge` · `procedure_ingest` · `notification_send`. Ba loại cuối thêm ở Phase 4: là thao tác mà Phase 3 đã mô tả chạy bằng job, nay có tên trong enum
+
+**Thực thể tầng kỹ thuật** *(thêm ở Phase 4)* — không có nghĩa nghiệp vụ, người dùng không nhìn thấy. Ánh xạ sang bảng ở `04-data.md`.
+
+| Định danh | Nghĩa |
+|---|---|
+| `job` | Một việc trong bảng job của `queue_worker` (ADR-004, ADR-010) |
+| `graph_thread` | Sổ thread LangGraph, cạnh bảng checkpoint của thư viện. Nguồn của `checkpoint_purge` và của bộ phát hiện thread kẹt. Chỉ chứa định danh thread, trạng thái và mốc thời gian — không PII, không quyết định nghiệp vụ. Một trong hai ngoại lệ ghi `postgresql` ngoài `tool_layer` (mục Tool Registry của `03-agents.md`) |
+| `stored_object` | Sổ giành khoá ghi-một-lần cho mọi object ở `object_storage` |
+| `llm_usage` | Kế toán token của `ai_gateway`. Không bao giờ chứa văn bản prompt, output hay giá trị slot |
+| `embedding_collection` | Một phiên bản collection: một model, một bảng, một cột `vector(n)` cố định (ADR-012) |
 
 **Biến nội dung tự do**
 

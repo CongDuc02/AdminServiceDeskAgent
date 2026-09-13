@@ -30,7 +30,7 @@ Ràng buộc sản phẩm đã chốt ở AC của F3 (`01-prd.md`), không thư
 
 **Tích cực**
 
-- Bất biến của bản render ở `SEALED`/`ISSUED` không phụ thuộc vào việc nhà cung cấp có hỗ trợ Object Lock/Versioning hay không — portable giữa các nhà cung cấp S3-compatible khác nhau.
+- Bất biến của bản render ở `SEALED`/`ISSUED` không phụ thuộc vào việc nhà cung cấp có hỗ trợ Object Lock/Versioning hay không — portable giữa các nhà cung cấp S3-compatible khác nhau. **Sửa ở Phase 4:** câu này đúng với mọi ca **trừ một** — một lệnh ghi đã gửi mà treo lâu hơn lease vẫn đè được byte của object đã commit (mục Lưu trữ file và bất biến bản render của `04-data.md`). Tầng ứng dụng thu hẹp được ca đó nhưng không đóng được; vì vậy một cơ chế ở tầng lưu trữ thành **yêu cầu bắt buộc khi chọn nhà cung cấp** (A-024).
 - Chọn vendor sau này (khi có số liệu chi phí thật, A-024) không đòi hỏi thiết kế lại cơ chế bất biến.
 - Tương thích ràng buộc Render "filesystem không bền vững" — file không bao giờ chỉ tồn tại trên đĩa cục bộ của một instance.
 
@@ -39,7 +39,7 @@ Ràng buộc sản phẩm đã chốt ở AC của F3 (`01-prd.md`), không thư
 - Không tận dụng được tính năng Object Lock của nhà cung cấp như một lớp phòng thủ kép — nếu `tool_layer` có lỗi logic phát lệnh ghi đè, không có lớp chặn thứ hai ở phía hạ tầng. Đây là đánh đổi có ý thức để giữ tính portable.
 - Thêm một dịch vụ bên ngoài Render phải quản lý credential và giám sát riêng.
 
-**Điều kiện đảo ngược quyết định này (không phải hình dạng tín hiệu tải, mà là bối cảnh chọn vendor):** nếu vendor cuối cùng được chọn (A-024) hỗ trợ Object Lock/Versioning ổn định, nên **bật thêm nó như lớp phòng thủ thứ hai**, không bao giờ thay thế cơ chế app-level — vì cơ chế app-level là thứ duy nhất không phụ thuộc vendor.
+**Điều kiện đảo ngược quyết định này (không phải hình dạng tín hiệu tải, mà là bối cảnh chọn vendor):** nếu vendor cuối cùng được chọn (A-024) hỗ trợ Object Lock/Versioning ổn định, nên **bật thêm nó như lớp phòng thủ thứ hai**, không bao giờ thay thế cơ chế app-level — vì cơ chế app-level là thứ duy nhất không phụ thuộc vendor. **Sửa ở Phase 4:** "nên" thành "phải" — vendor được chọn **bắt buộc** có ghi có điều kiện, khoá đối tượng hoặc versioning, và cơ chế đó **phải** được bật. Cơ chế app-level vẫn giữ nguyên. Không vendor nào đáp ứng thì rủi ro ghi đè thành rủi ro chấp nhận có người ký (A-024).
 
 ## Rejected alternatives
 

@@ -782,3 +782,130 @@ Review nêu hệ số 2 từ lần sinh lại sau khi trượt kiểm. Cùng l�
 - **A-039** — `procedure.manage` chưa nằm trong gói vai trò nào. Owner Phase 9.
 
 Hai mục này được ghi thành giả định có owner vì `ASSUMPTIONS.md` là nơi duy nhất giữ owner và hạn của câu hỏi mở; Open Questions của `03-agents.md` trỏ về đó.
+
+
+---
+
+## 2026-09-13 — Phase 4: Data Architecture
+
+**Tạo mới:** `docs/design/04-data.md` v0.1 · `docs/design/contracts/schema.sql` · `decisions/ADR-011-so-so-bang-dem-giao-dich-ngan.md` · `decisions/ADR-012-mot-collection-mot-cot-vector-co-dinh.md`.
+
+**Sửa:** `00-domain.md` → v0.11 · `02-architecture.md` → v0.6 · `03-agents.md` → v0.4 · `GLOSSARY.md` → v0.12 · `ASSUMPTIONS.md` → v0.14. `_PLAN.md` không đổi — Phase 3 đã ở ☑ từ trước, Phase 4 giữ ☐.
+
+### Tiền lệ: kiểm nguồn trước khi sửa — giữ cho mọi vòng sau
+
+Đã có hai lần một bước kiểm `docs/reference/` **trước khi** sửa theo chỉ thị trả lại kết quả có ích: G3 ở vòng sửa Phase 3 lần 2, và J1(a) ở Phase 4. **Cả hai lần đều bắt được lỗi của chính người ra lệnh.** Lần này, câu "index chỉ tạo được trên cột có số chiều cố định" là suy luận chứ không phải trích dẫn: nguồn nói các dòng cùng số chiều index được bằng index biểu thức cộng index partial. Người ra lệnh sai về cơ chế; kết luận vẫn đứng vì hai lý do khác — phạm vi, và nghĩa vụ phía truy vấn (ADR-012).
+
+**Quy tắc:** chỉ thị nào dựa vào một nguồn thì kiểm nguồn trước, báo kết quả, rồi mới sửa. Bắt được lỗi của người ra lệnh là một kết quả hợp lệ, không phải lệch lệnh.
+
+### Quyết định của phase
+
+| ID | Quyết định |
+|---|---|
+| ADR-011 | Sổ số: bảng đếm khoá dòng trong một giao dịch cấp số **ngắn, riêng**; không giữ khoá xuyên qua render và upload; định dạng số theo (sổ, dải), chỉ thêm; chuỗi số lưu nguyên; không dùng sequence |
+| ADR-012 | Một collection = một model = một cột `vector(1024)` cố định; đổi model là tạo phiên bản collection mới; `dimension` là bản khai, kiểm lúc khởi động; phiên bản đầu không có index ANN |
+| J4 | Bất biến bằng `GRANT`/`REVOKE`, role runtime không sở hữu bảng, role migration tách riêng. Không trigger, không row-level security |
+| A-021 | Bản render tích luỹ, không đè; ghim bản đã duyệt nội dung và bản phát hành; ghi một lần bằng `stored_object` cộng `stored_object_commit` |
+| A-035 | `request_cancel` cộng cạnh `CHANGES_REQUESTED → ARCHIVED`, `archive_reason` bắt buộc |
+| J3 | Luật xoá đọc độ nhạy hiện hành; không có cột chụp độ nhạy; nâng lên `RES` xoá hồi tố trên `request` `EXPIRED`, mang nhãn phá huỷ; hạ mức vẫn ghi `audit_event` |
+| K3 | Mỗi người thụ hưởng, mỗi loại yêu cầu giữ tối đa một lần thử — thành ràng buộc DB |
+| K4 | `expire_request` đóng phiên và enqueue purge trong cùng giao dịch |
+
+### Sửa file phase trước — trong phạm vi anh cho phép
+
+| File | Sửa gì | Phép |
+|---|---|---|
+| `00-domain.md` | Sơ đồ vòng đời `document`: cạnh `CHANGES_REQUESTED → ARCHIVED`. Định nghĩa `ARCHIVED` viết lại để bao hai đường vào khác loại | K1 |
+| `02-architecture.md` | Cùng cạnh trong sơ đồ `document`; dòng `ARCHIVED` của bảng chủ sở hữu chuyển đổi | K1 |
+| `03-agents.md` | Thêm dòng `request_cancel` vào bảng thao tác cổng; `ReviewSignal.kind` thêm `REQUEST_CANCELLED`; sơ đồ phần 1 của `document_graph` thêm node kết thúc và cạnh từ `await_resubmission`; bảng cạnh điều kiện và bảng `interrupt` cập nhật tương ứng; điều kiện kết thúc của `document_graph`; ghi chú bộ phát hiện thread kẹt dạng (2); Open Questions mục 7 | K1, J2 |
+| `03-agents.md` | Ba câu đã thành **sai** vì K3 và K4 đã duyệt — mục Checkpointer và PII, câu hỏi mở ở mục Dùng lại giá trị từ lần thử `EXPIRED`, bước 7 của mục Khi `request` `EXPIRED` — cùng Open Questions mục 6 | Bản nới F3 |
+| `GLOSSARY.md` | Mục 1: sáu entity mới. Mục 5: ghi chú `ARCHIVED`. Mục 8: enum `decision_kind`, mã `archive_reason`. Mục 10: trỏ tới bảng ánh xạ. Mục 12: `request_cancel`, `object_claim_reconcile`, `slot_sensitivity_change`, ba loại job, bảng thực thể tầng kỹ thuật | J2, P1, K1 |
+| `ASSUMPTIONS.md` | A-021 và A-035 → `Đã chốt`; A-010, A-014, A-028, A-030, A-037, A-038 cập nhật; thêm A-040 → A-045 | O2–O4, J1(e), K3, K4 |
+
+### Đã sửa — xin duyệt sau (vượt đúng chữ của chỉ thị)
+
+1. **`document_free_content.template_version_id`** — lỗ tìm thấy khi kiểm P5: `document.template_version_id` đổi được giữa các vòng, nên thiếu cột này thì không dựng lại được danh sách input của một lần sinh.
+2. **`request.opened_by_message_id`**, `UNIQUE` — idempotency của `request_open` chốt ở Phase 3 cần một chỗ bám trong DB.
+3. **`decision_record` loại `SUBMITTED`** cho lần gửi đầu, để mỗi thao tác cổng ghi đúng một `decision_record`.
+4. **Tách hai cặp bảng:** `decision_record_text` khỏi `decision_record`, và `stored_object_commit` khỏi `stored_object`. Mỗi cặp giải một xung đột: bất biến đối với xoá được, và ghi một lần đối với việc cần một lần commit.
+5. **Kiểm lại checksum lúc ghim** — lớp thu hẹp rủi ro còn lại của ca cùng khoá khác byte.
+6. **Phiên bản collection đầu không có index ANN** (ADR-012).
+7. **`room_booking` chống trùng lịch bằng khoá dòng `room`**, không bằng exclusion constraint.
+
+### Phát hiện mới — ghi Open Questions, không tự sửa
+
+- **A-038:** bất đẳng thức thời hạn ở A-010 không còn cần cho bảo đảm thứ tự, vì bảo đảm đã đứng bằng sự kiện. Phase 8 quyết.
+- **A-044:** khoá idempotency của `document_halt_record` gộp nhầm hai lần dừng sau tiếp quản.
+- **A-042:** luồng cấu hình `request_type` của F6 chưa có permission.
+- **`_PLAN.md`:** bảng chỗ quan sát của Phase 11 thiếu tín hiệu đảo ngược của ADR-011 và ADR-012.
+- **A-009 và A-036** có hạn "trước Phase 4" và vẫn `Mở`. Thiết kế Phase 4 không phụ thuộc giá trị của chúng; hạn đã qua.
+
+### Chưa chạy thử
+
+`schema.sql` **chưa được chạy trên một PostgreSQL thật**: Docker có trên máy nhưng daemon không chạy. Đã parse bằng parser của PostgreSQL (thư viện `libpg-query`, cài tạm trong scratchpad): 113 câu lệnh, không lỗi cú pháp. Parse **không** kiểm ngữ nghĩa — đích của khoá ngoại, quy tắc của cột generated, quyền — nên những thứ đó chỉ được bảo đảm khi chạy trên một instance thật (cùng lượt với A-040).
+
+
+---
+
+## 2026-09-13 (lần 2) — Vòng duyệt Phase 4: S–V
+
+Phase 4 được duyệt có điều kiện. Làm xong S–V, `_PLAN.md` chuyển Phase 4 sang ☑. Anh duyệt cả bảy mục "đã sửa — xin duyệt sau" của mục lần 1 (S1), và duyệt hướng bất biến bằng quyền DB, hai cặp bảng tách, quy tắc domain đứng bằng khoá ngoại ghép (S2).
+
+### Sửa theo từng file
+
+| File | Sửa gì | Mục |
+|---|---|---|
+| `_PLAN.md` | Bảng chỗ quan sát của Phase 11 thêm hai dòng: chờ khoá trên bộ đếm sổ số (ADR-011), latency truy hồi đặt cạnh số chunk (ADR-012). Phase 4 → ☑. Không đụng phần nào khác | S3, W |
+| ADR-012 | Viết lại lý do, quyết định giữ nguyên. Cột cố định là ràng buộc **đề phòng**: việc chính của nó chưa có hiệu lực vì chưa có index ANN. Có tín hiệu kích hoạt index. A-037 chỉ cứng kể từ lúc có index. Có câu chống việc gỡ ràng buộc. Nói thẳng rằng lý do loại Option A cũng nhìn về lúc có index | T1 |
+| ADR-003 | Hai câu đã thành sai vì T2: câu hệ quả "không phụ thuộc vendor", và chữ "nên" thành "phải" ở điều kiện đảo ngược | T2, bản nới F3 |
+| `ASSUMPTIONS.md` → v0.15 | A-024 viết lại thành ràng buộc mua sắm. A-037 sửa lý do. A-038 ghi phương án có giá, đủ hai vế. A-009 và A-036 có hạn cứng "Trước Phase 7", kèm ghi nhận hạn cũ đã trượt. Thêm A-046 (exclusion constraint cho `room_booking`) và A-047 (`schema.sql` chưa từng chạy — điều kiện chặn) | T1–T4, U4, U5 |
+| `04-data.md` → v0.2 | Mục 1.1 có lý do tách cho mọi dòng nhiều bảng, cộng câu độ phủ 45 bảng. Mục 1.5 mới: phép thử enum xuyên phase. Mục 3.8: ràng buộc bù cho `graph_thread`. Mục 3.9: thiết kế đích và thiết kế tạm. Mục 4.4 mới: khoảng hoàn tất phát hành. Mục 5.4: ca đồng bộ duy nhất, và A-024. Mục 6: A-037 và tín hiệu ANN. Mục 8.5 trỏ về A-038. Open Questions cập nhật | T1–T4, U1–U5, V1, V3 |
+| `schema.sql` | Thêm index `ix_register_entry_issue_decision`; chú thích `room_booking` ghi thiết kế tạm | V1, T3 |
+| `03-agents.md` → v0.5 | Danh sách ngoại lệ đóng, ghi ngay tại chỗ phát biểu luật ở mục Tool Registry | U1 |
+| `02-architecture.md` → v0.7 | Câu "`orchestrator` không tự ghi PostgreSQL" đã sai với bảng checkpoint và `graph_thread` — nay trỏ tới danh sách ngoại lệ | U1, bản nới F3 |
+| `GLOSSARY.md` → v0.13 | Định nghĩa `graph_thread` thêm ràng buộc bù | U1 |
+
+### Ba xác nhận (V)
+
+- **V1 — chưa có trước vòng này.** Bản 0.1 chỉ nói `issue_in_progress` là cờ dẫn xuất, không nói dẫn xuất từ đâu. Mục 4.4 nay ghi cách dẫn xuất từ `decision_record`, `document_register_entry` và `document_halt`. Không thêm cột; thêm một index.
+- **V2 — có từ bản 0.1.** `ck_document_archive_reason_abandoned_draft` buộc `archive_reason` không rỗng khi `archived_from_status = 'CHANGES_REQUESTED'`. Đó là một `CHECK` có điều kiện, không phải `NOT NULL` trên cột, vì đường vào `ARCHIVED` thứ nhất không bắt buộc lý do.
+- **V3 — đủ 45 bảng.** Không bảng nào đứng ngoài ánh xạ. Năm dòng nhiều bảng trước đây thiếu lý do tách; nay đã có.
+
+### Một chỗ lệch nhẹ với chỉ thị T1
+
+T1 nói cột cố định "hôm nay không gánh gì". Kiểm lại thì nó gánh **một việc nhỏ**: cho bước kiểm lúc khởi động một con số thật trong DDL để so với bản khai `dimension`. Việc chính của nó — index được mà không phải migrate cột — đúng là chưa có hiệu lực. ADR-012 ghi cả hai. Cột cố định có từ chối vector sai chiều lúc ghi hay không là hành vi thư viện nằm ngoài nguồn đã ghim — `[CẦN XÁC MINH]`, không được tính là lý do.
+
+### Cần anh cho phép trước — chưa làm
+
+- **Thêm việc kiểm lại checksum của bản đã ghim `APPROVED_CONTENT` vào hợp đồng của `signing_route`** ở mục Tool Registry của `03-agents.md` (U3). Có phép này thì không lần kiểm checksum nào nằm trong luồng request đồng bộ. Chưa có phép thì lần kiểm của lần ghim thứ nhất vẫn là thứ duy nhất có thể chạm A-025.
+
+### Phát hiện mới
+
+- **Câu dẫn của khối chỗ quan sát trong `_PLAN.md` vẫn ghi "ADR ở Phase 2"**, dù bảng nay có dòng của ADR-011 và ADR-012. Không sửa: phép S3 chỉ phủ cái bảng.
+- **Ba tham chiếu nội bộ trong `04-data.md` trỏ nhầm "mục 6.4"** cho phần lọc quyền theo phòng ban, vốn nằm ở mục 6.3. Lỗi của tôi ở bản 0.1, đã sửa.
+
+
+---
+
+## 2026-09-13 (lần 3) — Tool `render_integrity_check`
+
+Anh cho phép chuyển việc đọc lại object để kiểm checksum của bản đã ghim `APPROVED_CONTENT` ra khỏi luồng request đồng bộ, sang phía sau cổng 1, kèm mã lỗi dẫn tới `halt_for_human`.
+
+**Cách viết lý do — theo chỉ thị, không phải một cách lách A-025.** Người duyệt nội dung duyệt **giá trị biến** (INV-01); người ký đặt chữ ký lên **byte**. Toàn vẹn byte vì vậy được kiểm ngay trước người đầu tiên dựa vào byte. Việc nó rời luồng đồng bộ là hệ quả của vị trí đúng.
+
+**Chọn (a) — tool riêng, không gộp vào `signing_route`.** Bốn lý do, ghi ở mục Tool Registry của `03-agents.md`:
+1. `signing_route` có đúng một việc.
+2. Cùng phép kiểm cần ở hai chỗ, `route_signing` và `finalize_issue`.
+3. Hai lớp timeout khác nhau.
+4. Hai loại lỗi đòi hai cách tiếp quản khác nhau.
+
+| File | Sửa gì |
+|---|---|
+| `03-agents.md` → v0.6 | Mục 5.1: dòng `render_integrity_check` đủ chín cột, cộng đoạn "nằm ở đâu, và vì sao là tool riêng". Mục 5.4: dòng mới trong bảng ai gọi tool nào. Bước 3 của `finalize_issue` và nhánh `VOIDED` nhắc tới phép kiểm. Sơ đồ phần 2 của `document_graph`: nhãn `route_signing` và cạnh tới `halt_for_human`. Bảng cạnh điều kiện. Danh sách tool cấm của `drafting_agent` |
+| `GLOSSARY.md` → v0.14 | Mục 12: `render_integrity_check` trong nhóm node tất định sau cổng |
+| `04-data.md` → v0.3 | Mục 5.4: lý do vị trí, hệ quả cho luồng đồng bộ, số phận của `document` sau khi trượt kiểm. Open Questions mục 10 đóng |
+| `ASSUMPTIONS.md` | A-025: lo ngại cho biện pháp này đã hết, và vì sao |
+
+Sơ đồ, bảng cạnh điều kiện, bước của `finalize_issue` và danh sách tool cấm của `drafting_agent` được sửa theo bản nới F3: không sửa thì chúng thành thiếu hoặc sai so với tool mới.
+
+Không đổi máy trạng thái: trượt kiểm thì `document` đứng yên ở trạng thái lúc kiểm. Cách tiếp quản sau khi trượt kiểm thuộc Phase 8, cùng bảng mã lý do dừng.
