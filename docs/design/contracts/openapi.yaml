@@ -1,0 +1,2900 @@
+openapi: 3.1.0
+info:
+  title: BO-19 Admin Service Desk Agent API
+  version: 0.1.0
+  description: |
+    Contract máy đọc được của `docs/design/05-api.md` (Phase 5). Diễn giải, lý do và
+    giới hạn nằm ở file đó; file này không lặp lại lập luận.
+
+    Phạm vi: khớp đúng tập endpoint có contract ở mục Endpoint của `05-api.md`.
+    Endpoint mang nhãn `[NGOÀI-OPENAPI]` KHÔNG có ở đây — vắng mặt của chúng không
+    phải lỗi lệch (mục Nguyên tắc chung của `05-api.md`).
+
+    Extension dùng trong file:
+      x-bo19-operation          tên thao tác của tool_layer (GLOSSARY.md mục 12, 05-api.md mục 2.1)
+      x-bo19-permission         permission cần có (D-005 — permission, không phải vai trò)
+      x-bo19-permission-status  NOT_IN_CATALOG_A042 khi permission chưa có trong danh mục
+      x-bo19-execution          SYNC | SYNC_ENQUEUE | SYNC_OBJECT_STORAGE | SYNC_GRAPH | STREAM
+      x-bo19-enqueues           loại job enqueue trong cùng giao dịch
+      x-bo19-idempotency-key    dòng chính mà Idempotency-Key phải bằng id của nó; "none" nếu không cần
+      x-bo19-feature            feature ở PRD
+      x-bo19-scope              Should — hạng mục bị cắt khỏi Sprint đầu
+      x-bo19-sse-events         tên sự kiện SSE -> schema của trường data
+
+    Mọi lệnh không phải GET bắt buộc header X-BO19-CSRF. Mọi response lỗi có đủ
+    error_code, message, trace_id.
+servers:
+  - url: /api/v1
+security:
+  - sessionCookie: []
+tags:
+  - name: auth
+  - name: chat
+  - name: requests
+  - name: documents
+  - name: files
+  - name: notifications
+  - name: config
+  - name: audit
+  - name: delegations
+
+paths:
+  /auth/session:
+    post:
+      tags: [auth]
+      operationId: createSession
+      summary: Đăng nhập
+      description: Sai mã nhân viên hay sai mật khẩu đều trả INVALID_CREDENTIALS. Vòng đời credential ở A-048.
+      security: []
+      x-bo19-execution: SYNC
+      x-bo19-idempotency-key: none
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginBody' }
+      responses:
+        '204':
+          description: Đã tạo phiên
+          headers:
+            Set-Cookie:
+              description: bo19_session; HttpOnly; Secure; SameSite=Strict; Path=/api
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    delete:
+      tags: [auth]
+      operationId: deleteSession
+      summary: Đăng xuất
+      x-bo19-execution: SYNC
+      x-bo19-idempotency-key: none
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      responses:
+        '204': { description: Đã huỷ phiên }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /me:
+    get:
+      tags: [auth]
+      operationId: getMe
+      summary: Nhân viên đang đăng nhập, permission hiệu lực, chế độ vận hành
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /chat-sessions:
+    post:
+      tags: [chat]
+      operationId: openChatSession
+      summary: Lấy phiên đang mở hoặc mở phiên mới
+      x-bo19-operation: chat_session_open
+      x-bo19-permission: [request.create, request.create_on_behalf]
+      x-bo19-execution: SYNC
+      x-bo19-idempotency-key: chat_session
+      x-bo19-feature: F1
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Phiên đang mở có sẵn
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChatSession' }
+        '201':
+          description: Phiên mới
+          headers:
+            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChatSession' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /chat-sessions/{chat_session_id}:
+    parameters:
+      - $ref: '#/components/parameters/ChatSessionId'
+    get:
+      tags: [chat]
+      operationId: getChatSession
+      summary: Một phiên — chỉ chủ phiên
+      x-bo19-feature: F1
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChatSession' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /chat-sessions/{chat_session_id}/messages:
+    parameters:
+      - $ref: '#/components/parameters/ChatSessionId'
+    get:
+      tags: [chat]
+      operationId: listChatMessages
+      summary: Tin nhắn của phiên, seq giảm dần — chỉ chủ phiên
+      description: Nguồn có thẩm quyền của mọi lượt chat. Index uq_chat_message_seq.
+      x-bo19-feature: F1
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChatMessagePage' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /chat-sessions/{chat_session_id}/turns:
+    parameters:
+      - $ref: '#/components/parameters/ChatSessionId'
+    post:
+      tags: [chat]
+      operationId: postChatTurn
+      summary: Một lượt chat — response là stream lượt chat
+      description: |
+        Chủ phiên. Lỗi trước khi stream bắt đầu trả JSON ErrorEnvelope; lỗi sau đó đi thành sự kiện turn.error.
+        Mọi lượt đã nhận kết thúc bằng đúng một chat_message của agent (mục SSE của 05-api.md).
+      x-bo19-operation: chat_message_append
+      x-bo19-permission: [request.create, request.create_on_behalf]
+      x-bo19-execution: SYNC_GRAPH
+      x-bo19-idempotency-key: chat_message
+      x-bo19-feature: F1
+      x-bo19-sse-events:
+        turn.accepted: { $ref: '#/components/schemas/TurnAcceptedEvent' }
+        turn.progress: { $ref: '#/components/schemas/TurnProgressEvent' }
+        turn.reply: { $ref: '#/components/schemas/TurnReplyEvent' }
+        turn.error: { $ref: '#/components/schemas/ErrorEnvelope' }
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AcceptEventStream'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TurnBody' }
+      responses:
+        '200':
+          description: Stream lượt chat
+          headers:
+            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+          content:
+            text/event-stream:
+              schema: { type: string }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '406': { $ref: '#/components/responses/NotAcceptable' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /requests:
+    get:
+      tags: [requests]
+      operationId: listRequests
+      summary: Danh sách request
+      description: |
+        OWN — do mình tạo, index ix_request_created_by. ALL — mặc định lọc bốn trạng thái mở sau SUBMITTED,
+        sắp theo status_changed_at, CHƯA có index (Open Questions của 05-api.md). ASSIGNED — index ix_approval_step_assignee.
+      x-bo19-permission: [request.read_own, request.read_all, request.read_assigned]
+      x-bo19-feature: F4
+      parameters:
+        - name: scope
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/RequestListScope' }
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/RequestStatus' }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestSummaryPage' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /requests/{request_id}:
+    parameters:
+      - $ref: '#/components/parameters/RequestId'
+    get:
+      tags: [requests]
+      operationId: getRequest
+      summary: Chi tiết request — slot, còn thiếu gì, cần sửa gì, artifact
+      x-bo19-permission: [request.read_own, request.read_all, request.read_assigned]
+      x-bo19-feature: F4
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestDetail' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /requests/{request_id}/actions/confirm-slots:
+    parameters:
+      - $ref: '#/components/parameters/RequestId'
+    post:
+      tags: [requests]
+      operationId: confirmSlots
+      summary: Xác nhận từng giá trị đề xuất
+      description: Chỉ UPDATE có điều kiện; không cần Idempotency-Key. Không có chế độ xác nhận tất cả.
+      x-bo19-operation: request_slot_confirm
+      x-bo19-permission: [request.supply_info]
+      x-bo19-execution: SYNC
+      x-bo19-idempotency-key: none
+      x-bo19-feature: F1
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SlotConfirmBody' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestDetail' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /requests/{request_id}/actions/submit:
+    parameters:
+      - $ref: '#/components/parameters/RequestId'
+    post:
+      tags: [requests]
+      operationId: submitRequest
+      summary: Gửi, hoặc gửi lại ở ca SLOT_DATA
+      x-bo19-operation: request_submit
+      x-bo19-permission: [request.create, request.supply_info]
+      x-bo19-execution: SYNC_ENQUEUE
+      x-bo19-enqueues: [render_document, resume_document_graph]
+      x-bo19-idempotency-key: decision_record (SUBMITTED | RESUBMITTED)
+      x-bo19-feature: F1
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubmitBody' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DecisionResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /requests/{request_id}/actions/cancel:
+    parameters:
+      - $ref: '#/components/parameters/RequestId'
+    post:
+      tags: [requests]
+      operationId: cancelRequest
+      summary: Huỷ — chỉ từ DRAFT, hoặc CHANGES_REQUESTED ca SLOT_DATA
+      x-bo19-operation: request_cancel
+      x-bo19-permission: [request.cancel_own]
+      x-bo19-execution: SYNC_ENQUEUE
+      x-bo19-enqueues: [resume_document_graph]
+      x-bo19-idempotency-key: decision_record (REQUEST_CANCELLED)
+      x-bo19-feature: F1
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CancelBody' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DecisionResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /review-queue:
+    get:
+      tags: [documents]
+      operationId: listReviewQueue
+      summary: Hàng đợi một trạng thái chờ, chờ lâu nhất trước
+      description: status bắt buộc, một giá trị, để đi đúng ix_document_review_queue.
+      x-bo19-permission: [document.approve_content, document.sign, document.apply_seal]
+      x-bo19-feature: F4
+      parameters:
+        - name: status
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/ReviewQueueStatus' }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewQueuePage' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /issue-queue:
+    get:
+      tags: [documents]
+      operationId: listIssueQueue
+      summary: Văn bản SIGNED không cần dấu hoặc SEALED, chờ lệnh phát hành
+      description: Chưa có index cho thứ tự này (Open Questions của 05-api.md).
+      x-bo19-permission: [document.issue]
+      x-bo19-feature: F3
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewQueuePage' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /documents/{document_id}:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      tags: [documents]
+      operationId: getDocumentForReview
+      summary: Màn hình duyệt
+      x-bo19-permission: [request.read_all, request.read_assigned]
+      x-bo19-feature: F2
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentReviewView' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /documents/{document_id}/actions/approve-content:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      tags: [documents]
+      operationId: approveContent
+      summary: Duyệt nội dung — cổng HITL số 1
+      x-bo19-operation: document_approve_content
+      x-bo19-permission: [document.approve_content]
+      x-bo19-execution: SYNC_ENQUEUE
+      x-bo19-enqueues: [resume_document_graph]
+      x-bo19-idempotency-key: decision_record (APPROVED)
+      x-bo19-feature: F3
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApproveContentBody' }
+      responses:
+        '200': { $ref: '#/components/responses/DecisionOk' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /documents/{document_id}/actions/request-changes:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      tags: [documents]
+      operationId: requestChanges
+      summary: Yêu cầu sửa — từ PENDING_APPROVAL hoặc PENDING_SIGNATURE
+      x-bo19-operation: document_request_changes
+      x-bo19-permission: [document.request_changes]
+      x-bo19-execution: SYNC_ENQUEUE
+      x-bo19-enqueues: [resume_document_graph]
+      x-bo19-idempotency-key: decision_record (CHANGES_REQUESTED)
+      x-bo19-feature: F3
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RequestChangesBody' }
+      responses:
+        '200': { $ref: '#/components/responses/DecisionOk' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /documents/{document_id}/actions/reject:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      tags: [documents]
+      operationId: rejectDocument
+      summary: Từ chối kèm lý do
+      x-bo19-operation: document_reject
+      x-bo19-permission: [document.reject]
+      x-bo19-execution: SYNC_ENQUEUE
+      x-bo19-enqueues: [resume_document_graph]
+      x-bo19-idempotency-key: decision_record (REJECTED)
+      x-bo19-feature: F3
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RejectBody' }
+      responses:
+        '200': { $ref: '#/components/responses/DecisionOk' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /documents/{document_id}/actions/sign:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      tags: [documents]
+      operationId: signDocument
+      summary: Ghi nhận ký
+      x-bo19-operation: document_sign
+      x-bo19-permission: [document.sign]
+      x-bo19-execution: SYNC_ENQUEUE
+      x-bo19-enqueues: [resume_document_graph]
+      x-bo19-idempotency-key: decision_record (SIGNED)
+      x-bo19-feature: F3
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignBody' }
+      responses:
+        '200': { $ref: '#/components/responses/DecisionOk' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /documents/{document_id}/actions/apply-seal:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      tags: [documents]
+      operationId: applySeal
+      summary: Duyệt dấu — cổng HITL số 2
+      description: seal_type lấy từ document, không nhận từ client.
+      x-bo19-operation: document_apply_seal
+      x-bo19-permission: [document.apply_seal]
+      x-bo19-execution: SYNC_ENQUEUE
+      x-bo19-enqueues: [resume_document_graph]
+      x-bo19-idempotency-key: decision_record (SEALED)
+      x-bo19-feature: F3
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApplySealBody' }
+      responses:
+        '200': { $ref: '#/components/responses/DecisionOk' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /documents/{document_id}/actions/issue:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      tags: [documents]
+      operationId: orderIssue
+      summary: Ghi lệnh phát hành — không cấp số
+      description: Cấp số và ISSUED xảy ra trong finalize_issue ở queue_worker. Response mang issue_in_progress = true.
+      x-bo19-operation: document_issue
+      x-bo19-permission: [document.issue]
+      x-bo19-execution: SYNC_ENQUEUE
+      x-bo19-enqueues: [finalize_issue]
+      x-bo19-idempotency-key: decision_record (ISSUE_ORDERED)
+      x-bo19-feature: F3
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IssueBody' }
+      responses:
+        '202':
+          description: Đã ghi lệnh phát hành
+          headers:
+            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DecisionResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /documents/{document_id}/actions/revoke-initiate:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      tags: [documents]
+      operationId: initiateRevocation
+      summary: Khởi tạo thu hồi
+      x-bo19-operation: document_revoke_initiate
+      x-bo19-permission: [document.revoke_initiate]
+      x-bo19-execution: SYNC
+      x-bo19-idempotency-key: decision_record (REVOKE_INITIATED)
+      x-bo19-feature: F5
+      x-bo19-scope: Should
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RevokeInitiateBody' }
+      responses:
+        '200': { $ref: '#/components/responses/DecisionOk' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /documents/{document_id}/actions/revoke-confirm:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      tags: [documents]
+      operationId: confirmRevocation
+      summary: Xác nhận thu hồi — người khác người khởi tạo
+      x-bo19-operation: document_revoke_confirm
+      x-bo19-permission: [document.revoke_confirm]
+      x-bo19-execution: SYNC
+      x-bo19-idempotency-key: decision_record (REVOKE_CONFIRMED)
+      x-bo19-feature: F5
+      x-bo19-scope: Should
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RevokeConfirmBody' }
+      responses:
+        '200': { $ref: '#/components/responses/DecisionOk' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /documents/{document_id}/renders/{render_id}/file:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+      - $ref: '#/components/parameters/RenderId'
+    get:
+      tags: [files]
+      operationId: downloadRender
+      summary: Tải bản render (ADR-014)
+      description: |
+        request.read_all hoặc request.read_assigned — mọi bản, cả hai định dạng. Người tạo yêu cầu có
+        request.read_own — chỉ bản FINAL, chỉ pdf, chỉ khi document đã ISSUED hoặc sau đó.
+        So checksum trước byte đầu tiên; ghi audit_event.
+      x-bo19-operation: stored_file_fetch
+      x-bo19-permission: [request.read_all, request.read_assigned, request.read_own]
+      x-bo19-execution: SYNC_OBJECT_STORAGE
+      x-bo19-feature: F3
+      parameters:
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [pdf, docx]
+      responses:
+        '200':
+          description: File
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+            Cache-Control:
+              description: no-store
+              schema: { type: string }
+          content:
+            application/pdf:
+              schema:
+                type: string
+                contentMediaType: application/pdf
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema:
+                type: string
+                contentMediaType: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/FileUnavailable' }
+
+  /notifications:
+    get:
+      tags: [notifications]
+      operationId: listNotifications
+      summary: Thông báo của mình, mới nhất trước
+      x-bo19-feature: F4
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationPage' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /signals:
+    get:
+      tags: [notifications]
+      operationId: streamSignals
+      summary: Stream tín hiệu (ADR-013)
+      description: |
+        Không id sự kiện, không Last-Event-ID. Sự kiện đầu tiên sau mỗi lần kết nối mang mọi chủ đề người đó được theo dõi.
+        Server tự đóng stream trước giới hạn thời gian request (A-025).
+      x-bo19-execution: STREAM
+      x-bo19-feature: F4
+      x-bo19-sse-events:
+        signal: { $ref: '#/components/schemas/SignalEvent' }
+      parameters:
+        - $ref: '#/components/parameters/AcceptEventStream'
+      responses:
+        '200':
+          description: Stream tín hiệu
+          content:
+            text/event-stream:
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '406': { $ref: '#/components/responses/NotAcceptable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /templates:
+    get:
+      tags: [config]
+      operationId: listTemplates
+      summary: Danh sách template, theo code
+      x-bo19-permission: [template.manage]
+      x-bo19-feature: F6
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TemplatePage' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [config]
+      operationId: createTemplate
+      summary: Tạo template
+      x-bo19-operation: template_create
+      x-bo19-permission: [template.manage]
+      x-bo19-execution: SYNC
+      x-bo19-idempotency-key: template
+      x-bo19-feature: F6
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TemplateCreateBody' }
+      responses:
+        '201':
+          description: Đã tạo
+          headers:
+            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Template' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /templates/{template_id}:
+    parameters:
+      - $ref: '#/components/parameters/TemplateId'
+    get:
+      tags: [config]
+      operationId: getTemplate
+      summary: Template, các phiên bản và danh mục biến
+      x-bo19-permission: [template.manage]
+      x-bo19-feature: F6
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Template' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /templates/{template_id}/versions:
+    parameters:
+      - $ref: '#/components/parameters/TemplateId'
+    post:
+      tags: [config]
+      operationId: uploadTemplateVersion
+      summary: Tải lên phiên bản template — file .docx cộng manifest
+      x-bo19-operation: template_version_upload
+      x-bo19-permission: [template.manage]
+      x-bo19-execution: SYNC_OBJECT_STORAGE
+      x-bo19-idempotency-key: template_version
+      x-bo19-feature: F6
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/TemplateVersionUpload' }
+            encoding:
+              manifest:
+                contentType: application/json
+      responses:
+        '201':
+          description: Đã tải lên, ở UPLOADED
+          headers:
+            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TemplateVersion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /templates/{template_id}/versions/{template_version_id}/actions/activate:
+    parameters:
+      - $ref: '#/components/parameters/TemplateId'
+      - $ref: '#/components/parameters/TemplateVersionId'
+    post:
+      tags: [config]
+      operationId: activateTemplateVersion
+      summary: Kích hoạt phiên bản; phiên bản đang ACTIVE sang RETIRED trong cùng giao dịch
+      x-bo19-operation: template_version_activate
+      x-bo19-permission: [template.manage]
+      x-bo19-execution: SYNC
+      x-bo19-idempotency-key: none
+      x-bo19-feature: F6
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ActivateBody' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TemplateVersion' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /templates/{template_id}/versions/{template_version_id}/source:
+    parameters:
+      - $ref: '#/components/parameters/TemplateId'
+      - $ref: '#/components/parameters/TemplateVersionId'
+    get:
+      tags: [files]
+      operationId: downloadTemplateSource
+      summary: Tải bản gốc template (ADR-014)
+      x-bo19-operation: stored_file_fetch
+      x-bo19-permission: [template.manage]
+      x-bo19-execution: SYNC_OBJECT_STORAGE
+      x-bo19-feature: F6
+      responses:
+        '200':
+          description: File
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+            Cache-Control:
+              description: no-store
+              schema: { type: string }
+          content:
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema:
+                type: string
+                contentMediaType: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { $ref: '#/components/responses/FileUnavailable' }
+
+  /employee-imports:
+    post:
+      tags: [config]
+      operationId: importEmployees
+      summary: Import CSV hồ sơ nhân viên — cả đợt hoặc không dòng nào
+      x-bo19-operation: employee_import
+      x-bo19-permission: [employee.import]
+      x-bo19-execution: SYNC
+      x-bo19-idempotency-key: audit_event (đợt import)
+      x-bo19-feature: F6
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/EmployeeImportUpload' }
+      responses:
+        '201':
+          description: Đã import
+          headers:
+            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmployeeImportResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /employee-imports/{import_id}:
+    parameters:
+      - $ref: '#/components/parameters/ImportId'
+    get:
+      tags: [config]
+      operationId: getEmployeeImport
+      summary: Kết quả một đợt import, đọc từ audit_event của đợt
+      x-bo19-permission: [employee.import]
+      x-bo19-feature: F6
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmployeeImportResult' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /procedures:
+    get:
+      tags: [config]
+      operationId: listProcedures
+      summary: Tài liệu quy trình và các phiên bản, theo code
+      x-bo19-permission: [procedure.manage]
+      x-bo19-feature: F1
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProcedurePage' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /procedures/versions:
+    post:
+      tags: [config]
+      operationId: uploadProcedureVersion
+      summary: Tải lên phiên bản tài liệu quy trình; nạp kho chạy trong job
+      x-bo19-operation: procedure_version_upload
+      x-bo19-permission: [procedure.manage]
+      x-bo19-execution: SYNC_OBJECT_STORAGE
+      x-bo19-enqueues: [procedure_ingest]
+      x-bo19-idempotency-key: procedure_document_version
+      x-bo19-feature: F1
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/ProcedureUpload' }
+            encoding:
+              metadata:
+                contentType: application/json
+      responses:
+        '202':
+          description: Đã nhận; phiên bản chưa hiệu lực cho tới khi job nạp kho xong
+          headers:
+            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProcedureVersion' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /procedures/{procedure_document_id}/versions/{version_id}/actions/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/ProcedureDocumentId'
+      - $ref: '#/components/parameters/ProcedureVersionId'
+    post:
+      tags: [config]
+      operationId: deactivateProcedureVersion
+      summary: Gỡ phiên bản — tắt hiệu lực, xoá embedding, giữ chunk
+      x-bo19-operation: procedure_version_deactivate
+      x-bo19-permission: [procedure.manage]
+      x-bo19-execution: SYNC
+      x-bo19-idempotency-key: none
+      x-bo19-feature: F1
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeactivateBody' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProcedureVersion' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /config/request-types:
+    get:
+      tags: [config]
+      operationId: listRequestTypeConfigs
+      summary: Cấu hình loại yêu cầu, theo code
+      x-bo19-permission: [request_type.manage, template.manage]
+      x-bo19-permission-status: NOT_IN_CATALOG_A042
+      x-bo19-feature: F6
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestTypeConfigPage' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /config/request-types/{request_type_code}:
+    parameters:
+      - $ref: '#/components/parameters/RequestTypeCodePath'
+    get:
+      tags: [config]
+      operationId: getRequestTypeConfig
+      summary: Một loại yêu cầu, gồm slot schema
+      x-bo19-permission: [request_type.manage, template.manage]
+      x-bo19-permission-status: NOT_IN_CATALOG_A042
+      x-bo19-feature: F6
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestTypeConfig' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    put:
+      tags: [config]
+      operationId: upsertRequestType
+      summary: Tạo hoặc sửa loại yêu cầu — không có expected_row_version là tạo
+      x-bo19-operation: request_type_upsert
+      x-bo19-permission: [request_type.manage]
+      x-bo19-permission-status: NOT_IN_CATALOG_A042
+      x-bo19-execution: SYNC
+      x-bo19-idempotency-key: none
+      x-bo19-feature: F6
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RequestTypeUpsertBody' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestTypeConfig' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /config/request-types/{request_type_code}/slots/{slot_name}:
+    parameters:
+      - $ref: '#/components/parameters/RequestTypeCodePath'
+      - $ref: '#/components/parameters/SlotNamePath'
+    put:
+      tags: [config]
+      operationId: upsertSlotDefinition
+      summary: Tạo hoặc sửa slot — không đổi độ nhạy của slot đã có
+      x-bo19-operation: slot_definition_upsert
+      x-bo19-permission: [request_type.manage]
+      x-bo19-permission-status: NOT_IN_CATALOG_A042
+      x-bo19-execution: SYNC
+      x-bo19-idempotency-key: none
+      x-bo19-feature: F6
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SlotDefinitionUpsertBody' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SlotDefinitionConfig' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /config/request-types/{request_type_code}/slots/{slot_name}/sensitivity-change-preview:
+    parameters:
+      - $ref: '#/components/parameters/RequestTypeCodePath'
+      - $ref: '#/components/parameters/SlotNamePath'
+    get:
+      tags: [config]
+      operationId: previewSensitivityChange
+      summary: Xem trước số dòng sẽ bị xoá giá trị
+      x-bo19-permission: [request_type.manage]
+      x-bo19-permission-status: NOT_IN_CATALOG_A042
+      x-bo19-feature: F6
+      parameters:
+        - name: to
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/SlotSensitivity' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SensitivityChangePreview' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /config/request-types/{request_type_code}/slots/{slot_name}/actions/change-sensitivity:
+    parameters:
+      - $ref: '#/components/parameters/RequestTypeCodePath'
+      - $ref: '#/components/parameters/SlotNamePath'
+    post:
+      tags: [config]
+      operationId: changeSlotSensitivity
+      summary: Đổi độ nhạy; nâng lên RES là phá huỷ
+      x-bo19-operation: slot_sensitivity_change
+      x-bo19-permission: [request_type.manage]
+      x-bo19-permission-status: NOT_IN_CATALOG_A042
+      x-bo19-execution: SYNC
+      x-bo19-idempotency-key: none
+      x-bo19-feature: F6
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangeSensitivityBody' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SensitivityChangeResult' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /audit-events:
+    get:
+      tags: [audit]
+      operationId: listAuditEvents
+      summary: Nhật ký nghiệp vụ
+      description: audit.read_own bắt buộc lọc request_id của request do mình tạo.
+      x-bo19-permission: [audit.read_own, audit.read_all]
+      x-bo19-feature: F3
+      parameters:
+        - name: request_id
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - name: document_id
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - name: severity
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/AuditSeverity' }
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^[a-z_]+\.[a-z_]+$'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuditEventPage' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /self-approvals:
+    get:
+      tags: [audit]
+      operationId: listSelfApprovals
+      summary: Mục riêng cho các lần tự duyệt — D-006 điều kiện 4
+      x-bo19-permission: [audit.read_all]
+      x-bo19-feature: F3
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SelfApprovalPage' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /delegations:
+    get:
+      tags: [delegations]
+      operationId: listDelegations
+      summary: Uỷ quyền — chỉ hình dạng
+      x-bo19-permission: [delegation.manage]
+      x-bo19-scope: Should
+      parameters:
+        - name: as
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [DELEGATOR, DELEGATE]
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelegationPage' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [delegations]
+      operationId: createDelegation
+      summary: Lập uỷ quyền — chỉ hình dạng
+      x-bo19-operation: delegation_create
+      x-bo19-permission: [delegation.manage]
+      x-bo19-execution: SYNC
+      x-bo19-idempotency-key: delegation
+      x-bo19-scope: Should
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DelegationCreateBody' }
+      responses:
+        '201':
+          description: Đã lập
+          headers:
+            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Delegation' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /delegations/{delegation_id}/actions/revoke:
+    parameters:
+      - $ref: '#/components/parameters/DelegationId'
+    post:
+      tags: [delegations]
+      operationId: revokeDelegation
+      summary: Thu hồi uỷ quyền — chỉ hình dạng
+      x-bo19-operation: delegation_revoke
+      x-bo19-permission: [delegation.manage]
+      x-bo19-execution: SYNC
+      x-bo19-idempotency-key: none
+      x-bo19-scope: Should
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RevokeDelegationBody' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Delegation' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: bo19_session
+      description: HttpOnly; Secure; SameSite=Strict; Path=/api (ADR-013). Nơi lưu phiên và thời hạn — A-048.
+
+  headers:
+    IdempotentReplayed:
+      description: true khi response là lần lặp lại hợp lệ của một lệnh đã thành công
+      schema: { type: boolean }
+
+  parameters:
+    CsrfHeader:
+      name: X-BO19-CSRF
+      in: header
+      required: true
+      description: Bắt buộc trên mọi lệnh không phải GET. Server chỉ kiểm sự có mặt (A-051).
+      schema: { type: string, minLength: 1 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Bằng uuid của dòng chính mà lệnh ghi tạo ra (x-bo19-idempotency-key).
+      schema: { type: string, format: uuid }
+    AcceptEventStream:
+      name: Accept
+      in: header
+      required: true
+      schema:
+        type: string
+        const: text/event-stream
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Chuỗi mờ; dùng với bộ lọc khác thì trả VALIDATION_FAILED.
+      schema: { type: string }
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Mặc định và trần TBD (A-031).
+      schema: { type: integer, minimum: 1 }
+    ChatSessionId:
+      name: chat_session_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    RequestId:
+      name: request_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    DocumentId:
+      name: document_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    RenderId:
+      name: render_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    TemplateId:
+      name: template_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    TemplateVersionId:
+      name: template_version_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    ImportId:
+      name: import_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    ProcedureDocumentId:
+      name: procedure_document_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    ProcedureVersionId:
+      name: version_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    RequestTypeCodePath:
+      name: request_type_code
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/RequestTypeCode' }
+    SlotNamePath:
+      name: slot_name
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/SlotName' }
+    DelegationId:
+      name: delegation_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+
+  responses:
+    DecisionOk:
+      description: Quyết định đã ghi; bước tiếp theo chạy ở queue_worker nếu có job
+      headers:
+        Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/DecisionResult' }
+    BadRequest:
+      description: IDEMPOTENCY_KEY_REQUIRED
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Unauthenticated:
+      description: UNAUTHENTICATED · INVALID_CREDENTIALS
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Forbidden:
+      description: CSRF_HEADER_MISSING · PERMISSION_DENIED · SELF_APPROVAL_BLOCKED
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    NotFound:
+      description: NOT_FOUND — cả khi tài nguyên tồn tại mà người gọi không được xem
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    NotAcceptable:
+      description: NOT_ACCEPTABLE
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Conflict:
+      description: |
+        IDEMPOTENCY_KEY_CONFLICT · STATE_CONFLICT · SEPARATION_OF_DUTIES_VIOLATION · REQUEST_NOT_EDITABLE ·
+        SLOT_NOT_PROPOSED · SLOT_VALUE_STALE · REQUEST_NOT_CANCELLABLE · CHAT_SESSION_CLOSED · TURN_IN_PROGRESS ·
+        TURN_NOT_FINISHED · USE_SENSITIVITY_CHANGE · DESTRUCTIVE_COUNT_CHANGED
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    PayloadTooLarge:
+      description: PAYLOAD_TOO_LARGE — trần TBD (A-031)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    UnsupportedMediaType:
+      description: UNSUPPORTED_MEDIA_TYPE
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Unprocessable:
+      description: |
+        VALIDATION_FAILED · SELF_APPROVAL_REASON_REQUIRED · REQUEST_NOT_READY · CHANGE_TARGET_INVALID ·
+        TEMPLATE_VARIABLES_INVALID · IMPORT_ROWS_INVALID · DESTRUCTIVE_CONFIRMATION_REQUIRED
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    InternalError:
+      description: INTERNAL_ERROR — mọi mã lỗi nội bộ lọt tới api đều thành mã này
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    FileUnavailable:
+      description: FILE_UNAVAILABLE — mất object hoặc lệch checksum (ADR-014)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  schemas:
+    # ------------------------------------------------------------------ nền
+    Uuid:
+      type: string
+      format: uuid
+    Timestamp:
+      type: string
+      format: date-time
+    RequestTypeCode:
+      description: Chuỗi theo mẫu, không phải enum đóng — F6 thêm loại mới không sửa code
+      type: string
+      pattern: '^[A-Z][A-Z_]*$'
+    SlotName:
+      type: string
+      pattern: '^[a-z][a-z0-9_]*$'
+    PermissionCode:
+      type: string
+      pattern: '^[a-z_]+\.[a-z_]+$'
+    Page:
+      type: object
+      required: [next_cursor]
+      properties:
+        next_cursor:
+          type: [string, 'null']
+
+    # ------------------------------------------------------------------ enum (GLOSSARY.md)
+    RequestStatus:
+      type: string
+      enum: [DRAFT, NEEDS_INFO, SUBMITTED, IN_REVIEW, CHANGES_REQUESTED, APPROVED, FULFILLED, REJECTED, CANCELLED, EXPIRED]
+    DocumentStatus:
+      type: string
+      enum: [DRAFT, PENDING_APPROVAL, CHANGES_REQUESTED, REJECTED, APPROVED, PENDING_SIGNATURE, SIGNED, PENDING_SEAL, SEALED, ISSUED, REVOKED, SUPERSEDED, ARCHIVED]
+    ReviewQueueStatus:
+      type: string
+      enum: [PENDING_APPROVAL, PENDING_SIGNATURE, PENDING_SEAL]
+    RequestListScope:
+      type: string
+      enum: [OWN, ALL, ASSIGNED]
+    SlotSource:
+      type: string
+      enum: [USER_INPUT, HR_PROFILE, RESOURCE_CATALOG, UPLOAD, SYSTEM]
+    SlotSensitivity:
+      type: string
+      enum: [INT, PER, RES]
+    SlotValueStatus:
+      type: string
+      enum: [PROVIDED, PROPOSED, CONFIRMED, SYSTEM_SET, ERASED]
+    SlotDataType:
+      type: string
+      enum: [STRING, TEXT, INT, DATE, TIMESTAMP, ENUM, LIST, BOOL, FILE]
+    ApprovalStepKind:
+      type: string
+      enum: [CONTENT_REVIEW, SIGNATURE, SEAL, BOOKING_CONFIRM]
+    ApprovalStepStatus:
+      type: string
+      enum: [OPEN, DECIDED, CANCELLED]
+    ChatSessionStatus:
+      type: string
+      enum: [OPEN, CLOSED]
+    ChatSessionCloseReason:
+      type: string
+      enum: [IDLE_TIMEOUT, REQUEST_EXPIRED]
+    ChatMessageAuthor:
+      type: string
+      enum: [EMPLOYEE, AGENT]
+    RenderKind:
+      type: string
+      enum: [DRAFT, FINAL]
+    PinReason:
+      type: string
+      enum: [APPROVED_CONTENT, ISSUED]
+    DecisionKind:
+      type: string
+      enum: [SUBMITTED, RESUBMITTED, REQUEST_CANCELLED, APPROVED, CHANGES_REQUESTED, REJECTED, SIGNED, SEALED, ISSUE_ORDERED, REVOKE_INITIATED, REVOKE_CONFIRMED, TAKEOVER_RESOLVED, BOOKING_CONFIRMED]
+    DecisionTextKind:
+      type: string
+      enum: [CHANGE_REASON, REJECTION_REASON, REVOCATION_REASON]
+    ChangeScope:
+      type: string
+      enum: [FREE_CONTENT, SLOT_DATA]
+    SealType:
+      type: string
+      enum: [ORGANIZATION_ROUND, TITLE_STAMP, OVERLAP_STAMP, EDGE_STAMP]
+    OperatingMode:
+      type: string
+      enum: [NON_PRODUCTION, PRODUCTION]
+    RequestTypeSupportStatus:
+      type: string
+      enum: [SUPPORTED, KNOWN_UNSUPPORTED]
+    ArtifactKind:
+      type: string
+      enum: [DOCUMENT, ROOM_BOOKING, SEAL_ACTION]
+    TemplateVariableKind:
+      type: string
+      enum: [DIRECT_SLOT, FREE_CONTENT, SYSTEM]
+    TemplateVersionStatus:
+      type: string
+      enum: [UPLOADED, ACTIVE, RETIRED]
+    AuditSeverity:
+      type: string
+      enum: [INFO, WARNING]
+    AuditActorKind:
+      type: string
+      enum: [EMPLOYEE, SYSTEM]
+    ProcedureVisibility:
+      type: string
+      enum: [ORG_WIDE, DEPARTMENT_ONLY]
+    TurnStage:
+      type: string
+      enum: [UNDERSTANDING, LOOKING_UP, PREPARING_REPLY]
+    SignalTopic:
+      type: string
+      enum: [NOTIFICATIONS, MY_REQUESTS, REVIEW_QUEUE]
+    PendingQuestionKind:
+      type: string
+      enum: [CLARIFY_TYPE, ASK_SLOT, CONFIRM_PROPOSALS, OFFER_SUBMIT, OFFER_NEXT_INTENT, EXPLAIN_TERMINAL]
+
+    # ------------------------------------------------------------------ lỗi
+    ErrorCode:
+      description: Danh mục ở mục Mã lỗi của 05-api.md — nguồn duy nhất
+      type: string
+      enum:
+        - UNAUTHENTICATED
+        - INVALID_CREDENTIALS
+        - CSRF_HEADER_MISSING
+        - PERMISSION_DENIED
+        - SELF_APPROVAL_BLOCKED
+        - NOT_FOUND
+        - NOT_ACCEPTABLE
+        - IDEMPOTENCY_KEY_REQUIRED
+        - IDEMPOTENCY_KEY_CONFLICT
+        - STATE_CONFLICT
+        - SEPARATION_OF_DUTIES_VIOLATION
+        - REQUEST_NOT_EDITABLE
+        - SLOT_NOT_PROPOSED
+        - SLOT_VALUE_STALE
+        - REQUEST_NOT_CANCELLABLE
+        - CHAT_SESSION_CLOSED
+        - TURN_IN_PROGRESS
+        - TURN_NOT_FINISHED
+        - USE_SENSITIVITY_CHANGE
+        - DESTRUCTIVE_COUNT_CHANGED
+        - PAYLOAD_TOO_LARGE
+        - UNSUPPORTED_MEDIA_TYPE
+        - VALIDATION_FAILED
+        - SELF_APPROVAL_REASON_REQUIRED
+        - REQUEST_NOT_READY
+        - CHANGE_TARGET_INVALID
+        - TEMPLATE_VARIABLES_INVALID
+        - IMPORT_ROWS_INVALID
+        - DESTRUCTIVE_CONFIRMATION_REQUIRED
+        - INTERNAL_ERROR
+        - FILE_UNAVAILABLE
+    FieldErrorCode:
+      type: string
+      enum: [REQUIRED, BLANK, INVALID_FORMAT, OUT_OF_RANGE, NOT_ALLOWED, TOO_LONG]
+    VariableErrorCode:
+      type: string
+      enum: [MISSING_REQUIRED, NOT_IN_FILE, NOT_IN_MANIFEST, INPUT_NOT_ALLOWED, SOURCE_SLOT_UNKNOWN]
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required: [error_code, message, trace_id]
+      properties:
+        error_code: { $ref: '#/components/schemas/ErrorCode' }
+        message:
+          description: Tiếng Việt, nói rõ cần làm gì tiếp. Không bao giờ chứa giá trị slot
+          type: string
+        trace_id: { type: string }
+        details: { $ref: '#/components/schemas/ErrorDetails' }
+    ErrorDetails:
+      description: Chỉ tên, mã, số đếm — không giá trị
+      type: object
+      additionalProperties: false
+      properties:
+        permission: { $ref: '#/components/schemas/PermissionCode' }
+        current_status: { type: string }
+        close_reason: { $ref: '#/components/schemas/ChatSessionCloseReason' }
+        slot_names:
+          type: array
+          items: { $ref: '#/components/schemas/SlotName' }
+        missing_slots:
+          type: array
+          items: { $ref: '#/components/schemas/SlotName' }
+        unconfirmed_slots:
+          type: array
+          items: { $ref: '#/components/schemas/SlotName' }
+        failed_rules:
+          type: array
+          items: { $ref: '#/components/schemas/FailedRule' }
+        targets:
+          type: array
+          items: { type: string }
+        fields:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [field, code]
+            properties:
+              field: { type: string }
+              code: { $ref: '#/components/schemas/FieldErrorCode' }
+        variables:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [variable_name, code]
+            properties:
+              variable_name: { type: string }
+              code: { $ref: '#/components/schemas/VariableErrorCode' }
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [row_number, column, code]
+            properties:
+              row_number: { type: integer, minimum: 1 }
+              column: { type: string }
+              code: { $ref: '#/components/schemas/FieldErrorCode' }
+        erase_count: { type: integer, minimum: 0 }
+        message_saved: { type: boolean }
+        turn_abandoned: { type: boolean }
+        retry_after_seconds: { type: integer, minimum: 0 }
+    FailedRule:
+      type: object
+      additionalProperties: false
+      required: [slot_name, rule_code]
+      properties:
+        slot_name: { $ref: '#/components/schemas/SlotName' }
+        rule_code: { type: string }
+
+    # ------------------------------------------------------------------ người, phiên
+    EmployeeBrief:
+      type: object
+      required: [id, employee_code, full_name]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        employee_code: { type: string }
+        full_name: { type: string }
+    Me:
+      type: object
+      required: [employee, permissions, operating_mode]
+      properties:
+        employee:
+          allOf:
+            - $ref: '#/components/schemas/EmployeeBrief'
+            - type: object
+              required: [department_code, department_name, job_title]
+              properties:
+                department_code: { type: string }
+                department_name: { type: string }
+                job_title: { type: string }
+        permissions:
+          description: Permission hiệu lực — gói vai trò cộng quyền cấp lẻ còn hiệu lực
+          type: array
+          items: { $ref: '#/components/schemas/PermissionCode' }
+        operating_mode: { $ref: '#/components/schemas/OperatingMode' }
+    LoginBody:
+      type: object
+      additionalProperties: false
+      required: [employee_code, password]
+      properties:
+        employee_code: { type: string, minLength: 1 }
+        password: { type: string, minLength: 1, format: password, writeOnly: true }
+
+    # ------------------------------------------------------------------ chat
+    ChatSession:
+      type: object
+      required: [id, status, opened_at, last_message_at, closed_at, close_reason]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        status: { $ref: '#/components/schemas/ChatSessionStatus' }
+        opened_at: { $ref: '#/components/schemas/Timestamp' }
+        last_message_at: { $ref: '#/components/schemas/Timestamp' }
+        closed_at:
+          anyOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        close_reason:
+          anyOf:
+            - $ref: '#/components/schemas/ChatSessionCloseReason'
+            - type: 'null'
+    ChatMessage:
+      type: object
+      required: [id, seq, author, request_id, body, content_erased, reply_template_id, created_at]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        seq: { type: integer, minimum: 1 }
+        author: { $ref: '#/components/schemas/ChatMessageAuthor' }
+        request_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        body:
+          description: RES. null khi đã bị xoá theo luật
+          type: [string, 'null']
+        content_erased: { type: boolean }
+        reply_template_id:
+          type: [string, 'null']
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+    ChatMessagePage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/ChatMessage' }
+    TurnBody:
+      type: object
+      additionalProperties: false
+      required: [text]
+      properties:
+        text:
+          description: Độ dài tối đa TBD (A-031)
+          type: string
+          minLength: 1
+    PendingQuestionView:
+      description: Tiện ích cho giao diện, không phải sự thật — mất khi stream đứt
+      type: object
+      required: [kind, slot_names, candidate_types]
+      properties:
+        kind: { $ref: '#/components/schemas/PendingQuestionKind' }
+        slot_names:
+          type: array
+          items: { $ref: '#/components/schemas/SlotName' }
+        candidate_types:
+          type: array
+          items: { $ref: '#/components/schemas/RequestTypeCode' }
+    TurnAcceptedEvent:
+      type: object
+      required: [message]
+      properties:
+        message: { $ref: '#/components/schemas/ChatMessage' }
+    TurnProgressEvent:
+      type: object
+      required: [stage]
+      properties:
+        stage: { $ref: '#/components/schemas/TurnStage' }
+    TurnReplyEvent:
+      type: object
+      required: [message, active_request, pending_question]
+      properties:
+        message: { $ref: '#/components/schemas/ChatMessage' }
+        active_request:
+          anyOf:
+            - $ref: '#/components/schemas/RequestSummary'
+            - type: 'null'
+        pending_question:
+          anyOf:
+            - $ref: '#/components/schemas/PendingQuestionView'
+            - type: 'null'
+    SignalEvent:
+      type: object
+      required: [topics]
+      properties:
+        topics:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/SignalTopic' }
+
+    # ------------------------------------------------------------------ request
+    ArtifactRef:
+      type: object
+      required: [kind, id, status, status_label]
+      properties:
+        kind: { $ref: '#/components/schemas/ArtifactKind' }
+        id: { $ref: '#/components/schemas/Uuid' }
+        status: { type: string }
+        status_label: { type: string }
+    RequestSummary:
+      type: object
+      required: [id, request_type_code, request_type_name, status, status_label, status_changed_at, created_at, created_by_employee_id, beneficiary, row_version, artifacts]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        request_type_code: { $ref: '#/components/schemas/RequestTypeCode' }
+        request_type_name: { type: string }
+        status: { $ref: '#/components/schemas/RequestStatus' }
+        status_label: { type: string }
+        status_changed_at:
+          description: Mốc của "thời gian chờ" ở F4 (mục Nguyên tắc chung của 05-api.md)
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+        created_by_employee_id: { $ref: '#/components/schemas/Uuid' }
+        beneficiary: { $ref: '#/components/schemas/EmployeeBrief' }
+        chat_session_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        submitted_at:
+          anyOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        expires_at:
+          anyOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        row_version: { type: integer, minimum: 1 }
+        artifacts:
+          type: array
+          items: { $ref: '#/components/schemas/ArtifactRef' }
+    RequestSummaryPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/RequestSummary' }
+    Provenance:
+      type: object
+      required: [source, synced_at]
+      properties:
+        source: { type: string }
+        synced_at: { $ref: '#/components/schemas/Timestamp' }
+    SlotView:
+      type: object
+      required: [slot_name, description, data_type, source, sensitivity, is_required, value, value_status, erased, provenance, proposed_from_request_id, confirmed_at, row_version]
+      properties:
+        slot_name: { $ref: '#/components/schemas/SlotName' }
+        description: { type: string }
+        data_type: { $ref: '#/components/schemas/SlotDataType' }
+        source: { $ref: '#/components/schemas/SlotSource' }
+        sensitivity: { $ref: '#/components/schemas/SlotSensitivity' }
+        is_required: { type: boolean }
+        value:
+          description: Giá trị JSON; null khi chưa có hoặc đã xoá
+        value_status:
+          description: null nghĩa là slot chưa có dòng nào — còn thiếu
+          anyOf:
+            - $ref: '#/components/schemas/SlotValueStatus'
+            - type: 'null'
+        erased: { type: boolean }
+        provenance:
+          description: Bắt buộc với nguồn HR_PROFILE (D-002 ràng buộc 3)
+          anyOf:
+            - $ref: '#/components/schemas/Provenance'
+            - type: 'null'
+        proposed_from_request_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        confirmed_at:
+          anyOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        row_version:
+          description: Gửi lại ở confirm-slots để gắn lần xác nhận vào đúng giá trị đang hiển thị
+          type: [integer, 'null']
+    ChangesRequestedView:
+      type: object
+      required: [decision_record_id, change_scope, change_targets, change_reason, created_at]
+      properties:
+        decision_record_id: { $ref: '#/components/schemas/Uuid' }
+        change_scope: { $ref: '#/components/schemas/ChangeScope' }
+        change_targets:
+          type: array
+          items: { type: string }
+        change_reason:
+          description: null khi văn bản lý do đã bị xoá theo thời hạn lưu
+          type: [string, 'null']
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+    DocumentOwnerView:
+      type: object
+      required: [id, status, status_label, issue_in_progress, document_number, issued_date, final_render_id]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        status: { $ref: '#/components/schemas/DocumentStatus' }
+        status_label: { type: string }
+        issue_in_progress: { type: boolean }
+        document_number:
+          type: [string, 'null']
+        issued_date:
+          type: [string, 'null']
+          format: date
+        final_render_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+    RequestDetail:
+      allOf:
+        - $ref: '#/components/schemas/RequestSummary'
+        - type: object
+          required: [slots, missing_slots, unconfirmed_slots, failed_rules, submit_ready, changes_requested, documents]
+          properties:
+            slots:
+              type: array
+              items: { $ref: '#/components/schemas/SlotView' }
+            missing_slots:
+              type: array
+              items: { $ref: '#/components/schemas/SlotName' }
+            unconfirmed_slots:
+              type: array
+              items: { $ref: '#/components/schemas/SlotName' }
+            failed_rules:
+              type: array
+              items: { $ref: '#/components/schemas/FailedRule' }
+            submit_ready:
+              description: Kết quả của đúng hàm kiểm mà check_completeness và request_submit dùng
+              type: boolean
+            changes_requested:
+              anyOf:
+                - $ref: '#/components/schemas/ChangesRequestedView'
+                - type: 'null'
+            documents:
+              type: array
+              items: { $ref: '#/components/schemas/DocumentOwnerView' }
+    SlotConfirmBody:
+      type: object
+      additionalProperties: false
+      required: [confirmations]
+      properties:
+        confirmations:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [slot_name, expected_row_version]
+            properties:
+              slot_name: { $ref: '#/components/schemas/SlotName' }
+              expected_row_version: { type: integer, minimum: 1 }
+    SubmitBody:
+      type: object
+      additionalProperties: false
+      required: [expected_row_version]
+      properties:
+        expected_row_version: { type: integer, minimum: 1 }
+    CancelBody:
+      type: object
+      additionalProperties: false
+      required: [expected_row_version]
+      properties:
+        expected_row_version: { type: integer, minimum: 1 }
+
+    # ------------------------------------------------------------------ văn bản
+    DocumentSummary:
+      type: object
+      required: [id, request_id, request_type_code, status, status_label, status_changed_at, revision_round, operating_mode, requires_seal, seal_type, issue_in_progress, halted, document_number, issued_date, row_version]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        request_id: { $ref: '#/components/schemas/Uuid' }
+        request_type_code: { $ref: '#/components/schemas/RequestTypeCode' }
+        status: { $ref: '#/components/schemas/DocumentStatus' }
+        status_label: { type: string }
+        status_changed_at: { $ref: '#/components/schemas/Timestamp' }
+        revision_round: { type: integer, minimum: 0 }
+        operating_mode: { $ref: '#/components/schemas/OperatingMode' }
+        requires_seal:
+          type: [boolean, 'null']
+        seal_type:
+          anyOf:
+            - $ref: '#/components/schemas/SealType'
+            - type: 'null'
+        issue_in_progress:
+          description: Cờ dẫn xuất — khoảng hoàn tất phát hành
+          type: boolean
+        halted:
+          description: Có document_halt chưa được tiếp quản
+          type: boolean
+        document_number:
+          description: Chỉ có từ ISSUED trở đi
+          type: [string, 'null']
+        issued_date:
+          type: [string, 'null']
+          format: date
+        row_version: { type: integer, minimum: 1 }
+    DecisionResult:
+      type: object
+      required: [decision_record_id, kind, created_at, request, document]
+      properties:
+        decision_record_id: { $ref: '#/components/schemas/Uuid' }
+        kind: { $ref: '#/components/schemas/DecisionKind' }
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+        request: { $ref: '#/components/schemas/RequestSummary' }
+        document:
+          anyOf:
+            - $ref: '#/components/schemas/DocumentSummary'
+            - type: 'null'
+    ReviewQueueItem:
+      type: object
+      required: [document, request_type_name, beneficiary]
+      properties:
+        document: { $ref: '#/components/schemas/DocumentSummary' }
+        request_type_name: { type: string }
+        beneficiary: { $ref: '#/components/schemas/EmployeeBrief' }
+    ReviewQueuePage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/ReviewQueueItem' }
+    VariableView:
+      type: object
+      required: [variable_name, kind, value, value_erased, source_slot_name, slot_source, sensitivity, provenance, fill_after_approval]
+      properties:
+        variable_name: { type: string }
+        kind: { $ref: '#/components/schemas/TemplateVariableKind' }
+        value:
+          type: [string, 'null']
+        value_erased: { type: boolean }
+        source_slot_name:
+          anyOf:
+            - $ref: '#/components/schemas/SlotName'
+            - type: 'null'
+        slot_source:
+          anyOf:
+            - $ref: '#/components/schemas/SlotSource'
+            - type: 'null'
+        sensitivity:
+          anyOf:
+            - $ref: '#/components/schemas/SlotSensitivity'
+            - type: 'null'
+        provenance:
+          anyOf:
+            - $ref: '#/components/schemas/Provenance'
+            - type: 'null'
+        fill_after_approval: { type: boolean }
+    RenderRef:
+      type: object
+      required: [id, render_kind, revision_round, template_version_id, created_at, pin_reason]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        render_kind: { $ref: '#/components/schemas/RenderKind' }
+        revision_round: { type: integer, minimum: 0 }
+        template_version_id: { $ref: '#/components/schemas/Uuid' }
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+        pin_reason:
+          anyOf:
+            - $ref: '#/components/schemas/PinReason'
+            - type: 'null'
+    ApprovalStepView:
+      type: object
+      required: [id, step_kind, level, revision_round, status, assignee_employee_id, opened_at, closed_at, self_approval_expected, self_approved, self_approval_reason]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        step_kind: { $ref: '#/components/schemas/ApprovalStepKind' }
+        level: { type: integer, minimum: 1 }
+        revision_round: { type: integer, minimum: 0 }
+        status: { $ref: '#/components/schemas/ApprovalStepStatus' }
+        assignee_employee_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        opened_at: { $ref: '#/components/schemas/Timestamp' }
+        closed_at:
+          anyOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        self_approval_expected: { type: boolean }
+        self_approved: { type: boolean }
+        self_approval_reason:
+          type: [string, 'null']
+    DecisionTextView:
+      type: object
+      required: [text_kind, body, erased]
+      properties:
+        text_kind: { $ref: '#/components/schemas/DecisionTextKind' }
+        body:
+          type: [string, 'null']
+        erased: { type: boolean }
+    DecisionView:
+      type: object
+      required: [id, kind, actor, delegation_id, created_at, change_scope, change_targets, texts]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        kind: { $ref: '#/components/schemas/DecisionKind' }
+        actor: { $ref: '#/components/schemas/EmployeeBrief' }
+        delegation_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+        change_scope:
+          anyOf:
+            - $ref: '#/components/schemas/ChangeScope'
+            - type: 'null'
+        change_targets:
+          type: [array, 'null']
+          items: { type: string }
+        texts:
+          type: array
+          items: { $ref: '#/components/schemas/DecisionTextView' }
+    HaltView:
+      description: reason_code là mã của bảng mã Phase 8, không phải nguyên văn mã lỗi của tool
+      type: object
+      required: [reason_code, created_at]
+      properties:
+        reason_code: { type: string }
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+    TemplateRef:
+      type: object
+      required: [template_id, template_code, template_version_id, version_no]
+      properties:
+        template_id: { $ref: '#/components/schemas/Uuid' }
+        template_code: { type: string }
+        template_version_id: { $ref: '#/components/schemas/Uuid' }
+        version_no: { type: integer, minimum: 1 }
+    DocumentReviewView:
+      type: object
+      required: [document, request, template, variables, renders, current_draft_render_id, approved_render_id, final_render_id, approval_steps, decisions, latest_halt]
+      properties:
+        document: { $ref: '#/components/schemas/DocumentSummary' }
+        request: { $ref: '#/components/schemas/RequestSummary' }
+        template: { $ref: '#/components/schemas/TemplateRef' }
+        variables:
+          type: array
+          items: { $ref: '#/components/schemas/VariableView' }
+        renders:
+          type: array
+          items: { $ref: '#/components/schemas/RenderRef' }
+        current_draft_render_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        approved_render_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        final_render_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        approval_steps:
+          type: array
+          items: { $ref: '#/components/schemas/ApprovalStepView' }
+        decisions:
+          type: array
+          items: { $ref: '#/components/schemas/DecisionView' }
+        latest_halt:
+          anyOf:
+            - $ref: '#/components/schemas/HaltView'
+            - type: 'null'
+    SelfApprovalReason:
+      description: Chỉ khi rơi vào đường thoát tự duyệt (D-006). Không có giá trị mặc định
+      type: [string, 'null']
+      minLength: 1
+    ApproveContentBody:
+      type: object
+      additionalProperties: false
+      required: [expected_row_version]
+      properties:
+        expected_row_version: { type: integer, minimum: 1 }
+        self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
+    RequestChangesBody:
+      type: object
+      additionalProperties: false
+      required: [expected_row_version, change_scope, change_reason]
+      properties:
+        expected_row_version: { type: integer, minimum: 1 }
+        change_scope: { $ref: '#/components/schemas/ChangeScope' }
+        change_reason: { type: string, minLength: 1 }
+        change_targets:
+          type: array
+          items: { type: string }
+        self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
+    RejectBody:
+      type: object
+      additionalProperties: false
+      required: [expected_row_version, rejection_reason]
+      properties:
+        expected_row_version: { type: integer, minimum: 1 }
+        rejection_reason: { type: string, minLength: 1 }
+        self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
+    SignBody:
+      type: object
+      additionalProperties: false
+      required: [expected_row_version]
+      properties:
+        expected_row_version: { type: integer, minimum: 1 }
+        self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
+    ApplySealBody:
+      type: object
+      additionalProperties: false
+      required: [expected_row_version, copies_count]
+      properties:
+        expected_row_version: { type: integer, minimum: 1 }
+        copies_count: { type: integer, minimum: 1 }
+        page_count:
+          description: Bắt buộc và >= 2 khi seal_type của document là EDGE_STAMP
+          type: [integer, 'null']
+          minimum: 1
+        self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
+    IssueBody:
+      type: object
+      additionalProperties: false
+      required: [expected_row_version]
+      properties:
+        expected_row_version: { type: integer, minimum: 1 }
+        self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
+    RevokeInitiateBody:
+      type: object
+      additionalProperties: false
+      required: [expected_row_version, revocation_reason]
+      properties:
+        expected_row_version: { type: integer, minimum: 1 }
+        revocation_reason: { type: string, minLength: 1 }
+    RevokeConfirmBody:
+      type: object
+      additionalProperties: false
+      required: [expected_row_version, initiation_decision_id]
+      properties:
+        expected_row_version: { type: integer, minimum: 1 }
+        initiation_decision_id: { $ref: '#/components/schemas/Uuid' }
+
+    # ------------------------------------------------------------------ thông báo, audit
+    Notification:
+      description: Chỉ mã và tham chiếu. event_code theo bảng mã Phase 8
+      type: object
+      required: [id, event_code, request_id, document_id, created_at]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        event_code: { type: string, pattern: '^[A-Z][A-Z0-9_]*$' }
+        request_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        document_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+    NotificationPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Notification' }
+    AuditEvent:
+      type: object
+      required: [id, occurred_at, actor_kind, actor_employee_id, action, severity, entity_type, entity_id, request_id, document_id, decision_record_id, payload, trace_id]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        occurred_at: { $ref: '#/components/schemas/Timestamp' }
+        actor_kind: { $ref: '#/components/schemas/AuditActorKind' }
+        actor_employee_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        action: { type: string }
+        severity: { $ref: '#/components/schemas/AuditSeverity' }
+        entity_type: { type: string }
+        entity_id: { type: string }
+        request_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        document_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        decision_record_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        payload:
+          description: Chỉ mã, id, tên slot, số đếm
+          type: object
+        trace_id:
+          type: [string, 'null']
+    AuditEventPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/AuditEvent' }
+    SelfApprovalEntry:
+      type: object
+      required: [approval_step_id, document_id, request_id, step_kind, closed_at, self_approval_reason, actor]
+      properties:
+        approval_step_id: { $ref: '#/components/schemas/Uuid' }
+        document_id: { $ref: '#/components/schemas/Uuid' }
+        request_id: { $ref: '#/components/schemas/Uuid' }
+        step_kind: { $ref: '#/components/schemas/ApprovalStepKind' }
+        closed_at: { $ref: '#/components/schemas/Timestamp' }
+        self_approval_reason: { type: string }
+        actor: { $ref: '#/components/schemas/EmployeeBrief' }
+    SelfApprovalPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/SelfApprovalEntry' }
+
+    # ------------------------------------------------------------------ template
+    TemplateSummary:
+      type: object
+      required: [id, code, request_type_code, name]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        code: { type: string }
+        request_type_code: { $ref: '#/components/schemas/RequestTypeCode' }
+        name: { type: string }
+    TemplatePage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/TemplateSummary' }
+    TemplateVariableView:
+      type: object
+      required: [variable_name, kind, source_slot_name, fill_after_approval, variable_guidance, max_length, inputs]
+      properties:
+        variable_name: { type: string }
+        kind: { $ref: '#/components/schemas/TemplateVariableKind' }
+        source_slot_name:
+          anyOf:
+            - $ref: '#/components/schemas/SlotName'
+            - type: 'null'
+        fill_after_approval: { type: boolean }
+        variable_guidance:
+          type: [string, 'null']
+        max_length:
+          type: [integer, 'null']
+          minimum: 1
+        inputs:
+          description: Danh sách input tự khai — chỉ biến FREE_CONTENT có phần tử
+          type: array
+          items: { $ref: '#/components/schemas/SlotName' }
+    TemplateVersion:
+      type: object
+      required: [id, template_id, version_no, status, uploaded_by_employee_id, activated_at, retired_at, created_at, row_version, variables]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        template_id: { $ref: '#/components/schemas/Uuid' }
+        version_no: { type: integer, minimum: 1 }
+        status: { $ref: '#/components/schemas/TemplateVersionStatus' }
+        uploaded_by_employee_id: { $ref: '#/components/schemas/Uuid' }
+        activated_at:
+          anyOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        retired_at:
+          anyOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+        row_version: { type: integer, minimum: 1 }
+        variables:
+          type: array
+          items: { $ref: '#/components/schemas/TemplateVariableView' }
+    Template:
+      allOf:
+        - $ref: '#/components/schemas/TemplateSummary'
+        - type: object
+          required: [versions]
+          properties:
+            versions:
+              type: array
+              items: { $ref: '#/components/schemas/TemplateVersion' }
+    TemplateCreateBody:
+      type: object
+      additionalProperties: false
+      required: [code, request_type_code, name]
+      properties:
+        code: { type: string, minLength: 1 }
+        request_type_code: { $ref: '#/components/schemas/RequestTypeCode' }
+        name: { type: string, minLength: 1 }
+    TemplateVariableDecl:
+      type: object
+      additionalProperties: false
+      required: [variable_name, kind]
+      properties:
+        variable_name: { type: string, pattern: '^[a-z][a-z0-9_]*$' }
+        kind: { $ref: '#/components/schemas/TemplateVariableKind' }
+        source_slot_name:
+          anyOf:
+            - $ref: '#/components/schemas/SlotName'
+            - type: 'null'
+        fill_after_approval: { type: boolean, default: false }
+        variable_guidance:
+          type: [string, 'null']
+        max_length:
+          type: [integer, 'null']
+          minimum: 1
+        inputs:
+          type: array
+          items: { $ref: '#/components/schemas/SlotName' }
+    TemplateManifest:
+      type: object
+      additionalProperties: false
+      required: [variables]
+      properties:
+        variables:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/TemplateVariableDecl' }
+    TemplateVersionUpload:
+      type: object
+      required: [file, manifest]
+      properties:
+        file:
+          type: string
+          contentMediaType: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+        manifest: { $ref: '#/components/schemas/TemplateManifest' }
+    ActivateBody:
+      type: object
+      additionalProperties: false
+      required: [expected_row_version]
+      properties:
+        expected_row_version: { type: integer, minimum: 1 }
+
+    # ------------------------------------------------------------------ nhân viên
+    EmployeeImportUpload:
+      type: object
+      required: [file, source_label]
+      properties:
+        file:
+          type: string
+          contentMediaType: text/csv
+        source_label: { type: string, minLength: 1 }
+    EmployeeImportResult:
+      description: Chỉ mã và số đếm — không giá trị cũ hay mới
+      type: object
+      required: [import_id, source, synced_at, inserted_count, updated_count, unchanged_count, updated]
+      properties:
+        import_id:
+          description: id của audit_event của đợt import
+          allOf:
+            - $ref: '#/components/schemas/Uuid'
+        source: { type: string }
+        synced_at: { $ref: '#/components/schemas/Timestamp' }
+        inserted_count: { type: integer, minimum: 0 }
+        updated_count: { type: integer, minimum: 0 }
+        unchanged_count: { type: integer, minimum: 0 }
+        updated:
+          type: array
+          items:
+            type: object
+            required: [employee_code, changed_fields]
+            properties:
+              employee_code: { type: string }
+              changed_fields:
+                type: array
+                items: { type: string }
+
+    # ------------------------------------------------------------------ kho quy trình
+    ProcedureVersion:
+      type: object
+      required: [id, procedure_document_id, version_no, procedure_visibility, department_scope, effective_from, is_active, activated_at, deactivated_at, ingested_by_employee_id, row_version]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        procedure_document_id: { $ref: '#/components/schemas/Uuid' }
+        version_no: { type: integer, minimum: 1 }
+        procedure_visibility: { $ref: '#/components/schemas/ProcedureVisibility' }
+        department_scope:
+          type: [array, 'null']
+          items: { type: string }
+        effective_from: { type: string, format: date }
+        is_active: { type: boolean }
+        activated_at:
+          anyOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        deactivated_at:
+          anyOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        ingested_by_employee_id: { $ref: '#/components/schemas/Uuid' }
+        row_version: { type: integer, minimum: 1 }
+    ProcedureDocument:
+      type: object
+      required: [id, code, title, versions]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        code: { type: string }
+        title: { type: string }
+        versions:
+          type: array
+          items: { $ref: '#/components/schemas/ProcedureVersion' }
+    ProcedurePage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/ProcedureDocument' }
+    ProcedureUploadMetadata:
+      type: object
+      additionalProperties: false
+      required: [procedure_code, title, procedure_visibility, department_scope, effective_from, pii_free_attested]
+      properties:
+        procedure_code: { type: string, minLength: 1 }
+        title: { type: string, minLength: 1 }
+        procedure_visibility: { $ref: '#/components/schemas/ProcedureVisibility' }
+        department_scope:
+          description: null khi và chỉ khi ORG_WIDE; không rỗng khi DEPARTMENT_ONLY
+          type: [array, 'null']
+          minItems: 1
+          items: { type: string }
+        effective_from: { type: string, format: date }
+        pii_free_attested:
+          description: Cam kết của người nạp (A-033)
+          const: true
+    ProcedureUpload:
+      type: object
+      required: [file, metadata]
+      properties:
+        file: { type: string }
+        metadata: { $ref: '#/components/schemas/ProcedureUploadMetadata' }
+    DeactivateBody:
+      type: object
+      additionalProperties: false
+      required: [expected_row_version]
+      properties:
+        expected_row_version: { type: integer, minimum: 1 }
+
+    # ------------------------------------------------------------------ cấu hình loại yêu cầu
+    SlotDefinitionConfig:
+      type: object
+      required: [request_type_code, slot_name, data_type, source, sensitivity, is_required, validation_rules, description, display_order, row_version]
+      properties:
+        request_type_code: { $ref: '#/components/schemas/RequestTypeCode' }
+        slot_name: { $ref: '#/components/schemas/SlotName' }
+        data_type: { $ref: '#/components/schemas/SlotDataType' }
+        source: { $ref: '#/components/schemas/SlotSource' }
+        sensitivity: { $ref: '#/components/schemas/SlotSensitivity' }
+        is_required: { type: boolean }
+        validation_rules: { type: object }
+        description: { type: string }
+        display_order: { type: integer }
+        row_version: { type: integer, minimum: 1 }
+    RequestTypeConfig:
+      type: object
+      required: [code, name_vi, description, support_status, artifact_kind, requires_seal_default, seal_type_default, document_register_id, sla_target, example_phrases, row_version]
+      properties:
+        code: { $ref: '#/components/schemas/RequestTypeCode' }
+        name_vi: { type: string }
+        description: { type: string }
+        support_status: { $ref: '#/components/schemas/RequestTypeSupportStatus' }
+        artifact_kind: { $ref: '#/components/schemas/ArtifactKind' }
+        requires_seal_default:
+          type: [boolean, 'null']
+        seal_type_default:
+          anyOf:
+            - $ref: '#/components/schemas/SealType'
+            - type: 'null'
+        document_register_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        sla_target:
+          description: Khoảng thời gian ISO 8601; TBD (A-002)
+          type: [string, 'null']
+        example_phrases:
+          type: array
+          items: { type: string }
+        row_version: { type: integer, minimum: 1 }
+        slots:
+          description: Chỉ có ở GET một loại
+          type: array
+          items: { $ref: '#/components/schemas/SlotDefinitionConfig' }
+    RequestTypeConfigPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/RequestTypeConfig' }
+    RequestTypeUpsertBody:
+      type: object
+      additionalProperties: false
+      required: [name_vi, description, support_status, artifact_kind, example_phrases]
+      properties:
+        name_vi: { type: string, minLength: 1 }
+        description: { type: string, minLength: 1 }
+        support_status: { $ref: '#/components/schemas/RequestTypeSupportStatus' }
+        artifact_kind: { $ref: '#/components/schemas/ArtifactKind' }
+        requires_seal_default:
+          type: [boolean, 'null']
+        seal_type_default:
+          anyOf:
+            - $ref: '#/components/schemas/SealType'
+            - type: 'null'
+        document_register_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        sla_target:
+          type: [string, 'null']
+        example_phrases:
+          type: array
+          items: { type: string }
+        expected_row_version:
+          description: Vắng là tạo mới; có là sửa có điều kiện
+          type: [integer, 'null']
+          minimum: 1
+    SlotDefinitionUpsertBody:
+      type: object
+      additionalProperties: false
+      required: [data_type, source, sensitivity, is_required, validation_rules, description, display_order]
+      properties:
+        data_type: { $ref: '#/components/schemas/SlotDataType' }
+        source: { $ref: '#/components/schemas/SlotSource' }
+        sensitivity:
+          description: Với slot đã có, phải bằng độ nhạy hiện hành — khác thì USE_SENSITIVITY_CHANGE
+          allOf:
+            - $ref: '#/components/schemas/SlotSensitivity'
+        is_required: { type: boolean }
+        validation_rules: { type: object }
+        description: { type: string, minLength: 1 }
+        display_order: { type: integer }
+        expected_row_version:
+          type: [integer, 'null']
+          minimum: 1
+    SensitivityChangePreview:
+      type: object
+      required: [slot_name, from, to, destructive, erase_count]
+      properties:
+        slot_name: { $ref: '#/components/schemas/SlotName' }
+        from: { $ref: '#/components/schemas/SlotSensitivity' }
+        to: { $ref: '#/components/schemas/SlotSensitivity' }
+        destructive: { type: boolean }
+        erase_count: { type: integer, minimum: 0 }
+    ChangeSensitivityBody:
+      type: object
+      additionalProperties: false
+      required: [to, expected_row_version]
+      properties:
+        to: { $ref: '#/components/schemas/SlotSensitivity' }
+        expected_row_version: { type: integer, minimum: 1 }
+        expected_erase_count:
+          description: Bắt buộc khi thay đổi là phá huỷ
+          type: [integer, 'null']
+          minimum: 0
+    SensitivityChangeResult:
+      type: object
+      required: [slot_name, from, to, erased_count]
+      properties:
+        slot_name: { $ref: '#/components/schemas/SlotName' }
+        from: { $ref: '#/components/schemas/SlotSensitivity' }
+        to: { $ref: '#/components/schemas/SlotSensitivity' }
+        erased_count: { type: integer, minimum: 0 }
+
+    # ------------------------------------------------------------------ uỷ quyền [Should]
+    Delegation:
+      type: object
+      required: [id, delegator_employee_id, delegate_employee_id, permission_code, valid_from, valid_to, revoked_at, row_version]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        delegator_employee_id: { $ref: '#/components/schemas/Uuid' }
+        delegate_employee_id: { $ref: '#/components/schemas/Uuid' }
+        permission_code: { $ref: '#/components/schemas/PermissionCode' }
+        valid_from: { $ref: '#/components/schemas/Timestamp' }
+        valid_to: { $ref: '#/components/schemas/Timestamp' }
+        revoked_at:
+          anyOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+        row_version: { type: integer, minimum: 1 }
+    DelegationPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Delegation' }
+    DelegationCreateBody:
+      type: object
+      additionalProperties: false
+      required: [delegator_employee_id, delegate_employee_id, permission_code, valid_from, valid_to]
+      properties:
+        delegator_employee_id: { $ref: '#/components/schemas/Uuid' }
+        delegate_employee_id: { $ref: '#/components/schemas/Uuid' }
+        permission_code: { $ref: '#/components/schemas/PermissionCode' }
+        valid_from: { $ref: '#/components/schemas/Timestamp' }
+        valid_to: { $ref: '#/components/schemas/Timestamp' }
+    RevokeDelegationBody:
+      type: object
+      additionalProperties: false
+      required: [expected_row_version]
+      properties:
+        expected_row_version: { type: integer, minimum: 1 }

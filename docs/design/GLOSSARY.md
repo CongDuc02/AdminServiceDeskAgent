@@ -1,6 +1,6 @@
 # GLOSSARY — BO-19 Admin Service Desk Agent
 
-**Phiên bản:** 0.14 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4 và vòng duyệt Phase 4
+**Phiên bản:** 0.15 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4 và Phase 5
 
 > Đây là danh sách tên chuẩn. Từ Phase 1 trở đi, mọi tài liệu, diagram, DDL, endpoint và prompt phải dùng **đúng** các định danh trong file này. Muốn đổi tên thì sửa file này trước, rồi ghi vào [`CHANGELOG.md`](./CHANGELOG.md).
 
@@ -182,6 +182,31 @@ Là thuộc tính của **dữ liệu**, không suy ra từ tên trường hay t
 
 Bắt buộc ở đường vào từ `CHANGES_REQUESTED`. Bảng mã thuộc Phase 8
 
+**Enum nâng từ `04-data.md`** *(thêm ở Phase 5)*
+
+Theo phép thử ở mục Nguyên tắc dữ liệu của `04-data.md`: enum xuất hiện trong phản hồi API, trên màn hình hay trong payload của `audit_event` là enum xuyên phase. Tên enum ghi kèm cột nguồn. Hai dòng đánh dấu *thêm ngoài danh sách* không có trong bảng của `04-data.md` nhưng có trong response của `05-api.md`.
+
+| Định danh | Cột | Giá trị |
+|---|---|---|
+| `slot_value_status` | `request_slot.value_status` | `PROVIDED` · `PROPOSED` · `CONFIRMED` · `SYSTEM_SET` · `ERASED` |
+| `approval_step_kind` | `approval_step.step_kind` | `CONTENT_REVIEW` · `SIGNATURE` · `SEAL` · `BOOKING_CONFIRM` `[Should]` |
+| `approval_step_status` | `approval_step.status` | `OPEN` · `DECIDED` · `CANCELLED` |
+| `chat_session_status` | `chat_session.status` | `OPEN` · `CLOSED` — *thêm ngoài danh sách* |
+| `chat_session_close_reason` | `chat_session.close_reason` | `IDLE_TIMEOUT` · `REQUEST_EXPIRED` |
+| `chat_message_author` | `chat_message.author` | `EMPLOYEE` · `AGENT` — *thêm ngoài danh sách* |
+| `render_kind` | `document_render.render_kind` | `DRAFT` · `FINAL` |
+| `pin_reason` | `document_render_pin.pin_reason` | `APPROVED_CONTENT` · `ISSUED` |
+| `decision_text_kind` | `decision_record_text.text_kind` | `CHANGE_REASON` · `REJECTION_REASON` · `REVOCATION_REASON` |
+| `request_type_support_status` | `request_type.support_status` | `SUPPORTED` · `KNOWN_UNSUPPORTED` |
+| `artifact_kind` | `request_type.artifact_kind` | `DOCUMENT` · `ROOM_BOOKING` · `SEAL_ACTION` |
+| `slot_data_type` | `slot_definition.data_type` | `STRING` · `TEXT` · `INT` · `DATE` · `TIMESTAMP` · `ENUM` · `LIST` · `BOOL` · `FILE` |
+| `template_variable_kind` | `template_variable.kind` | `DIRECT_SLOT` · `FREE_CONTENT` · `SYSTEM` |
+| `template_version_status` | `template_version.status` | `UPLOADED` · `ACTIVE` · `RETIRED` |
+| `register_reset_policy` | `document_register.reset_policy` | `YEARLY` · `NEVER` |
+| `audit_actor_kind` | `audit_event.actor_kind` | `EMPLOYEE` · `SYSTEM` |
+
+**Chờ Phase 8 — chưa nâng được, không bịa giá trị:** `notification.event_code` và `document_halt.reason_code`. Hai cột đã có trong DDL; DB chỉ kiểm hình dạng mã; bảng mã thuộc Phase 8.
+
 ---
 
 ## 9. Thuật ngữ nghiệp vụ
@@ -277,6 +302,10 @@ Node `open_request` gọi tool `request_open`; hai tên khác nhau có chủ đ�
 
 **Thao tác cấu hình** *(thêm ở Phase 4)* — `slot_sensitivity_change`: đổi độ nhạy của một slot trong luồng cấu hình của F6. Nâng lên `RES` là thao tác **phá huỷ**: xoá hồi tố giá trị trên `request` `EXPIRED`
 
+**Thao tác của nhân viên trước `SUBMITTED`** *(thêm ở Phase 5)* — `request_slot_confirm`: nhân viên xác nhận từng giá trị đề xuất, **không** qua lượt chat. Định nghĩa ở mục Tool Registry của `03-agents.md`
+
+**Thao tác do endpoint gọi** *(thêm ở Phase 5)* — thao tác của `tool_layer` mà chỉ endpoint gọi, không node nào: `chat_session_open` · `chat_message_append` · `stored_file_fetch` · `template_create` · `template_version_upload` · `template_version_activate` · `employee_import` · `procedure_version_upload` · `procedure_version_deactivate` · `request_type_upsert` · `slot_definition_upsert` · `delegation_create` `[Should]` · `delegation_revoke` `[Should]`. Định nghĩa ở mục Endpoint của `05-api.md`
+
 **Loại job** — `render_document` · `resume_document_graph` · `finalize_issue` · `checkpoint_purge` · `procedure_ingest` · `notification_send`. Ba loại cuối thêm ở Phase 4: là thao tác mà Phase 3 đã mô tả chạy bằng job, nay có tên trong enum
 
 **Thực thể tầng kỹ thuật** *(thêm ở Phase 4)* — không có nghĩa nghiệp vụ, người dùng không nhìn thấy. Ánh xạ sang bảng ở `04-data.md`.
@@ -312,3 +341,33 @@ Node `open_request` gọi tool `request_open`; hai tên khác nhau có chủ đ�
 | **`approved_content_hash`** | Hash ghi lúc duyệt nội dung, kiểm lại ở `finalize_issue` để thực thi INV-01 |
 | **Danh sách nạp** | Danh sách input tự khai của prompt module, dùng để nạp dữ liệu và kiểm prompt. Quên khai thì mất chức năng, không rò dữ liệu |
 | **Khoảng hoàn tất phát hành** · cờ `issue_in_progress` | Từ lúc `document_issue` ghi lệnh phát hành tới lúc `finalize_issue` commit `ISSUED` hoặc bỏ cuộc. Document đứng yên ở `SIGNED`/`SEALED`; phần đầu chưa có `document_number`. Là **cờ dẫn xuất** như `sla_breached`, **không** phải trạng thái. Hiển thị thuộc Phase 8 |
+
+---
+
+## 13. API — chốt ở Phase 5
+
+Định nghĩa đầy đủ ở `05-api.md`. Từ Phase 6 trở đi mọi file dùng đúng các tên này.
+
+**Vận chuyển**
+
+| Định danh | Nghĩa |
+|---|---|
+| `bo19_session` | Tên session cookie — `HttpOnly`, `Secure`, `SameSite=Strict` (ADR-013) |
+| `X-BO19-CSRF` | Header bắt buộc trên mọi lệnh không phải `GET` |
+| `Idempotency-Key` | Header bắt buộc trên endpoint tạo dòng; giá trị là uuid của dòng chính được tạo |
+| `Idempotent-Replayed` | Header của response lặp lại hợp lệ |
+| **Stream lượt chat** | Response SSE của `POST` lượt chat. Sự kiện `turn.accepted` · `turn.progress` · `turn.reply` · `turn.error`. Bản có thẩm quyền là `chat_message` |
+| **Stream tín hiệu** | `GET /signals`. Sự kiện `signal`, chỉ mang chủ đề; client GET lại để lấy sự thật |
+| `x-bo19-scope` | Extension của `openapi.yaml`, giá trị `Should` — endpoint thuộc hạng mục bị cắt khỏi Sprint đầu |
+| `[NGOÀI-OPENAPI]` | Nhãn cố định của endpoint chỉ khai tên, cố ý không có trong `openapi.yaml` |
+
+**Enum**
+
+- `execution_mode` — cách một endpoint chạy: `SYNC` · `SYNC_ENQUEUE` · `SYNC_OBJECT_STORAGE` · `SYNC_GRAPH` · `STREAM`
+- `turn_stage` — `UNDERSTANDING` · `LOOKING_UP` · `PREPARING_REPLY`. Gom nhiều node; tên node không ra khỏi `api`
+- `signal_topic` — `NOTIFICATIONS` · `MY_REQUESTS` · `REVIEW_QUEUE`
+- `request_list_scope` — `OWN` · `ALL` · `ASSIGNED`
+- `pending_question_kind` — `CLARIFY_TYPE` · `ASK_SLOT` · `CONFIRM_PROPOSALS` · `OFFER_SUBMIT` · `OFFER_NEXT_INTENT` · `EXPLAIN_TERMINAL`. Là `PendingQuestion.kind` ở mục State schema của `03-agents.md`, nay xuất hiện trong response nên thành enum xuyên phase
+- `error_code` — danh mục đầy đủ ở mục Mã lỗi của `05-api.md`. Đó là nguồn duy nhất; file này không chép lại
+
+**Cố ý vắng mặt:** `request_type.manage` — tên permission mà endpoint cấu hình loại yêu cầu dùng — **không** có trong mục 7. Nó chưa có trong danh mục permission, và chỉ Phase 9 được thêm (A-042, mục Nguyên tắc chung của `05-api.md`).
