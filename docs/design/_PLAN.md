@@ -196,6 +196,7 @@ Môi trường dev/staging/prod trên Render, cold start, worker nền, cron, mi
 | ADR-012 | Tìm chính xác chậm dần khi kho lớn lên             | Latency của `procedure_retrieval` và số chunk đang hiệu lực, đặt **trên cùng một trục thời gian**. Đây cũng là tín hiệu kích hoạt index ANN                               |
 | ADR-013 | Vòng poll tín hiệu chiếm tải và connection         | Tỷ trọng truy vấn do vòng poll của stream tín hiệu gây ra trên tổng tải của `postgresql`, **và** số connection của pool đang bị vòng poll chiếm, đặt cạnh số kết nối tín hiệu đang mở và trần pool (A-057), **trên cùng một trục thời gian** |
 | ADR-014 | Một lần tải file tiến sát giới hạn thời gian request | **Phân phối** thời lượng một lần tải file qua `api` — nhìn phần đuôi, không nhìn trung bình — đặt cạnh kích thước file và giới hạn thời gian request (A-025) |
+| ADR-015 | Image chung mang LibreOffice và bộ font làm cold start của `api` — tức cold start của trang người dùng thấy (hệ quả B1 của ADR-013) — chậm tới mức không chấp nhận được | Thời gian cold start của `api` sau khi image có LibreOffice, đặt cạnh kích thước image, **trên cùng một trục thời gian**. Ngưỡng để trống tới khi có số đo. Vượt ngưỡng thì tách thành hai target build từ **một Dockerfile, một commit** |
 
 **Hai điều kiện đảo ngược không phải tín hiệu vận hành**, nên không đo ở observability mà ở `ASSUMPTIONS.md`: ADR-002 phải xét lại khi A-001 bị bác bỏ; ADR-003 kích hoạt khi A-024 đóng. Hai điều kiện này phát ra khi một giả định đổi trạng thái, không phải khi một metric vượt ngưỡng.
 

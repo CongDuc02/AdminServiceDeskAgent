@@ -1,6 +1,6 @@
 # System Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.8 · **Trạng thái:** Draft để xác thực với người dùng · **v0.3–0.5:** sửa ở Phase 3 và các vòng sửa Phase 3 theo phép — xem các mục ngày 2026-09-12 (lần 4, lần 5, lần 6) của `CHANGELOG.md` · **v0.6:** sửa ở Phase 4 theo phép K1 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.7:** trỏ tới danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1) · **v0.8:** dòng `DRAFT` của bảng chủ sở hữu chuyển đổi `request` — vòng duyệt Phase 5 (A2), mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md`
+**Phiên bản:** 0.8 · **Trạng thái:** Draft để xác thực với người dùng · **v0.3–0.5:** sửa ở Phase 3 và các vòng sửa Phase 3 theo phép — xem các mục ngày 2026-09-12 (lần 4, lần 5, lần 6) của `CHANGELOG.md` · **v0.6:** sửa ở Phase 4 theo phép K1 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.7:** trỏ tới danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1) · **v0.8:** dòng `DRAFT` của bảng chủ sở hữu chuyển đổi `request` — vòng duyệt Phase 5 (A2), mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md` · **v0.9:** cạnh `ai_gateway → postgresql` chỉ cho `llm_usage` (ADR-019) — Phase 6, mục ngày 2026-09-13 (lần 8)
 
 > File này chốt kiến trúc mức component: thành phần nào tồn tại, chạy ở đâu trên Render, phụ thuộc gì, và luồng dữ liệu đi qua chúng thế nào. File này **không** đổi state machine hay entity đã chốt ở `00-domain.md`, không chọn agent/tool cụ thể (Phase 3), không thiết kế bảng/cột (Phase 4).
 
@@ -33,7 +33,7 @@ Mười thành phần theo yêu cầu của `_PLAN.md`. Bốn trong số đó (`
 - **Trách nhiệm:** model routing rẻ/mạnh theo bước (NFR-06 của `01-prd.md`); lắp ráp prompt **chỉ với slot mà prompt module đang gọi tự khai là input** (nguyên tắc tối thiểu hoá theo nhu cầu từng bước — xem NFR-05 đã sửa của `01-prd.md`); token budget accounting mỗi request; ép output theo JSON Schema và retry khi parse lỗi; timeout/retry gọi model. **Mọi lời gọi embedding cũng đi qua đây** và chịu cùng luật khai input: embedding là lời gọi ra ngoài mang văn bản, không phải bước kỹ thuật được miễn (mục Allowlist input của `03-agents.md`).
 - **Công nghệ:** module Python, chạy trong cùng tiến trình với nơi gọi nó (`api` hoặc `queue_worker`) — không phải service riêng. Gọi LLM provider qua HTTP; nhà cung cấp cụ thể chưa chốt ở phase này (không ảnh hưởng kiến trúc, chỉ ảnh hưởng cấu hình — chi tiết chọn model thuộc Agent Registry của Phase 3).
 - **Lý do:** tách "gọi model" khỏi "quyết định luồng nghiệp vụ" để đổi model/provider không đụng logic LangGraph của `orchestrator`.
-- **Không thuộc:** không quyết định node kế tiếp trong graph; không thực hiện side effect ghi dữ liệu nghiệp vụ; không tự ý gửi slot ngoài allowlist của prompt module đang gọi nó — đây là ranh giới cứng, vi phạm nó chính là vi phạm NFR-05.
+- **Không thuộc:** không quyết định node kế tiếp trong graph; không thực hiện side effect ghi dữ liệu nghiệp vụ; không tự ý gửi slot ngoài allowlist của prompt module đang gọi nó — đây là ranh giới cứng, vi phạm nó chính là vi phạm NFR-05. **Ngoại lệ có tên (ADR-019):** `ai_gateway` đọc và ghi đúng một bảng, `llm_usage` — sổ kế toán token, không phải dữ liệu nghiệp vụ — và không bảng nào khác; đây là mục thứ ba của danh sách ngoại lệ đóng ở mục Tool Registry của `03-agents.md`.
 
 ### 1.4 `orchestrator`
 
@@ -141,13 +141,14 @@ graph TD
     ToolLayer --> VectorStore
     VectorStore --> PostgreSQL
     AIGateway --> LLMProvider
+    AIGateway -->|chi llm_usage| PostgreSQL
     API --> Observability
     Orchestrator --> Observability
     ToolLayer --> Observability
     Worker --> Observability
 ```
 
-Mọi cạnh có một chiều duy nhất; không có cạnh nào đi ngược lại `Client`, `API`, `Worker`, `Orchestrator`, `ToolLayer`, `AIGateway` hay `VectorStore` — không tồn tại vòng phụ thuộc. Cạnh `Worker --> AIGateway` thêm ở Phase 3: `procedure_ingest` gọi embedding khi nạp kho quy trình, và mọi lời gọi embedding phải đi qua `ai_gateway` (mục Allowlist input của `03-agents.md`). Cạnh này không tạo vòng.
+Mọi cạnh có một chiều duy nhất; không có cạnh nào đi ngược lại `Client`, `API`, `Worker`, `Orchestrator`, `ToolLayer`, `AIGateway` hay `VectorStore` — không tồn tại vòng phụ thuộc. Cạnh `Worker --> AIGateway` thêm ở Phase 3: `procedure_ingest` gọi embedding khi nạp kho quy trình, và mọi lời gọi embedding phải đi qua `ai_gateway` (mục Allowlist input của `03-agents.md`). Cạnh này không tạo vòng. Cạnh `AIGateway --> PostgreSQL` thêm ở Phase 6 (ADR-019): **chỉ** bảng `llm_usage` — đọc tổng token đã tiêu trước mỗi lời gọi và ghi một dòng sau mỗi lời gọi. `postgresql` là nút lá, nên cạnh này cũng không tạo vòng; và vẫn không có cạnh nào giữa `AIGateway` và `ToolLayer`.
 
 ---
 

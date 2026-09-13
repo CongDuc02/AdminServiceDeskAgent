@@ -1160,3 +1160,72 @@ mục [0-9]+(\.[0-9]+)*[^|;]{0,60}(của|ở) `?(0[0-9]-|PRD|GLOSSARY|ASSUMPTION
 ### Đã kiểm
 
 Theo J, các phép kiểm chạy **sau** lần ghi cuối — tức sau chính mục này — nên số liệu nằm ở báo cáo đóng phase, không ở đây.
+
+
+---
+
+## 2026-09-13 (lần 8) — Phase 6: Project Structure
+
+**Tạo mới:** `docs/design/06-structure.md` v0.1 · ADR-015 → ADR-019 · năm file nguồn trong `docs/reference/`: `langgraph-checkpoint-postgres.md`, `starlette-streaming-disconnect.md`, `web-platform-sse-cors-samesite.md`, `render-deploys-docker.md`, `libreoffice-headless-convert.md`.
+
+**Sửa:** `02-architecture.md` → v0.9 · `03-agents.md` → v0.9 · `04-data.md` → v0.4 · `05-api.md` → v0.5 · `GLOSSARY.md` → v0.18 · `ASSUMPTIONS.md` → v0.19 · `_PLAN.md` (một dòng) · `contracts/schema.sql` · `contracts/openapi.yaml`. **Không đổi:** `00-domain.md`, `01-prd.md`, ADR-001 → ADR-014, `CLAUDE.md`. Phase 6 giữ ☐.
+
+### Thứ tự làm — theo chỉ thị
+
+1. **Câu 4 trước:** tải tài liệu gốc, áp `schema.sql`, kiểm phủ định.
+2. ADR-019 và phần sửa 02, 03, 04, GLOSSARY.
+3. `06-structure.md`.
+4. ADR-015 → ADR-018.
+5. `ASSUMPTIONS.md`, file này, `_PLAN.md`.
+
+### Câu 4 — xác minh
+
+- **Tài liệu gốc lấy bằng `curl`, không bằng bản tóm tắt.** Công cụ tải web trả về bản tóm tắt do một model nhỏ viết, và một bản tóm tắt của Fetch Standard đã lẫn hai khái niệm khác nhau. Mọi trích dẫn ghim vào `docs/reference/` là nguyên văn từ file gốc, đầu file ghi URL, ngày lấy và phiên bản.
+- **`schema.sql` áp trên PostgreSQL 16.2 cùng pgvector 0.6.2 — không qua Docker.** Docker Desktop trên máy không khởi động được: engine WSL không đọc được đĩa dữ liệu của nó. Sửa đĩa đó là thao tác phá huỷ trên dữ liệu Docker của anh, nên không làm. Dùng gói Python `pgserver` 0.1.4 trong một venv của scratchpad; không cài gì vào hệ thống. Bản build là Windows; Render chạy Linux.
+- **Kết quả:** 45 bảng; **169** phép kiểm phủ định bị từ chối đúng, **63** phép khẳng định đúng, **0** lệch so với nhóm quyền của `04-data.md`; giao dịch `READ ONLY` chặn cả lệnh mà role có quyền. Chi tiết và bảng giới hạn ở mục Xác minh contract của `06-structure.md`.
+- **Ba phát hiện thật:** `bo19_migrator` không tạo được extension `vector` → A-040 vế (3). `setup()` của checkpointer không chạy được trong giao dịch → trình tự ở ADR-017. `bo19_app` không tự chạy `setup()` được → runtime không bao giờ gọi nó.
+- **Phát hiện từ mã nguồn LangGraph 1.2.11:** exception của node được lưu vào checkpoint. Lớp 2 ở mục Checkpointer và PII của `03-agents.md` từng đoán đúng rủi ro này nhưng chỉ chặn lỗi của `tool_layer`. `06-structure.md` thêm biên node. Ghi vào `03-agents.md` cần phép — Open Questions của `06-structure.md`.
+
+### Phép của anh và phần đã làm
+
+| Phép | File | Sửa gì |
+|---|---|---|
+| Câu 1 | ADR-019 | Tạo mới, **Accepted**. Ngoại lệ hẹp: `ai_gateway` ghi đúng một bảng, `llm_usage`. Ràng buộc bù; không `audit_event`; phương án "`ai_gateway` gọi `tool_layer`" loại tường minh; ba ca fail-closed viết đủ |
+| Câu 1 | `03-agents.md` | Danh sách ngoại lệ đóng: hai → ba mục; "thêm mục thứ ba phải có ADR" → "thêm mục thứ tư phải có ADR" |
+| Câu 1 | `02-architecture.md` | Cạnh `AIGateway -->|chi llm_usage| PostgreSQL`; câu ngoại lệ có tên ở dòng "Không thuộc" của `ai_gateway`, chữ cũ giữ nguyên |
+| Câu 1 | `04-data.md` | Câu "Ai ghi `llm_usage`" theo đúng khuôn của `graph_thread` |
+| Câu 1 | `GLOSSARY.md` | Dòng `llm_usage`: một trong ba ngoại lệ |
+| Câu 2 | ADR-015, `04-data.md`, `schema.sql` | Manifest font đi kèm `template_version`; bước kiểm khởi động của `queue_worker` chặn khi thiếu font; mục PDF không tất định |
+| Câu 2 | `ASSUMPTIONS.md` | A-058, owner Product Owner — cùng owner với mẫu `.docx` |
+| Câu 3 | `06-structure.md` | Chỉ tài liệu; `.importlinter` và `Dockerfile` là khối đặc tả; công cụ ranh giới frontend là ESLint |
+| Câu 4 | `docs/reference/`, `06-structure.md`, `ASSUMPTIONS.md` | Mục Câu 4 ở trên |
+| Câu 5 | ADR-015, `_PLAN.md` | Một image; lý do đổi sang "đơn giản, ít đường lệch phiên bản" — không dùng ADR-005; cái giá cold start ghi rõ; một dòng chỗ quan sát của Phase 11 |
+| Sửa bắt buộc (1)–(8) | `06-structure.md`, ADR-016, ADR-017, ADR-018 | Bảng "thứ gì chặn vi phạm"; bước kiểm khởi động mười lăm mục; thứ tự migration so với checkpointer; tên role đúng `schema.sql`, không role thứ ba; ba hệ quả của ADR-016; `try_acquire`; bốn điểm của ADR-018; chỗ của `observability` và hàm mask |
+
+### Đã sửa — xin duyệt sau (vượt đúng chữ của chỉ thị)
+
+1. **Mã `BUDGET_UNAVAILABLE`** thêm vào `ck_llm_usage_outcome` của `schema.sql` và câu "Ai ghi" ở `04-data.md`. Chỉ thị viết "nếu cần mã mới thì đó là migration cộng sửa `04-data.md`, phải nói rõ". Cần: `BUDGET_EXCEEDED` sai nghĩa cho ca DB hỏng, và sẽ trộn tỷ lệ DB hỏng vào tỷ lệ chạm trần mà Phase 11 dùng để định cỡ A-022. Vì `schema.sql` chưa từng áp lên môi trường nào ngoài phép thử local, "migration" ở đây là sửa chính file DDL ban đầu.
+2. **Manifest font kéo theo contract API.** Không có đường nào đưa `required_fonts` vào thì cột luôn rỗng. Đã thêm `manifest.required_fonts` và response `TemplateVersion.required_fonts` ở `openapi.yaml`; mã lỗi mới `TEMPLATE_FONTS_INVALID` với mã con `NOT_IN_MANIFEST` · `NOT_INSTALLED`; response 422 cho endpoint kích hoạt; dòng ở mục Endpoint và mục Mã lỗi của `05-api.md`. Danh mục `error_code`: 31 → 32. Có thêm `CHECK (cardinality(required_fonts) >= 1)`.
+3. **Chốt font rộng hơn chữ của chỉ thị.** Chỉ thị viết "các phiên bản template đang hiệu lực". Bước kiểm khởi động phủ thêm mọi phiên bản mà một `document` chưa tới trạng thái kết thúc đang dùng, vì `finalize_issue` render bằng đúng phiên bản đã duyệt, mà phiên bản đó có thể đã `RETIRED`. Thêm hai chốt: lúc tải lên và lúc kích hoạt. Chốt lúc kích hoạt đóng lỗ "kích hoạt phiên bản mới khi worker đang chạy" — bước kiểm khởi động không thấy lỗ đó.
+4. **ADR-015 chọn (b), kèm một thứ tự mà chỉ thị không nêu:** chuyển đổi xong **rồi mới** giành khoá. Lease vì vậy phải phủ **thời lượng upload**, không phải "thời lượng chuyển đổi" như chỉ thị viết — cửa sổ ghi đè chỉ mở khi một lệnh upload đang bay. A-059 mang số đo của cả hai.
+5. **ADR-019 đính chính hai câu của chỉ thị.** (a) Ràng buộc bù "đã được `CHECK` bảo chứng" đúng với tập cột, nhưng `prompt_module_version` và `trace_id` là hai cột `text` không có `CHECK` hình dạng — ghi thẳng là chỗ hở. (b) Phương án "`ai_gateway` gọi `tool_layer`" hôm nay phá contract **độc lập** giữa hai module, chưa phải vòng phụ thuộc theo nghĩa đen; nó thành vòng ngay khi một phần của `tool_layer` cần `ai_gateway`. Kết luận loại không đổi.
+6. **Hệ quả trực tiếp của ADR-019 ở hai chỗ ngoài danh sách phép:** câu `graph_thread` của `04-data.md` và dòng `graph_thread` của `GLOSSARY.md` đang ghi "hai ngoại lệ". Để nguyên thì mâu thuẫn với chính phần sửa được phép.
+7. **Kết quả xác minh A-045 thay chữ `[CẦN XÁC MINH]`** ở câu `graph_thread` và mục Vòng đời checkpoint của `04-data.md`, kèm trích dẫn nguồn. Không đổi thiết kế.
+8. **Đoạn điều kiện chặn A-047 trong Open Questions của `04-data.md`** ghi trạng thái mới.
+9. **A-050 trượt hạn** "Trước Phase 6" mà không đóng — ghi nhận, hạn mới chờ anh chốt.
+10. **`persistence.probe`** — phép thử quyền khởi động cần giao dịch thường; trong giao dịch `READ ONLY`, PostgreSQL báo lỗi chỉ đọc trước khi kiểm quyền. Contract `write-path` cấm `startup` dùng lối ghi, nên thêm một lối thử riêng, luôn rollback, và một contract chặn mọi module khác import nó. Bắt được khi đọc lại chính `06-structure.md`.
+
+### Phát hiện mới — ghi `ASSUMPTIONS.md` hoặc Open Questions, không tự sửa
+
+- A-055, trường hợp thứ ba: giành, gia hạn lease và kết thúc job là ghi `postgresql` không phải nghiệp vụ. Tạm không sinh `audit_event` — lệch có tên.
+- Chưa có thao tác nào có tên đóng `chat_session` vì nhàn rỗi.
+- Bảng sổ migration `schema_migration` nằm ngoài `schema.sql`, chưa có dòng ở mục Nguyên tắc dữ liệu của `04-data.md`.
+- A-059 (thời lượng upload, cho lease), A-060 (ngữ cảnh chạy `migrate`).
+
+### Cần anh cho phép trước — chưa làm
+
+Bốn mục đầu ở Open Questions của `06-structure.md`: dòng `schema_migration` ở `04-data.md`; biên node vào `03-agents.md` cộng ca canary; mã `FONT_MISSING` cho `pdf_export`; dòng chỗ quan sát thứ hai của ADR-015.
+
+### Đã kiểm
+
+Theo quy ước của mục lần 7: phép kiểm chạy **sau** lần ghi cuối, số liệu nằm ở báo cáo đóng phase.

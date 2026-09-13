@@ -1,6 +1,6 @@
 # GLOSSARY — BO-19 Admin Service Desk Agent
 
-**Phiên bản:** 0.17 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5 và vòng duyệt Phase 5
+**Phiên bản:** 0.18 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5, vòng duyệt Phase 5 và Phase 6
 
 > Đây là danh sách tên chuẩn. Từ Phase 1 trở đi, mọi tài liệu, diagram, DDL, endpoint và prompt phải dùng **đúng** các định danh trong file này. Muốn đổi tên thì sửa file này trước, rồi ghi vào [`CHANGELOG.md`](./CHANGELOG.md).
 
@@ -313,9 +313,9 @@ Node `open_request` gọi tool `request_open`; hai tên khác nhau có chủ đ�
 | Định danh | Nghĩa |
 |---|---|
 | `job` | Một việc trong bảng job của `queue_worker` (ADR-004, ADR-010) |
-| `graph_thread` | Sổ thread LangGraph, cạnh bảng checkpoint của thư viện. Nguồn của `checkpoint_purge` và của bộ phát hiện thread kẹt. Chỉ chứa định danh thread, trạng thái và mốc thời gian — không PII, không quyết định nghiệp vụ. Một trong hai ngoại lệ ghi `postgresql` ngoài `tool_layer` (mục Tool Registry của `03-agents.md`) |
+| `graph_thread` | Sổ thread LangGraph, cạnh bảng checkpoint của thư viện. Nguồn của `checkpoint_purge` và của bộ phát hiện thread kẹt. Chỉ chứa định danh thread, trạng thái và mốc thời gian — không PII, không quyết định nghiệp vụ. Một trong ba ngoại lệ ghi `postgresql` ngoài `tool_layer` (mục Tool Registry của `03-agents.md`) |
 | `stored_object` | Sổ giành khoá ghi-một-lần cho mọi object ở `object_storage` |
-| `llm_usage` | Kế toán token của `ai_gateway`. Không bao giờ chứa văn bản prompt, output hay giá trị slot |
+| `llm_usage` | Kế toán token của `ai_gateway`. Không bao giờ chứa văn bản prompt, output hay giá trị slot. Một trong ba ngoại lệ ghi `postgresql` ngoài `tool_layer` — do `ai_gateway` ghi, và là bảng duy nhất `ai_gateway` được ghi (ADR-019) |
 | `embedding_collection` | Một phiên bản collection: một model, một bảng, một cột `vector(n)` cố định (ADR-012) |
 
 **Biến nội dung tự do**
@@ -371,3 +371,22 @@ Node `open_request` gọi tool `request_open`; hai tên khác nhau có chủ đ�
 - `error_code` — danh mục đầy đủ ở mục Mã lỗi của `05-api.md`. Đó là nguồn duy nhất; file này không chép lại
 
 **Cố ý vắng mặt:** `request_type.manage` — tên permission mà endpoint cấu hình loại yêu cầu dùng — **không** có trong mục 7. Nó chưa có trong danh mục permission, và chỉ Phase 9 được thêm (A-042, mục Nguyên tắc chung của `05-api.md`).
+
+---
+
+## 14. Cấu trúc dự án — chốt ở Phase 6
+
+Định nghĩa đầy đủ ở `06-structure.md`. Từ Phase 7 trở đi mọi file dùng đúng các tên này.
+
+| Định danh | Nghĩa |
+|---|---|
+| `bo19` | Package Python gốc của backend. Mỗi thành phần ở mục 11 là một package con **cùng tên**: `bo19.api`, `bo19.ai_gateway`, `bo19.orchestrator`, `bo19.tool_layer`, `bo19.queue_worker`, `bo19.observability`, `bo19.object_storage`; `postgresql` là `bo19.persistence` |
+| `bo19_migrator` · `bo19_app` | Hai role PostgreSQL — tên có từ Phase 4 (mục Nguyên tắc dữ liệu của `04-data.md`), ghi ở đây vì Phase 6 dựa vào chúng. **Không có role thứ ba** |
+| `required_fonts` | Cột của `template_version`: manifest font của phiên bản — tên họ font mà phiên bản cần (ADR-015) |
+| `schema_migration` | Sổ migration do trình chạy migration tạo, nằm ngoài `schema.sql` (ADR-017) |
+| **Bước kiểm khởi động** | Danh sách phép kiểm mà `api`, `queue_worker` và cron chạy trước khi phục vụ. Phép loại **chặn** trượt thì tiến trình thoát, không chạy kèm cảnh báo |
+| **Bộ giám sát lượt** | Nơi giữ task lượt chat trong tiến trình `api`, tách khỏi vòng đời request (ADR-016) |
+| **Cửa sổ drain** | Khoảng từ `SIGTERM` tới lúc tiến trình thoát, nằm trong shutdown delay của Render (ADR-016) |
+| **Biên node** | Lớp bọc mọi node của graph: chỉ exception mang mã được rời node, vì LangGraph lưu exception của node vào checkpoint (A-045) |
+| **Lối đọc** · **lối ghi** | Hai lối vào `bo19.persistence`. Lối đọc mở giao dịch `READ ONLY`; lối ghi chỉ `tool_layer` và ba chủ ngoại lệ được import (ADR-017) |
+| **Lối `fetch` duy nhất** | Module duy nhất của `client` được tham chiếu `fetch`, và là nơi duy nhất gắn `X-BO19-CSRF` (ADR-018) |

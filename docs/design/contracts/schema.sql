@@ -270,12 +270,14 @@ CREATE TABLE template_version (
     status                   text        NOT NULL,
     source_object_key        text        NOT NULL REFERENCES stored_object_commit (object_key),
     uploaded_by_employee_id  uuid        NOT NULL REFERENCES employee (id),
+    required_fonts           text[]      NOT NULL,            -- manifest font của phiên bản (ADR-015, A-058)
     activated_at             timestamptz,
     retired_at               timestamptz,
     created_at               timestamptz NOT NULL DEFAULT now(),
     updated_at               timestamptz NOT NULL DEFAULT now(),
     row_version              integer     NOT NULL DEFAULT 1,
     CONSTRAINT uq_template_version_no UNIQUE (template_id, version_no),
+    CONSTRAINT ck_template_version_fonts CHECK (cardinality(required_fonts) >= 1),
     CONSTRAINT ck_template_version_no CHECK (version_no >= 1),
     CONSTRAINT ck_template_version_status CHECK (status IN ('UPLOADED', 'ACTIVE', 'RETIRED')),
     CONSTRAINT ck_template_version_activated
@@ -977,7 +979,8 @@ CREATE TABLE llm_usage (
     CONSTRAINT ck_llm_usage_tokens
         CHECK (input_tokens >= 0 AND (output_tokens IS NULL OR output_tokens >= 0)),
     CONSTRAINT ck_llm_usage_outcome CHECK (outcome IN (
-        'OK', 'PARSE_REPAIRED', 'PARSE_FAILED', 'PROVIDER_ERROR', 'BUDGET_EXCEEDED', 'ALLOWLIST_REJECTED')),
+        'OK', 'PARSE_REPAIRED', 'PARSE_FAILED', 'PROVIDER_ERROR', 'BUDGET_EXCEEDED', 'BUDGET_UNAVAILABLE',
+        'ALLOWLIST_REJECTED')),
     CONSTRAINT ck_llm_usage_has_budget_owner
         CHECK (num_nonnulls(request_id, chat_session_id, procedure_document_version_id) >= 1)
 );
