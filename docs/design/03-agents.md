@@ -1,6 +1,6 @@
 # Agent & Tool Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.7 · **Trạng thái:** Draft chờ duyệt · **v0.2–0.3:** hai vòng sửa theo review — xem các mục ngày 2026-09-12 (lần 5, lần 6) của `CHANGELOG.md` · **v0.4:** sửa ở Phase 4 theo phép K1 và J2 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.5:** danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1) — mục ngày 2026-09-13 (lần 2) · **v0.6:** tool `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.7:** thao tác `request_slot_confirm` (mục 5.4 mới, mục 5.4 và 5.5 cũ đánh số lại thành 5.5 và 5.6), failure handling của `intake_agent` — mục ngày 2026-09-13 (lần 4)
+**Phiên bản:** 0.8 · **Trạng thái:** Draft chờ duyệt · **v0.2–0.3:** hai vòng sửa theo review — xem các mục ngày 2026-09-12 (lần 5, lần 6) của `CHANGELOG.md` · **v0.4:** sửa ở Phase 4 theo phép K1 và J2 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.5:** danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1) — mục ngày 2026-09-13 (lần 2) · **v0.6:** tool `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.7:** thao tác `request_slot_confirm` (mục 5.4 mới, mục 5.4 và 5.5 cũ đánh số lại thành 5.5 và 5.6), failure handling của `intake_agent` — mục ngày 2026-09-13 (lần 4) · **v0.8:** mục 5.7, bản kê thao tác do endpoint gọi — vòng duyệt Phase 5 (A2), mục ngày 2026-09-13 (lần 5)
 
 > File này chốt agent nào tồn tại, mỗi agent được đọc gì, gọi tool nào, chạy trên graph LangGraph nào, dừng ở đâu chờ người, nhớ gì và quên gì. File này **không** viết nội dung prompt (Phase 7), **không** thiết kế bảng/cột (Phase 4), **không** thiết kế màn hình duyệt hay cơ chế dừng khi chạm trần (Phase 8).
 
@@ -288,7 +288,7 @@ Bốn nhóm caller trong graph. Một tool có mặt ở hai nhóm thì mỗi nh
 
 **Đọc INV-01 thẳng từ bảng:** cột `drafting_agent` không có dấu ✔ nào ở dòng có vị trí "Giữa hai cổng" hay "Sau mọi cổng". Cột "Node sau cổng" không có node LLM nào.
 
-Ngoài graph: `notification_send` còn được job nhắc hạn của `queue_worker` gọi. Thao tác cổng (mục 5.2), thao tác vận hành (mục 5.3) và thao tác của nhân viên trước `SUBMITTED` (mục 5.4) là thao tác của `tool_layer`, không phải tool của graph. `halt_for_human` ghi lý do dừng qua `document_halt_record` — không node nào ghi DB hay `audit_event` trực tiếp, đúng luật ở đầu mục 5.
+Ngoài graph: `notification_send` còn được job nhắc hạn của `queue_worker` gọi. Thao tác cổng (mục 5.2), thao tác vận hành (mục 5.3), thao tác của nhân viên trước `SUBMITTED` (mục 5.4) và thao tác do endpoint gọi (mục 5.7) là thao tác của `tool_layer`, không phải tool của graph. `halt_for_human` ghi lý do dừng qua `document_halt_record` — không node nào ghi DB hay `audit_event` trực tiếp, đúng luật ở đầu mục 5.
 
 ### 5.6 Khoá object theo input và ràng buộc ghi một lần
 
@@ -303,6 +303,23 @@ Ràng buộc **ghi một lần**, neo vào A-021 cho Phase 4:
 - Quyền ghi một khoá phải được giành nguyên tử ở tầng ứng dụng — ví dụ ghi nhận khoá trong `postgresql` trước khi tải lên — không dựa vào tính năng ghi có điều kiện của nhà cung cấp, cùng lý do ADR-003 loại Option B.
 
 INV-01 không bị ảnh hưởng: `approved_content_hash` tính trên giá trị biến, không trên byte của file.
+
+### 5.7 Thao tác do endpoint gọi — đặt tên ở Phase 5
+
+Nhóm thứ tư: chỉ endpoint gọi, không node nào của graph gọi, không agent nào có trong danh sách tool. Chúng có tên vì luật ở đầu mục 5 — mọi ghi `postgresql` đi qua `tool_layer`, trừ danh sách ngoại lệ đóng — buộc mỗi lệnh ghi do endpoint gây ra phải có một thao tác có tên. Mục này đặt ở cuối mục 5 để không phải đánh số lại các mục đã có. Endpoint, body, lỗi và cách chạy ở mục Endpoint của `05-api.md`; mục này chỉ là bản kê.
+
+| Thao tác | Ghi gì | Permission | Vị trí so với cổng HITL |
+|---|---|---|---|
+| `chat_session_open` | `chat_session` | `request.create` hoặc `request.create_on_behalf` | Trước `SUBMITTED` |
+| `chat_message_append` | `chat_message`, `chat_session.last_message_at` | Chủ phiên | Trước `SUBMITTED` |
+| `stored_file_fetch` | Chỉ đọc object; ghi `audit_event` của lần tải (ADR-014) | Theo loại file — mục Endpoint của `05-api.md` | Không đổi vòng đời văn bản |
+| `template_create` · `template_version_upload` · `template_version_activate` | `template`, `template_version`, danh mục biến, `stored_object` | `template.manage` | Cấu hình — ngoài vòng đời văn bản |
+| `employee_import` | `employee` | `employee.import` | Cấu hình |
+| `procedure_version_upload` · `procedure_version_deactivate` | `procedure_document`, `procedure_document_version`, `stored_object`, job `procedure_ingest`; xoá embedding khi gỡ | `procedure.manage` | Cấu hình |
+| `request_type_upsert` · `slot_definition_upsert` | `request_type`, `slot_definition` — trừ độ nhạy của một slot đã có | `request_type.manage` — chưa có trong danh mục permission (A-042) | Cấu hình |
+| `delegation_create` · `delegation_revoke` `[Should]` | `delegation` | `delegation.manage` | Cấu hình |
+
+Mọi thao tác ở đây sinh `audit_event` theo luật ở đầu mục 5. Với `chat_message_append` và `stored_file_fetch`, luật đó đang kéo ngược định nghĩa của `audit_event` ở `GLOSSARY.md` — A-055, chưa giải.
 
 ---
 
@@ -815,7 +832,7 @@ Một vòng có thể tốn 0 token. Định cỡ trần token theo "số vòng 
 | `intake_agent`, `intake_graph` | `orchestrator` | `api` |
 | `drafting_agent`, `document_graph` | `orchestrator` | `queue_worker` |
 | Mọi lời gọi LLM và embedding, kiểm allowlist, token budget | `ai_gateway` | Tiến trình của nơi gọi |
-| Mọi tool ở mục 5.1, thao tác cổng ở mục 5.2, thao tác của nhân viên ở mục 5.4 | `tool_layer` | `api` hoặc `queue_worker` |
+| Mọi tool ở mục 5.1, thao tác cổng ở mục 5.2, thao tác của nhân viên ở mục 5.4, thao tác do endpoint gọi ở mục 5.7 | `tool_layer` | `api` hoặc `queue_worker` |
 | `expire_request`, `checkpoint_purge` | `queue_worker` | Cron Job hoặc Background Worker |
 | `procedure_ingest`, `embed_corpus_chunk` | `queue_worker` gọi `tool_layer` và `ai_gateway` | Background Worker |
 | Kho `procedure_document` | `vector_store` | `postgresql` |

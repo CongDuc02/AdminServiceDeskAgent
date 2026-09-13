@@ -9,7 +9,7 @@ Chạy **tuần tự, mỗi phase một phiên Claude Code mới** (tránh conte
 | 2   | System Architecture         | `02-architecture.md`                  | 1         | ☑          |
 | 3   | Agent & Tool Architecture   | `03-agents.md`                        | 2         | ☑          |
 | 4   | Data Architecture           | `04-data.md`, `contracts/schema.sql`  | 1, 3      | ☑          |
-| 5   | API Spec                    | `05-api.md`, `contracts/openapi.yaml` | 4         | ☐          |
+| 5   | API Spec                    | `05-api.md`, `contracts/openapi.yaml` | 4         | ☑          |
 | 6   | Project Structure (BE + FE) | `06-structure.md`                     | 2, 5      | ☐          |
 | 7   | Prompt Architecture         | `07-prompts.md`                       | 3         | ☐          |
 | 8   | HITL & Approval Workflow    | `08-hitl.md`                          | 3, 4      | ☐          |
@@ -194,6 +194,8 @@ Môi trường dev/staging/prod trên Render, cold start, worker nền, cron, mi
 | ADR-005 | Một lượt graph tiến sát giới hạn thời gian request | **Phân phối** thời lượng một lượt chạy `orchestrator` trong luồng request của `api` — nhìn phần đuôi, không nhìn trung bình — đặt cạnh giới hạn thời gian request (A-025) |
 | ADR-011 | Tranh khoá trên bộ đếm sổ số                       | Thời gian chờ khoá trên dòng `document_register_counter`, tách theo sổ và dải                                                                                              |
 | ADR-012 | Tìm chính xác chậm dần khi kho lớn lên             | Latency của `procedure_retrieval` và số chunk đang hiệu lực, đặt **trên cùng một trục thời gian**. Đây cũng là tín hiệu kích hoạt index ANN                               |
+| ADR-013 | Vòng poll tín hiệu chiếm tải và connection         | Tỷ trọng truy vấn do vòng poll của stream tín hiệu gây ra trên tổng tải của `postgresql`, **và** số connection của pool đang bị vòng poll chiếm, đặt cạnh số kết nối tín hiệu đang mở và trần pool (A-057), **trên cùng một trục thời gian** |
+| ADR-014 | Một lần tải file tiến sát giới hạn thời gian request | **Phân phối** thời lượng một lần tải file qua `api` — nhìn phần đuôi, không nhìn trung bình — đặt cạnh kích thước file và giới hạn thời gian request (A-025) |
 
 **Hai điều kiện đảo ngược không phải tín hiệu vận hành**, nên không đo ở observability mà ở `ASSUMPTIONS.md`: ADR-002 phải xét lại khi A-001 bị bác bỏ; ADR-003 kích hoạt khi A-024 đóng. Hai điều kiện này phát ra khi một giả định đổi trạng thái, không phải khi một metric vượt ngưỡng.
 

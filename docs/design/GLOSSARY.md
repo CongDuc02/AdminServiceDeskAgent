@@ -1,6 +1,6 @@
 # GLOSSARY — BO-19 Admin Service Desk Agent
 
-**Phiên bản:** 0.15 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4 và Phase 5
+**Phiên bản:** 0.17 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5 và vòng duyệt Phase 5
 
 > Đây là danh sách tên chuẩn. Từ Phase 1 trở đi, mọi tài liệu, diagram, DDL, endpoint và prompt phải dùng **đúng** các định danh trong file này. Muốn đổi tên thì sửa file này trước, rồi ghi vào [`CHANGELOG.md`](./CHANGELOG.md).
 
@@ -304,7 +304,7 @@ Node `open_request` gọi tool `request_open`; hai tên khác nhau có chủ đ�
 
 **Thao tác của nhân viên trước `SUBMITTED`** *(thêm ở Phase 5)* — `request_slot_confirm`: nhân viên xác nhận từng giá trị đề xuất, **không** qua lượt chat. Định nghĩa ở mục Tool Registry của `03-agents.md`
 
-**Thao tác do endpoint gọi** *(thêm ở Phase 5)* — thao tác của `tool_layer` mà chỉ endpoint gọi, không node nào: `chat_session_open` · `chat_message_append` · `stored_file_fetch` · `template_create` · `template_version_upload` · `template_version_activate` · `employee_import` · `procedure_version_upload` · `procedure_version_deactivate` · `request_type_upsert` · `slot_definition_upsert` · `delegation_create` `[Should]` · `delegation_revoke` `[Should]`. Định nghĩa ở mục Endpoint của `05-api.md`
+**Thao tác do endpoint gọi** *(thêm ở Phase 5)* — thao tác của `tool_layer` mà chỉ endpoint gọi, không node nào: `chat_session_open` · `chat_message_append` · `stored_file_fetch` · `template_create` · `template_version_upload` · `template_version_activate` · `employee_import` · `procedure_version_upload` · `procedure_version_deactivate` · `request_type_upsert` · `slot_definition_upsert` · `delegation_create` `[Should]` · `delegation_revoke` `[Should]`. Định nghĩa ở mục Endpoint của `05-api.md`; bản kê ở mục Tool Registry của `03-agents.md`
 
 **Loại job** — `render_document` · `resume_document_graph` · `finalize_issue` · `checkpoint_purge` · `procedure_ingest` · `notification_send`. Ba loại cuối thêm ở Phase 4: là thao tác mà Phase 3 đã mô tả chạy bằng job, nay có tên trong enum
 
@@ -352,9 +352,9 @@ Node `open_request` gọi tool `request_open`; hai tên khác nhau có chủ đ�
 
 | Định danh | Nghĩa |
 |---|---|
-| `bo19_session` | Tên session cookie — `HttpOnly`, `Secure`, `SameSite=Strict` (ADR-013) |
+| `bo19_session` | Tên session cookie — `HttpOnly`, `Secure`, `SameSite=Strict`. Mang một token ký bằng secret phía server; phiên không lưu DB (ADR-013) |
 | `X-BO19-CSRF` | Header bắt buộc trên mọi lệnh không phải `GET` |
-| `Idempotency-Key` | Header bắt buộc trên endpoint tạo dòng; giá trị là uuid của dòng chính được tạo |
+| `Idempotency-Key` | Header bắt buộc trên endpoint tạo dòng; giá trị là uuid của dòng chính được tạo. **Ngoại lệ tường minh:** `POST /employee-imports`, `POST /templates`, `POST /delegations` lấy bằng id của `audit_event` của lần tạo (mục Nguyên tắc chung của `05-api.md`) |
 | `Idempotent-Replayed` | Header của response lặp lại hợp lệ |
 | **Stream lượt chat** | Response SSE của `POST` lượt chat. Sự kiện `turn.accepted` · `turn.progress` · `turn.reply` · `turn.error`. Bản có thẩm quyền là `chat_message` |
 | **Stream tín hiệu** | `GET /signals`. Sự kiện `signal`, chỉ mang chủ đề; client GET lại để lấy sự thật |

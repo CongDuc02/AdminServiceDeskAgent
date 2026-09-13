@@ -57,7 +57,7 @@ paths:
             schema: { $ref: '#/components/schemas/LoginBody' }
       responses:
         '204':
-          description: Đã tạo phiên
+          description: Đã phát token — phiên không lưu DB (ADR-013)
           headers:
             Set-Cookie:
               description: bo19_session; HttpOnly; Secure; SameSite=Strict; Path=/api
@@ -75,7 +75,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/CsrfHeader'
       responses:
-        '204': { description: Đã huỷ phiên }
+        '204': { description: Đã xoá cookie ở trình duyệt này — token đã phát KHÔNG bị thu hồi trước hạn (A-048) }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/InternalError' }
@@ -810,7 +810,7 @@ paths:
       x-bo19-operation: template_create
       x-bo19-permission: [template.manage]
       x-bo19-execution: SYNC
-      x-bo19-idempotency-key: template
+      x-bo19-idempotency-key: audit_event (template.create) — ngoại lệ tường minh
       x-bo19-feature: F6
       parameters:
         - $ref: '#/components/parameters/CsrfHeader'
@@ -968,7 +968,7 @@ paths:
       x-bo19-operation: employee_import
       x-bo19-permission: [employee.import]
       x-bo19-execution: SYNC
-      x-bo19-idempotency-key: audit_event (đợt import)
+      x-bo19-idempotency-key: audit_event (employee.import) — ngoại lệ tường minh
       x-bo19-feature: F6
       parameters:
         - $ref: '#/components/parameters/CsrfHeader'
@@ -1368,7 +1368,7 @@ paths:
       x-bo19-operation: delegation_create
       x-bo19-permission: [delegation.manage]
       x-bo19-execution: SYNC
-      x-bo19-idempotency-key: delegation
+      x-bo19-idempotency-key: audit_event (delegation.create) — ngoại lệ tường minh
       x-bo19-scope: Should
       parameters:
         - $ref: '#/components/parameters/CsrfHeader'
@@ -1430,7 +1430,7 @@ components:
       type: apiKey
       in: cookie
       name: bo19_session
-      description: HttpOnly; Secure; SameSite=Strict; Path=/api (ADR-013). Nơi lưu phiên và thời hạn — A-048.
+      description: HttpOnly; Secure; SameSite=Strict; Path=/api. Token ký bằng secret phía server, phiên không lưu DB (ADR-013). Thời hạn TBD — A-048.
 
   headers:
     IdempotentReplayed:
@@ -1448,7 +1448,7 @@ components:
       name: Idempotency-Key
       in: header
       required: true
-      description: Bằng uuid của dòng chính mà lệnh ghi tạo ra (x-bo19-idempotency-key).
+      description: Bằng uuid của dòng chính mà lệnh ghi tạo ra (x-bo19-idempotency-key). Ngoại lệ tường minh — POST /employee-imports, POST /templates và POST /delegations lấy bằng id của audit_event của lần tạo.
       schema: { type: string, format: uuid }
     AcceptEventStream:
       name: Accept

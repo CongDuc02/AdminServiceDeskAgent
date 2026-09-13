@@ -1,6 +1,6 @@
 # API Spec — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.1 · **Trạng thái:** Draft chờ duyệt
+**Phiên bản:** 0.4 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 5 — mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md` · **v0.3:** vòng duyệt Phase 5 lần 2 — mục ngày 2026-09-13 (lần 6) · **v0.4:** đóng Phase 5 — mục ngày 2026-09-13 (lần 7)
 
 > File này chốt contract giữa `client` và `api`: endpoint REST, hai stream SSE, xác thực, lỗi chuẩn hoá, phân trang, idempotency và cách xử lý hai người thao tác cùng lúc. Contract máy đọc được nằm ở [`contracts/openapi.yaml`](./contracts/openapi.yaml). File này **không** thiết kế cấu trúc code (Phase 6), màn hình duyệt, bảng mã lý do hay cơ chế tiếp quản (Phase 8), chi tiết AuthZ, rate limit và vòng đời credential (Phase 9), và **không** định cỡ tham số vận hành (Phase 11).
 
@@ -32,13 +32,16 @@ Tên entity, trạng thái, enum, permission, agent, tool dùng đúng `GLOSSARY
 
 Lập luận và phương án bị loại ở ADR-013.
 
-- **Session cookie** `bo19_session`: `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api`. Nội dung cookie là mã phiên mờ, không mang thông tin nào đọc được. Thời hạn phiên và cách lưu phiên thuộc Phase 9 (A-048).
-- **Đăng nhập** bằng `employee_code` và mật khẩu. Cách cấp mật khẩu lần đầu, đổi, quên và khoá sau nhiều lần sai **chưa có ai sở hữu** — `employee` nhập bằng CSV (D-002) nên không có đường sinh mật khẩu ban đầu. Ghi ở A-048. Phase 5 không mở endpoint nào cho vòng đời credential.
+- **Session cookie** `bo19_session`: `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api`.
+- **Phiên không lưu DB** (ADR-013). Cookie mang một token **ký bằng secret phía server**, stateless: định danh nhân viên cộng thời điểm hết hạn, không mang permission. Không bảng nào trong `schema.sql` giữ phiên, và đăng nhập không ghi gì vào `postgresql`. Mỗi request, `api` kiểm chữ ký và hạn, rồi **đọc lại từ DB** `employee.is_active` và permission hiệu lực — nên nghỉ việc hay bị thu quyền có hiệu lực ngay ở request kế tiếp. Thời hạn token `TBD` (A-048); quản lý secret thuộc Phase 9.
+- **Cái phải chấp nhận, nói thẳng:** không thu hồi được **một** phiên đơn lẻ trước khi hết hạn. `DELETE /auth/session` chỉ xoá cookie ở trình duyệt đó; một token đã bị sao chép vẫn dùng được tới hạn. Cách duy nhất để vô hiệu hoá sớm là đổi secret — và nó vô hiệu hoá **mọi** phiên. Chấp nhận cho Sprint đầu, như một **rủi ro có chủ** — owner Phase 9 (A-048).
+- **Đăng nhập** bằng `employee_code` và mật khẩu. Credential sống ở một **bảng riêng**, không ở `employee`, do Phase 9 thêm bằng migration — nên import CSV không bao giờ chạm tới nó (A-048). Mật khẩu ban đầu do một thao tác vận hành seed và giao ngoài hệ thống.
+- **Không thuộc Sprint đầu:** buộc đổi mật khẩu lần đầu, đổi, quên, khoá sau nhiều lần sai — không endpoint nào cho chúng. Mọi ca đăng nhập sai trả `INVALID_CREDENTIALS` đồng nhất. **Không** có mã khoá tài khoản: một mã như vậy để lộ tài khoản nào tồn tại. Chống dò mật khẩu là rate limit của Phase 9.
 - **Chống CSRF — hai lớp, cả hai bắt buộc:**
   1. `SameSite=Strict`: cookie không đi kèm request khác site.
   2. Header **`X-BO19-CSRF`** bắt buộc trên **mọi** lệnh không phải `GET` — kể cả đăng nhập, để chặn CSRF đăng nhập. Giá trị là chuỗi không rỗng bất kỳ; server chỉ kiểm sự có mặt. Lớp này không dựa vào bí mật, mà dựa vào việc một header tuỳ biến trên request khác origin buộc trình duyệt hỏi trước, và `api` không cho phép origin nào khác (A-051). Thiếu header thì trả `CSRF_HEADER_MISSING`.
 - `GET` không đổi trạng thái nào — trừ việc ghi `audit_event` khi tải file (ADR-014), là việc ghi vết chứ không phải thay đổi nghiệp vụ.
-- **Ràng buộc cùng origin.** Hai lớp trên chỉ đứng khi `client` được phục vụ cùng origin với `api`. Ràng buộc này và việc nó thu hẹp một lựa chọn của Phase 2 ghi ở Consequences của ADR-013. Câu hỏi hai subdomain trên domain mặc định của Render có cùng site hay không ở A-049.
+- **Cùng origin — đã chốt.** `client` được `api` (FastAPI) phục vụ tĩnh, dưới chính origin của `api`. Cùng origin tuyệt đối, nên hai lớp trên đứng mà không phụ thuộc việc hai subdomain trên domain mặc định của Render có cùng site hay không — A-049 đã đóng bằng quyết định. Hệ quả cho Phase 6 ghi ở Consequences của ADR-013.
 
 ### 1.4 Phân quyền ở tầng API
 
@@ -121,6 +124,7 @@ Hệ quả cho Phase 6: **mọi** câu `UPDATE` chuyển trạng thái phải gh
 ### 1.8 Idempotency
 
 - **Chỉ endpoint tạo dòng mới cần khoá.** Header **`Idempotency-Key`** bắt buộc, và giá trị của nó **chính là uuid của dòng chính mà lệnh ghi tạo ra** — cột "Khoá = id của" ở mục 2. Không có bảng lưu khoá; khoá chính của bảng làm việc đó (quy ước "id là uuid do ứng dụng sinh" ở mục Nguyên tắc dữ liệu của `04-data.md`).
+- **Ngoại lệ tường minh — ba endpoint lấy khoá bằng id của `audit_event` của lần tạo, không bằng id của dòng chính:** `POST /employee-imports` — đợt import không có dòng chính nào khác; `POST /templates` và `POST /delegations` `[Should]` — bảng `template` và `delegation` không có cột người thực hiện, và người lập uỷ quyền có thể không phải người trao quyền. **Lý do:** `audit_event` được ghi trong cùng giao dịch và mang `actor_employee_id`, `action`, `entity_id`, nên khi trùng khoá, `api` tra nó **theo khoá chính** — không cần index mới. Ba điều kiện ở dưới đọc từ chính dòng đó: tác nhân là `actor_employee_id`; loại thao tác là `action` — `employee.import`, `template.create`, `delegation.create`; đối tượng là dòng mà `entity_id` trỏ tới, và được trả về khi lặp lại hợp lệ. **Cái giá:** quy tắc "khoá bằng id của dòng chính" có một ngoại lệ, nên ngoại lệ phải được liệt kê đích danh — ở đây, và ở dòng `Idempotency-Key` của `GLOSSARY.md`. Không endpoint nào khác được dùng ngoại lệ này.
 - **Thao tác chỉ `UPDATE` không cần khoá.** Chúng đã idempotent nhờ điều kiện trạng thái mong đợi cộng `row_version` (mục 1.9). Lặp lại một `UPDATE` đã thành công thì gặp trạng thái đích và không làm gì.
 - **Khi trùng khoá, `api` kiểm ba điều — và đây là toàn bộ phép kiểm:**
   1. **cùng tác nhân** — người gọi đúng là người đã tạo dòng đó;
@@ -128,7 +132,7 @@ Hệ quả cho Phase 6: **mọi** câu `UPDATE` chuyển trạng thái phải gh
   3. **cùng loại thao tác** — với `decision_record` là cột `kind` khớp endpoint; với bảng khác là endpoint tạo ra loại dòng đó.
 - **Đủ ba thì là lặp lại hợp lệ:** trả tài nguyên đang có, cùng mã HTTP của lần thành công đầu, kèm header `Idempotent-Replayed: true`. Tài nguyên trả về phản ánh **trạng thái hiện tại** — nếu graph đã chạy tiếp thì client thấy trạng thái mới hơn lúc ghi.
 - **Lệch bất kỳ điều nào thì trả `IDEMPOTENCY_KEY_CONFLICT` (409) và tuyệt đối không trả nội dung dòng đang có.** Nếu trả nội dung thì client gửi `Idempotency-Key` bằng `decision_record.id` của người khác sẽ đọc được quyết định của người đó — một lỗ rò.
-- **Tác nhân đọc từ đâu:** từ cột người thực hiện của chính dòng đó nếu có (`decision_record.actor_employee_id`, `template_version.uploaded_by_employee_id`, …). Bảng không có cột đó thì đọc từ `audit_event` của lần tạo — mọi thao tác ghi sinh `audit_event` trong cùng giao dịch, nên nó luôn tồn tại.
+- **Tác nhân đọc từ đâu:** từ cột người thực hiện của chính dòng chính — `decision_record.actor_employee_id`, `template_version.uploaded_by_employee_id`, `procedure_document_version.ingested_by_employee_id`, `chat_session.employee_id`; với tin nhắn thì là chủ phiên. Với ba endpoint của ngoại lệ trên: `audit_event.actor_employee_id`. **Không ca nào phải tra `audit_event` theo đối tượng**, nên không cần index mới — phương án index bị loại ở Open Questions.
 
 **Giới hạn đã biết, nói thẳng.** Ba điều trên **không thay việc so payload**. So payload đòi một bảng lưu vân tay của request, mà ta đã chọn không thêm bảng. Cùng người, cùng văn bản, cùng loại thao tác mà khác nội dung — ví dụ khác `change_reason` — thì **lần ghi đầu thắng, lần sau bị bỏ im lặng**. Client thấy nội dung thật trong response lặp lại và phải tự nhận ra.
 
@@ -172,12 +176,12 @@ Hệ quả cho Phase 6: **mọi** câu `UPDATE` chuyển trạng thái phải gh
 
 ### 2.1 Thao tác của `tool_layer` được đặt tên ở Phase 5
 
-Luật ở mục Tool Registry của `03-agents.md`: **mọi** ghi `postgresql` đi qua `tool_layer`, trừ danh sách ngoại lệ đóng gồm hai mục (bảng checkpoint và `graph_thread`); mọi thao tác ghi sinh `audit_event`. Phase 3 đặt tên cho tool của graph, thao tác cổng, thao tác vận hành và một thao tác cấu hình, nhưng chưa đặt tên cho các lệnh ghi mà chỉ endpoint gây ra — ví dụ `03-agents.md` ghi "`api` ghi mỗi lượt" cho `chat_message` mà không nói qua thao tác nào. Không có tên thì Phase 13 không truy vết được endpoint về thao tác. Các tên dưới đây được đặt vì lý do đó, và **chỉ** endpoint gọi chúng — không node nào của graph gọi.
+Luật ở mục Tool Registry của `03-agents.md`: **mọi** ghi `postgresql` đi qua `tool_layer`, trừ danh sách ngoại lệ đóng gồm hai mục (bảng checkpoint và `graph_thread`); mọi thao tác ghi sinh `audit_event`. Phase 3 đặt tên cho tool của graph, thao tác cổng, thao tác vận hành và một thao tác cấu hình, nhưng chưa đặt tên cho các lệnh ghi mà chỉ endpoint gây ra — ví dụ `03-agents.md` ghi "`api` ghi mỗi lượt" cho `chat_message` mà không nói qua thao tác nào. Không có tên thì Phase 13 không truy vết được endpoint về thao tác. Các tên dưới đây được đặt vì lý do đó, và **chỉ** endpoint gọi chúng — không node nào của graph gọi. Bản kê của chúng nằm ở mục Tool Registry của `03-agents.md`. Mọi thao tác ghi dưới đây sinh `audit_event` theo luật chung; với `chat_message_append` và `stored_file_fetch`, luật đó đang kéo ngược định nghĩa của `audit_event` — A-055, chưa giải.
 
 | Thao tác | Ghi gì, trong một giao dịch | Endpoint |
 |---|---|---|
 | `chat_session_open` | Trả `chat_session` đang `OPEN` của nhân viên nếu có; không có thì tạo mới | `POST /chat-sessions` |
-| `chat_message_append` | Một dòng `chat_message`, cập nhật `chat_session.last_message_at` | `POST /chat-sessions/{id}/turns` — tin nhắn của nhân viên lúc nhận lượt, và **đúng một** tin nhắn của agent lúc kết thúc lượt, kể cả lượt lỗi |
+| `chat_message_append` | Một dòng `chat_message`, cập nhật `chat_session.last_message_at` | `POST /chat-sessions/{id}/turns` — tin nhắn của nhân viên lúc nhận lượt, và **đúng một** tin nhắn của agent lúc kết thúc lượt, kể cả lượt lỗi — trừ ca tiến trình chết giữa lượt (A-056) |
 | `stored_file_fetch` | Chỉ đọc object; ghi `audit_event` của lần tải | Tải file (ADR-014) |
 | `template_create` | `template` | `POST /templates` |
 | `template_version_upload` | `stored_object`, `stored_object_commit`, `template_version` ở `UPLOADED`, `template_variable`, `template_variable_input` | `POST /templates/{id}/versions` |
@@ -189,17 +193,17 @@ Luật ở mục Tool Registry của `03-agents.md`: **mọi** ghi `postgresql` 
 | `slot_definition_upsert` | `slot_definition`, **trừ** độ nhạy của một slot đã có | `PUT /config/request-types/{code}/slots/{slot}` |
 | `delegation_create` · `delegation_revoke` `[Should]` | `delegation` | Mục 2.12 |
 
-Tên của phiên đăng nhập **không** nằm ở đây: nơi lưu phiên chưa được chọn (A-048). Nếu phiên lưu ở `postgresql` thì việc ghi đó phải đi qua `tool_layer` hoặc vào danh sách ngoại lệ đóng bằng ADR — đã ghi ở A-048.
+Đăng nhập và đăng xuất **không** có thao tác nào ở đây: phiên không lưu DB (mục 1.3), nên chúng không ghi gì vào `postgresql` và không đụng luật ghi qua `tool_layer`.
 
 ### 2.2 Phiên đăng nhập
 
 | Method | Path | Mô tả | Permission | Chạy | Khoá = id của | Body → Response |
 |---|---|---|---|---|---|---|
 | POST | `/auth/session` | Đăng nhập. Sai mã hay sai mật khẩu đều trả cùng một lỗi | Công khai | `SYNC` | — | `LoginBody` → 204, `Set-Cookie` |
-| DELETE | `/auth/session` | Đăng xuất | Đã đăng nhập | `SYNC` | — | → 204 |
+| DELETE | `/auth/session` | Đăng xuất: xoá cookie ở trình duyệt này. Token đã phát không bị thu hồi trước hạn (mục 1.3) | Đã đăng nhập | `SYNC` | — | → 204 |
 | GET | `/me` | Nhân viên đang đăng nhập, **permission hiệu lực** (gói vai trò cộng quyền cấp lẻ còn hiệu lực), `operating_mode` hiện hành | Đã đăng nhập | — | — | → `Me` |
 
-Đăng nhập không cần khoá: đăng nhập lại chỉ tạo thêm một phiên. `client` quyết hiện gì theo **permission** trong `Me`, không theo tên vai trò (D-005).
+Đăng nhập không cần khoá: phiên không phải một dòng trong DB, nên đăng nhập lại chỉ phát thêm một token. `client` quyết hiện gì theo **permission** trong `Me`, không theo tên vai trò (D-005).
 
 ### 2.3 Hội thoại — F1
 
@@ -301,7 +305,7 @@ Không có endpoint đánh dấu đã đọc. Cột `notification.read_at` và `
 | Method | Path | Thao tác | Chạy | Khoá = id của | Body → Response |
 |---|---|---|---|---|---|
 | GET | `/templates` | — | — | — | → `TemplatePage` |
-| POST | `/templates` | `template_create` | `SYNC` | `template` | `TemplateCreateBody` → 201 `Template` |
+| POST | `/templates` | `template_create` | `SYNC` | `audit_event` của lần tạo — ngoại lệ, mục 1.8 | `TemplateCreateBody` → 201 `Template` |
 | GET | `/templates/{template_id}` | — | — | — | → `Template`, gồm các phiên bản và danh mục biến |
 | POST | `/templates/{template_id}/versions` | `template_version_upload` | `SYNC_OBJECT_STORAGE` | `template_version` | multipart `file` (`.docx`) + `manifest` → 201 `TemplateVersion` |
 | POST | `/templates/{template_id}/versions/{template_version_id}/actions/activate` | `template_version_activate` | `SYNC` | — | `ActivateBody` → `TemplateVersion` |
@@ -313,7 +317,7 @@ Không có endpoint đánh dấu đã đọc. Cột `notification.read_at` và `
 
 | Method | Path | Thao tác | Chạy | Khoá = id của | Body → Response |
 |---|---|---|---|---|---|
-| POST | `/employee-imports` | `employee_import` | `SYNC` | `audit_event` của đợt import | multipart `file` (CSV) + `source_label` → 201 `EmployeeImportResult` |
+| POST | `/employee-imports` | `employee_import` | `SYNC` | `audit_event` của đợt import — ngoại lệ, mục 1.8 | multipart `file` (CSV) + `source_label` → 201 `EmployeeImportResult` |
 | GET | `/employee-imports/{import_id}` | — | — | — | → `EmployeeImportResult` |
 
 - **Cả đợt hoặc không dòng nào.** Một dòng sai thì không ghi gì, trả `IMPORT_ROWS_INVALID` kèm số dòng, tên cột và mã lỗi con — không kèm giá trị ô, vì ô có thể là `national_id`.
@@ -362,7 +366,7 @@ Không có endpoint đánh dấu đã đọc. Cột `notification.read_at` và `
 | Method | Path | Thao tác | Permission | Chạy | Khoá = id của | Body → Response |
 |---|---|---|---|---|---|---|
 | GET | `/delegations?as=DELEGATOR\|DELEGATE` | — | `delegation.manage`, hoặc chính người trao hay nhận | — | — | → `DelegationPage` |
-| POST | `/delegations` | `delegation_create` | `delegation.manage` | `SYNC` | `delegation` | `DelegationCreateBody` → 201 `Delegation` |
+| POST | `/delegations` | `delegation_create` | `delegation.manage` | `SYNC` | `audit_event` của lần tạo — ngoại lệ, mục 1.8 | `DelegationCreateBody` → 201 `Delegation` |
 | POST | `/delegations/{delegation_id}/actions/revoke` | `delegation_revoke` | `delegation.manage` | `SYNC` | — | `RevokeDelegationBody` → `Delegation` |
 
 Schema theo đúng cột của bảng `delegation`. Ai được uỷ quyền cho ai, uỷ quyền có áp cho bước duyệt đang mở không, và quan hệ với đường thoát tự duyệt thuộc Phase 8.
@@ -384,11 +388,11 @@ Ngoài ba loại trừ có chủ đích ở mục 1.10:
 
 | Việc | Vì sao chưa có | Ở đâu |
 |---|---|---|
-| Vòng đời credential: cấp lần đầu, đổi, quên, khoá | Chưa có ai sở hữu cơ chế | A-048 |
+| Vòng đời credential: buộc đổi lần đầu, đổi, quên, khoá sau nhiều lần sai | Không thuộc Sprint đầu. Mật khẩu ban đầu do thao tác vận hành seed, ngoài ứng dụng | A-048 |
 | Từ chối dùng dấu ở `PENDING_SEAL` | Máy trạng thái chưa có lối ra | A-034 |
 | Chuyển `document` sang `SUPERSEDED` | Chưa có thao tác | A-054 |
 | Huỷ `request` ở `NEEDS_INFO`, `SUBMITTED`, `IN_REVIEW` | Sơ đồ không có cạnh | A-053 |
-| Nhập hộ `WORK_CONFIRMATION` | Không có đường đặt người thụ hưởng khác người tạo | A-052 |
+| Đặt người thụ hưởng khác người tạo — nhập hộ, ở cả `WORK_CONFIRMATION` lẫn `INTRODUCTION_LETTER` | Không thao tác nào ghi `request.beneficiary_employee_id` | A-052 |
 | Cấu hình sổ văn bản | Chưa có permission | A-042 |
 | Rate limit | Phase 9 | — |
 | `SEAL_REQUEST` và văn bản ngoài; memory yêu cầu định kỳ | `[Could]` | Mục Scope & priority của PRD |
@@ -436,7 +440,8 @@ sequenceDiagram
 
 Sau `turn.reply` hoặc `turn.error`, server đóng stream.
 
-- **Bản có thẩm quyền là dòng `chat_message`,** không phải stream. Mọi lượt đã nhận kết thúc bằng **đúng một** tin nhắn của agent — lượt lỗi cũng vậy (failure handling của `intake_agent` ở mục Agent Registry của `03-agents.md`). Stream đứt thì `client` dựng lại lượt đó bằng `GET /chat-sessions/{id}/messages`.
+- **Bản có thẩm quyền là dòng `chat_message`,** không phải stream. Mọi lượt đã nhận mà **tiến trình chạy tới cuối** — thành công hay lỗi — kết thúc bằng **đúng một** tin nhắn của agent (failure handling của `intake_agent` ở mục Agent Registry của `03-agents.md`). Stream đứt thì `client` dựng lại lượt đó bằng `GET /chat-sessions/{id}/messages`.
+- **Đây không phải bất biến tuyệt đối.** Có đúng một ca phá nó: tiến trình chết giữa lượt — worker bị giết, instance bị thay, hoặc framework huỷ xử lý khi client ngắt kết nối (A-051). Khi đó tin nhắn của nhân viên không bao giờ có câu trả lời, và không có điểm dừng nào có tên. Cách hệ thống phát hiện và báo lại cho nhân viên ở ca này là A-056, của Phase 8.
 - **`pending_question` và `active_request` là tiện ích, không phải sự thật.** Stream đứt thì chúng mất, và không cần: đề xuất đang chờ xác nhận đọc lại được từ `GET /requests/{id}` (slot `PROPOSED`); câu hỏi làm rõ nằm trong văn bản tin nhắn, và nhân viên trả lời bằng chat.
 - **`stage` không phải tên node.** Ba giá trị gom nhiều node: `UNDERSTANDING` gồm `classify_intent`, `extract_slots`, `propose_values`; `LOOKING_UP` gồm `embed_query`, `procedure_retrieval`, `select_procedure_passages`; `PREPARING_REPLY` là `render_reply`. Tên node không ra khỏi `api`, cùng lý do mã lỗi nội bộ không ra khỏi `api` (mục 4.2).
 - **Lượt không bị huỷ khi client ngắt kết nối.** Server chạy lượt tới cuối và ghi tin nhắn của agent. Framework có huỷ xử lý khi client ngắt hay không là `[CẦN XÁC MINH]` (A-051); Phase 6 phải bảo đảm điều này.
@@ -450,7 +455,7 @@ Sau `turn.reply` hoặc `turn.error`, server đóng stream.
 | Chưa có, và lượt còn trong hạn chót | 409 `TURN_NOT_FINISHED`, `details.message_saved = true`, `details.turn_abandoned = false`, header `Retry-After` |
 | Chưa có, và đã quá hạn chót | 409 `TURN_NOT_FINISHED`, `details.message_saved = true`, `details.turn_abandoned = true` |
 
-**Hạn chót của một lượt:** `TBD` (A-031), **không ngắn hơn** giới hạn thời gian request của Render (A-025). Lượt chạy bên trong request, nên quá giới hạn đó thì không còn tiến trình nào đang làm lượt ấy — trừ khi framework chạy tiếp sau khi ngắt kết nối, và khi đó lượt vẫn kết thúc bằng một tin nhắn của agent. **Giới hạn đã biết:** tiến trình chết giữa lượt thì tin nhắn của nhân viên không bao giờ có câu trả lời.
+**Hạn chót của một lượt:** `TBD` (A-031), **không ngắn hơn** giới hạn thời gian request của Render (A-025). Lượt chạy bên trong request, nên quá giới hạn đó thì không còn tiến trình nào đang làm lượt ấy — trừ khi framework chạy tiếp sau khi ngắt kết nối, và khi đó lượt vẫn kết thúc bằng một tin nhắn của agent. **Giới hạn đã biết:** đó chính là ca phá bất biến ở trên (A-056).
 
 **`message` của `TURN_NOT_FINISHED` phải nói tin nhắn của nhân viên vẫn còn** — NFR-04: người dùng thưa, không được để họ tưởng mất bài đã gõ. Ví dụ, dữ liệu giả: *"Tin nhắn của bạn đã được lưu. Hệ thống chưa trả lời xong — vui lòng chờ một chút rồi tải lại."* Với `turn_abandoned = true`: *"Tin nhắn của bạn đã được lưu nhưng hệ thống không trả lời được. Vui lòng gửi lại nội dung trong một tin nhắn mới."*
 
@@ -485,7 +490,7 @@ Sau `turn.reply` hoặc `turn.error`, server đóng stream.
 
 **`REVIEW_QUEUE` phủ luôn hàng đợi phát hành, ở chiều vào.** Một văn bản chỉ vào hàng đợi phát hành bằng cách rời `PENDING_SIGNATURE` (không cần dấu) hoặc rời `PENDING_SEAL`, nên dấu vân tay của hàng đợi duyệt đổi đúng lúc đó. Chiều ra — văn bản đã `ISSUED` — không làm tín hiệu phát; hàng đợi phát hành chỉ được làm mới khi có tín hiệu khác hoặc khi nối lại. Người vừa ra lệnh phát hành thì đã thấy kết quả trong response của chính họ.
 
-**Chi phí.** Mỗi kết nối chạy tối đa ba truy vấn mỗi chu kỳ. Dấu vân tay `REVIEW_QUEUE` quét toàn bộ phần index của ba trạng thái chờ, nên chi phí tăng theo kích thước hàng đợi. Điều kiện đảo ngược đo đúng tải này (ADR-013).
+**Chi phí và pool kết nối.** Mỗi kết nối tín hiệu chạy tối đa ba truy vấn mỗi chu kỳ. Dấu vân tay `REVIEW_QUEUE` quét toàn bộ phần index của ba trạng thái chờ, nên chi phí tăng theo kích thước hàng đợi. **Mỗi nhịp poll mượn một connection của pool rồi trả ngay** — không kết nối tín hiệu nào giữ connection suốt đời stream. **Pool cạn thì nhịp đó bỏ lượt, không chờ**, để vòng poll không tranh connection với request nghiệp vụ; tín hiệu trễ một nhịp, không sai. Công thức bậc độ lớn ở Consequences của ADR-013; trần pool ở A-057; điều kiện đảo ngược đo đúng tải này.
 
 ---
 
@@ -573,7 +578,18 @@ Cho Phase 13: mọi thao tác của `tool_layer` có một đích, hoặc có l�
 
 Mọi mục có owner và hạn ở `ASSUMPTIONS.md`. Mục này chỉ gom lại những gì Phase 5 phát hiện hoặc làm nặng thêm.
 
-**Chặn nghiệm thu — A-042, đã nâng mức.** AC cứng của F6, và điều 4 ở mục Definition of Done của PRD, đòi **thêm một `request_type` thứ ba trong UAT, không sửa code, không deploy lại**. Endpoint cấu hình `request_type` hôm nay từ chối mọi người, vì `request_type.manage` chưa có trong danh mục. **Khi đó cách duy nhất để thêm loại thứ ba là data migration — đúng thứ AC loại trừ.** Chừng nào Phase 9 chưa quyết permission này, điều 4 của Definition of Done không thể đạt.
+**A-042 — chặn nghiệm thu, đã có đường ra: chọn đường (i).** AC cứng của F6, và điều 4 ở mục Definition of Done của PRD, đòi **thêm một `request_type` thứ ba trong UAT, không sửa code, không deploy lại**. Endpoint cấu hình `request_type` hôm nay từ chối mọi người, vì `request_type.manage` chưa có trong danh mục. **Khi đó cách duy nhất để thêm loại thứ ba là data migration — đúng thứ AC loại trừ.** Hai đường ra:
+
+- **(i) — chọn.** Thêm `request_type.manage` vào danh mục permission. Owner Phase 9; hạn cứng: Phase 9 không được duyệt khi chưa thêm. Bản thân việc thêm chỉ là một dòng trong danh mục; câu hỏi thật là nó vào gói vai trò nào, hay được cấp lẻ như `procedure.manage` (A-033).
+- **(ii) — loại.** Sửa điều 4 của Definition of Done cho khớp thực tế. Loại vì điều 4 kiểm đúng giá trị cốt lõi của F6: hạ cổng nghiệm thu để hợp với một ô trống trong danh mục là sửa ngược chiều. Và sửa riêng điều 4 là chưa đủ — AC của F6 cũng thành sai theo, tức phải cắt phạm vi của một feature Must.
+
+Chi tiết ở A-042.
+
+**A-052 — chạm cổng nghiệm thu.** Nhập hộ giữ trong Sprint đầu, nhưng chưa chạy được ở **cả hai** loại yêu cầu: `WORK_CONFIRMATION` không có đường đặt người thụ hưởng khác người tạo, và không thao tác nào ghi `request.beneficiary_employee_id` từ `bearer_employee_code` của `INTRODUCTION_LETTER`. EC-IL-01 là một ca của nhóm E trong bộ eval; nhóm E do M6 chấm; M6 là metric loại Bất biến — tức cổng nghiệm thu. Chừng nào A-052 chưa giải, ca đó không đạt được **đúng căn cứ**.
+
+**Phép tách biệt trách nhiệm (D-006) đang sai theo hai chiều, không phải đang thiếu:** nó chặn nhầm người tạo, và để lọt người mang giấy nếu chính người đó duyệt.
+
+Owner Phase 8; hai phương án đề xuất ở A-052.
 
 **Thứ tự chưa có index — đề xuất, chưa thêm.** `schema.sql` đã chốt; Phase 13 duyệt các đề xuất này.
 
@@ -583,23 +599,29 @@ Mọi mục có owner và hạn ở `ASSUMPTIONS.md`. Mục này chỉ gom lại
 | `GET /issue-queue` | `ix_document_awaiting_issue ON document (status_changed_at, id) WHERE status IN ('SIGNED', 'SEALED')` | Cùng hình dạng. Dòng `SIGNED` cần dấu chỉ tồn tại thoáng qua vì `document_sign` chuyển tiếp sang `PENDING_SEAL` trong cùng thao tác |
 | `GET /delegations?as=DELEGATOR` `[Should]` | Chờ Phase 8 chốt ngữ nghĩa | — |
 
+**Phương án bị loại — `ix_audit_event_entity ON audit_event (entity_type, entity_id)`** (vòng duyệt Phase 5 lần 2, F3). Được đề xuất để tra tác nhân khi trùng khoá idempotency ở hai bảng không có cột người thực hiện, `template` và `delegation`. Loại vì hai lý do:
+
+1. Ngoại lệ idempotency ở mục 1.8 đưa phép tra đó về **khoá chính** của `audit_event`, nên không còn phép tra nào theo đối tượng.
+2. Mọi thao tác ghi đều sinh một dòng `audit_event`, nên mỗi index trên bảng này được cập nhật ở **mọi** lệnh ghi của hệ thống. Trả chi phí đó cho một phép tra chỉ xảy ra khi client gửi lại là trả sai chỗ.
+
+Nếu Phase 8 cần xem lịch sử của một đối tượng không mang `request_id` hay `document_id` — ví dụ một template — thì index này được bàn lại, với lý do của Phase 8.
+
 **Nếu giao diện cần một hàng đợi duyệt gộp ba trạng thái:** `UNION ALL` ba nhánh, mỗi nhánh một `status` và vẫn dùng `ix_document_review_queue`, rồi trộn ba danh sách đã sắp ở `api`. **Không** làm ở phase này; Sprint đầu dùng bộ lọc một giá trị.
 
 **Còn mở — Phase 5 phát hiện:**
 
-1. **A-048** — vòng đời credential chưa có ai sở hữu. Hạn trước Phase 6.
-2. **A-049** — hai subdomain trên domain mặc định của Render có cùng site không. Hạn trước Phase 6.
+1. **A-048** — đã quyết ở vòng duyệt Phase 5: phiên không lưu DB; credential ở bảng riêng do Phase 9 thêm; khoá sau nhiều lần sai và buộc đổi lần đầu không thuộc Sprint đầu. Còn mở ở Phase 9, **không chặn Phase 6**. Kèm hai rủi ro có chủ: không thu hồi được phiên đã cấp trước khi hết hạn; mật khẩu seed cũng là mật khẩu dùng lâu dài.
+2. **A-049 — đã chốt** bằng quyết định: `client` do `api` phục vụ tĩnh, cùng origin tuyệt đối.
 3. **A-050** — Render có chuyển tiếp response dạng stream mà không gom đệm không. Nếu không, NFR-08 mất phần "tăng dần" nhưng không mất tính đúng.
 4. **A-051** — hành vi nền tảng web và framework mà contract dựa vào: `EventSource`, `SameSite=Strict`, preflight của header tuỳ biến, framework có huỷ xử lý khi client ngắt kết nối không.
-5. **A-052** — nhập hộ: không có đường đặt người thụ hưởng khác người tạo cho `WORK_CONFIRMATION`; và người thụ hưởng không phải người tạo thì không xem được yêu cầu của chính mình, vì `request.read_own` là "do mình tạo".
+5. **A-052** — nhập hộ giữ trong Sprint đầu nhưng chưa chạy được ở **cả hai** loại, và chạm cổng nghiệm thu — đoạn A-052 ở đầu mục này. Đề xuất cắt nhập hộ cho `WORK_CONFIRMATION` đã bỏ. Owner Phase 8.
 6. **A-053** — bảng nghĩa `CANCELLED` ở `00-domain.md` ("khi chưa `APPROVED`") rộng hơn sơ đồ (chỉ từ `DRAFT` và `CHANGES_REQUESTED`). Contract theo sơ đồ.
 7. **A-054** — không thao tác nào đưa `document` sang `SUPERSEDED`.
 8. **A-038 thêm một vế:** không có ràng buộc "một phiên `OPEN` cho mỗi nhân viên". Hai tab gọi `POST /chat-sessions` cùng lúc có thể mở hai phiên.
+9. **A-055** — luật "mọi thao tác ghi sinh `audit_event`" kéo ngược định nghĩa của `audit_event` với tin nhắn chat và lượt tải file; mỗi tin nhắn để lại một dòng mà ứng dụng không xoá được. Owner Phase 8.
+10. **A-056** — lượt chat chết giữa chừng không có điểm dừng có tên. Không vi phạm chữ của NFR-06, nhưng là cùng loại hỏng mà NFR-06 cấm. Owner Phase 8.
+11. **A-057** — trần kết nối của PostgreSQL managed trên Render và kích thước pool — thứ mà stream tín hiệu mượn ở mỗi nhịp poll.
 
-**Không phải câu hỏi, cần anh cho phép — chưa làm:**
-
-- **Bảng chỗ quan sát của Phase 11 trong `_PLAN.md`** thiếu hai tín hiệu đảo ngược mới: tải poll tín hiệu cạnh số kết nối đang mở (ADR-013), và phân phối thời lượng tải file cạnh kích thước file và giới hạn thời gian request (ADR-014).
-- **Mười ba thao tác đặt tên ở mục 2.1** hiện chỉ sống ở file này và ở `GLOSSARY.md`. Mục Tool Registry của `03-agents.md` chưa liệt kê chúng. Nếu anh muốn Tool Registry là bản kê đầy đủ mọi thao tác của `tool_layer`, cần phép thêm một nhóm vào đó.
-- **Bảng chủ sở hữu chuyển đổi của `request`** ở `02-architecture.md` ghi `DRAFT` do `orchestrator` sở hữu. Nay `request_slot_confirm` cũng đưa `NEEDS_INFO → DRAFT`. Không sửa, vì anh đã giữ `02-architecture.md` nguyên ở phase này.
+**Đã làm ở vòng duyệt Phase 5, theo phép A2:** thêm dòng ADR-013 và ADR-014 vào bảng chỗ quan sát của Phase 11 trong `_PLAN.md`; liệt mười ba thao tác của mục 2.1 ở mục Tool Registry của `03-agents.md`; ghi thêm `request_slot_confirm` vào dòng `DRAFT` của bảng chủ sở hữu chuyển đổi `request` trong `02-architecture.md`.
 
 **Không có ở phase này, ghi để khỏi tìm lại:** cột `notification.read_at` và `pushed_at` không có thao tác nào ghi (mục 2.9).
