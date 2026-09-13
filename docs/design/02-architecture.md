@@ -1,6 +1,6 @@
 # System Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.5 · **Trạng thái:** Draft để xác thực với người dùng · **v0.3–0.5:** sửa ở Phase 3 và các vòng sửa Phase 3 theo phép — xem các mục ngày 2026-09-12 (lần 4, lần 5, lần 6) của `CHANGELOG.md`
+**Phiên bản:** 0.7 · **Trạng thái:** Draft để xác thực với người dùng · **v0.3–0.5:** sửa ở Phase 3 và các vòng sửa Phase 3 theo phép — xem các mục ngày 2026-09-12 (lần 4, lần 5, lần 6) của `CHANGELOG.md` · **v0.6:** sửa ở Phase 4 theo phép K1 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.7:** trỏ tới danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1)
 
 > File này chốt kiến trúc mức component: thành phần nào tồn tại, chạy ở đâu trên Render, phụ thuộc gì, và luồng dữ liệu đi qua chúng thế nào. File này **không** đổi state machine hay entity đã chốt ở `00-domain.md`, không chọn agent/tool cụ thể (Phase 3), không thiết kế bảng/cột (Phase 4).
 
@@ -40,7 +40,7 @@ Mười thành phần theo yêu cầu của `_PLAN.md`. Bốn trong số đó (`
 - **Trách nhiệm:** graph LangGraph — node/edge cho phân loại, thu slot, retrieval, sinh nội dung tự do; `interrupt` tại **sáu** điểm chờ người thật, trong đó chỉ **hai** là cổng HITL (`PENDING_APPROVAL`, `PENDING_SEAL`) — danh sách ở mục LangGraph design của `03-agents.md`; resume qua checkpointer, bằng job ghi cùng giao dịch với quyết định của người (ADR-010).
 - **Công nghệ:** LangGraph, checkpointer trên PostgreSQL. Chạy như thư viện dùng chung, gọi từ `api` (lượt chat đồng bộ) và từ `queue_worker` (job nền). Xem ADR-005 cho lý do đầy đủ.
 - **Lý do:** bắt buộc theo `CLAUDE.md`; ADR-005 giải thích vì sao không cần service riêng.
-- **Không thuộc:** không tự gọi LLM provider (qua `ai_gateway`); không tự ghi PostgreSQL/Object Storage (qua `tool_layer`); không giữ trạng thái trong bộ nhớ tiến trình giữa hai lượt gọi — mọi trạng thái sống ở checkpointer.
+- **Không thuộc:** không tự gọi LLM provider (qua `ai_gateway`); không tự ghi PostgreSQL/Object Storage (qua `tool_layer`) — trừ danh sách ngoại lệ đóng ở mục Tool Registry của `03-agents.md`: bảng checkpoint và `graph_thread`; không giữ trạng thái trong bộ nhớ tiến trình giữa hai lượt gọi — mọi trạng thái sống ở checkpointer.
 
 ### 1.5 `tool_layer`
 
@@ -264,6 +264,7 @@ stateDiagram-v2
     REVOKED --> ARCHIVED
     SUPERSEDED --> ARCHIVED
     REJECTED --> ARCHIVED
+    CHANGES_REQUESTED --> ARCHIVED: request bi huy
     ARCHIVED --> [*]
 ```
 
@@ -281,7 +282,7 @@ stateDiagram-v2
 | `ISSUED` | `queue_worker` qua `tool_layer`, trong node `finalize_issue` — hoàn tất lệnh phát hành do người mang permission `document.issue` ra ở `api`. Cấp số nguyên tử trên `document_register` diễn ra trong `finalize_issue`, không trong luồng request (mục Tool Registry của `03-agents.md`) |
 | `REVOKED` | `api`/`tool_layer`, hai permission tách rời `document.revoke_initiate`/`document.revoke_confirm` |
 | `SUPERSEDED` | `api`/`tool_layer` |
-| `ARCHIVED` | `queue_worker` (Cron Job theo thời hạn lưu trữ, `TBD` — A-010) |
+| `ARCHIVED` | `queue_worker` (Cron Job theo thời hạn lưu trữ, `TBD` — A-010); `api`/`tool_layer` qua thao tác cổng `request_cancel` khi `document` đang ở `CHANGES_REQUESTED`, bắt buộc `archive_reason` (A-035) |
 
 ### 5.3 `room_booking` `[Should]`
 

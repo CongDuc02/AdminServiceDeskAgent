@@ -1,6 +1,6 @@
 # Phase 0 — Domain Discovery
 
-**Dự án:** BO-19 — Admin Service Desk Agent · **Phiên bản:** 0.10 · **Trạng thái:** Draft chờ duyệt
+**Dự án:** BO-19 — Admin Service Desk Agent · **Phiên bản:** 0.11 · **Trạng thái:** Draft chờ duyệt
 
 > File này chốt **từ vựng nghiệp vụ**: có những loại yêu cầu nào, mỗi loại cần dữ liệu gì, văn bản đi qua những trạng thái nào, ai được làm gì. Từ Phase 1 trở đi mọi tài liệu phải dùng đúng tên ở đây và ở [`GLOSSARY.md`](./GLOSSARY.md). File này **không** chọn công nghệ, **không** thiết kế API, **không** định nghĩa agent hay tool.
 
@@ -276,6 +276,7 @@ stateDiagram-v2
     REVOKED --> ARCHIVED
     SUPERSEDED --> ARCHIVED
     REJECTED --> ARCHIVED
+    CHANGES_REQUESTED --> ARCHIVED: request bi huy
     ARCHIVED --> [*]
 ```
 
@@ -293,7 +294,7 @@ stateDiagram-v2
 | `ISSUED` | Đã cấp số và phát hành cho nhân viên | Permission `document.issue` · thời điểm **duy nhất** cấp `document_number` |
 | `REVOKED` | Thu hồi hoặc huỷ hiệu lực | Bắt buộc có `revocation_reason` và người quyết định |
 | `SUPERSEDED` | Bị một văn bản mới thay thế | Trỏ tới `document` thay thế |
-| `ARCHIVED` | Chuyển sang lưu trữ | Thời hạn lưu TBD (A-010) |
+| `ARCHIVED` | Kết thúc vòng đời hoạt động, chỉ còn giá trị lưu vết. **Hai đường vào khác loại:** (1) văn bản đã đi hết vòng đời — từ `ISSUED` khi hết thời hạn hiệu lực, hoặc từ `REVOKED`, `SUPERSEDED`, `REJECTED`; (2) **bản nháp bị bỏ** vì `request` bị huỷ trong lúc `document` đang ở `CHANGES_REQUESTED` — chưa từng có hiệu lực, nên không "hết" hiệu lực | Đường vào thứ hai **bắt buộc** có `archive_reason` (A-035). Thời hạn lưu TBD (A-010). Bảng mã `archive_reason`: Phase 8 |
 
 **Ba bất biến của vòng đời này:**
 
