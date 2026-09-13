@@ -1,6 +1,6 @@
 # System Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.7 · **Trạng thái:** Draft để xác thực với người dùng · **v0.3–0.5:** sửa ở Phase 3 và các vòng sửa Phase 3 theo phép — xem các mục ngày 2026-09-12 (lần 4, lần 5, lần 6) của `CHANGELOG.md` · **v0.6:** sửa ở Phase 4 theo phép K1 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.7:** trỏ tới danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1)
+**Phiên bản:** 0.8 · **Trạng thái:** Draft để xác thực với người dùng · **v0.3–0.5:** sửa ở Phase 3 và các vòng sửa Phase 3 theo phép — xem các mục ngày 2026-09-12 (lần 4, lần 5, lần 6) của `CHANGELOG.md` · **v0.6:** sửa ở Phase 4 theo phép K1 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.7:** trỏ tới danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1) · **v0.8:** dòng `DRAFT` của bảng chủ sở hữu chuyển đổi `request` — vòng duyệt Phase 5 (A2), mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md`
 
 > File này chốt kiến trúc mức component: thành phần nào tồn tại, chạy ở đâu trên Render, phụ thuộc gì, và luồng dữ liệu đi qua chúng thế nào. File này **không** đổi state machine hay entity đã chốt ở `00-domain.md`, không chọn agent/tool cụ thể (Phase 3), không thiết kế bảng/cột (Phase 4).
 
@@ -230,7 +230,7 @@ stateDiagram-v2
 
 | Trạng thái | Thành phần sở hữu transition |
 |---|---|
-| `DRAFT` | `orchestrator` (thu slot qua chat) |
+| `DRAFT` | `orchestrator` (thu slot qua chat); `tool_layer` qua thao tác `request_slot_confirm`, khi nhân viên xác nhận xong và `request` đang `NEEDS_INFO` đã đủ điều kiện xử lý (mục Tool Registry của `03-agents.md`) |
 | `NEEDS_INFO` | `orchestrator` |
 | `SUBMITTED` | `api` — giao dịch chuyển trạng thái và enqueue job render là **cùng một transaction** (D-010, ADR-004) |
 | `IN_REVIEW` | `tool_layer`, kích hoạt khi `document` vào `PENDING_APPROVAL` |

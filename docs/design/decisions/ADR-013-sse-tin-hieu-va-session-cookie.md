@@ -1,6 +1,6 @@
 # ADR-013 — Hai luồng SSE, luồng dài chỉ mang tín hiệu; xác thực bằng session cookie HttpOnly
 
-**Trạng thái:** Accepted · **Ngày:** 2026-09-13 · **Quyết định tại:** Phase 5 — API Spec · **Liên quan:** ADR-004, ADR-005, ADR-007, NFR-04, NFR-05, NFR-08 của `01-prd.md`, mục Ánh xạ sang đơn vị triển khai trên Render của `02-architecture.md`, A-025, A-031, A-048, A-049, A-050, A-051
+**Trạng thái:** Accepted · **Ngày:** 2026-09-13 · **Quyết định tại:** Phase 5 — API Spec · **Liên quan:** ADR-004, ADR-005, ADR-007, NFR-04, NFR-05, NFR-08 của `01-prd.md`, mục Ánh xạ sang đơn vị triển khai trên Render của `02-architecture.md`, A-025, A-031, A-048, A-049, A-050, A-051, A-055, A-057 · **Bổ sung:** vòng duyệt Phase 5 — cùng origin (B1), phiên stateless (B2), pool kết nối (C4)
 
 ---
 
@@ -38,6 +38,7 @@ Bảng `notification` không có cột đơn điệu: `id` là uuid do ứng d�
   1. **Credential nằm ngoài vùng JS đọc được.** Mã độc chạy trong trang không lấy trộm được nó.
   2. **Một cơ chế xác thực dùng chung** cho REST, stream lượt chat và stream tín hiệu.
   3. *(Lý do phụ)* `EventSource` tự nối lại khi mất kết nối — hành vi của nền tảng web, `[CẦN XÁC MINH]`, A-051. Không được tính là lý do chính: stream lượt chat đã đọc bằng `fetch`, nên bearer token cũng làm được.
+- **Phiên không lưu DB — bổ sung ở vòng duyệt Phase 5 (B2).** Cookie mang một token ký bằng secret phía server, stateless: định danh nhân viên cộng thời điểm hết hạn. Không bảng phiên nào trong `schema.sql`, và đăng nhập, đăng xuất không ghi gì vào `postgresql`. Token **không mang permission**: mỗi request đọc lại `employee.is_active` và permission hiệu lực từ DB.
 
 ## Consequences
 
@@ -53,14 +54,31 @@ Bảng `notification` không có cột đơn điệu: `id` là uuid do ứng d�
 - Mỗi tín hiệu tốn thêm một round-trip GET.
 - Độ trễ phát hiện bằng một chu kỳ poll.
 
-**Ràng buộc cùng origin — ADR này thu hẹp một lựa chọn đang để ngỏ.** Cookie `SameSite=Strict` không được gửi kèm request khác site, nên `client` khác site với `api` thì không đăng nhập được. Cùng site mà khác origin thì request mang credential phải đi qua CORS, tức phải mở CORS cho `api`. ADR này chọn **cùng origin**: `client` được phục vụ dưới cùng origin với `api`. Ràng buộc này rơi vào mục Ánh xạ sang đơn vị triển khai trên Render của `02-architecture.md`, nơi `client` đang ghi "phục vụ tĩnh hoặc build riêng": từ ADR này, build riêng vẫn phải được phục vụ dưới cùng origin với `api`. `02-architecture.md` không sửa ở Phase 5; ràng buộc được ghi ở đây và ở `CHANGELOG.md` để Phase 6 không thiết kế ngược lại. Hai subdomain trên domain mặc định của Render có tính là cùng site hay không: A-049.
+**Cùng origin — đã chốt bằng quyết định (vòng duyệt Phase 5, B1).** Cookie `SameSite=Strict` không được gửi kèm request khác site, và cùng site mà khác origin thì request mang credential phải đi qua CORS. Vì vậy `client` được **`api` (FastAPI) phục vụ tĩnh, dưới chính origin của `api`**. Cùng origin tuyệt đối, nên thiết kế không còn phụ thuộc việc hai subdomain trên domain mặc định của Render có cùng site hay không: A-049 đóng bằng quyết định này, không bằng xác minh. Quyết định chọn đúng một trong hai lựa chọn đang để ngỏ ở mục Ánh xạ sang đơn vị triển khai trên Render của `02-architecture.md` — "phục vụ tĩnh hoặc build riêng" — là **phục vụ tĩnh**. Ràng buộc cho Phase 6:
+
+- bản build của `client` được đóng gói cùng và phục vụ bởi Web Service của `api`;
+- đường dẫn của SPA không được chồng lên tiền tố `/api`, nơi cookie được giới hạn;
+- cold start của `api` giờ cũng là cold start của trang (mục Ràng buộc nền tảng Render của `02-architecture.md`).
+
+**Phiên stateless — cái phải chấp nhận (B2).** Không thu hồi được **một** phiên đơn lẻ trước khi hết hạn: đăng xuất chỉ xoá cookie ở trình duyệt đó, và một token đã bị sao chép vẫn dùng được tới hạn. Vô hiệu hoá sớm chỉ có một cách — đổi secret — và nó vô hiệu hoá **mọi** phiên. Nghỉ việc hay bị thu quyền **không** chịu giới hạn này, vì mỗi request đọc lại DB. Thời hạn token `TBD` (A-048); quản lý và xoay vòng secret thuộc Phase 9. Chấp nhận cho Sprint đầu, như một rủi ro có chủ — owner Phase 9 (A-048).
+
+**Pool kết nối `postgresql` (C4).** Mỗi nhịp poll của một kết nối tín hiệu cần một connection trong lúc chạy tối đa ba truy vấn. Quy tắc: **mượn rồi trả ngay**, không giữ connection suốt đời stream; **pool cạn thì nhịp đó bỏ lượt**, không chờ — tín hiệu trễ một nhịp, request nghiệp vụ không phải xếp hàng sau vòng poll. Công thức bậc độ lớn — không có số, vì A-002 còn Mở và trần pool của Render còn ở A-057:
+
+| Đại lượng | Bậc độ lớn |
+|---|---|
+| Truy vấn mỗi giây do vòng poll | N × q ÷ T |
+| Khối lượng quét mỗi giây | N × S ÷ T |
+| Connection đồng thời bị vòng poll chiếm | (N × q ÷ T) × d |
+
+N là số kết nối tín hiệu đang mở · q ≤ 3 là số truy vấn mỗi nhịp · T là chu kỳ poll · S là kích thước tập được lấy dấu vân tay (hàng đợi duyệt, hoặc số `request` của một người) · d là thời lượng trung bình một truy vấn poll. Dòng thứ ba phải nhỏ hơn hẳn trần pool, vì phần còn lại của pool là của request nghiệp vụ.
 
 **Chống CSRF dựa trên hành vi nền tảng chưa có bản gốc trong `docs/reference/`:** cookie `SameSite=Strict` không đi kèm request khác site; header tuỳ biến trên request khác origin buộc trình duyệt hỏi trước (preflight), và lần hỏi đó thất bại khi `api` không cho phép origin kia. Cả hai ở A-051.
 
 **Điều kiện đảo ngược**
 
-- *Tín hiệu vận hành, đo ở `observability`:* tỷ trọng truy vấn do vòng poll tín hiệu gây ra trên tổng tải của `postgresql`, đặt cạnh số kết nối tín hiệu đang mở — cùng hình dạng với tín hiệu thứ ba của ADR-004. Khi tín hiệu phát ra: kéo dài chu kỳ poll, gom poll về một vòng cho mỗi instance, hoặc thêm LISTEN/NOTIFY như một tối ưu — **không** đổi ngữ nghĩa (β). Chỗ quan sát này **chưa có** trong bảng chỗ quan sát của Phase 11 ở `_PLAN.md` (Open Questions của `05-api.md`).
-- *Tín hiệu nghiệp vụ, đo ở `ASSUMPTIONS.md`:* A-049 trả lời "không" và tổ chức không có domain riêng — `client` và `api` không thể cùng origin. Khi đó xét lại vế credential: bearer token trong JS qua `fetch` cho cả hai stream, chấp nhận mất lý do 1.
+- *Tín hiệu vận hành, đo ở `observability`:* tỷ trọng truy vấn do vòng poll tín hiệu gây ra trên tổng tải của `postgresql`, **và số connection của pool đang bị vòng poll chiếm**, đặt cạnh số kết nối tín hiệu đang mở và trần pool (A-057) — cùng hình dạng với tín hiệu thứ ba của ADR-004. Khi tín hiệu phát ra: kéo dài chu kỳ poll, gom poll về một vòng cho mỗi instance, hoặc thêm LISTEN/NOTIFY như một tối ưu — **không** đổi ngữ nghĩa (β). Chỗ quan sát: dòng ADR-013 ở bảng chỗ quan sát của Phase 11 trong `_PLAN.md`.
+- *Vế phiên stateless — tín hiệu nghiệp vụ:* một sự cố đòi thu hồi **một** phiên đơn lẻ mà không được phép đổi secret. Đo ở mô hình mối đe doạ của Phase 9, hoặc sau sự cố. Khi đó xét lại phương án phiên lưu ở `postgresql` (Rejected alternatives).
+- *Vế cùng origin không có điều kiện đảo ngược dạng tín hiệu:* nó là một quyết định (B1), không phải một giả định chờ xác minh. Muốn phục vụ `client` ở origin khác thì phải có ADR thay thế ADR này; khi đó xét lại vế credential — bearer token trong JS qua `fetch` cho cả hai stream, chấp nhận mất lý do 1.
 
 ## Rejected alternatives
 
@@ -71,6 +89,8 @@ Bảng `notification` không có cột đơn điệu: `id` là uuid do ứng d�
 **(ii) — Bearer token trong JS, qua `fetch`.** Chạy được — stream lượt chat đã là `fetch`. Loại vì token nằm trong vùng JS đọc được, và vì mất vế tự nối lại của `EventSource` cho stream dài. Giữ làm phương án dự phòng ở điều kiện đảo ngược.
 
 **(iii) — Token trong query string.** Loại vì query string đi vào log kỹ thuật — log truy cập, trace — tức một credential nằm dạng thật trong `observability`, đụng NFR-05.
+
+**Phiên lưu ở `postgresql`** — bổ sung ở vòng duyệt Phase 5. Thu hồi được từng phiên. Loại cho Sprint đầu vì mỗi lần đăng nhập, đăng xuất khi đó thành một lệnh ghi của ứng dụng — phải có tên ở `tool_layer` và sinh `audit_event`, đúng chỗ đang có mâu thuẫn A-055. **Không** loại vì phải thêm bảng: vòng duyệt Phase 5 lần 2 đã cho Phase 9 thêm một bảng credential bằng migration (A-048), nên "`schema.sql` đã đóng" không còn là lý do. Bảng credential khác bảng phiên ở đúng chỗ này: nó chỉ được ghi bằng thao tác vận hành seed, còn ứng dụng chỉ đọc. Cái mất là thu hồi phiên đơn lẻ (Consequences). Giữ ở điều kiện đảo ngược.
 
 **(α) — Sự kiện có id, nối lại bằng `Last-Event-ID` trên bảng `notification`.** Không có cột đơn điệu để làm id. Con trỏ theo `created_at` bỏ sót dòng commit muộn hơn một dòng có `created_at` lớn hơn nó. Thêm cột `bigserial` là sửa Phase 4 đã đóng — và (β) không cần cột đó.
 

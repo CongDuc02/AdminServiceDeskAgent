@@ -48,7 +48,7 @@ Chạy **đồng bộ trong luồng request, có chạm `object_storage`**.
 
 **Điều kiện đảo ngược**
 
-- *Tín hiệu vận hành, đo ở `observability`:* phân phối thời lượng một lần tải — nhìn phần đuôi, không nhìn trung bình — đặt cạnh kích thước file và giới hạn thời gian request (A-025). Khi phần đuôi tiến sát giới hạn: xét phương án B cho đúng loại file đó. Chỗ quan sát này **chưa có** trong bảng chỗ quan sát của Phase 11 ở `_PLAN.md`.
+- *Tín hiệu vận hành, đo ở `observability`:* phân phối thời lượng một lần tải — nhìn phần đuôi, không nhìn trung bình — đặt cạnh kích thước file và giới hạn thời gian request (A-025). Khi phần đuôi tiến sát giới hạn: xét phương án B cho đúng loại file đó. Chỗ quan sát: dòng ADR-014 ở bảng chỗ quan sát của Phase 11 trong `_PLAN.md`.
 - *Tín hiệu kiến trúc:* việc kiểm quyền làm được ở chỗ khác — ví dụ `object_storage` tự xác thực được danh tính người tải. Khi đó lý do 1 mất; phương án B cần một ADR thay thế, ghi rõ audit chuyển về lúc cấp đường dẫn và phép so checksum trước khi gửi bị mất.
 
 ## Rejected alternatives

@@ -962,7 +962,7 @@ Cùng họ với tiền lệ "kiểm nguồn trước khi sửa" ở mục Phase
 
 1. **Failure handling thêm một câu về những gì đã ghi trước lỗi.** Ba cái cấm đúng với nhánh lỗi, nhưng `open_request` chạy trước `extract_slots`: lượt lỗi ở `extract_slots` đã có một `request` vừa tạo. Câu thêm nói những ghi đó đứng nguyên, không hoàn tác, và idempotent theo tin nhắn. Không có câu này thì câu mới bị đọc thành lời hứa hoàn tác.
 2. **`request_slot_confirm` đưa `NEEDS_INFO → DRAFT` khi hàm kiểm đạt.** Không có bước này thì nhân viên xác nhận xong vẫn kẹt ở `NEEDS_INFO`, vì `request_submit` chỉ nhận `DRAFT`, và phải gõ thêm một lượt chat chỉ để graph chuyển trạng thái.
-3. **Mười ba thao tác của `tool_layer` được đặt tên** ở mục Endpoint của `05-api.md` và mục 12 của `GLOSSARY.md`. Luật "mọi ghi đi qua `tool_layer`" cộng danh sách ngoại lệ đóng buộc mỗi lệnh ghi do endpoint gây ra phải có tên; không có tên thì Phase 13 không truy vết được.
+3. **Mười ba thao tác của `tool_layer` được đặt tên** ở mục Endpoint của `05-api.md` và mục Agent, graph, node, tool của `GLOSSARY.md`. Luật "mọi ghi đi qua `tool_layer`" cộng danh sách ngoại lệ đóng buộc mỗi lệnh ghi do endpoint gây ra phải có tên; không có tên thì Phase 13 không truy vết được.
 4. **Khi trùng khoá idempotency, tác nhân được đọc từ `audit_event` của lần tạo** nếu bảng không có cột người thực hiện — ví dụ `template`.
 
 ### Phát hiện mới — ghi `ASSUMPTIONS.md`, không tự sửa
@@ -987,3 +987,176 @@ Cùng họ với tiền lệ "kiểm nguồn trước khi sửa" ở mục Phase
 - Sơ đồ Mermaid duy nhất của `05-api.md` render được bằng mermaid-cli 10.9.1.
 - Tham chiếu chéo file theo số mục trong các file mới và file đã sửa: không có.
 - **Chưa kiểm:** contract chưa chạy trên server nào — chưa có code (DESIGN MODE). Mọi hành vi nền tảng mà contract dựa vào nằm ở A-049 → A-051.
+
+
+---
+
+## 2026-09-13 (lần 5) — Vòng duyệt Phase 5: A, B, C
+
+Anh duyệt Phase 5 có điều kiện. **Phase 5 giữ ☐**: hai mục dừng lại đúng theo điều kiện dừng anh đặt — nửa credential của B2, và B3. `_PLAN.md` chỉ thêm hai dòng chỗ quan sát.
+
+**Sửa:** `05-api.md` → v0.2 · ADR-013 · ADR-014 · `03-agents.md` → v0.8 · `02-architecture.md` → v0.8 · `GLOSSARY.md` → v0.16 · `ASSUMPTIONS.md` → v0.17 · `_PLAN.md` (hai dòng). `openapi.yaml`, `schema.sql`, `00-domain.md`, `01-prd.md`, `04-data.md` không đổi.
+
+### Ràng buộc cho Phase 6 — thay dòng cùng tên ở mục lần 4
+
+**`client` được `api` (FastAPI) phục vụ tĩnh, dưới chính origin của `api`** (B1). Không còn là "build riêng thì vẫn phải cùng origin": đã chọn hẳn phục vụ tĩnh. Ba hệ quả, ghi ở Consequences của ADR-013: bản build được đóng gói cùng Web Service của `api`; đường dẫn của SPA không chồng lên tiền tố `/api`; cold start của `api` giờ cũng là cold start của trang. A-049 → `Đã chốt`, bằng quyết định chứ không bằng xác minh.
+
+### A — duyệt
+
+- **A1.** Bốn mục "đã sửa — xin duyệt sau" của mục lần 4 được duyệt.
+- **A2.** Làm đủ ba việc: hai dòng ADR-013, ADR-014 vào bảng chỗ quan sát của Phase 11 trong `_PLAN.md`; mục Thao tác do endpoint gọi của `03-agents.md` liệt mười ba thao tác, đặt ở cuối mục Tool Registry để không phải đánh số lại lần thứ hai; dòng `DRAFT` ở bảng chủ sở hữu chuyển đổi `request` của `02-architecture.md`.
+- **A3.** Dòng "openapi khớp 100%" ở bảng tự kiểm DoD là **✔ có điều kiện**, không phải ✔. Chữ của `_PLAN.md` là "khớp 100% với tài liệu"; phạm vi khớp đã được **định nghĩa lại** thành 48 endpoint có contract (mục Nguyên tắc chung của `05-api.md`). Việc loại bốn endpoint `ROOM_BOOKING` là một quyết định, được anh duyệt ở mục 4 của phản hồi trước — không phải một phép kiểm đạt.
+
+### B — quyết định của anh
+
+| Mục | Kết quả |
+|---|---|
+| B1 | Áp đủ. ADR-013, `05-api.md`, A-049 |
+| B2 | **Áp nửa phiên:** phiên không lưu DB; cookie mang token ký bằng secret phía server, stateless; mỗi request đọc lại `employee.is_active` và permission; không thu hồi được phiên đơn lẻ, ghi thẳng ở `05-api.md` và ADR-013. Phiên lưu ở `postgresql` vào Rejected alternatives của ADR-013. **Nửa credential DỪNG, không vá:** "cột hash trong CSV import, buộc đổi ở lần đăng nhập đầu" đụng năm chỗ, ghi ở A-048 — cần cột mới trong `employee` (`schema.sql` đã đóng, A-047); cờ buộc đổi là một cột nữa; đổi mật khẩu là lệnh ghi cần tên và `audit_event` (A-055); import CSV ghi đè sẽ ghi đè mật khẩu đã đổi; khoá sau nhiều lần sai cần nơi lưu |
+| B3 | **DỪNG, không cắt.** Theo quy ước ở đầu `00-domain.md`, hạng mục không mang nhãn là Sprint đầu; `request.create_on_behalf`, slot `beneficiary_employee_id` khi đặt khác người tạo, và EC-IL-01 đều không mang nhãn. Ở PRD, điều kiện 4 của định nghĩa "Yêu cầu đủ điều kiện xử lý" nằm trong AC của F1 (Must), và EC-IL-01 là một ca của nhóm E trong bộ eval — nhóm do M6, metric loại Bất biến, chấm. Cắt nhập hộ là đổi đáp án chuẩn của một ca trong cổng nghiệm thu. Không sửa file nào cho B3 |
+| B4 | Chọn **đường (i)**: thêm `request_type.manage` vào danh mục permission; owner Phase 9; hạn cứng — Phase 9 không được duyệt khi chưa thêm. Đường (ii) — sửa điều 4 của Definition of Done — bị loại, kèm lý do ở A-042 |
+
+### C — phải sửa
+
+- **C1.** A-055 mới: luật "mọi thao tác ghi sinh `audit_event`" kéo ngược định nghĩa `audit_event` với tin nhắn chat và lượt tải file; kèm hệ quả thứ hai — dòng ứng dụng không xoá được, chạm A-010 và dung lượng. Owner Phase 8. Không giải.
+- **C2.** Đề xuất `ix_audit_event_entity ON audit_event (entity_type, entity_id)` ở Open Questions của `05-api.md`; **không** thêm vào `schema.sql`. Kiểm thêm thấy **hai** bảng rơi vào ca này, không phải một: `template`, và `delegation` `[Should]` — người lập uỷ quyền có thể không phải người trao quyền. Nêu một cách rẻ hơn, không cần index: lấy `Idempotency-Key` bằng id của `audit_event` của lần tạo, như `POST /employee-imports`. **Chưa áp** — đổi contract.
+- **C3.** Kết luận: không vi phạm **chữ** của NFR-06 — chữ nói về trần token, trần render và `document` dở dang — nhưng là cùng loại hỏng. A-056 mới, owner Phase 8. Câu "mọi lượt kết thúc bằng đúng một tin nhắn của agent" ở `05-api.md` sửa thành có điều kiện, và nêu đích danh ca phá nó.
+- **C4.** Chưa có ở đâu. Thêm vào Consequences của ADR-013: quy tắc mượn rồi trả ngay, pool cạn thì bỏ lượt; bảng công thức bậc độ lớn N × q ÷ T, N × S ÷ T, (N × q ÷ T) × d — không có số. Dòng ADR-013 ở `_PLAN.md` quan sát cả số connection bị vòng poll chiếm. A-057 mới cho trần pool của Render.
+
+### Lỗi trong phép kiểm của chính tôi — sửa ở vòng này
+
+- Câu "tham chiếu chéo file theo số mục: không có" ở mục lần 4 **chưa được kiểm thật**: mẫu glob sai, không khớp file nào, nên phép quét trả rỗng. Quét lại đúng trên toàn bộ `docs/design`: còn một chỗ do tôi viết trong mục lần 4 — một tham chiếu tới `GLOSSARY.md` bằng số mục thay vì tên mục — đã sửa sang tên mục. Hai chỗ khác nằm ở các mục cũ hơn của file này, giữ nguyên vì không viết lại lịch sử.
+
+### Đã kiểm
+
+- `openapi.yaml` qua `openapi-spec-validator`: đạt. Đối chiếu tự động với `05-api.md`: 48/48 endpoint, 31/31 mã lỗi, không endpoint `[NGOÀI-OPENAPI]` nào lọt vào — sau vòng sửa này.
+- Tham chiếu chéo file theo số mục: như trên.
+- Diff của riêng vòng này lấy bằng cách so với bản chụp `docs/design/` trước khi sửa, vì cả Phase 5 chưa commit.
+
+
+---
+
+## 2026-09-13 (lần 6) — Vòng duyệt Phase 5, lần 2: D, E, F
+
+**Phase 5 giữ ☐ — đúng một mục hở: E2(b).** Mọi mục khác của D, E, F đã xong.
+
+**Sửa:** `05-api.md` → v0.3 · `contracts/openapi.yaml` · ADR-013 · `GLOSSARY.md` → v0.17 · `ASSUMPTIONS.md` → v0.18 · hai câu ở mục lần 5 của file này. **Không đổi:** `_PLAN.md`, `00-domain.md`, `01-prd.md`, `02-architecture.md`, `03-agents.md`, `04-data.md`, `schema.sql`, ADR-014.
+
+### D — duyệt
+
+D1 → D5 được duyệt: nửa phiên của B2 giữ nguyên; cách đọc hạn ở B4 giữ làm cổng, không đổi owner; A-056 giữ; phát hiện `delegation` ở C2 được nhận; các mục sửa theo bản nới F3 được duyệt.
+
+### Đã làm theo chỉ thị
+
+| Mục | Kết quả |
+|---|---|
+| E1 (a) | Credential ở **bảng riêng**, tên dự kiến `employee_credential`, do Phase 9 thêm bằng migration. Không cột nào vào `employee`, không DDL, không sửa `schema.sql`. Hình dạng và ràng buộc ghi ở A-048 |
+| E1 (b) | A-048 ghi: bảng riêng thì import CSV không bao giờ chạm credential — và đó là **lý do chính** chọn bảng riêng |
+| E1 (c) | Khoá sau nhiều lần sai không thuộc Sprint đầu. `INVALID_CREDENTIALS` đồng nhất; không có `ACCOUNT_LOCKED`. Ghi ở A-048 và mục Nguyên tắc chung của `05-api.md` |
+| E1 (d) | Buộc đổi mật khẩu lần đầu không thuộc Sprint đầu. Mật khẩu ban đầu do thao tác vận hành seed, giao ngoài hệ thống. Giới hạn và rủi ro ghi ở A-048 |
+| E1 (e) | Mục Nguyên tắc chung và bảng phiên đăng nhập ở mục Endpoint của `05-api.md` đã nói đúng: `DELETE /auth/session` chỉ xoá cookie phía client. **Nhưng `openapi.yaml` nói sai:** response 204 ghi "Đã huỷ phiên" — đã sửa. A-048 ghi "không thu hồi được phiên đã cấp trước khi hết hạn" là rủi ro có chủ, owner Phase 9 |
+| E1 — kết | A-048: owner Phase 9, hạn trong Phase 9, **gỡ nhãn chặn Phase 6** |
+| E2 (a) | Nhập hộ **giữ** trong Sprint đầu. Không file nào phải đổi — chưa file nào từng cắt nó. Quyết định ghi ở A-052 |
+| E2 (c) | Phương án định nghĩa lại `request.read_own` ghi ở A-052, **chưa áp**. Hệ quả với quy tắc tách biệt trách nhiệm: không đổi quy tắc chặn. Ba chỗ phải đi theo nếu áp. Owner: Product Owner quyết, Phase 9 thực thi. Hạn: trước Phase 6 |
+| F1 | Chạy lại toàn bộ phép kiểm tự động, mỗi phép in số đối tượng đã quét — mục Đã kiểm dưới đây |
+| F2 | Đề xuất câu chữ cho luật mới của `CLAUDE.md` — dưới đây. **Không** sửa `CLAUDE.md` |
+| F3 | Ngoại lệ idempotency tường minh cho `POST /employee-imports`, `POST /templates`, `POST /delegations` — mục Nguyên tắc chung của `05-api.md`, dòng `Idempotency-Key` của `GLOSSARY.md`, `openapi.yaml`. Đề xuất `ix_audit_event_entity` chuyển thành phương án bị loại, kèm hai lý do |
+
+### Mục hở — E2(b), dừng đúng theo điều kiện anh đặt
+
+Kiểm hai câu của chỉ thị với `00-domain.md` trước khi ghi. **Cả hai vướng:**
+
+1. Cắt nhập hộ cho `WORK_CONFIRMATION` thì câu "người có `request.create_on_behalf` được đặt khác" ở bảng slot của loại đó thành sai. Theo quy ước ở đầu `00-domain.md`, câu không mang nhãn là Sprint đầu. Không tự chỉnh `00-domain.md`.
+2. Câu "`INTRODUCTION_LETTER` không bị ảnh hưởng, đường đã có" chỉ đúng một nửa. Slot `bearer_employee_code` trích được, nhưng **không tool nào ghi `request.beneficiary_employee_id`** từ nó — vế (2) của A-052. Hệ quả nặng hơn bản trước ghi: cột người thụ hưởng vẫn bằng người tạo, nên phép kiểm tách biệt trách nhiệm (D-006) chặn nhầm người tạo, và để lọt người mang giấy nếu chính người đó duyệt.
+
+Đề xuất cắt hẹp được ghi ở A-052 **như một đề xuất đang dừng**, không phải một quyết định.
+
+### Đã sửa — xin duyệt sau
+
+1. **A-048 — ai ghi bảng credential:** thao tác seed chạy bằng role sở hữu, cùng loại với việc nạp `employee_role`; `bo19_app` chỉ đọc. E1 chỉ nói "thao tác vận hành seed"; phần role là tôi chọn, để ứng dụng không có lệnh ghi credential nào và không chạm A-055.
+2. **ADR-013 — một lý do loại phương án đã thành sai sau E1(a).** Phương án "phiên lưu ở `postgresql`" từng bị loại một phần vì "`schema.sql` đã đóng", nhưng E1(a) nay cho Phase 9 thêm bảng credential. Viết lại: lý do loại là mỗi lần đăng nhập, đăng xuất thành một lệnh ghi của ứng dụng — chạm A-055 — không phải việc thêm bảng. Theo bản nới F3.
+3. **A-052 vế (2) — thêm hệ quả với D-006** (chặn nhầm, để lọt), tìm thấy khi kiểm E2(b).
+4. **Hai câu ở mục lần 5 của file này sửa theo luật 12.** Một câu trỏ `03-agents.md` bằng số mục. Câu kia trích lại chính chỗ phạm luật, nên phép quét cũng bắt.
+5. **Mục lần 5 ghi "hai chỗ khác nằm ở các mục cũ" — sai về số lượng.** Đó là kết quả của mẫu quét hẹp; mẫu mở rộng thấy **14** dòng cũ. Không sửa câu cũ, ghi đính chính ở đây.
+6. **Chính mục này phạm luật 12 lúc mới viết**, ở hai ô E1 (c) và E1 (e) — cả hai trỏ `05-api.md` bằng số mục. Bắt được nhờ chạy lại phép quét **sau** khi ghi. Ô E1 (e) còn lộ một điểm yếu của phép quét cũ: nó bỏ sót chữ "Mục" viết hoa và câu có chữ chen giữa số mục và tên file. Đã sửa cả hai ô, và đổi phép quét sang mẫu rộng. Con số ở mục Đã kiểm dưới đây là của mẫu rộng.
+
+### Cần cho phép trước — chưa làm
+
+- **E2(b):** hoặc cho phép gắn nhãn câu ở bảng slot `WORK_CONFIRMATION` của `00-domain.md` rồi mới cắt; hoặc bỏ đề xuất cắt.
+- **A-052 vế (1) và (2):** một thao tác có tên ghi `request.beneficiary_employee_id` — cần phép sửa `03-agents.md`. Việc này **cần dù có cắt hay không**, vì E2(a) giữ nhập hộ cho `INTRODUCTION_LETTER`.
+- **A-052 vế (3):** định nghĩa lại `request.read_own` — cần phép sửa danh mục permission ở `00-domain.md`.
+- **Luật mới cho `CLAUDE.md`** — anh tự dán. Đề xuất, đặt sau luật 12 ở mục Luật viết tài liệu:
+
+> 13. **Phép kiểm tự động phải in số đối tượng đã quét.** Mọi khẳng định "đã kiểm" dựa trên một phép kiểm tự động — validator, script đối chiếu, grep, render sơ đồ — phải kèm số đối tượng mà phép đó đã quét: số file, số dòng, số endpoint, số mã, số sơ đồ. **Phép kiểm quét 0 đối tượng là ✘, không phải ✔**, kể cả khi nó không báo lỗi nào. Phép kiểm không in ra được con số đó thì coi như chưa chạy, và không được ghi vào báo cáo như đã đạt.
+
+### Đã kiểm — F1, kèm số đối tượng
+
+| Phép kiểm | Số đã quét | Kết quả |
+|---|---|---|
+| `openapi-spec-validator` 0.9.0 trên `openapi.yaml` (OpenAPI 3.1.0) | 44 path · 48 operation · 122 schema · 17 parameter · 12 response | Đạt |
+| Endpoint có contract của `05-api.md` ↔ operation của `openapi.yaml` | 48 ↔ 48 | Đạt — không thiếu, không thừa |
+| Endpoint `[NGOÀI-OPENAPI]` không lọt vào `openapi.yaml` | 4 | Đạt |
+| Mã lỗi của `05-api.md` ↔ enum `ErrorCode` | 31 ↔ 31 | Đạt |
+| Từng operation: header CSRF, `x-bo19-execution`, khoá idempotency khớp header, lỗi qua response chuẩn | 48 | Đạt |
+| Response lỗi dùng `ErrorEnvelope` có đủ `error_code`, `message`, `trace_id` | 11 | Đạt |
+| Ngoại lệ idempotency đúng ba endpoint đã liệt kê | 3 | Đạt |
+| Tham chiếu chéo file theo số mục, trên toàn bộ `docs/design` — mẫu rộng, không phân biệt hoa thường, cho phép chữ chen giữa | 24 file · 6.581 dòng | 17 dòng trúng, **không dòng nào trong nội dung Phase 5.** 14 ở các mục cũ của file này, giữ nguyên. 2 trúng nhầm: `00-domain.md` và `05-api.md` trỏ số mục nội bộ đứng trước tên file của một cụm khác. 1 có từ trước Phase 5: dòng A-018 của `ASSUMPTIONS.md` trỏ tới `00-domain.md` bằng số mục — để Phase 13 |
+| Mermaid trên toàn bộ `docs/design`, render bằng mermaid-cli 10.9.1 | 23 sơ đồ trong 5 file | 23 render, 0 lỗi, 23 SVG trên đĩa |
+
+Lần chạy đầu của phép kiểm tổng **không in được bảng kết quả** — console dùng mã cp1252, không in được chữ tiếng Việt. Theo F1, lần đó coi như chưa chạy; bảng trên là của lần chạy lại với đầu ra UTF-8.
+
+
+---
+
+## 2026-09-13 (lần 7) — Đóng Phase 5: H, I, J
+
+**Phase 5 → ☑ trong `_PLAN.md`.** Không sang Phase 6; Phase 6 mở bằng một phiên mới.
+
+**Sửa:** `ASSUMPTIONS.md` (A-048, A-052) · `05-api.md` → v0.4 · `_PLAN.md` (Phase 5 ☑) · file này. Toàn bộ mục I chỉ chạm `ASSUMPTIONS.md`, `05-api.md` và file này (I6). **Không đổi:** `00-domain.md`, `03-agents.md`, danh mục permission, `openapi.yaml`, `schema.sql`, mọi ADR.
+
+### H — duyệt năm mục "xin duyệt sau" của mục lần 6
+
+- **H1** — seed credential bằng role sở hữu, `bo19_app` chỉ đọc: duyệt. A-048 ghi thêm hệ quả: ở Sprint đầu, đổi mật khẩu — kể cả đặt lại cho người quên — là **thao tác vận hành**, không phải tính năng của ứng dụng, vì `bo19_app` không có quyền ghi bảng credential. Cùng khuôn với việc xoá theo hạn lưu trữ ở mục Audit log bất biến của `04-data.md`.
+- **H2, H3, H4** — duyệt.
+- **H5** — duyệt. Mẫu quét đang dùng ghi ở dưới.
+- **H6** — duyệt. **Nói thẳng: chưa có phép kiểm tự động nào bắt được loại lệch "contract máy đọc nói khác tài liệu".** `check_all.py` so tập endpoint, tập mã lỗi, các extension `x-bo19-*` và cấu trúc response lỗi. Nó không so nghĩa của `description` hay `summary` trong `openapi.yaml` với văn xuôi của `05-api.md`. Lỗi "Đã huỷ phiên" được bắt bằng đọc tay khi làm E1(e). Không thêm phép kiểm ở phase này.
+
+### Mẫu quét luật 12 đang dùng — H5
+
+Ghi mẫu, không chỉ kết quả, để lần sau kiểm lại được chính phép kiểm. Phép quét này đã sai hai lần: lần một do glob có ngoặc nhọn không khớp file nào, nên trả rỗng; lần hai do mẫu chỉ bắt chữ "mục" viết thường đứng liền trước "của".
+
+- **Phạm vi:** mọi file `*.md` dưới `docs/design`, đệ quy — `glob(ROOT + '**/*.md', recursive=True)`. Phép quét phải in số file và số dòng đã quét; 0 file là hỏng, không phải đạt.
+- **Mẫu** — Python `re`, cờ `re.IGNORECASE`:
+
+```
+mục [0-9]+(\.[0-9]+)*[^|;]{0,60}(của|ở) `?(0[0-9]-|PRD|GLOSSARY|ASSUMPTIONS|CLAUDE|_PLAN)|(PRD|0[0-9]-[a-z-]+\.md`?) mục [0-9]
+```
+
+- **Mọi dòng trúng được phân loại bằng tay**, ba nhóm: vi phạm thật; trúng nhầm — số mục nội bộ của chính file đứng trước tên file thuộc một cụm khác trong cùng câu; lịch sử — mục cũ của file này, không viết lại.
+- **Giới hạn đã biết:** không bắt tham chiếu theo số mục tới ADR, `openapi.yaml` hay `schema.sql`; không bắt câu có dấu `|` hoặc `;` chen giữa số mục và tên file.
+
+### I — E2(b): bỏ đề xuất cắt
+
+| Mục | Kết quả |
+|---|---|
+| I1 | Bỏ đề xuất cắt nhập hộ cho `WORK_CONFIRMATION`. Không gắn nhãn, không sửa `00-domain.md`, `03-agents.md` hay danh mục permission. Ba phép từng xin không được cấp, và không xin lại |
+| I2 | A-052 viết lại đủ ba vế, `Mở`, owner Phase 8 |
+| I3 | A-052 nâng lên mức **chạm cổng nghiệm thu**, cùng cách A-042 đã được nâng; lý do EC-IL-01 → nhóm E → M6 → metric loại Bất biến. Ghi cả ở Open Questions của `05-api.md` |
+| I4 | Câu riêng: phép tách biệt trách nhiệm đang **sai theo hai chiều**, không phải đang thiếu — chặn nhầm người tạo, để lọt người mang giấy nếu chính người đó duyệt. Có ở A-052 và ở `05-api.md` |
+| I5 | Hai phương án cho Phase 8, là đề xuất, mỗi phương án một câu lý do và một câu cái giá. Phương án (b) kèm dòng: index theo `beneficiary_employee_id` kiểm ở Phase 8, không đề xuất ở Phase 5 |
+
+### Đã sửa — xin duyệt sau
+
+1. **I3 — chữ "không đạt được đúng căn cứ" thay cho "không thể đạt".** Đối chiếu cơ chế thì câu "không thể đạt" mạnh hơn điều chứng minh được. Điều kiện 4 của F1 không bao giờ nhận ra nhập hộ, vì cột người thụ hưởng luôn bằng người tạo. Nhưng ca vẫn có thể được chấm đạt qua một đường khác — `employee_lookup` chặn trước — và chính phép chặn đó cũng mơ hồ. Mức nâng không đổi.
+2. **I2 — hạn viết thành cổng**, cùng cách A-042: "Phase 8 không được duyệt khi A-052 chưa giải". Chỉ thị ghi "owner Phase 8, hạn trước Phase 8" — cùng kiểu tự mâu thuẫn mà D2 đã giải cho A-042.
+3. **I5(a) — ghi rằng phương án (a) không giải vế (1).** Chỉ thị không nêu; không ghi thì (a) trông như giải cả hai vế.
+4. **Dòng nhập hộ ở mục Không có endpoint vì chưa có thao tác của `05-api.md`** — câu cũ chỉ nói `WORK_CONFIRMATION`, thành thiếu sau I2. Sửa theo bản nới F3, trong phạm vi file I6 cho phép.
+5. **Bản đầu của mục 4 ngay trên phạm luật 12** — nó trỏ `05-api.md` bằng số mục. Đây là lần thứ ba tôi phạm luật này trong chính đoạn ghi về việc sửa nó. Bắt được ở lần quét chạy sau lần ghi, như J yêu cầu; đã sửa sang tên mục.
+
+### Cần cho phép trước — chưa làm
+
+**Không có.** Dòng A-018 trỏ theo số mục để Phase 13, theo chỉ thị.
+
+### Đã kiểm
+
+Theo J, các phép kiểm chạy **sau** lần ghi cuối — tức sau chính mục này — nên số liệu nằm ở báo cáo đóng phase, không ở đây.
