@@ -1,6 +1,6 @@
 # ADR-005 — `orchestrator` là thư viện dùng chung trong `api`/`queue_worker`, không phải service riêng
 
-**Trạng thái:** Accepted · **Ngày:** 2026-09-12 · **Quyết định tại:** Phase 2 — System Architecture · **Liên quan:** mục Ràng buộc domain bắt buộc phải xử lý và mục Tech stack của `CLAUDE.md`, A-025
+**Trạng thái:** Accepted · **Ngày:** 2026-09-12 · **Quyết định tại:** Phase 2 — System Architecture · **Liên quan:** mục Ràng buộc domain bắt buộc phải xử lý và mục Tech stack của `CLAUDE.md`, A-025, ADR-016 · **Cập nhật:** 2026-09-14, sau Phase 6 — nơi gọi và điều kiện đảo ngược viết lại theo ADR-016; quyết định giữ nguyên
 
 ---
 
@@ -22,7 +22,7 @@
 
 **`orchestrator` là một thư viện Python dùng chung**, không phải một service triển khai riêng trên Render.
 
-- Được gọi trực tiếp từ tiến trình xử lý request của `api` cho lượt chat đồng bộ (miễn là không chạm giới hạn thời gian request của Render — xem điều kiện đảo ngược).
+- Được gọi trực tiếp từ tiến trình `api` cho lượt chat, ở một task tách khỏi vòng đời request (ADR-016) — xem điều kiện đảo ngược. *Bản đầu viết "từ tiến trình xử lý request của `api`… miễn là không chạm giới hạn thời gian request của Render"; ADR-016 tách lượt khỏi request, nên giới hạn đó nay chỉ cắt stream, không cắt lượt.*
 - Được gọi từ `queue_worker` cho các job nền cần chạy graph (ví dụ bước sinh nội dung tự do sau khi `request` chuyển `SUBMITTED`, xem sequence diagram (b) của `02-architecture.md`).
 - Cả hai lời gọi dùng chung một checkpointer PostgreSQL — một cuộc hội thoại có thể bắt đầu ở `api` và được resume từ `queue_worker`, hoặc ngược lại, mà không mất trạng thái.
 
@@ -37,13 +37,13 @@
 **Tiêu cực và cái phải chấp nhận**
 
 - `api` và `queue_worker` cùng phụ thuộc trực tiếp vào thư viện `orchestrator` — thay đổi state schema graph ảnh hưởng cả hai nơi gọi, phải deploy đồng bộ.
-- Nếu một lượt chạy graph (đặc biệt bước gọi model mạnh + RAG) kéo dài, nó chiếm một luồng xử lý request của `api` trong suốt thời gian đó — xem điều kiện đảo ngược.
+- Nếu một lượt chạy graph (đặc biệt bước gọi model mạnh + RAG) kéo dài, nó chiếm tài nguyên của tiến trình `api` trong suốt thời gian đó — kể cả sau khi client đã ngắt (ADR-016) — xem điều kiện đảo ngược.
 
 **Điều kiện đảo ngược** — không phải "tách `orchestrator` thành service riêng", mà là "đổi *nơi gọi*":
 
-Tín hiệu đảo ngược là khi một lượt thực thi graph (gọi model mạnh + retrieval) đủ lâu để tiệm cận giới hạn thời gian một request HTTP của Render. Giá trị cụ thể của giới hạn này **chưa xác minh, cấm ghi từ trí nhớ** (A-025). Khi tín hiệu này xuất hiện: lượt chat đó cần chuyển từ "chạy đồng bộ trong luồng xử lý request của `api`" sang "enqueue job, trả lời ngay, `queue_worker` chạy graph, cập nhật cho client qua SSE" — đúng mẫu đã dùng cho bước sinh nội dung tự do ở sequence diagram (b).
+Tín hiệu đảo ngược là khi một lượt thực thi graph (gọi model mạnh + retrieval) đủ lâu để tiệm cận **shutdown delay** mà cửa sổ drain của tiến trình `api` dựa vào — lúc đó drain không còn phủ được lượt, và mỗi lần deploy lại bỏ rơi lượt (ADR-016, A-056). *Bản đầu viết "tiệm cận giới hạn thời gian một request HTTP của Render" (A-025) — đúng khi lượt chạy bên trong request; ADR-016 tách lượt khỏi request, nên giới hạn đó nay chỉ cắt stream.* Khi tín hiệu này xuất hiện: lượt chat đó cần chuyển từ "chạy trong tiến trình `api`" sang "enqueue job, trả lời ngay, `queue_worker` chạy graph, cập nhật cho client qua SSE" — đúng mẫu đã dùng cho bước sinh nội dung tự do ở sequence diagram (b).
 
-**Điểm mấu chốt cần giữ khi tín hiệu này xảy ra:** phần cần đổi là *tiến trình nào gọi thư viện `orchestrator`* (từ luồng request của `api` sang `queue_worker`), **không phải** tách `orchestrator` thành một service triển khai riêng — vì lý do kỹ thuật duy nhất từng có thể biện minh cho việc tách riêng (giữ trạng thái trong bộ nhớ) đã bị loại bỏ ngay từ bước 2 của chuỗi suy luận, và không đổi dù giới hạn thời gian request là bao nhiêu.
+**Điểm mấu chốt cần giữ khi tín hiệu này xảy ra:** phần cần đổi là *tiến trình nào gọi thư viện `orchestrator`* (từ tiến trình `api` sang `queue_worker`), **không phải** tách `orchestrator` thành một service triển khai riêng — vì lý do kỹ thuật duy nhất từng có thể biện minh cho việc tách riêng (giữ trạng thái trong bộ nhớ) đã bị loại bỏ ngay từ bước 2 của chuỗi suy luận, và không đổi dù giới hạn thời gian request là bao nhiêu.
 
 ## Rejected alternatives
 

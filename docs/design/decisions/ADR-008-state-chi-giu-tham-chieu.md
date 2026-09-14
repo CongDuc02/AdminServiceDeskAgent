@@ -1,6 +1,6 @@
 # ADR-008 — State LangGraph chỉ giữ tham chiếu; allowlist input là danh sách nạp, fail-closed
 
-**Trạng thái:** Accepted · **Ngày:** 2026-09-12 · **Quyết định tại:** Phase 3 — Agent & Tool Architecture · **Liên quan:** NFR-05 của `01-prd.md`, A-014, A-010, mục Data flow diagram của `02-architecture.md`, ADR-006, ADR-007
+**Trạng thái:** Accepted · **Ngày:** 2026-09-12 · **Quyết định tại:** Phase 3 — Agent & Tool Architecture · **Liên quan:** NFR-05 của `01-prd.md`, A-014, A-010, mục Data flow diagram của `02-architecture.md`, ADR-006, ADR-007, ADR-016 · **Cập nhật:** 2026-09-14, sau Phase 6 — mốc của điều kiện đảo ngược theo ADR-016; quyết định giữ nguyên
 
 ---
 
@@ -44,7 +44,7 @@ Hai nghĩa vụ trong `_PLAN.md` Phase 3 cùng rơi vào state của LangGraph:
 - Checkpoint không còn hữu ích để debug nội dung. Debug phải dựa vào log kỹ thuật đã mask của `observability`.
 - **Cái ADR này không tự bảo đảm:** một kỹ sư thêm một trường chuỗi tự do vào state là phá được nó. Chốt chặn: state khai bằng `TypedDict` không có trường văn bản tự do; bộ tuần tự hoá checkpoint từ chối khoá không có trong schema; và một **test canary** ở Phase 10 — chạy hội thoại chứa giá trị `RES` đánh dấu rồi quét bảng checkpoint — phải cho kết quả rỗng.
 
-**Điều kiện đảo ngược** — tín hiệu vận hành, đo ở `observability`: số truy vấn và latency đọc DB do node gọi LLM gây ra, đặt cạnh latency lượt chat (cùng trục thời gian với tín hiệu của ADR-005). Nếu tải đọc này thành nguyên nhân chính khiến lượt chat tiến sát giới hạn thời gian request (A-025), phải xét lại cách nạp — nhưng không được xét lại bằng cách quay về allowlist dạng bộ lọc.
+**Điều kiện đảo ngược** — tín hiệu vận hành, đo ở `observability`: số truy vấn và latency đọc DB do node gọi LLM gây ra, đặt cạnh latency lượt chat (cùng trục thời gian với tín hiệu của ADR-005). Nếu tải đọc này thành nguyên nhân chính khiến lượt chat tiến sát hạn chót của lượt (A-031) — mốc mà ADR-016 đặt dưới shutdown delay; bản đầu viết "giới hạn thời gian request (A-025)", nay giới hạn đó chỉ cắt stream — phải xét lại cách nạp — nhưng không được xét lại bằng cách quay về allowlist dạng bộ lọc.
 
 ## Rejected alternatives
 

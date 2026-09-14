@@ -1,6 +1,6 @@
 # ADR-013 — Hai luồng SSE, luồng dài chỉ mang tín hiệu; xác thực bằng session cookie HttpOnly
 
-**Trạng thái:** Accepted · **Ngày:** 2026-09-13 · **Quyết định tại:** Phase 5 — API Spec · **Liên quan:** ADR-004, ADR-005, ADR-007, NFR-04, NFR-05, NFR-08 của `01-prd.md`, mục Ánh xạ sang đơn vị triển khai trên Render của `02-architecture.md`, A-025, A-031, A-048, A-049, A-050, A-051, A-055, A-057 · **Bổ sung:** vòng duyệt Phase 5 — cùng origin (B1), phiên stateless (B2), pool kết nối (C4)
+**Trạng thái:** Accepted · **Ngày:** 2026-09-13 · **Quyết định tại:** Phase 5 — API Spec · **Liên quan:** ADR-004, ADR-005, ADR-007, NFR-04, NFR-05, NFR-08 của `01-prd.md`, mục Ánh xạ sang đơn vị triển khai trên Render của `02-architecture.md`, A-025, A-031, A-048, A-049, A-050, A-051, A-055, A-057 · **Bổ sung:** vòng duyệt Phase 5 — cùng origin (B1), phiên stateless (B2), pool kết nối (C4) · **Cập nhật:** 2026-09-14, sau Phase 6 — Context và lý do loại phương án C theo ADR-016; quyết định giữ nguyên
 
 ---
 
@@ -8,7 +8,7 @@
 
 Có hai nhu cầu đẩy dữ liệu từ server xuống client:
 
-1. **Lượt chat.** `intake_graph` chạy đồng bộ trong luồng request của `api` (ADR-005). NFR-08 đòi phản hồi tăng dần để người dùng biết hệ thống đang làm việc. Nhưng lượt chat **không có token nào để stream**: `intake_agent` không sinh văn bản hiển thị, câu trả lời được lắp từ khuôn (ADR-007). Thứ cần đẩy là tiến độ và câu trả lời cuối.
+1. **Lượt chat.** `intake_graph` chạy trong tiến trình `api` (ADR-005), ở một task tách khỏi vòng đời request (ADR-016); người dùng chờ câu trả lời trên chính response của lượt đó. NFR-08 đòi phản hồi tăng dần để người dùng biết hệ thống đang làm việc. Nhưng lượt chat **không có token nào để stream**: `intake_agent` không sinh văn bản hiển thị, câu trả lời được lắp từ khuôn (ADR-007). Thứ cần đẩy là tiến độ và câu trả lời cuối.
 2. **Trạng thái.** `request` và `document` đổi trạng thái do `queue_worker` hoặc do người khác bấm (F4, hàng đợi duyệt). Nhân viên dùng hệ thống vài lần mỗi năm (NFR-04), nên thứ họ cần là thấy đúng trạng thái khi mở màn hình, không phải một luồng sự kiện đầy đủ.
 
 Mọi chiều client → server đã là REST. Ràng buộc Render: giới hạn thời gian request chưa xác minh (A-025), có thể nhiều instance, không giữ trạng thái trong RAM giữa hai request. Không có SSO; đăng nhập hai vai trò; cơ chế credential chưa có (A-048).
@@ -84,7 +84,7 @@ N là số kết nối tín hiệu đang mở · q ≤ 3 là số truy vấn m�
 
 **A — WebSocket.** Chiều client → server đã là REST; một kênh hai chiều không có việc gì để làm. WebSocket cần một bước xác thực riêng lúc bắt tay và một giao thức riêng đi qua proxy; SSE là một response HTTP thường, đi qua cùng middleware xác thực và cùng log như mọi endpoint khác. Render có hỗ trợ WebSocket hay không **không** phải lý do loại — không ghi từ trí nhớ.
 
-**C — Chỉ polling từ client.** Lượt chat chạy **bên trong** một request (ADR-005): muốn báo tiến độ mà không lưu trạng thái tiến độ xuống DB thì chỉ có cách stream chính response đó. Với trạng thái, polling từ client vẫn phải làm đúng phép phát hiện ở trên, chỉ khác là nhân số request lên theo số màn hình đang mở.
+**C — Chỉ polling từ client.** Lượt chat chạy trong tiến trình `api` đang giữ response của lượt đó (ADR-005, ADR-016): muốn báo tiến độ mà không lưu trạng thái tiến độ xuống DB thì chỉ có cách stream chính response đó. *Bản đầu viết "lượt chat chạy bên trong một request"; lý do loại không đổi khi lượt được tách khỏi request, vì tiến độ vẫn chỉ sống trong tiến trình đó.* Với trạng thái, polling từ client vẫn phải làm đúng phép phát hiện ở trên, chỉ khác là nhân số request lên theo số màn hình đang mở.
 
 **(ii) — Bearer token trong JS, qua `fetch`.** Chạy được — stream lượt chat đã là `fetch`. Loại vì token nằm trong vùng JS đọc được, và vì mất vế tự nối lại của `EventSource` cho stream dài. Giữ làm phương án dự phòng ở điều kiện đảo ngược.
 

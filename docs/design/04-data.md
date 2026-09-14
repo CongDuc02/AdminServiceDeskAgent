@@ -1,6 +1,6 @@
 # Data Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.3 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 4 (S–V) — mục ngày 2026-09-13 (lần 2) của `CHANGELOG.md` · **v0.3:** `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.4:** ai ghi `llm_usage` và mã `BUDGET_UNAVAILABLE` (ADR-019), `template_version.required_fonts` (ADR-015), kết quả xác minh A-045 và A-047 — Phase 6, mục ngày 2026-09-13 (lần 8)
+**Phiên bản:** 0.3 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 4 (S–V) — mục ngày 2026-09-13 (lần 2) của `CHANGELOG.md` · **v0.3:** `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.4:** ai ghi `llm_usage` và mã `BUDGET_UNAVAILABLE` (ADR-019), `template_version.required_fonts` (ADR-015), kết quả xác minh A-045 và A-047 — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.5:** dòng `schema_migration` ở mục 1.1 — vòng duyệt Phase 6 (B1), mục ngày 2026-09-13 (lần 9)
 
 > File này chốt mô hình dữ liệu vật lý: bảng, cột, ràng buộc, index, quyền trên cơ sở dữ liệu, lưu trữ file, vector collection và chính sách xoá dữ liệu cá nhân. Contract DDL nằm ở [`contracts/schema.sql`](./contracts/schema.sql). File này **không** thiết kế API (Phase 5), màn hình duyệt hay bảng mã lý do (Phase 8), AuthZ chi tiết (Phase 9), và **không** định cỡ thời hạn hay tham số vận hành (Phase 11).
 
@@ -44,6 +44,7 @@ Tên entity, trạng thái, enum, agent, tool dùng đúng `GLOSSARY.md`. Ánh x
 | *Tầng kỹ thuật* — `stored_object` | `stored_object`, `stored_object_commit` | Sổ giành khoá ghi-một-lần (mục 5); commit tách riêng để checksum được ghi đúng một lần bằng khoá chính |
 | *Tầng kỹ thuật* — `llm_usage` | `llm_usage` | Kế toán token; không chứa văn bản |
 | *Tầng kỹ thuật* — `embedding_collection` | `embedding_collection`, `procedure_chunk_embedding_v1` | Một bảng cho mỗi phiên bản collection (ADR-012) |
+| *Tầng kỹ thuật* — sổ migration | `schema_migration` | **Không** nằm trong `schema.sql`. Trình chạy migration tạo nó; `bo19_migrator` sở hữu; `bo19_app` chỉ `SELECT`, cho bước kiểm khởi động. Mang tên file, loại schema hay data, sha256, thời điểm áp. Thêm ở vòng duyệt Phase 6 (ADR-017) |
 | Checkpoint của `orchestrator` | Bảng của LangGraph | **Không** nằm trong `schema.sql` (mục 8.6) |
 
 **Độ phủ (V3):** bảng trên phủ đủ **45 bảng** của `schema.sql`. Mỗi bảng hoặc là entity của chính nó, hoặc thuộc một dòng có lý do tách ở cột ghi chú; không bảng nào đứng ngoài ánh xạ.
