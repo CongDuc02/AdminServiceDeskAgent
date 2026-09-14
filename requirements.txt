@@ -1,0 +1,3 @@
+# Root requirements — trỏ về backend
+# Cài toàn bộ: pip install -r requirements.txt
+-r backend/requirements.txt

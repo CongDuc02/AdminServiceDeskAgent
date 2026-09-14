@@ -1320,3 +1320,73 @@ Không đổi quyết định nào của các ADR. Dòng **Cập nhật** ở đ
 ### Đã kiểm
 
 Chạy sau lần ghi cuối của mục này; số liệu ở báo cáo.
+
+---
+
+## 2026-09-14 — Phase 7: Prompt Architecture
+
+**Tạo mới:** `docs/design/07-prompts.md` v0.1. **Không đổi:** `00-domain.md`, `01-prd.md`, `02-architecture.md`, `03-agents.md`, `04-data.md`, `05-api.md`, `06-structure.md`, `GLOSSARY.md`, `ASSUMPTIONS.md`, `contracts/schema.sql`, `contracts/openapi.yaml`, ADR-001 → ADR-019, `CLAUDE.md`. `_PLAN.md` Phase 7 → ☑.
+
+### Quyết định của phase
+
+Không có ADR mới. Thiết kế dựa trên ADR-007 (LLM không gọi tool), ADR-008 (allowlist là danh sách nạp, fail-closed), ADR-009 (đơn vị render lại là biến), ADR-016 (lượt chat tách khỏi kết nối).
+
+| Prompt | Quyết định |
+|---|---|
+| P1 `classify_intent` / P2 `extract_slots` / P3 `select_procedure_passages` (intake, tier rẻ) | Input đích danh theo `03-agents.md:102`, output JSON đóng `additionalProperties: false`, không sinh văn bản hiển thị — `render_reply` lắp khuôn |
+| P4 `draft_free_content` / P5 `revise_free_content` (drafting, tier mạnh) | Một biến một lời gọi, input `template_variable_input` của `template_version`, `change_reason` là dữ liệu RES chỉ tới biến trong `change_targets` |
+| Ép JSON | Hai nhánh theo năng lực provider (A-026): provider hỗ trợ JSON Schema thì ép native, không thì `ai_gateway.json_contract` validate + sửa parse đúng 1 lần |
+
+### Phạm vi đã chốt
+
+Prompt chỉ sinh nội dung tự do (`purpose_statement`, `work_content_statement` — `GLOSSARY.md:325`); khung thể thức trong `template .docx` do PO chuẩn bị (ADR-001, D-007) **không** thuộc Phase 7. Mọi few-shot đánh dấu **dữ liệu giả**.
+
+### Đã kiểm
+
+Theo quy ước của mục lần 7: phép kiểm chạy **sau** lần ghi cuối, số liệu nằm ở báo cáo đóng phase.
+
+---
+
+## 2026-09-14 — Phase 8: HITL & Approval Workflow
+
+**Tạo mới:** `docs/design/08-hitl.md` v0.1. **Không đổi:** `00-domain.md`, `01-prd.md`, `02-architecture.md`, `03-agents.md`, `04-data.md`, `05-api.md`, `06-structure.md`, `07-prompts.md`, `GLOSSARY.md`, `ASSUMPTIONS.md`, `contracts/schema.sql`, `contracts/openapi.yaml`, ADR-001 → ADR-019, `CLAUDE.md`. `_PLAN.md` Phase 8 → ☑.
+
+### Quyết định của phase
+
+Không có ADR mới. Thiết kế dựa trên D-006, D-009, ADR-009, ADR-010, ADR-011 đã chốt.
+
+| Mục | Quyết định |
+|---|---|
+| Hàng đợi | 3 queue theo trạng thái + `issue-queue`, sắp `status_changed_at` (chờ lâu nhất trước), keyset, tín hiệu `REVIEW_QUEUE` |
+| Duyệt | 6 thao tác cổng `05-api.md:250`, chặn `beneficiary==approver` + đường thoát 4 điều kiện `WARNING` + `GET /self-approvals` |
+| Yêu cầu sửa | `FREE_CONTENT` (request ở nguyên) vs `SLOT_DATA` (request về `CHANGES_REQUESTED`), `change_targets` do người chọn |
+| Ký/uỷ quyền | `SIGNER [Should]` 1 cấp Sprint đầu, `delegation` `[Should]` |
+| Thu hồi | `F5 [Should]` nhưng trạng thái `REVOKED` bắt buộc, 2 người `initiate`/`confirm` |
+| Dừng khi chạm trần | Mọi lỗi/trần về `halt_for_human` (`await_human_takeover`), không để `document` dở dang — `NFR-06` |
+
+### Đã kiểm
+
+Theo quy ước: phép kiểm chạy **sau** lần ghi cuối, số liệu nằm ở báo cáo đóng phase.
+
+### Đã kiểm
+
+Chạy sau lần ghi cuối của mục này; số liệu ở báo cáo.
+
+---
+
+## 2026-09-14 (lần 2) — Phase 7/8: phép kiểm chéo đã chạy, sửa 08-hitl.md v0.1 → v0.2
+
+Placeholder "phép kiểm chạy sau lần ghi cuối" ở hai mục trên chưa từng có số liệu thật. Chạy lại phép kiểm chéo chỉ cho `07-prompts.md` và `08-hitl.md` (đối chiếu tham chiếu số dòng, tên entity với `GLOSSARY.md`, ADR, assumption, cú pháp Mermaid, nhất quán nội bộ hai file). Kết quả: không có lỗi tên entity/trạng thái/permission cốt lõi, ADR/assumption viện dẫn đúng, không mâu thuẫn logic giữa hai file. 6 lỗi nhẹ/vừa tìm thấy, toàn bộ ở `08-hitl.md`, đã sửa:
+
+| Vị trí | Trước | Sau | Lý do |
+|---|---|---|---|
+| Mục 2.2 | `06-structure.md:549` | `06-structure.md:700` | Dòng 549 là dòng đóng code block sau khi `06-structure.md` bị sửa ở phase sau; nội dung "khoá gốc `['review-queue']`" thật ở dòng 700 |
+| Mục 5 | `signer_employee_id` | `signer_user_id` | Tên biến/tool output chuẩn theo `GLOSSARY.md` và `03-agents.md:175` là `signer_user_id`; `signer_employee_id` chỉ là tên cột DB ở `04-data.md:421`, không phải tên dùng ở tầng tool/prompt |
+| Mục 5 | `00-domain.md:403` | `00-domain.md:396` | Dòng 403 là tiêu đề mục khác; `delegation.manage` thật ở dòng 396 |
+| Mục 6 | `04-data.md:565` | `04-data.md:705` | Dòng 565 là dòng index không liên quan; "Giao thức ghi một lần" thật ở dòng 705 |
+| Mục 6, `stateDiagram-v2` | Thiếu `CHANGES_REQUESTED → DRAFT`, `CHANGES_REQUESTED → ARCHIVED`, `REVOKED → ARCHIVED`, `SUPERSEDED → ARCHIVED` | Đã thêm | Máy trạng thái `document` thật (`00-domain.md` mục 5.1) có các cạnh này; thiếu làm sơ đồ trông đầy đủ trong khi không phải, dù chính mục 4 và mục 7 của `08-hitl.md` mô tả các nhánh đó bằng lời |
+| Mục 9.3 | `05-api.md:247` | `05-api.md:161` | Dòng 247 là tiêu đề mục khác; `document.halted`/`latest_halt.reason_code` thật ở dòng 161 |
+
+`08-hitl.md` lên **v0.2**. Không đổi quyết định, không đổi phạm vi, không đổi entity/trạng thái nào khác ngoài bảng trên. `07-prompts.md` không có lỗi, giữ nguyên v0.1. `_PLAN.md`, `GLOSSARY.md`, `ASSUMPTIONS.md`, `contracts/`, ADR không đổi.
+
+**Bài học ghi lại:** tham chiếu chéo bằng số dòng sang file khác vẫn có rủi ro lệch tương tự khi file đích bị sửa ở phase sau — 4/6 lỗi trên đều do `05-api.md`, `04-data.md`, `06-structure.md` đã bị sửa nhiều lần kể từ khi các dòng đó được trích. Phase 13 (Consistency Audit) nên quét lại toàn bộ tham chiếu số dòng liên file, không chỉ tên entity.

@@ -1,0 +1,35 @@
+[project]
+name = "bo19"
+version = "0.1.0"
+description = "BO-19 Admin Service Desk Agent — backend rỗng DESIGN MODE"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi==0.115.12",
+    "uvicorn[standard]==0.34.2",
+    "pydantic==2.11.3",
+    "pydantic-settings==2.9.1",
+    "python-multipart==0.0.9",
+    "email-validator==2.2.0",
+    "python-jose[cryptography]==3.4.0",
+    "passlib[bcrypt]==1.7.4",
+    "psycopg[binary]==3.3.5",
+    "pgvector==0.3.6",
+    "alembic==1.15.2",
+    "SQLAlchemy==2.0.41",
+    "langgraph==0.3.27",
+    "langgraph-checkpoint-postgres==3.1.2",
+    "langchain==0.3.24",
+    "langchain-openai==0.3.12",
+    "langchain-core==0.3.59",
+    "openai==1.82.1",
+    "tiktoken==0.9.0",
+    "python-docx==1.1.2",
+    "docxtpl==0.20.1",
+    "lxml==5.3.1",
+    "boto3==1.37.3",
+    "botocore==1.37.3",
+    "structlog==25.4.0",
+]
+
+[tool.ruff]
+line-length = 100
