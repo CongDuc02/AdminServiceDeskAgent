@@ -78,7 +78,9 @@ Ba ràng buộc đi kèm:
 
 **Điều kiện đảo ngược**
 
-- *Đóng gói — tín hiệu vận hành, đo ở `observability`:* cold start của `api` sau khi image có LibreOffice, đặt cạnh cold start của một image không có nó. Vượt ngưỡng — ngưỡng để trống tới khi có số đo — thì tách thành **hai target build từ một Dockerfile, một commit**. Bảo đảm cùng phiên bản của ADR-005 giữ nguyên. **Khi tách, chốt 2 phải chuyển chỗ**, vì `api` không còn có font để kiểm.
+- *Đóng gói — tín hiệu vận hành, đo ở `observability`:* cold start của `api` sau khi image có LibreOffice, đặt cạnh cold start của một image không có nó. Vượt ngưỡng — ngưỡng để trống tới khi có số đo — thì tách thành **hai target build từ một Dockerfile, một commit**. Bảo đảm cùng phiên bản của ADR-005 giữ nguyên.
+
+  **Điều kiện đảo ngược này phá một chốt an toàn của chính ADR này — ghi ở đây để người tách image đọc được.** Tách image thì `api` không còn font để kiểm, và **chốt 2 mất**. Khi đó phép kiểm `FONT_MISSING` theo từng job trong `pdf_export` (mục Tool Registry của `03-agents.md`) chuyển từ lớp phòng thủ thêm thành **bắt buộc**: nó là chốt duy nhất còn bắt được một phiên bản template được kích hoạt sau khi worker đã khởi động. **Tách image mà không bật nó là hạ một lớp phòng thủ mà không ai quyết.** Việc tách vì vậy phải kèm, trong cùng thay đổi: bật `FONT_MISSING` theo từng job, và sửa phép kiểm `NOT_INSTALLED` của `activate` ở mục Endpoint của `05-api.md` — trong `api` nó không còn nghĩa.
 - *PDF — tín hiệu vận hành:* phần đuôi thời lượng upload (A-059) tiến sát lease; hoặc `render_integrity_check` trượt với mã `RENDER_CHECKSUM_MISMATCH` ở một bản không có sự cố lưu trữ nào khác. Khi đó xét lại phương án (a).
 - *Công cụ — tín hiệu vận hành:* bộ nhớ hay thời lượng chuyển đổi của worker tiến sát giới hạn của gói Render đang dùng. Khi đó xét phương án B để cô lập tiến trình chuyển đổi.
 

@@ -1,6 +1,6 @@
 # Project Structure — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.1 · **Trạng thái:** Draft chờ duyệt
+**Phiên bản:** 0.2 · **Trạng thái:** Đã duyệt ở vòng duyệt Phase 6 · **v0.2:** Open Questions sau các phép B1 → B4; mục 9.4 về bộ kiểm trong repo; `tools/` trong cây gốc — mục ngày 2026-09-13 (lần 9) của `CHANGELOG.md` · **v0.3:** Open Questions sau phép bổ sung — mục ngày 2026-09-14
 
 > File này chốt cây thư mục của backend và frontend, luật "được import gì, cấm import gì" kèm **thứ gì chặn vi phạm**, entrypoint và cách chạy trên Render, bước kiểm khởi động, trình tự migration so với checkpointer, và kết quả xác minh contract DDL. File này **không** chứa implementation (DESIGN MODE — mục Chế độ làm việc hiện tại của `CLAUDE.md`). Hai khối `.importlinter` và `Dockerfile` bên dưới là **đặc tả**, không phải file. File này cũng **không** thiết kế màn hình tiếp quản hay quy tắc hiển thị theo độ nhạy (Phase 8), AuthZ chi tiết và quản lý secret (Phase 9), và **không** định cỡ tham số vận hành (Phase 11).
 
@@ -52,6 +52,8 @@ Ba package không phải thành phần: `bo19.domain` (enum, bảng chuyển tr�
 ├── backend/                  # package bo19 — mục 3
 ├── frontend/                 # SPA React — mục 10
 ├── fonts/                    # bộ font của A-058, kèm giấy phép từng font — đưa vào image
+├── tools/
+│   └── contract-checks/      # bộ kiểm quyền của contract DDL — không phải mã ứng dụng, không vào image (mục 9.4)
 ├── docs/
 │   ├── reference/            # nguồn gốc được phép trích
 │   └── design/               # tài liệu thiết kế; contracts/ là nguồn của mã
@@ -502,6 +504,15 @@ Mọi phép thử quyền dùng `WHERE false` hoặc giao dịch rollback: Postg
 | A-051 (1), (2), (3) | **Có**, bằng đặc tả đã ghim | Đã chốt |
 | A-051 (4) | Thu hẹp bằng tài liệu Starlette; **không dựng test** — ADR-016 làm nó hết quan trọng | Không còn quyết định gì |
 
+### 9.4 Chạy lại — `tools/contract-checks/`
+
+Bộ kiểm có chỗ trong repo từ vòng duyệt Phase 6: `tools/contract-checks/check_grants.py`, `requirements.txt` ghim đúng các phiên bản đã dùng, và `README.md` ghi khi nào và cách chạy lại. Nó **không phải mã ứng dụng**: nằm ngoài `backend/`, nên `Dockerfile` ở mục 6.2 không chép nó vào image.
+
+- **Hai chế độ.** `--local` dựng PostgreSQL tạm, áp `schema.sql`, chạy `setup()` của checkpointer rồi kiểm. `--app-dsn` **chỉ kiểm** trên một cơ sở dữ liệu đã migrate — chế độ dành cho Render. Mọi phép thử dùng `WHERE false` hoặc giao dịch rollback; `TRUNCATE` chỉ kiểm bằng `has_table_privilege`.
+- **Thêm so với script đầu:** kiểm độ phủ — mọi bảng trong `public` phải thuộc đúng một nhóm quyền, nên một bảng mới chưa được xếp nhóm sẽ bị tính là lệch.
+- **Lần chạy từ repo ở vòng duyệt Phase 6**, chế độ `--local`, cùng `schema.sql` sha256 `0ce8dd…`: 49 bảng — 45 của `schema.sql` cộng 4 của thư viện; **169** từ chối đúng; **63** cho phép đúng; **0** lệch; sáu kiểm thêm đạt; mã thoát `0`. Hai con số chính trùng khít lần chạy ở mục 9.2.
+- **Phải chạy lại** sau mỗi lần `schema.sql` đổi, sau mỗi lần nâng thư viện checkpointer, và trên Render ngay khi có môi trường đầu tiên — cùng lượt A-040, A-047.
+
 ---
 
 ## 10. Cây frontend
@@ -722,12 +733,23 @@ flowchart LR
 
 Mọi mục có owner và hạn ở `ASSUMPTIONS.md`. Mục này gom những gì Phase 6 phát hiện, và những việc cần anh cho phép.
 
-**Cần anh cho phép — chưa làm**
+**Đã làm ở vòng duyệt Phase 6 — bốn phép B1 → B4 và mục C**
 
-1. **Bảng `schema_migration` chưa có trong mục Nguyên tắc dữ liệu của `04-data.md`.** Mục đó ghi độ phủ 45 bảng và có một dòng cho bảng của LangGraph nằm ngoài `schema.sql`. Sổ migration của ADR-017 cũng nằm ngoài `schema.sql` và cần một dòng tương tự.
-2. **Biên node** là một chốt chặn mới của lớp 2 ở mục Checkpointer và PII của `03-agents.md`: "exception rời node chỉ mang mã", không chỉ "lỗi do `tool_layer` trả về chỉ mang mã". Cần phép sửa `03-agents.md` để ghi nó ở đó, và thêm ca "node ném exception mang giá trị `RES`" cho test canary của Phase 10.
-3. **Kiểm font theo từng job trong `pdf_export`** — lớp phòng thủ thứ tư, cần mã lỗi mới `FONT_MISSING` ở mục Tool Registry của `03-agents.md`. Không bắt buộc khi còn một image: ba chốt của ADR-015 đã đóng lỗ. Nhưng tách image là chốt 2 mất.
-4. **Dòng thứ hai cho ADR-015 ở bảng chỗ quan sát của Phase 11** trong `_PLAN.md`: phần đuôi thời lượng upload một bản render, đặt cạnh lease — tín hiệu đảo ngược của phương án (b). Phép lần này chỉ cho một dòng.
+1. Dòng `schema_migration` ở mục Nguyên tắc dữ liệu của `04-data.md`.
+2. Biên node, cùng ca canary thứ hai "node ném exception mang giá trị `RES`", ở mục Checkpointer và PII của `03-agents.md` — đúng chỗ Phase 10 đọc để viết test canary.
+3. `FONT_MISSING` ở dòng `pdf_export`, mục Tool Registry của `03-agents.md`. Đó là **mã nội bộ của tool**: danh mục `error_code` của `05-api.md` giữ 32 mã, `openapi.yaml` không đổi. Sự phụ thuộc "tách image thì `FONT_MISSING` thành bắt buộc" nay nằm ở chính điều kiện đảo ngược của ADR-015 (mục C), không chỉ ở đây.
+4. Dòng chỗ quan sát thứ hai của ADR-015 trong `_PLAN.md`.
+
+**Phát hiện ở vòng duyệt Phase 6 — đã sửa theo phép bổ sung, mục ngày 2026-09-14 của `CHANGELOG.md`**
+
+- **Bảng "mã lỗi của tool — cái nào lộ ra client" ở mục Mã lỗi của `05-api.md`**: đã thêm `FONT_MISSING` vào dòng của `pdf_export`.
+- **Những câu còn giả định lượt chat chạy bên trong request** — đã sửa cả mười một dòng, cộng dòng mơ hồ ở mục `orchestrator` của `02-architecture.md`:
+  - dòng "Chạy ở" của `intake_agent` và dòng độ trễ ở bảng năng lực model, mục Agent Registry của `03-agents.md`;
+  - ADR-005 — phần Decision, Consequences và điều kiện đảo ngược viết theo giới hạn thời gian request;
+  - ADR-006 — câu về nơi chạy;
+  - ADR-008 — điều kiện đảo ngược;
+  - ADR-013 — mục Context và lý do loại phương án C;
+  - dòng ADR-005 ở bảng chỗ quan sát của Phase 11 trong `_PLAN.md` — vẫn đặt thời lượng lượt cạnh A-025, trong khi mốc đúng nay là shutdown delay (ADR-016).
 
 **Phát hiện, đã ghi vào `ASSUMPTIONS.md`**
 

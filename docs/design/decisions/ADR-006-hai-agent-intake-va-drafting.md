@@ -1,6 +1,6 @@
 # ADR-006 — Hai agent: `intake_agent` và `drafting_agent`
 
-**Trạng thái:** Accepted · **Ngày:** 2026-09-12 · **Quyết định tại:** Phase 3 — Agent & Tool Architecture · **Liên quan:** NFR-05, NFR-06 của `01-prd.md`, D-010, ADR-005, ADR-007, ADR-008
+**Trạng thái:** Accepted · **Ngày:** 2026-09-12 · **Quyết định tại:** Phase 3 — Agent & Tool Architecture · **Liên quan:** NFR-05, NFR-06 của `01-prd.md`, D-010, ADR-005, ADR-007, ADR-008, ADR-016 · **Cập nhật:** 2026-09-14, sau Phase 6 — câu về nơi chạy theo ADR-016; quyết định giữ nguyên
 
 ---
 
@@ -29,7 +29,7 @@ Hệ thống có ba chặng việc: tiếp nhận hội thoại trước `SUBMIT
 | Tool | Ghi slot vào `request`, tra `employee` | Không tra `employee`, không ghi `request`; ghi bản nháp `document` |
 | Ranh giới HITL | Output đi qua xác nhận của nhân viên trước `SUBMITTED` | Output là thứ đi vào cổng `PENDING_APPROVAL` |
 
-Cộng thêm khác biệt về nơi chạy: `intake_agent` chạy trong luồng request của `api`, `drafting_agent` chạy trong `queue_worker` (D-010, ADR-005).
+Cộng thêm khác biệt về nơi chạy: `intake_agent` chạy trong tiến trình `api`, ở một task tách khỏi vòng đời request (ADR-016); `drafting_agent` chạy trong `queue_worker` (D-010, ADR-005).
 
 Chặng từ `PENDING_APPROVAL` trở đi **không có agent nào** — chỉ có node tất định và thao tác cổng do người thật thực hiện (bất biến INV-01 ở `03-agents.md`).
 

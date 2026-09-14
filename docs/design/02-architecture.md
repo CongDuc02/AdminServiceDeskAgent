@@ -1,6 +1,6 @@
 # System Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.8 · **Trạng thái:** Draft để xác thực với người dùng · **v0.3–0.5:** sửa ở Phase 3 và các vòng sửa Phase 3 theo phép — xem các mục ngày 2026-09-12 (lần 4, lần 5, lần 6) của `CHANGELOG.md` · **v0.6:** sửa ở Phase 4 theo phép K1 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.7:** trỏ tới danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1) · **v0.8:** dòng `DRAFT` của bảng chủ sở hữu chuyển đổi `request` — vòng duyệt Phase 5 (A2), mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md` · **v0.9:** cạnh `ai_gateway → postgresql` chỉ cho `llm_usage` (ADR-019) — Phase 6, mục ngày 2026-09-13 (lần 8)
+**Phiên bản:** 0.8 · **Trạng thái:** Draft để xác thực với người dùng · **v0.3–0.5:** sửa ở Phase 3 và các vòng sửa Phase 3 theo phép — xem các mục ngày 2026-09-12 (lần 4, lần 5, lần 6) của `CHANGELOG.md` · **v0.6:** sửa ở Phase 4 theo phép K1 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.7:** trỏ tới danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1) · **v0.8:** dòng `DRAFT` của bảng chủ sở hữu chuyển đổi `request` — vòng duyệt Phase 5 (A2), mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md` · **v0.9:** cạnh `ai_gateway → postgresql` chỉ cho `llm_usage` (ADR-019) — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.10:** nơi gọi `orchestrator` cho lượt chat theo ADR-016 — mục ngày 2026-09-14
 
 > File này chốt kiến trúc mức component: thành phần nào tồn tại, chạy ở đâu trên Render, phụ thuộc gì, và luồng dữ liệu đi qua chúng thế nào. File này **không** đổi state machine hay entity đã chốt ở `00-domain.md`, không chọn agent/tool cụ thể (Phase 3), không thiết kế bảng/cột (Phase 4).
 
@@ -38,7 +38,7 @@ Mười thành phần theo yêu cầu của `_PLAN.md`. Bốn trong số đó (`
 ### 1.4 `orchestrator`
 
 - **Trách nhiệm:** graph LangGraph — node/edge cho phân loại, thu slot, retrieval, sinh nội dung tự do; `interrupt` tại **sáu** điểm chờ người thật, trong đó chỉ **hai** là cổng HITL (`PENDING_APPROVAL`, `PENDING_SEAL`) — danh sách ở mục LangGraph design của `03-agents.md`; resume qua checkpointer, bằng job ghi cùng giao dịch với quyết định của người (ADR-010).
-- **Công nghệ:** LangGraph, checkpointer trên PostgreSQL. Chạy như thư viện dùng chung, gọi từ `api` (lượt chat đồng bộ) và từ `queue_worker` (job nền). Xem ADR-005 cho lý do đầy đủ.
+- **Công nghệ:** LangGraph, checkpointer trên PostgreSQL. Chạy như thư viện dùng chung, gọi từ `api` (lượt chat — một task trong tiến trình `api`, tách khỏi vòng đời request, ADR-016) và từ `queue_worker` (job nền). Xem ADR-005 cho lý do đầy đủ.
 - **Lý do:** bắt buộc theo `CLAUDE.md`; ADR-005 giải thích vì sao không cần service riêng.
 - **Không thuộc:** không tự gọi LLM provider (qua `ai_gateway`); không tự ghi PostgreSQL/Object Storage (qua `tool_layer`) — trừ danh sách ngoại lệ đóng ở mục Tool Registry của `03-agents.md`: bảng checkpoint và `graph_thread`; không giữ trạng thái trong bộ nhớ tiến trình giữa hai lượt gọi — mọi trạng thái sống ở checkpointer.
 

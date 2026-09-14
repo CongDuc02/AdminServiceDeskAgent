@@ -1229,3 +1229,94 @@ Bốn mục đầu ở Open Questions của `06-structure.md`: dòng `schema_mig
 ### Đã kiểm
 
 Theo quy ước của mục lần 7: phép kiểm chạy **sau** lần ghi cuối, số liệu nằm ở báo cáo đóng phase.
+
+
+---
+
+## 2026-09-13 (lần 9) — Vòng duyệt Phase 6: A → F. Đóng Phase 6
+
+Hoàn tất ngày 2026-09-14. **Phase 6 → ☑ trong `_PLAN.md`.** Phase 7 mở bằng một phiên mới.
+
+**Sửa:** `05-api.md` → v0.6 · `03-agents.md` → v0.10 · `04-data.md` → v0.5 · `06-structure.md` → v0.2 · ADR-015 · `ASSUMPTIONS.md` · `_PLAN.md` (hai dòng chỗ quan sát, Phase 6 ☑). **Tạo mới:** `tools/contract-checks/` — `check_grants.py`, `requirements.txt`, `README.md`. **Không đổi:** `openapi.yaml`, `schema.sql`, `GLOSSARY.md`, ADR-016 → ADR-019, `CLAUDE.md`.
+
+### A — mục SSE của `05-api.md` theo ADR-016
+
+Chưa sửa ở Phase 6: đọc lại, cả hai câu còn nguyên chữ của Phase 5. Đã sửa trong phạm vi phép:
+
+- Câu "Framework có huỷ xử lý khi client ngắt… Phase 6 phải bảo đảm điều này" → trỏ ADR-016.
+- Câu hạn chót của lượt: bỏ mệnh đề "lượt chạy bên trong request", **bỏ cận dưới** "không ngắn hơn A-025", giữ một cận trên duy nhất của ADR-016. Ghi vai trò mới của A-025: chỉ cắt stream, không cắt lượt.
+- **Hai câu cùng giả định, cùng file, tìm thấy khi quét:** ca phá bất biến "framework huỷ xử lý khi client ngắt kết nối" ở cùng mục SSE; và dòng `SYNC_GRAPH` ở bảng đồng bộ hay enqueue của mục Nguyên tắc chung. Cả hai đã sửa.
+- **Cùng cận dưới ở `ASSUMPTIONS.md`:** A-025 — câu Phase 5 và ô "Ảnh hưởng nếu sai" — và A-031. Đã sửa, vì để nguyên thì mâu thuẫn vẫn sống ở sổ giả định.
+
+**Câu còn giả định lượt chạy trong request, ngoài phạm vi phép — chưa sửa:** dòng "Chạy ở" của `intake_agent` và dòng độ trễ ở bảng năng lực model, mục Agent Registry của `03-agents.md` · ADR-005 (Decision, Consequences, điều kiện đảo ngược) · ADR-006 (câu về nơi chạy) · ADR-008 (điều kiện đảo ngược) · ADR-013 (Context, phương án C) · dòng ADR-005 ở bảng chỗ quan sát của Phase 11 trong `_PLAN.md`. Ghi ở Open Questions của `06-structure.md`.
+
+### B — bốn phép, làm theo thứ tự B2 → B1, B3, B4
+
+| # | Kết quả |
+|---|---|
+| B2 | Lớp 2 ở mục Checkpointer và PII của `03-agents.md` đổi thành "exception rời node chỉ mang mã", kèm lý do và nguồn; lớp 3 thêm ca canary bắt buộc thứ hai — node ném exception mang giá trị `RES` |
+| B1 | Dòng `schema_migration` ở mục Nguyên tắc dữ liệu của `04-data.md` |
+| B3 | `FONT_MISSING` ở dòng `pdf_export`: **mã nội bộ của tool**, dẫn tới `halt_for_human`. Danh mục `error_code` giữ **32**; `openapi.yaml` **không đổi**. Cùng ô: "Công cụ chuyển đổi chưa chọn (A-032)" đã cũ, thay bằng trỏ ADR-015 |
+| B4 | Dòng chỗ quan sát thứ hai của ADR-015 — phần đuôi thời lượng upload đặt cạnh lease |
+
+### C — chốt font số 2 phụ thuộc quyết định một image
+
+Viết vào chính điều kiện đảo ngược "Đóng gói" của ADR-015: tách image thì chốt 2 mất; `FONT_MISSING` theo từng job chuyển thành **bắt buộc**; tách image mà không bật nó là hạ một lớp phòng thủ mà không ai quyết. Quyết định của ADR-015 không đổi.
+
+### D — ba việc
+
+- **D1:** A-050 — hạn "ngay khi có môi trường Render đầu tiên", owner người triển khai. Dòng ADR-013 · A-050 ở bảng chỗ quan sát của Phase 11: một phép thử tổng hợp từ ngoài Render đo thời gian tới sự kiện `signal` đầu tiên.
+- **D2:** chấp nhận kết quả pgserver. Không sửa Docker. A-047 giữ "thu hẹp — đã áp trên PostgreSQL 16.2, chưa áp trên Render".
+- **D3:** bộ kiểm ở `tools/contract-checks/` — ngoài `backend/` nên không vào image, ngoài `docs/` để contract giữ dạng khai báo. Hai chế độ `--local` và `--app-dsn`; thêm kiểm độ phủ nhóm quyền. **Căng thẳng với mục Chế độ làm việc hiện tại của `CLAUDE.md`**, vốn cấm "test chạy được" ở DESIGN MODE: đặt script vào repo theo chỉ thị D3, rằng script kiểm contract không phải mã ứng dụng. Ghi ra để không ai coi đây là tiền lệ cho test ứng dụng.
+
+### E — danh sách "chặn Phase 7" dựng lại theo phạm vi Phase 7 ở ADR-001
+
+| Mã | Trước | Sau |
+|---|---|---|
+| A-018 | Hạn "Trước Phase 7" | **Không có hạn, không chặn phase nào** — `Mở` vĩnh viễn theo thiết kế |
+| A-009 | "Trước Phase 7 — Phase 7 dựng template" | Trước khi hệ thống sinh văn bản thật — cụ thể trước lần cấp số đầu tiên, kể cả dải `TRIAL` ở UAT. Lý do cũ trái ADR-001 |
+| A-036 | Như A-009 | Trước khi hệ thống sinh văn bản thật, và trước mọi đề xuất tháo chế độ phi sản xuất |
+| A-058 | "Trước Phase 7, cùng hạn với mẫu `.docx`" | Trước lần render đầu tiên, kể cả bản thử nghiệm ở UAT |
+| A-026 | "Trước Phase 7" | Không chặn Phase 7 — đường vòng: khai theo năng lực bắt buộc, JSON Schema đóng độc lập provider, ép JSON viết cho hai nhánh năng lực |
+
+**Kết luận: Phase 7 không bị chặn.**
+
+### F — luật 13
+
+Anh tự dán vào `CLAUDE.md`. Không sửa `CLAUDE.md`.
+
+### Đã kiểm
+
+Chạy sau lần ghi cuối của mục này; số liệu ở báo cáo đóng phase.
+
+
+---
+
+## 2026-09-14 — Sau vòng duyệt Phase 6: phép bổ sung
+
+Phase 6 giữ ☑. Anh cho phép hai việc còn treo ở báo cáo đóng phase.
+
+**Sửa:** `05-api.md` → v0.7 · `03-agents.md` → v0.11 · `02-architecture.md` → v0.10 · `06-structure.md` → v0.3 · ADR-005, ADR-006, ADR-008, ADR-013 (dòng **Cập nhật** ở đầu mỗi file, quyết định giữ nguyên) · `_PLAN.md` (dòng ADR-005 ở bảng chỗ quan sát). **Không đổi:** `openapi.yaml`, `schema.sql`, `GLOSSARY.md`, `ASSUMPTIONS.md`, `CLAUDE.md`.
+
+### 1. `FONT_MISSING` ở bảng "mã lỗi của tool" của `05-api.md`
+
+Thêm vào dòng có `pdf_export`, cột "Không qua `error_code`". Danh mục `error_code` giữ 32 mã; `openapi.yaml` không đổi.
+
+### 2. Mười một dòng còn giả định lượt chạy trong request, cộng một dòng mơ hồ
+
+| File | Chỗ | Sửa thành |
+|---|---|---|
+| `03-agents.md` | Dòng "Chạy ở" của `intake_agent` | Gọi từ tiến trình `api`, ở task tách khỏi vòng đời request |
+| `03-agents.md` | Dòng độ trễ ở bảng năng lực model | Mốc là hạn chót của lượt, không phải A-025 |
+| ADR-005 | Decision, Consequences, điều kiện đảo ngược (bốn câu) | Nơi gọi là tiến trình `api`; tín hiệu đảo ngược đo bằng shutdown delay, không bằng A-025; câu cũ giữ trong ngoặc nghiêng làm dấu vết |
+| ADR-006 | Câu về nơi chạy | Task trong tiến trình `api` |
+| ADR-008 | Điều kiện đảo ngược | Mốc là hạn chót của lượt |
+| ADR-013 | Context, lý do loại phương án C | Lượt chạy trong tiến trình giữ response; lý do loại không đổi |
+| `_PLAN.md` | Dòng ADR-005 ở bảng chỗ quan sát | Thành dòng ADR-005 · ADR-016, đặt cạnh hạn chót và shutdown delay |
+| `02-architecture.md` | Mục `orchestrator`, dòng "Công nghệ" | **Quyết định thêm vào danh sách:** "lượt chat đồng bộ" không sai hẳn, nhưng là câu duy nhất ở mục đó nói lượt chạy ở đâu, dễ đọc thành "trong request". Sửa tốn một cụm từ |
+
+Không đổi quyết định nào của các ADR. Dòng **Cập nhật** ở đầu file theo tiền lệ "Sửa lập luận" của ADR-002 và ADR-012.
+
+### Đã kiểm
+
+Chạy sau lần ghi cuối của mục này; số liệu ở báo cáo.
