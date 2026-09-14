@@ -1,0 +1,6 @@
+{
+  "name": "bo19-client",
+  "private": true,
+  "type": "module",
+  "description": "SPA React — xem 06-structure.md:10. Build: Vite, query: TanStack Query, transport duy nhất ở api/transport/http.ts"
+}

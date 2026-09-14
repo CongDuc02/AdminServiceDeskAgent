@@ -1,0 +1,6 @@
+[importlinter]
+root_package = bo19
+include_external_packages = True
+
+# Đặc tả đầy đủ xem 06-structure.md:4.1 — 6 contract:
+# layers, siblings-llm-tools, api-surface, write-path, probe, object-storage, allowlist-gate, graph-library

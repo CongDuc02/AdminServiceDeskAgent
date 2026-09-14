@@ -1,0 +1,59 @@
+# BO-19 Admin Service Desk Agent — backend requirements
+# Cài: pip install -r backend/requirements.txt
+# Khóa phiên bản đã chạy thật ở Phase 6 (2026-09-13) được giữ nguyên; phiên bản còn lại ghim theo docs — BUILD MODE sẽ chốt lockfile.
+
+# --- API & config ---
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+pydantic==2.11.3
+pydantic-settings==2.9.1
+python-multipart==0.0.9
+email-validator==2.2.0
+python-jose[cryptography]==3.4.0
+passlib[bcrypt]==1.7.4
+
+# --- DB & migration ---
+psycopg[binary]==3.3.5
+pgvector==0.3.6
+alembic==1.15.2
+SQLAlchemy==2.0.41  # chỉ cho alembic autogenerate nếu cần; runtime dùng psycopg trực tiếp
+
+# --- LangGraph / LangChain / LLM ---
+langgraph==0.3.27
+langgraph-checkpoint-postgres==3.1.2
+langchain==0.3.24
+langchain-openai==0.3.12
+langchain-core==0.3.59
+openai==1.82.1
+tiktoken==0.9.0
+
+# --- Embedding (chọn 1 provider, A-028) ---
+# sentence-transformers chỉ cần nếu dùng model local Vietnamese_Embedding / bge-m3
+# sentence-transformers==3.3.1  # bật khi A-028 chốt model local
+
+# --- Template .docx / PDF ---
+python-docx==1.1.2
+docxtpl==0.20.1
+lxml==5.3.1
+# LibreOffice headless cài ở image (ADR-015), không phải pip
+
+# --- Object storage ---
+boto3==1.37.3
+botocore==1.37.3
+
+# --- Observability (06-structure.md:observability) ---
+structlog==25.4.0
+opentelemetry-api==1.31.0
+opentelemetry-sdk==1.31.0
+
+# --- Dev / quality gates (06-structure.md:4.1) ---
+ruff==0.11.11
+import-linter==2.2
+mypy==1.15.0
+pytest==8.3.5
+pytest-asyncio==0.26.0
+httpx==0.28.1
+openapi-spec-validator==0.9.0
+
+# --- Contract checks (tools/contract-checks) ---
+pgserver==0.1.4  # chỉ cho --local, không vào image

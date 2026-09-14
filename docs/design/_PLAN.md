@@ -11,8 +11,8 @@ Chạy **tuần tự, mỗi phase một phiên Claude Code mới** (tránh conte
 | 4   | Data Architecture           | `04-data.md`, `contracts/schema.sql`  | 1, 3      | ☑          |
 | 5   | API Spec                    | `05-api.md`, `contracts/openapi.yaml` | 4         | ☑          |
 | 6   | Project Structure (BE + FE) | `06-structure.md`                     | 2, 5      | ☑          |
-| 7   | Prompt Architecture         | `07-prompts.md`                       | 3         | ☐          |
-| 8   | HITL & Approval Workflow    | `08-hitl.md`                          | 3, 4      | ☐          |
+| 7   | Prompt Architecture         | `07-prompts.md`                       | 3         | ☑          |
+| 8   | HITL & Approval Workflow    | `08-hitl.md`                          | 3, 4      | ☑          |
 | 9   | Security & Guardrails       | `09-security.md`                      | 5, 8      | ☐          |
 | 10  | Evaluation Framework        | `10-eval.md`                          | 3, 7      | ☐          |
 | 11  | Ops, Cost & Deployment      | `11-ops.md`                           | tất cả    | ☐          |
