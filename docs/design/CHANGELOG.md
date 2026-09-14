@@ -1508,3 +1508,32 @@ Tiền lệ Phase 5: giữ `☐` khi còn đúng một mục hở. Ba câu hỏi
 - **`contracts/schema.sql`** — nguyên trạng đóng Phase 6, không một ký tự đổi.
 - Không ADR nào thiếu Rejected alternatives; ADR-021 có bốn phương án, ba lý do loại riêng biệt.
 - Ba câu hỏi J1–J3 đều đã áp trực tiếp vào file, không còn ở dạng đề xuất treo.
+
+---
+
+## 2026-09-14 — Phase 10: Evaluation Framework
+
+**Tạo mới**
+
+- `docs/design/10-eval.md` — golden dataset (37 ca theo NFR-07 của `01-prd.md` + canary suite 2 ca + phương pháp `recall@k`), metric theo từng chặng, offline/online eval, human eval rubric theo nhóm A–J, taxonomy failure mode ba tầng, regression gate, `EvalCase` schema khai báo. Không lặp lại nội dung 37 ca đã chốt ở `01-prd.md`, chỉ biến chúng thành thứ chạy được và chấm được.
+
+**Ba quyết định trực tiếp của anh, đã áp vào `10-eval.md`**
+
+1. Regression gate: **soft** cho metric tương đương Cảnh báo (chỉ cảnh báo, không chặn merge/deploy); **hard** cho nhóm tương đương Bất biến (nhóm G, J, canary) — không đổi.
+2. Baseline kết quả eval: **kỹ thuật tự chốt**, miễn đáp án chuẩn (nội dung 37 ca) không đổi — đáp án chuẩn vẫn chỉ Trưởng phòng Hành chính đổi được (A-023, không đổi).
+3. Câu hỏi hạ tier rẻ/mạnh của `drafting_agent` (từ `04-data.md` mục 3.8): Phase 10 chỉ đặc tả **phương pháp A/B**, không chọn tier — vì chưa có provider thật (A-026).
+
+**File sửa**
+
+| File | Thay đổi |
+|---|---|
+| `ASSUMPTIONS.md` → 0.22 | **A-063, A-064, A-065 mới**; A-028 sửa tại chỗ — phương pháp `recall@k` đã có (mục Bộ đo retrieval của `10-eval.md`), model vẫn `Mở` vì thiếu kho thật (A-027) và số liệu tải (A-002); hạn đổi từ "Model: Phase 10" thành "sau khi A-027 và A-002 đóng" |
+| `_PLAN.md` | Phase 10 → `☐` — chờ anh duyệt |
+
+**Không đổi:** `GLOSSARY.md` — phase này không đưa ra entity/agent/node/tool mới, chỉ dùng lại tên đã chốt, nên không có mục nào cần thêm.
+
+### Tự kiểm lại
+
+- Không mã lỗi mới nào được bịa ở taxonomy mục 7 của `10-eval.md` — toàn bộ lấy lại từ `03-agents.md`, `04-data.md` (ADR-019), `08-hitl.md`.
+- Không con số ngưỡng nào được đặt ở mục Regression gate — nơi cần số đều ghi `TBD` và trỏ về giả định mới.
+- Hai câu hỏi mở giao cho Phase 10 (hạ tier, chọn embedding model) đều dừng ở phương pháp, không ra kết quả — đúng lựa chọn của anh.
