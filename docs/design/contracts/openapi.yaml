@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: BO-19 Admin Service Desk Agent API
-  version: 0.1.0
+  version: 0.2.1
   description: |
     Contract máy đọc được của `docs/design/05-api.md` (Phase 5). Diễn giải, lý do và
     giới hạn nằm ở file đó; file này không lặp lại lập luận.
@@ -65,6 +65,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/Unprocessable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/InternalError' }
     delete:
       tags: [auth]
@@ -92,6 +93,59 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Me' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /operating-mode/transitions:
+    get:
+      tags: [config]
+      operationId: listOperatingModeTransitions
+      summary: Lịch sử đổi chế độ vận hành, mới nhất trước
+      x-bo19-permission: [audit.read_all]
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OperatingModeChangePage' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [config]
+      operationId: createOperatingModeTransition
+      summary: Đổi operating_mode (ADR-020, D-009)
+      description: |
+        from_mode do server tự gán bằng chế độ hiệu lực hiện tại. to_mode trùng
+        chế độ hiện tại trả OPERATING_MODE_UNCHANGED. Ghi audit_event mức WARNING
+        trong cùng giao dịch. Một permission gác cả hai chiều NON_PRODUCTION <-> PRODUCTION.
+      x-bo19-operation: operating_mode_transition
+      x-bo19-permission: [operating_mode.change]
+      x-bo19-execution: SYNC
+      x-bo19-idempotency-key: operating_mode_change
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OperatingModeTransitionBody' }
+      responses:
+        '201':
+          description: Đã ghi
+          headers:
+            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OperatingModeChange' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /chat-sessions:
@@ -1585,7 +1639,15 @@ components:
     Unprocessable:
       description: |
         VALIDATION_FAILED · SELF_APPROVAL_REASON_REQUIRED · REQUEST_NOT_READY · CHANGE_TARGET_INVALID ·
-        TEMPLATE_VARIABLES_INVALID · TEMPLATE_FONTS_INVALID · IMPORT_ROWS_INVALID · DESTRUCTIVE_CONFIRMATION_REQUIRED
+        TEMPLATE_VARIABLES_INVALID · TEMPLATE_FONTS_INVALID · IMPORT_ROWS_INVALID · DESTRUCTIVE_CONFIRMATION_REQUIRED ·
+        OPERATING_MODE_UNCHANGED
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    RateLimited:
+      description: RATE_LIMITED — chỉ POST /auth/session ở Sprint đầu (mục Rate limit của 09-security.md)
+      headers:
+        Retry-After: { schema: { type: integer } }
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
@@ -2924,3 +2986,31 @@ components:
       required: [expected_row_version]
       properties:
         expected_row_version: { type: integer, minimum: 1 }
+    OperatingModeTransitionBody:
+      type: object
+      additionalProperties: false
+      required: [to_mode, decision_reference]
+      properties:
+        to_mode: { $ref: '#/components/schemas/OperatingMode' }
+        decision_reference: { type: string, minLength: 1 }
+        effective_at: { $ref: '#/components/schemas/Timestamp' }
+    OperatingModeChange:
+      type: object
+      required: [id, from_mode, to_mode, decided_by_employee_id, decision_reference, effective_at, created_at]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        from_mode: { $ref: '#/components/schemas/OperatingMode' }
+        to_mode: { $ref: '#/components/schemas/OperatingMode' }
+        decided_by_employee_id: { $ref: '#/components/schemas/Uuid' }
+        decision_reference: { type: string }
+        effective_at: { $ref: '#/components/schemas/Timestamp' }
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+    OperatingModeChangePage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/OperatingModeChange' }

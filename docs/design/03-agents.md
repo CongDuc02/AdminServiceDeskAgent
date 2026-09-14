@@ -317,10 +317,11 @@ Nhóm thứ tư: chỉ endpoint gọi, không node nào của graph gọi, khôn
 | `template_create` · `template_version_upload` · `template_version_activate` | `template`, `template_version`, danh mục biến, `stored_object` | `template.manage` | Cấu hình — ngoài vòng đời văn bản |
 | `employee_import` | `employee` | `employee.import` | Cấu hình |
 | `procedure_version_upload` · `procedure_version_deactivate` | `procedure_document`, `procedure_document_version`, `stored_object`, job `procedure_ingest`; xoá embedding khi gỡ | `procedure.manage` | Cấu hình |
-| `request_type_upsert` · `slot_definition_upsert` | `request_type`, `slot_definition` — trừ độ nhạy của một slot đã có | `request_type.manage` — chưa có trong danh mục permission (A-042) | Cấu hình |
+| `request_type_upsert` · `slot_definition_upsert` | `request_type`, `slot_definition` — trừ độ nhạy của một slot đã có | `request_type.manage` (A-042, đã vào danh mục ở Phase 9) | Cấu hình |
 | `delegation_create` · `delegation_revoke` `[Should]` | `delegation` | `delegation.manage` | Cấu hình |
+| `operating_mode_transition` *(thêm ở Phase 9, ADR-020)* | `operating_mode_change` | `operating_mode.change` | Không thuộc vòng đời văn bản — chuyển `operating_mode` toàn hệ thống |
 
-Mọi thao tác ở đây sinh `audit_event` theo luật ở đầu mục 5. Với `chat_message_append` và `stored_file_fetch`, luật đó đang kéo ngược định nghĩa của `audit_event` ở `GLOSSARY.md` — A-055, chưa giải.
+Mười ba → **mười bốn** thao tác. Mọi thao tác ở đây sinh `audit_event` theo luật ở đầu mục 5, mức `WARNING` riêng cho `operating_mode_transition` (mục `operating_mode_change` của `09-security.md`). Với `chat_message_append` và `stored_file_fetch`, luật đó đang kéo ngược định nghĩa của `audit_event` ở `GLOSSARY.md` — A-055, chưa giải.
 
 ---
 

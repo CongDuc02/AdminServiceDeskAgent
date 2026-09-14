@@ -1,6 +1,6 @@
 # API Spec — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.4 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 5 — mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md` · **v0.3:** vòng duyệt Phase 5 lần 2 — mục ngày 2026-09-13 (lần 6) · **v0.4:** đóng Phase 5 — mục ngày 2026-09-13 (lần 7) · **v0.5:** `manifest.required_fonts` và mã lỗi `TEMPLATE_FONTS_INVALID` (ADR-015) — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.6:** mục SSE và dòng `SYNC_GRAPH` theo ADR-016 — bỏ cận dưới của hạn chót lượt — vòng duyệt Phase 6 (A), mục ngày 2026-09-13 (lần 9) · **v0.7:** `FONT_MISSING` ở bảng mã lỗi của tool — mục ngày 2026-09-14 của `CHANGELOG.md`
+**Phiên bản:** 0.4 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 5 — mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md` · **v0.3:** vòng duyệt Phase 5 lần 2 — mục ngày 2026-09-13 (lần 6) · **v0.4:** đóng Phase 5 — mục ngày 2026-09-13 (lần 7) · **v0.5:** `manifest.required_fonts` và mã lỗi `TEMPLATE_FONTS_INVALID` (ADR-015) — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.6:** mục SSE và dòng `SYNC_GRAPH` theo ADR-016 — bỏ cận dưới của hạn chót lượt — vòng duyệt Phase 6 (A), mục ngày 2026-09-13 (lần 9) · **v0.7:** `FONT_MISSING` ở bảng mã lỗi của tool — mục ngày 2026-09-14 của `CHANGELOG.md` · **v0.8:** endpoint `operating_mode_transition` (mục 2.2b), ADR-020 — Phase 9, mục ngày 2026-09-14 (lần 2) của `CHANGELOG.md`. Endpoint có contract: 48 → 49 · **v0.9:** `GET /operating-mode/transitions` chỉ còn permission `audit.read_all` — mục ngày 2026-09-14 (lần 3) của `CHANGELOG.md`
 
 > File này chốt contract giữa `client` và `api`: endpoint REST, hai stream SSE, xác thực, lỗi chuẩn hoá, phân trang, idempotency và cách xử lý hai người thao tác cùng lúc. Contract máy đọc được nằm ở [`contracts/openapi.yaml`](./contracts/openapi.yaml). File này **không** thiết kế cấu trúc code (Phase 6), màn hình duyệt, bảng mã lý do hay cơ chế tiếp quản (Phase 8), chi tiết AuthZ, rate limit và vòng đời credential (Phase 9), và **không** định cỡ tham số vận hành (Phase 11).
 
@@ -159,11 +159,11 @@ Hệ quả cho Phase 6: **mọi** câu `UPDATE` chuyển trạng thái phải gh
 - **Ba loại trừ có chủ đích** — không phải thiếu sót, và không phase nào được coi là đã phủ chúng:
   1. **Dashboard SLA và cảnh báo tồn đọng** — Phase 11. Phần thuộc F4, là Must — hàng đợi sắp theo thời gian chờ — đã nằm ở `GET /review-queue` và `GET /requests?scope=ALL`. Mục tự duyệt riêng của D-006 **không** thuộc dashboard SLA; nó có endpoint riêng, `GET /self-approvals`.
   2. **Màn hình tiếp quản sau `halt_for_human`**, cùng thao tác ghi `decision_record` loại `TAKEOVER_RESOLVED` — Phase 8. Contract chỉ trả `document.halted` và `latest_halt.reason_code` để người duyệt **thấy** văn bản đang dừng.
-  3. **`operating_mode_change`** — Phase 9. `GET /me` trả `operating_mode` hiện hành, chỉ đọc, để giao diện hiện dải báo chế độ thử nghiệm.
+  3. ~~**`operating_mode_change`** — Phase 9. `GET /me` trả `operating_mode` hiện hành, chỉ đọc, để giao diện hiện dải báo chế độ thử nghiệm.~~ **Giải ở Phase 9 (ADR-020):** `GET /me` vẫn chỉ đọc như cũ; đường ghi mở ở mục 2.2b, endpoint `operating_mode_transition`, permission `operating_mode.change`.
 
 ### 1.11 Dữ liệu trong response
 
-- **Mỗi giá trị slot đi kèm `sensitivity`** của nó. Quy tắc hiển thị theo độ nhạy trên màn hình duyệt chưa được đặc tả ở đâu cả — thuộc Phase 8 và Phase 9 (NFR-05). Contract không che giá trị với người được xem; nó trả đủ thông tin để giao diện áp quy tắc khi quy tắc có.
+- **Mỗi giá trị slot đi kèm `sensitivity`** của nó. ~~Quy tắc hiển thị theo độ nhạy trên màn hình duyệt chưa được đặc tả ở đâu cả — thuộc Phase 8 và Phase 9 (NFR-05).~~ **Giải ở Phase 9:** mục PII masking và hiển thị theo `slot_sensitivity` của `09-security.md`. Contract không che giá trị với người được xem; nó trả đủ thông tin để giao diện áp quy tắc khi quy tắc có.
 - **Mọi giá trị nguồn `HR_PROFILE` đi kèm `provenance`** gồm `source` và `synced_at` (D-002 ràng buộc 3).
 - Giá trị đã bị xoá theo luật: `value = null`, `erased = true`. Giao diện hiển thị "nội dung đã xoá", không hiển thị như slot còn thiếu.
 - `document_number` chỉ xuất hiện khi `document` đã `ISSUED`, hoặc ở trạng thái sau đó. Trong khoảng hoàn tất phát hành, response chỉ mang cờ `issue_in_progress`. Cách hiển thị hai đoạn của khoảng đó thuộc Phase 8.
@@ -192,6 +192,7 @@ Luật ở mục Tool Registry của `03-agents.md`: **mọi** ghi `postgresql` 
 | `request_type_upsert` | `request_type` | `PUT /config/request-types/{code}` |
 | `slot_definition_upsert` | `slot_definition`, **trừ** độ nhạy của một slot đã có | `PUT /config/request-types/{code}/slots/{slot}` |
 | `delegation_create` · `delegation_revoke` `[Should]` | `delegation` | Mục 2.12 |
+| `operating_mode_transition` *(thêm ở Phase 9, ADR-020)* | `operating_mode_change` | `POST /operating-mode/transitions` (mục 2.2b) |
 
 Đăng nhập và đăng xuất **không** có thao tác nào ở đây: phiên không lưu DB (mục 1.3), nên chúng không ghi gì vào `postgresql` và không đụng luật ghi qua `tool_layer`.
 
@@ -204,6 +205,19 @@ Luật ở mục Tool Registry của `03-agents.md`: **mọi** ghi `postgresql` 
 | GET | `/me` | Nhân viên đang đăng nhập, **permission hiệu lực** (gói vai trò cộng quyền cấp lẻ còn hiệu lực), `operating_mode` hiện hành | Đã đăng nhập | — | — | → `Me` |
 
 Đăng nhập không cần khoá: phiên không phải một dòng trong DB, nên đăng nhập lại chỉ phát thêm một token. `client` quyết hiện gì theo **permission** trong `Me`, không theo tên vai trò (D-005).
+
+**Rate limit — thêm ở Phase 9.** `POST /auth/session` kiểm `rate_limit_window` (khoá theo IP, mục Rate limit của `09-security.md`) **trước** khi chạm `employee_credential`: vượt ngưỡng của cửa sổ hiện tại trả `RATE_LIMITED` (429) mà không kiểm mật khẩu. Không endpoint nào khác trong mục 2 có rate limit riêng ở Sprint đầu — chỉ đăng nhập, vì đây là endpoint công khai duy nhất nhận ghi từ người chưa xác thực.
+
+### 2.2b Chế độ vận hành — thêm ở Phase 9 (ADR-020)
+
+| Method | Path | Mô tả | Permission | Chạy | Khoá = id của | Body → Response |
+|---|---|---|---|---|---|---|
+| POST | `/operating-mode/transitions` | Đổi `operating_mode`. `from_mode` server tự gán bằng chế độ hiệu lực hiện tại | `operating_mode.change` | `SYNC` | `operating_mode_change` | `OperatingModeTransitionBody` → `OperatingModeChange` |
+| GET | `/operating-mode/transitions` | Lịch sử đổi chế độ, mới nhất trước | `audit.read_all` | — | — | → `OperatingModeChangePage` |
+
+`OperatingModeTransitionBody`: `to_mode` (`NON_PRODUCTION` \| `PRODUCTION`), `decision_reference` (không rỗng — CHECK đã có ở DB, `api` không thêm phép kiểm hình thức nào khác), `effective_at` (tuỳ chọn, mặc định `now()`). `to_mode` trùng chế độ hiệu lực hiện tại trả `OPERATING_MODE_UNCHANGED` (422). Ghi `audit_event` mức `WARNING` trong cùng giao dịch. Một permission (`operating_mode.change`) gác cả hai chiều — không gác chiều lùi chặt hơn (mục `operating_mode_change` của `09-security.md`).
+
+**`GET` dùng `audit.read_all`, không dùng `operating_mode.change`.** Lịch sử đổi chế độ là nhật ký, đã có chủ trong danh mục permission; quyền ghi không tự kéo theo quyền đọc — cùng nguyên tắc `document.issue` không kéo theo `audit.read_all`, `procedure.manage` không kéo theo `procedure.read_all` (mục AuthZ của `09-security.md`). Người có `operating_mode.change` vẫn thấy dòng vừa tạo ở response của `POST`, và thấy chế độ hiện hành qua `GET /me`.
 
 ### 2.3 Hội thoại — F1
 
@@ -395,7 +409,7 @@ Ngoài ba loại trừ có chủ đích ở mục 1.10:
 | Huỷ `request` ở `NEEDS_INFO`, `SUBMITTED`, `IN_REVIEW` | Sơ đồ không có cạnh | A-053 |
 | Đặt người thụ hưởng khác người tạo — nhập hộ, ở cả `WORK_CONFIRMATION` lẫn `INTRODUCTION_LETTER` | Không thao tác nào ghi `request.beneficiary_employee_id` | A-052 |
 | Cấu hình sổ văn bản | Chưa có permission | A-042 |
-| Rate limit | Phase 9 | — |
+| Rate limit ngoài đăng nhập (API nói chung) | Chỉ `POST /auth/session` có rate limit ở Sprint đầu — nó là endpoint công khai duy nhất nhận ghi từ người chưa xác thực | Mục Rate limit của `09-security.md` |
 | `SEAL_REQUEST` và văn bản ngoài; memory yêu cầu định kỳ | `[Could]` | Mục Scope & priority của PRD |
 
 ---
@@ -518,6 +532,8 @@ Nguồn duy nhất của danh mục. `openapi.yaml` khai đúng tập này dư�
 | `IDEMPOTENCY_KEY_CONFLICT` | 409 | Trùng khoá mà lệch tác nhân, đối tượng hoặc loại thao tác (mục 1.8). **Không** trả nội dung dòng | Thử lại thao tác | — |
 | `STATE_CONFLICT` | 409 | Trạng thái hay `row_version` không còn như lúc đọc (mục 1.9) | Tải lại để xem trạng thái mới | `current_status` |
 | `SEPARATION_OF_DUTIES_VIOLATION` | 409 | Người xác nhận thu hồi trùng người khởi tạo | Chuyển cho người khác xác nhận | — |
+| `OPERATING_MODE_UNCHANGED` | 422 | `to_mode` trùng chế độ hiệu lực hiện tại | Kiểm `GET /me` trước khi gửi | `current_mode` |
+| `RATE_LIMITED` | 429 | Vượt ngưỡng `rate_limit_window` — chỉ `POST /auth/session` ở Sprint đầu | Thử lại sau | `retry_after` |
 | `REQUEST_NOT_EDITABLE` | 409 | Xác nhận slot khi `request` không còn ở trạng thái bổ sung được | Tải lại yêu cầu | `current_status` |
 | `SLOT_NOT_PROPOSED` | 409 | Xác nhận một slot không có giá trị đang chờ xác nhận | Tải lại yêu cầu | `slot_names` |
 | `SLOT_VALUE_STALE` | 409 | Giá trị đề xuất đã đổi kể từ lúc hiển thị | Xem lại giá trị mới rồi xác nhận | `slot_names` |

@@ -1,6 +1,6 @@
 # GLOSSARY — BO-19 Admin Service Desk Agent
 
-**Phiên bản:** 0.18 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5, vòng duyệt Phase 5 và Phase 6
+**Phiên bản:** 0.19 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5, vòng duyệt Phase 5, Phase 6 và Phase 9
 
 > Đây là danh sách tên chuẩn. Từ Phase 1 trở đi, mọi tài liệu, diagram, DDL, endpoint và prompt phải dùng **đúng** các định danh trong file này. Muốn đổi tên thì sửa file này trước, rồi ghi vào [`CHANGELOG.md`](./CHANGELOG.md).
 
@@ -123,7 +123,9 @@ Quá hạn SLA **không** phải trạng thái. Đó là điều kiện dẫn xu
 
 Định danh dạng `entity.action`. Danh mục đầy đủ, gói theo vai trò và quy tắc tách biệt trách nhiệm ở mục Permission và vai trò của `00-domain.md`.
 
-`request.create` · `request.create_on_behalf` · `request.read_own` · `request.read_assigned` · `request.read_all` · `request.supply_info` · `request.cancel_own` · `document.approve_content` · `document.request_changes` · `document.reject` · `document.sign` · `document.apply_seal` · `document.issue` · `document.revoke_initiate` · `document.revoke_confirm` · `template.manage` · `procedure.manage` · `employee.import` · `booking.confirm` `[Should]` · `delegation.manage` `[Should]` · `audit.read_own` · `audit.read_all`
+`request.create` · `request.create_on_behalf` · `request.read_own` · `request.read_assigned` · `request.read_all` · `request.supply_info` · `request.cancel_own` · `document.approve_content` · `document.request_changes` · `document.reject` · `document.sign` · `document.apply_seal` · `document.issue` · `document.revoke_initiate` · `document.revoke_confirm` · `template.manage` · `procedure.manage` · `employee.import` · `booking.confirm` `[Should]` · `delegation.manage` `[Should]` · `audit.read_own` · `audit.read_all` · `request_type.manage` · `procedure.read_all` · `operating_mode.change`
+
+Ba permission cuối thêm ở Phase 9 (A-042, A-043), cấp lẻ — không thuộc gói vai trò nào. Danh mục: 22 → 25.
 
 `document.issue` và `document.apply_seal` là hai permission tách rời, không bao giờ gộp. **Không tồn tại** permission xoá hay sửa `audit_event`.
 
@@ -306,6 +308,8 @@ Node `open_request` gọi tool `request_open`; hai tên khác nhau có chủ đ�
 
 **Thao tác do endpoint gọi** *(thêm ở Phase 5)* — thao tác của `tool_layer` mà chỉ endpoint gọi, không node nào: `chat_session_open` · `chat_message_append` · `stored_file_fetch` · `template_create` · `template_version_upload` · `template_version_activate` · `employee_import` · `procedure_version_upload` · `procedure_version_deactivate` · `request_type_upsert` · `slot_definition_upsert` · `delegation_create` `[Should]` · `delegation_revoke` `[Should]`. Định nghĩa ở mục Endpoint của `05-api.md`; bản kê ở mục Tool Registry của `03-agents.md`
 
+**Thao tác do endpoint gọi** *(thêm ở Phase 9)* — `operating_mode_transition`: ghi một dòng `operating_mode_change`. Tên khác entity `operating_mode_change` có chủ đích — một là bước ghi của `tool_layer`, một là entity/bảng nó ghi vào, cùng lý do `open_request`/`request_open` đã nêu ở mục 12. Định nghĩa ở mục `operating_mode_change` của `09-security.md`
+
 **Loại job** — `render_document` · `resume_document_graph` · `finalize_issue` · `checkpoint_purge` · `procedure_ingest` · `notification_send`. Ba loại cuối thêm ở Phase 4: là thao tác mà Phase 3 đã mô tả chạy bằng job, nay có tên trong enum
 
 **Thực thể tầng kỹ thuật** *(thêm ở Phase 4)* — không có nghĩa nghiệp vụ, người dùng không nhìn thấy. Ánh xạ sang bảng ở `04-data.md`.
@@ -317,6 +321,8 @@ Node `open_request` gọi tool `request_open`; hai tên khác nhau có chủ đ�
 | `stored_object` | Sổ giành khoá ghi-một-lần cho mọi object ở `object_storage` |
 | `llm_usage` | Kế toán token của `ai_gateway`. Không bao giờ chứa văn bản prompt, output hay giá trị slot. Một trong ba ngoại lệ ghi `postgresql` ngoài `tool_layer` — do `ai_gateway` ghi, và là bảng duy nhất `ai_gateway` được ghi (ADR-019) |
 | `embedding_collection` | Một phiên bản collection: một model, một bảng, một cột `vector(n)` cố định (ADR-012) |
+| `employee_credential` | Bảng credential đăng nhập, tách khỏi `employee` để import CSV không chạm tới nó. `bo19_app` chỉ đọc; ghi bằng thao tác vận hành (A-048). Thêm ở Phase 9 |
+| `rate_limit_window` | Sổ đếm rate limit theo cửa sổ thời gian cố định. Sổ sách kỹ thuật, không sinh `audit_event`. Thêm ở Phase 9 |
 
 **Biến nội dung tự do**
 
