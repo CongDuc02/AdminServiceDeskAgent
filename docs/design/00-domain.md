@@ -396,10 +396,15 @@ Mô hình hoá theo **permission**, không theo vai trò cứng. Vai trò chỉ 
 | `delegation.manage` | Lập và thu hồi uỷ quyền | `[Should]` |
 | `audit.read_own` | Xem nhật ký của yêu cầu liên quan tới mình | — |
 | `audit.read_all` | Xem toàn bộ nhật ký kiểm toán | — |
+| `request_type.manage` | Thêm/sửa `request_type`, `slot_definition` — trừ đổi độ nhạy của một slot đã có, việc đó qua `slot_sensitivity_change` | — |
+| `procedure.read_all` | Xem mọi `procedure_document` qua `procedure_retrieval`, bất kể `department_scope` | — |
+| `operating_mode.change` | Đổi `operating_mode` giữa `NON_PRODUCTION` và `PRODUCTION` | — |
 
 `document.issue` và `document.apply_seal` **là hai permission tách rời** và không bao giờ được gộp. Cấp dấu và cấp số là hai rủi ro khác nhau: một cái làm văn bản có hiệu lực pháp lý, một cái đưa nó vào sổ.
 
 **Không tồn tại permission xoá hay sửa `audit_event`.** Đây không phải là quyền chưa cấp cho ai — nó không có trong danh mục.
+
+**`request_type.manage`, `procedure.read_all` và `operating_mode.change` — thêm ở Phase 9 (A-042, A-043, mục AuthZ của `09-security.md`).** `procedure.manage` không kéo theo `procedure.read_all`: nạp/thay/gỡ tài liệu và xem tài liệu ngoài phòng ban của mình trong đường retrieval là hai nghĩa vụ khác nhau, cùng lý do đã tách `procedure.manage` khỏi `template.manage` ở A-033. Danh mục permission: 22 → 25.
 
 ### 7.2 Gói permission theo vai trò
 
@@ -409,7 +414,9 @@ Mô hình hoá theo **permission**, không theo vai trò cứng. Vai trò chỉ 
 | `ADMIN_OFFICER` | Toàn bộ của `EMPLOYEE`, cộng `request.create_on_behalf` · `request.read_all` · `document.approve_content` · `document.request_changes` · `document.reject` · `document.apply_seal` · `document.issue` · `document.revoke_initiate` · `template.manage` · `employee.import` · `audit.read_all` · `booking.confirm` `[Should]` |
 | `SIGNER` `[Should]` | `request.read_assigned` · `document.approve_content` · `document.request_changes` · `document.reject` · `document.sign` · `document.revoke_confirm` · `audit.read_own` |
 
-Trong Sprint đầu chưa có vai trò `SIGNER`. `document.sign` và `document.revoke_confirm` được cấp lẻ cho một hoặc vài `ADMIN_OFFICER` cụ thể, không mặc định đi kèm vai trò. Quyền `request.read_all` còn bị giới hạn thêm theo phòng ban ở Phase 9; danh mục này là tầng thô.
+Trong Sprint đầu chưa có vai trò `SIGNER`. `document.sign` và `document.revoke_confirm` được cấp lẻ cho một hoặc vài `ADMIN_OFFICER` cụ thể, không mặc định đi kèm vai trò. **Quyền `request.read_all` giữ org-wide ở Sprint đầu (Phase 9, A-061):** tổ chức chỉ có một Phòng Hành chính xử lý tập trung (A-001), nên vai trò duy nhất mang quyền này cần thấy toàn bộ theo đúng nghĩa vụ của nó. Lọc theo phòng ban kích hoạt khi A-001 bị bác bỏ — tổ chức thật ra có **từ hai Phòng Hành chính xử lý độc lập trở lên** — vì khi đó "xem mọi yêu cầu" không còn là một nghĩa vụ duy nhất mà là nhiều nghĩa vụ tách biệt theo đơn vị. Danh mục permission là tầng thô — không mã hoá phạm vi phòng ban; lọc theo phòng ban khi cần là một tầng riêng (mục Row-level theo phòng ban của `09-security.md`).
+
+**`request_type.manage`, `procedure.read_all` và `operating_mode.change` cấp lẻ, không thuộc gói vai trò nào** (Phase 9) — cùng khuôn với `document.sign`, `document.revoke_confirm` và `procedure.manage` ở trên: hành động hiếm, rủi ro cao hoặc đòi một nghĩa vụ riêng, cấp trực tiếp cho một hoặc vài người cụ thể. Chi tiết ở mục AuthZ của `09-security.md`.
 
 Vai trò quản trị hệ thống (tạo tài khoản, cấu hình hạ tầng) không được đề bài nhắc tới và không mô hình hoá ở phase này.
 

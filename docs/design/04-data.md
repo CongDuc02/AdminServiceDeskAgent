@@ -1,6 +1,6 @@
 # Data Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.3 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 4 (S–V) — mục ngày 2026-09-13 (lần 2) của `CHANGELOG.md` · **v0.3:** `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.4:** ai ghi `llm_usage` và mã `BUDGET_UNAVAILABLE` (ADR-019), `template_version.required_fonts` (ADR-015), kết quả xác minh A-045 và A-047 — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.5:** dòng `schema_migration` ở mục 1.1 — vòng duyệt Phase 6 (B1), mục ngày 2026-09-13 (lần 9)
+**Phiên bản:** 0.3 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 4 (S–V) — mục ngày 2026-09-13 (lần 2) của `CHANGELOG.md` · **v0.3:** `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.4:** ai ghi `llm_usage` và mã `BUDGET_UNAVAILABLE` (ADR-019), `template_version.required_fonts` (ADR-015), kết quả xác minh A-045 và A-047 — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.5:** dòng `schema_migration` ở mục 1.1 — vòng duyệt Phase 6 (B1), mục ngày 2026-09-13 (lần 9) · **v0.6:** `employee_credential`, `rate_limit_window` — Phase 9, mục ngày 2026-09-14 (lần 2) của `CHANGELOG.md` · **v0.7:** hai bảng trên chuyển sang `backend/migrations/schema/0002_phase9_security.sql`, `contracts/schema.sql` trả về nguyên trạng đóng Phase 6 — mục ngày 2026-09-14 (lần 3) của `CHANGELOG.md`
 
 > File này chốt mô hình dữ liệu vật lý: bảng, cột, ràng buộc, index, quyền trên cơ sở dữ liệu, lưu trữ file, vector collection và chính sách xoá dữ liệu cá nhân. Contract DDL nằm ở [`contracts/schema.sql`](./contracts/schema.sql). File này **không** thiết kế API (Phase 5), màn hình duyệt hay bảng mã lý do (Phase 8), AuthZ chi tiết (Phase 9), và **không** định cỡ thời hạn hay tham số vận hành (Phase 11).
 
@@ -44,10 +44,12 @@ Tên entity, trạng thái, enum, agent, tool dùng đúng `GLOSSARY.md`. Ánh x
 | *Tầng kỹ thuật* — `stored_object` | `stored_object`, `stored_object_commit` | Sổ giành khoá ghi-một-lần (mục 5); commit tách riêng để checksum được ghi đúng một lần bằng khoá chính |
 | *Tầng kỹ thuật* — `llm_usage` | `llm_usage` | Kế toán token; không chứa văn bản |
 | *Tầng kỹ thuật* — `embedding_collection` | `embedding_collection`, `procedure_chunk_embedding_v1` | Một bảng cho mỗi phiên bản collection (ADR-012) |
+| *Tầng kỹ thuật* — `employee_credential` | `employee_credential` | Credential đăng nhập, tách khỏi `employee`; ghi bằng thao tác vận hành seed, ngoài `tool_layer` (Phase 9, A-048). Bảng của `0002_phase9_security.sql`, không của `contracts/schema.sql` |
+| *Tầng kỹ thuật* — `rate_limit_window` | `rate_limit_window` | Đếm lần thử theo cửa sổ thời gian cho rate limit đăng nhập (Phase 9, mục 6 của `09-security.md`). Bảng của `0002_phase9_security.sql`, không của `contracts/schema.sql` |
 | *Tầng kỹ thuật* — sổ migration | `schema_migration` | **Không** nằm trong `schema.sql`. Trình chạy migration tạo nó; `bo19_migrator` sở hữu; `bo19_app` chỉ `SELECT`, cho bước kiểm khởi động. Mang tên file, loại schema hay data, sha256, thời điểm áp. Thêm ở vòng duyệt Phase 6 (ADR-017) |
 | Checkpoint của `orchestrator` | Bảng của LangGraph | **Không** nằm trong `schema.sql` (mục 8.6) |
 
-**Độ phủ (V3):** bảng trên phủ đủ **45 bảng** của `schema.sql`. Mỗi bảng hoặc là entity của chính nó, hoặc thuộc một dòng có lý do tách ở cột ghi chú; không bảng nào đứng ngoài ánh xạ.
+**Độ phủ (V3):** bảng trên phủ đủ **47 bảng** của toàn bộ schema — **45 bảng của `contracts/schema.sql`** (đóng nguyên vẹn ở Phase 6, không đổi), cộng **2 bảng của `backend/migrations/schema/0002_phase9_security.sql`** (`employee_credential`, `rate_limit_window`, Phase 9 — mục Migration bổ sung của Phase 9 trong `09-security.md`). `schema.sql` tự nó vẫn 45 bảng; con số 47 là của hệ schema sau migration, không phải của một file. Mỗi bảng hoặc là entity của chính nó, hoặc thuộc một dòng có lý do tách ở cột ghi chú; không bảng nào đứng ngoài ánh xạ.
 
 **Không có** bảng `department`. **Không** version cấu hình `request_type`. Lý do và hệ quả ở mục 3.2 và mục 6.3.
 
@@ -78,6 +80,8 @@ Tên entity, trạng thái, enum, agent, tool dùng đúng `GLOSSARY.md`. Ánh x
 | Sửa được, không xoá | `employee`, `request`, `request_slot`, `chat_session`, `document`, `approval_step`, `graph_thread`, `delegation`, `request_type`, `slot_definition`, `template`, `procedure_document`, `room`, `room_booking` | Không có `DELETE` trên `document`: "không tồn tại đường xoá cứng `document` đã `ISSUED`" (AC của F3) đứng ở tầng quyền |
 | Sửa theo cột | `chat_message`, `template_version`, `document_register`, `document_register_counter`, `document_register_entry`, `notification`, `procedure_document_version`, `embedding_collection` | `UPDATE` chỉ trên các cột liệt kê trong `schema.sql`. Ví dụ `document_register_entry` chỉ sửa được `status`, `voided_at`, `void_reason` |
 | Đủ vòng đời | `job` | Kể cả dọn job đã xong |
+| Chỉ đọc — ghi bằng thao tác vận hành | `employee_credential` | Seed và đổi mật khẩu chạy bằng `bo19_migrator`, ngoài `tool_layer`; `bo19_app` chỉ `SELECT` để kiểm đăng nhập (H1, A-048). Bảng của `backend/migrations/schema/0002_phase9_security.sql` — **không** trong `contracts/schema.sql` (Phase 9, mục Migration bổ sung của Phase 9 trong `09-security.md`) |
+| Đếm và dọn theo cửa sổ | `rate_limit_window` | `INSERT`, `UPDATE (attempt_count)`, `DELETE` khi cửa sổ hết hạn. Khác nhóm "Chỉ thêm": giá trị đổi tại chỗ và dòng bị xoá, nhưng là sổ sách kỹ thuật nên không `audit_event`, không `row_version` (A-055, mục 6 của `09-security.md`). Bảng của `backend/migrations/schema/0002_phase9_security.sql` — **không** trong `contracts/schema.sql` (Phase 9) |
 
 **Không dùng row-level security.** Trong phạm vi Phase 4 không có nhu cầu lọc hiển thị nào phải đặt ở tầng DB. Lọc quyền xem theo phòng ban là việc của Phase 9; nếu Phase 9 chọn row-level security cho **việc lọc**, đó là quyết định của Phase 9, không phải công cụ bất biến.
 
@@ -92,10 +96,10 @@ Tên entity, trạng thái, enum, agent, tool dùng đúng `GLOSSARY.md`. Ánh x
 
 | Danh mục | Cách nạp |
 |---|---|
-| `permission`, `role`, `role_permission` | **Data migration** có phiên bản, tách khỏi schema migration, chạy bằng `bo19_migrator`. Nội dung lấy từ mục Permission và vai trò của `00-domain.md` |
-| `employee_role`, `employee_permission_grant` | Data migration hoặc script vận hành chạy bằng `bo19_migrator`. Không có màn hình quản trị trong phạm vi — vai trò quản trị hệ thống không được mô hình hoá (mục Permission và vai trò của `00-domain.md`) |
+| `permission`, `role`, `role_permission` | **Data migration** có phiên bản, tách khỏi schema migration, chạy bằng `bo19_migrator`. Nội dung lấy từ mục Permission và vai trò của `00-domain.md`. Viết ở Phase 9: `backend/migrations/data/0001_permission_catalog.sql` |
+| `employee_role`, `employee_permission_grant` | Data migration hoặc script vận hành chạy bằng `bo19_migrator`. Không có màn hình quản trị trong phạm vi — vai trò quản trị hệ thống không được mô hình hoá (mục Permission và vai trò của `00-domain.md`). Cấp lẻ cho người cụ thể chưa seed được ở thời điểm thiết kế — chưa có nhân viên thật (mục 3.2 của `09-security.md`) |
 | `employee` | Import CSV qua ứng dụng, permission `employee.import` (D-002) |
-| `request_type`, `slot_definition` | Luồng cấu hình của F6 qua ứng dụng. Bản đầu cho hai loại của Sprint đầu nạp bằng data migration. Permission của luồng này **chưa tồn tại** trong danh mục — A-042 |
+| `request_type`, `slot_definition` | Luồng cấu hình của F6 qua ứng dụng. Bản đầu cho hai loại của Sprint đầu nạp bằng data migration. Permission `request_type.manage` — Phase 9, A-042, cùng file `0001_permission_catalog.sql` ở trên |
 | `document_register`, `document_register_format` | Qua ứng dụng; bản đầu nạp bằng data migration khi Product Owner có giá trị (A-009) |
 | `template*` | Tải lên qua F6, permission `template.manage` |
 | `embedding_collection` | Dòng của một phiên bản collection đi cùng migration tạo bảng của phiên bản đó, **sau khi** model được chọn (A-028). Trước lúc đó không có collection `ACTIVE` nào, và `procedure_retrieval` trả danh sách rỗng — đúng nhánh "không có căn cứ" đã thiết kế cho kho rỗng |

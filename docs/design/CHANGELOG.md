@@ -1390,3 +1390,121 @@ Placeholder "phép kiểm chạy sau lần ghi cuối" ở hai mục trên chưa
 `08-hitl.md` lên **v0.2**. Không đổi quyết định, không đổi phạm vi, không đổi entity/trạng thái nào khác ngoài bảng trên. `07-prompts.md` không có lỗi, giữ nguyên v0.1. `_PLAN.md`, `GLOSSARY.md`, `ASSUMPTIONS.md`, `contracts/`, ADR không đổi.
 
 **Bài học ghi lại:** tham chiếu chéo bằng số dòng sang file khác vẫn có rủi ro lệch tương tự khi file đích bị sửa ở phase sau — 4/6 lỗi trên đều do `05-api.md`, `04-data.md`, `06-structure.md` đã bị sửa nhiều lần kể từ khi các dòng đó được trích. Phase 13 (Consistency Audit) nên quét lại toàn bộ tham chiếu số dòng liên file, không chỉ tên entity.
+
+---
+
+## 2026-09-14 (lần 2) — Phase 9: Security & Guardrails
+
+**Tạo mới:** `docs/design/09-security.md` v0.1, `docs/design/decisions/ADR-020-operating-mode-change-qua-endpoint.md`.
+
+**Sửa file gốc của phase trước — trong phạm vi được duyệt tại vòng lập kế hoạch của phase này (mục D, E, F, G của phiên):**
+
+| File | Thay đổi |
+|---|---|
+| `00-domain.md` | Mục Danh mục permission: thêm `request_type.manage`, `procedure.read_all`, `operating_mode.change` (22 → 25), cộng câu ghi rõ `procedure.manage` không kéo theo `procedure.read_all`. Mục Gói permission theo vai trò: thêm câu ba permission mới cấp lẻ; thêm câu ghi nhận đề xuất sửa (chưa tự áp) câu về `request.read_all`/phòng ban — diff ở `09-security.md`, chờ duyệt. **Không đụng** câu gốc về `request.read_all` |
+| `GLOSSARY.md` → 0.19 | Mục Permission: thêm ba permission (22 → 25). Mục 12: thêm thao tác `operating_mode_transition` (thêm ở Phase 9) và hai entity tầng kỹ thuật `employee_credential`, `rate_limit_window` |
+| `04-data.md` → v0.6 | Mục Ánh xạ entity → bảng: thêm `employee_credential`, `rate_limit_window`; "45 bảng" → "47 bảng". Mục Hai role và bất biến bằng quyền: thêm hai nhóm quyền mới |
+| `05-api.md` → v0.8 | Mục 1.10: đánh dấu loại trừ thứ ba (`operating_mode_change`) đã giải, trỏ sang endpoint mới. Mục 1.11: đánh dấu quy tắc hiển thị theo độ nhạy đã giải, trỏ `09-security.md`. Mục 2.1: thêm thao tác `operating_mode_transition`. Mục 2.2: thêm ghi chú rate limit đăng nhập. Mục **2.2b mới**: endpoint `POST`/`GET /operating-mode/transitions`. Mục 2.14: sửa dòng rate limit trỏ `09-security.md`. Bảng mã lỗi: thêm `OPERATING_MODE_UNCHANGED`, `RATE_LIMITED`. Endpoint có contract: 48 → 49 |
+| `contracts/openapi.yaml` → 0.2.0 | Thêm path `/operating-mode/transitions` (GET, POST); thêm schema `OperatingModeTransitionBody`, `OperatingModeChange`, `OperatingModeChangePage`; thêm response `RateLimited`; thêm `OPERATING_MODE_UNCHANGED` vào `Unprocessable` |
+| `contracts/schema.sql` | Thêm bảng `employee_credential`, `rate_limit_window`, index `ix_rate_limit_window_start`, `GRANT` J.7 |
+| `ASSUMPTIONS.md` → 0.20 | A-039, A-042, A-043 → **Đã chốt**. A-048 → thêm rủi ro (d), chốt `argon2id` và giữ H1, còn `TBD` tham số hash/thời hạn token/chu kỳ xoay vòng. A-055 → thêm trường hợp thứ tư (`rate_limit_window`, vẫn Mở). A-031 → thêm tham số rate limit (Thêm ở Phase 9). A-060 → thêm ràng buộc vị trí `bo19_migrator`. **A-061 mới** — `request.read_all` org-wide, đề xuất diff chờ duyệt |
+| `_PLAN.md` | Phase 9 → ☑ |
+
+### Quyết định của phase
+
+**ADR-020** — `operating_mode_change` qua endpoint có permission (`operating_mode.change`), không qua thao tác vận hành. Lý do đứng trên hai dữ kiện đã có: `bo19_app` đã được cấp `INSERT` trên bảng này từ Phase 4 (ngược hướng `employee_credential`); thao tác vận hành không đi qua `tool_layer` nên không sinh `audit_event` cho hành động hệ trọng nhất hệ thống.
+
+| Mục | Quyết định |
+|---|---|
+| Tool permission theo vai trò người yêu cầu | Ranh giới thật không phải "api tĩnh, tool_layer instance" (đã có ở `05-api.md`) mà là "tool chạy dưới danh nghĩa ai" — nhân viên đang chat (`intake_graph`) hay không ai tại thời điểm chạy job (`document_graph`), trách nhiệm truy vết qua thao tác cổng đã enqueue job, không qua `audit_event` của job |
+| Row-level theo phòng ban | Hai trục tách riêng: kho quy trình (A-043, giải bằng `procedure.read_all`) và `request.read_all` (A-061, giữ org-wide, đề xuất sửa câu ở `00-domain.md` chưa tự áp) |
+| Rate limit | Bảng `rate_limit_window`, khoá theo IP (không thuần theo `employee_code` — tránh DoS nhắm một người), không sinh `audit_event` (A-055 trường hợp thứ tư), chỉ áp cho `POST /auth/session` ở Sprint đầu |
+| PII masking và hiển thị | Ba việc tách biệt trên cùng `slot_sensitivity`: mask log (đã có), giữ/xoá khi `EXPIRED` (A-014, không đổi), hiển thị (mới — `RES` ẩn mặc định kiểu ô mật khẩu, `PER` hiển thẳng kèm huy hiệu) |
+| AuthN | `argon2id`, giữ H1 (`bo19_app` chỉ đọc `employee_credential`, không đảo); xoay vòng session secret không tự động, do người vận hành quyết |
+
+### Tự kiểm
+
+- **A-042 (hạn cứng) — đã đóng.** `request_type.manage` đã vào danh mục permission, cấp lẻ.
+- Mọi tên entity/trạng thái/permission/tool dùng đúng `GLOSSARY.md`; ba permission mới đã thêm vào đúng nguồn trước khi dùng ở nơi khác.
+- Không bịa số liệu: tham số hash, thời hạn token, chu kỳ xoay vòng, ngưỡng rate limit đều `TBD` kèm dòng `ASSUMPTIONS.md` có owner/hạn.
+- Không ADR cho lựa chọn `argon2id` hay bảng `rate_limit_window` — lý do nêu ở mục Quyết định kiến trúc của `09-security.md` (áp lại nguyên tắc GRANT/REVOKE đã có, không phải mẫu hình mới).
+- Đã đối chiếu `03-agents.md`, `04-data.md`, `05-api.md`, `07-prompts.md`, `08-hitl.md`, mọi ADR đã chốt — không tìm thêm mâu thuẫn ngoài các mục đã sửa ở trên.
+
+### Chưa áp — chờ duyệt
+
+Diff câu "`request.read_all` còn bị giới hạn thêm theo phòng ban ở Phase 9" ở mục Gói permission theo vai trò của `00-domain.md` — đề xuất ở mục Row-level theo phòng ban của `09-security.md`, ghi thành A-061. Không tự áp vì nó sửa một câu đã chốt ở Phase 0.
+
+---
+
+## 2026-09-14 (lần 3) — Phase 9 v0.2: bốn lỗ hở bị bắt trước khi duyệt, chưa đóng phase
+
+Vòng lần 2 báo cáo đóng phase quá sớm. Bốn lỗ hở bị bắt, cộng ba câu hỏi được trả lời — sửa hết trước khi xin duyệt lại.
+
+### I1 — A-042 quay lại `Mở` rồi đóng lại đúng căn cứ: đường nạp DB không tồn tại
+
+Thêm ba dòng vào `00-domain.md`/`GLOSSARY.md` chỉ là sửa danh mục **trên giấy**. `backend/migrations/data/` trước phiên này chỉ có `.gitkeep` — đường nạp `permission`/`role`/`role_permission` mà `04-data.md` mô tả từ Phase 4 **chưa từng được viết**, kể cả cho 22 permission gốc. Không đóng A-042 mà bỏ qua chỗ hở đó.
+
+**Đã viết:** `backend/migrations/data/0001_permission_catalog.sql` — `INSERT` toàn bộ 25 permission, 3 role, gói `role_permission` theo mục Gói permission theo vai trò của `00-domain.md`. **Không** seed `employee_role`/`employee_permission_grant` — cần `employee_id` thật, chưa tồn tại ở thời điểm thiết kế; cấp lẻ (`document.sign`, `document.revoke_confirm`, `procedure.manage`, `request_type.manage`, `procedure.read_all`, `operating_mode.change`) là thao tác vận hành bằng `bo19_migrator`, chưa có ai được chỉ định — nói rõ trong data migration và trong `09-security.md` mục 3.2, không phải ô trống.
+
+A-042 giữ **Đã chốt**, nhưng lý do viết lại: danh mục **và** đường nạp cùng tồn tại, không chỉ danh mục.
+
+### I2 — `03-agents.md` bị bỏ sót: `operating_mode_transition` thuộc đúng nhóm đã có sẵn
+
+Mục 5.7 của `03-agents.md` ("Thao tác do endpoint gọi — đặt tên ở Phase 5") lập ra chính vì lý do "không có tên thì Phase 13 không truy vết được endpoint về thao tác". `operating_mode_transition` là đúng loại thao tác đó — lệnh ghi do endpoint gây ra, qua `tool_layer`, sinh `audit_event` — và đã bị bỏ ngoài bảng. Thêm dòng thứ mười bốn; nhân tiện sửa dòng `request_type_upsert`/`slot_definition_upsert` đang ghi "A-042 chưa có trong danh mục" — stale sau khi A-042 đóng.
+
+### I3 — `contracts/schema.sql` bị sửa thẳng, sai với quyết định đã có từ Phase 6
+
+`06-structure.md` mục 3 đã viết sẵn: *"`0001_initial.sql` = `contracts/schema.sql` ở trạng thái đóng Phase 6; về sau mỗi thay đổi một file"*. Vòng lần 2 sửa thẳng `contracts/schema.sql` — sai. **Đã sửa:**
+
+- `contracts/schema.sql` — trả về nguyên trạng đóng Phase 6, gỡ hai bảng, index, GRANT J.7 vừa thêm.
+- **Tạo mới** `backend/migrations/schema/0002_phase9_security.sql` — hai bảng `employee_credential`, `rate_limit_window`, index, GRANT, đúng trình tự schema migration của ADR-017.
+- `04-data.md` — câu "45 bảng" giữ nguyên (mô tả đúng một file `schema.sql`, không đổi); thêm câu riêng cho "47 bảng của toàn bộ schema sau migration 0002". Hai dòng GRANT mới ghi rõ thuộc `0002_phase9_security.sql`, không thuộc `contracts/schema.sql`.
+- `09-security.md` mục DDL — viết lại thành "Migration bổ sung của Phase 9", trỏ đúng hai file thay vì nói "schema.sql đã đóng — được phép".
+
+### I4 — `CHANGELOG.md` thiếu trong bảng file đã sửa của mục trước
+
+Đúng — quên liệt kê chính file đang ghi. Bảng ở mục trước (2026-09-14 lần 2) không có dòng `CHANGELOG.md`; coi mục ngày đó **là** bằng chứng đã ghi, không sửa lại lịch sử. Từ mục này trở đi, `CHANGELOG.md` tự liệt kê chính nó khi đáng kể.
+
+### J1 — Câu về `request.read_all` ở `00-domain.md`: sửa tại chỗ, không vá bằng chú thích
+
+Vòng lần 2 giữ nguyên câu cũ ("còn bị giới hạn thêm theo phòng ban ở Phase 9") kèm một chú thích trỏ sang đề xuất diff — đúng kiểu vá đã bị bác ở tiền lệ Phase 2 (chẩn đoán tới gốc, sửa ở file gốc). **Đã sửa trực tiếp** mục Gói permission theo vai trò của `00-domain.md`: câu mới nói org-wide, kèm lý do (A-001, một Phòng Hành chính tập trung) và điều kiện kích hoạt lọc (A-001 bị bác bỏ — từ hai Phòng Hành chính độc lập trở lên). **A-061 viết lại theo đúng nghĩa của nó** — không còn "có sửa câu hay không" (đã sửa) mà là điều kiện kích hoạt, giữ `Mở`.
+
+### J2 — `GET /operating-mode/transitions`: bỏ vế `operating_mode.change`
+
+Quyền ghi không tự kéo theo quyền đọc — đúng nguyên tắc chính phiên này vừa viết cho `document.issue`/`audit.read_all` và `procedure.manage`/`procedure.read_all`. Sửa permission còn lại đúng một: `audit.read_all`. Không mở mẫu hình "permission theo quan hệ HOẶC" mới cho riêng một endpoint. Sửa `05-api.md` mục 2.2b, `contracts/openapi.yaml`, `09-security.md` mục 12.
+
+### J3 — ADR cho `argon2id`; giữ không-ADR cho `rate_limit_window`
+
+Phép thử đúng là "có điều kiện đảo ngược không", không phải "có phải mẫu hình kiến trúc mới không". `argon2id` có — RAM của instance Render, đã tự viết ra ở vòng trước nhưng không nhận ra đó là điều kiện đảo ngược. **Tạo mới** `docs/design/decisions/ADR-021-argon2id-hash-mat-khau.md`: Context/Options (A `argon2id` · B `bcrypt` · C `PBKDF2` · D `scrypt`)/Decision/Consequences (điều kiện đảo ngược: thời gian hash cạnh RAM còn trống, đo khi có Render đầu tiên)/Rejected alternatives — lý do bằng tính chất hàm (tham số bộ nhớ độc lập hay không), không trích khuyến nghị từ trí nhớ. `rate_limit_window` giữ không cần ADR — không có điều kiện đảo ngược riêng ngoài tham số TBD đã ở A-031.
+
+### K1 — IP thật phía sau proxy Render: `[CẦN XÁC MINH]`
+
+Rate limit khoá theo IP giả định `api` đọc đúng IP client từ header chuyển tiếp của Render — chưa xác minh header nào, và có tự đặt được không khi có nhiều proxy chồng nhau. **A-062 mới**, cùng họ A-051, owner Người triển khai, hạn trước `PRODUCTION`. Nhắc trong `09-security.md` mục Rate limit và mục Open Questions.
+
+### K3 — `_PLAN.md` Phase 9 trả về `☐`
+
+Tiền lệ Phase 5: giữ `☐` khi còn đúng một mục hở. Ba câu hỏi (J1–J3) và bốn lỗ hở (I1–I4) đã xử lý; đánh `☑` ở mục báo cáo tiếp theo sau khi anh xác nhận.
+
+### File đã sửa thêm trong vòng này
+
+| File | Thay đổi |
+|---|---|
+| `09-security.md` → v0.2 | Mục 3: thêm 3.2 (đường nạp DB), đánh số lại 3.2→3.3; mục 5.2: bỏ đoạn diff-chờ-duyệt, viết org-wide đã áp; mục 6.1: thêm cảnh báo A-062; mục 12.2: `GET` chỉ `audit.read_all`; mục DDL viết lại thành "Migration bổ sung của Phase 9"; `ADR mới` +ADR-021; `Không viết ADR cho` bỏ `argon2id`, chỉ còn `rate_limit_window` |
+| `decisions/ADR-021-argon2id-hash-mat-khau.md` | Tạo mới |
+| `backend/migrations/data/0001_permission_catalog.sql` | Tạo mới |
+| `backend/migrations/schema/0002_phase9_security.sql` | Tạo mới |
+| `contracts/schema.sql` | Trả về nguyên trạng đóng Phase 6 |
+| `03-agents.md` | Mục 5.7: +`operating_mode_transition` (14 thao tác); sửa dòng `request_type_upsert` stale |
+| `00-domain.md` | Mục 7.2: câu `request.read_all` viết lại tại chỗ, không còn chú thích riêng |
+| `05-api.md` → v0.9 | Mục 2.2b: `GET` chỉ `audit.read_all`, thêm câu giải thích |
+| `contracts/openapi.yaml` → 0.2.1 | `x-bo19-permission` của `GET /operating-mode/transitions` chỉ còn `audit.read_all` |
+| `04-data.md` → v0.7 | Câu "45 bảng"/"47 bảng" viết lại phân biệt file; hai dòng GRANT và hai dòng ánh xạ entity ghi rõ thuộc `0002_phase9_security.sql`; mục 1.4 sửa hai dòng stale (A-042) |
+| `ASSUMPTIONS.md` → 0.21 | A-061 viết lại theo điều kiện kích hoạt; **A-062 mới**; A-042 giữ Đã chốt, lý do bổ sung đường nạp |
+| `_PLAN.md` | Phase 9 → `☐` |
+
+### Tự kiểm lại
+
+- **A-042** — Đã chốt, đúng căn cứ: danh mục **và** đường nạp DB cùng tồn tại.
+- **`contracts/schema.sql`** — nguyên trạng đóng Phase 6, không một ký tự đổi.
+- Không ADR nào thiếu Rejected alternatives; ADR-021 có bốn phương án, ba lý do loại riêng biệt.
+- Ba câu hỏi J1–J3 đều đã áp trực tiếp vào file, không còn ở dạng đề xuất treo.
