@@ -1579,6 +1579,38 @@ Phase này trải qua nhiều vòng duyệt trong cùng một phiên — bản �
 ### Tự kiểm lại
 
 - Không số liệu giá token/benchmark nào bị bịa — mô hình chi phí ở mục 8 của `11-ops.md` thuần biến số; mọi số ở mục Định cỡ A-022 gắn nhãn "chưa hiệu chỉnh" kèm lý do suy luận (cùng khuôn A-014/A-017), và mỗi thành phần gắn nhãn loại (cận trên cứng / kích cỡ điển hình) để không ai hiệu chỉnh nhầm loại.
-- Không thiết kế lại state machine, schema, hay `halt_for_human` — ba thay đổi cần chạm phase đã đóng đều nằm ở đề xuất diff riêng, chưa áp.
+- Không thiết kế lại state machine, schema, hay `halt_for_human` — bốn thay đổi cần chạm phase đã đóng đều nằm ở đề xuất diff riêng, chưa áp.
 - A-068 không tự sửa `03-agents.md` — ghi thành giả định, owner là đợt sửa riêng do PO khởi động, không phải "Phase 3" (đã đóng, không ai nhặt) hay "Người triển khai" (sai vai — việc còn lại là viết thiết kế, không phải xác minh hạ tầng).
 - ADR-022 và ADR-023 đều có phương án bị loại với lý do loại riêng biệt cho từng phương án, không gộp.
+
+### Vòng duyệt cuối (2026-09-16) — sáu việc nhỏ, không chặn
+
+1. `trace_id` không còn TBD — chốt định dạng UUID v4 (mục Log schema của `11-ops.md`), đóng câu bỏ ngỏ của ADR-019. Kéo theo đề xuất diff thứ tư, chưa áp: `docs/design/proposals/diff-04-data-trace-id-format.md` (thêm `CHECK` trên `llm_usage.trace_id`).
+2. Hai TBD "đội lốt" sửa đúng chỗ: chọn công cụ APM (**A-069 mới** — A-002 không bao giờ trả lời được câu đó) và retention log kỹ thuật (**A-070 mới** — có cân nhắc Nghị định 13/2023/NĐ-CP dù log đã mask).
+3. Mục 6.3 của `11-ops.md` viết lại thành bảng ánh xạ đầy đủ 13 tín hiệu của `_PLAN.md` theo từng ADR, không chỉ trỏ ngược — 9 chỗ quan sát **mới** được bổ sung ngay (đây là việc `_PLAN.md` giao cho Phase 11, không phải việc tuỳ chọn).
+4. A-068 và mục 10.4 của `11-ops.md` bổ sung một câu: `DRAFT`/`NEEDS_INFO` không nằm ở danh sách reset hay không-reset vì request đó **chưa kết thúc**, không phải bị bỏ sót — đủ 10 trạng thái.
+5. Chạy thật `tools/contract-checks/check_grants.py --local`: thoát mã `0`, `Lệch: 0`, 49 bảng, sha256 khớp Phase 6 — xác nhận `contracts/schema.sql` không đổi trong suốt Phase 11. Làm rõ luôn: công cụ này **chỉ kiểm GRANT/DDL**, không kiểm `05-api.md`/`openapi.yaml` (hai file đó không có bộ kiểm tự động ở repo này).
+6. Dòng DoD "Không mâu thuẫn với phase trước" viết lại cho đúng: đạt theo nghĩa phát hiện và ghi nhận, còn một mâu thuẫn **đang mở** (A-068) chờ đợt sửa `03-agents.md` riêng — không đánh ✔ trơn.
+
+### Vòng duyệt thứ ba (2026-09-16) — hai việc, một tự liếc lại
+
+1. **Định dạng `trace_id` (UUID v4) có điều kiện đảo ngược — áp J3, viết ADR-024.** Công cụ APM chọn ở A-069 có thể ép định dạng khác (W3C Trace Context, 32 hex không gạch nối). ADR-024 giữ UUID v4, ghi tường minh điều kiện đảo ngược, và buộc chéo vào tiêu chí chọn của A-069.
+2. **Hiện vật sai của `CHECK` mới trên `llm_usage.trace_id` — sửa.** Bản trước đặt tên `diff-04-data-trace-id-format.md`, ngụ ý sửa `contracts/schema.sql` (đã đóng, sha256 vừa xác nhận). Xoá file đó; tạo `docs/design/proposals/migration-0003-trace-id-format.md`, đúng tiền lệ Phase 9 — thay đổi DB đi vào `backend/migrations/schema/0003_observability_trace_id.sql`, không chạm `contracts/schema.sql`.
+3. **Tự liếc lại 9 chỗ quan sát mới bổ sung ở vòng trước:** rà từng dòng xem có nguồn dữ liệu thật hay chỉ trang trí. Kết quả: 2/13 dòng của bảng ADR thật sự chưa có nguồn ("tỷ trọng IO trên tổng tải `postgresql`" của ADR-004(c) và nửa ADR-013 — cần `pg_stat_statements`/giám sát của Render, `[CẦN XÁC MINH]`, cùng họ A-030). Mười một dòng còn lại đóng được nguồn sau khi mục 6.1 thêm bốn điểm đo log cụ thể (lock-wait riêng biệt, gauge connection tín hiệu, duration+size tải file, `output_item_count` cho `extract_slots`). Ghi thẳng "chưa có nguồn" cho hai dòng còn hở, không gắn nhãn "Mới" mơ hồ để trông như đã tuân thủ.
+4. Kiểm lỗi dán/trùng lặp trên toàn bộ file đã sửa trong Phase 11 (`11-ops.md`, `ASSUMPTIONS.md`, `01-prd.md`, `CHANGELOG.md`, hai ADR) bằng so khớp dòng — không có dòng trùng nào do thao tác sửa của phiên này gây ra; hai chỗ trùng tìm thấy (một ở `01-prd.md`, một ở `CHANGELOG.md`) đều là văn bản có sẵn từ trước Phase 11, không liên quan.
+
+**`_PLAN.md`: Phase 11 → `☑`, PO xác nhận.**
+
+### Áp đề xuất diff đầu tiên (2026-09-16) — `06-structure.md`, bước kiểm khởi động #16–17
+
+Theo quyết định của PO (không viện dẫn rule 5 của `CLAUDE.md` — rule đó chỉ nói về đổi tên cho nhất quán, không phải thẩm quyền thêm nội dung mới; bài học đã ghi ở mục ngày trước). Thêm hai bước kiểm khởi động (ADR-023, Lớp 2) vào bảng đã có ở mục Bước kiểm khởi động của `06-structure.md`, đúng nguyên văn đề xuất `docs/design/proposals/diff-06-structure-startup-checks.md`: bước #16 kiểm `BO19_ENVIRONMENT` có mặt (Chặn), bước #17 kiểm lệch giữa `BO19_ENVIRONMENT` và `operating_mode` khi môi trường khác `prod` (Chặn). **Không** nâng mức bước #15 (giữ "Ghi log", D-009) — ba bước, ba việc, không trộn.
+
+**File sửa:**
+
+| File | Thay đổi |
+|---|---|
+| `06-structure.md` → v0.4 | Bảng Bước kiểm khởi động: +#16, +#17, thêm câu ghi chú ranh giới ba lớp. Header ghi rõ nguồn thẩm quyền là quyết định của PO |
+| `docs/design/proposals/diff-06-structure-startup-checks.md` | Trạng thái → "✅ Đã áp — 2026-09-16" |
+| `11-ops.md` mục 13 | Dòng đề xuất `06-structure.md` → đánh dấu "✅ Đã áp" |
+
+**Còn lại, chưa duyệt:** ba đề xuất — `diff-04-data-object-metadata-tag.md`, `diff-05-api-job-failed-and-reject-error.md`, `migration-0003-trace-id-format.md` — chờ duyệt từng cái một, theo đúng thứ tự PO chọn.

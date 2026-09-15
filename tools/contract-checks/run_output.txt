@@ -1,0 +1,16 @@
+﻿schema.sql sha256: 0ce8ddeeb0fda9df246733af1670c0dd2f70c9dea18d4220149c8a5e05f63e82
+PostgreSQL: PostgreSQL 16.2 on x86_64-pc-mingw64, compiled by gcc.exe (x86_64-posix-seh-rev2, Built by MinGW-W64 project) 12.2.0, 64-bit
+INFO bo19_migrator tạo extension vector: BỊ TỪ CHỐI | permission denied to create extension "vector"
+Đã dựng: extension → schema.sql → setup() → quyền thư viện
+pgvector: 0.6.2
+Bảng trong public: 49
+checkpoint_migrations max(v): 9
+KIỂM THÊM ĐẠT | bo19_app không sở hữu bảng nào
+KIỂM THÊM ĐẠT | mọi bảng của schema.sql do bo19_migrator sở hữu
+KIỂM THÊM ĐẠT | giao dịch READ ONLY chặn UPDATE có quyền
+KIỂM THÊM ĐẠT | số chiều embedding đọc từ catalog = 1024
+KIỂM THÊM ĐẠT | bo19_app put rồi delete_thread: 1 → 0
+KIỂM THÊM ĐẠT | bo19_app gọi setup() bị từ chối
+Kiểm phủ định — từ chối đúng: 169
+Kiểm khẳng định — cho phép đúng: 63
+Lệch: 0
