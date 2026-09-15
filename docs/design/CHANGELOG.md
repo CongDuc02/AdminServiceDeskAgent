@@ -1537,3 +1537,39 @@ Tiền lệ Phase 5: giữ `☐` khi còn đúng một mục hở. Ba câu hỏi
 - Không mã lỗi mới nào được bịa ở taxonomy mục 7 của `10-eval.md` — toàn bộ lấy lại từ `03-agents.md`, `04-data.md` (ADR-019), `08-hitl.md`.
 - Không con số ngưỡng nào được đặt ở mục Regression gate — nơi cần số đều ghi `TBD` và trỏ về giả định mới.
 - Hai câu hỏi mở giao cho Phase 10 (hạ tier, chọn embedding model) đều dừng ở phương pháp, không ra kết quả — đúng lựa chọn của anh.
+
+---
+
+## 2026-09-15 — Phase 11: Ops, Cost & Deployment
+
+**Tạo mới**
+
+- `docs/design/11-ops.md` — môi trường Render (dev/staging/prod, ánh xạ nguyên vẹn theo `02-architecture.md`), quan hệ `operating_mode` ↔ môi trường deploy, retry/backoff và job lỗi vĩnh viễn (đất trống, thiết kế mới), migration (đóng A-060), backup & restore (đất trống hoàn toàn, thiết kế mới), observability (log schema, metric taxonomy, bổ sung hai chỗ quan sát chưa có mã ADR), dashboard SLA & tồn đọng, mô hình chi phí LLM (công thức thuần biến số, không số ví dụ), ngưỡng cảnh báo & cơ chế cắt chi phí, định cỡ A-022.
+- `docs/design/decisions/ADR-022-migrate-qua-ci-pipeline.md` — migrate chạy ở CI pipeline, không qua thao tác one-off của Render. Đóng A-060.
+
+**Bốn quyết định trực tiếp của anh, đã áp vào `11-ops.md`**
+
+1. Ngữ cảnh chạy `migrate`: **CI pipeline** (ADR-022), không phải Render one-off Job/Shell.
+2. Backup & restore: **chỉ dựa managed backup** của Render + versioning của `object_storage` (đã là yêu cầu mua sắm ở A-024) — không tự dựng thêm lớp `pg_dump` định kỳ độc lập.
+3. Môi trường `staging`/`dev`: **bắt buộc `NON_PRODUCTION`** theo chính sách cấp quyền (không ai được `operating_mode.change` ở hai môi trường đó) — không phải ràng buộc bằng schema.
+4. Định cỡ A-022: **đề xuất giá trị khởi tạo nhãn "chưa hiệu chỉnh"** — `R = 3`, trần token 4.000/lời gọi, 64.000/`request` (phía `drafting_agent`) — thay vì để hoàn toàn `TBD`.
+
+**File sửa**
+
+| File | Thay đổi |
+|---|---|
+| `ASSUMPTIONS.md` → 0.23 | A-060 → **Đã chốt** (ADR-022); A-022 → **Thu hẹp** (giá trị khởi tạo đã gán, phần `chat_session` còn `Mở`); **A-066 mới** (diễn tập khôi phục, owner người triển khai) |
+| `_PLAN.md` | Phase 11 → `☐` — chờ anh duyệt |
+
+**Không đổi:** `GLOSSARY.md` — phase này không thêm entity/agent/node/tool/API mới cần định danh chuẩn hoá; dashboard SLA & tồn đọng tái dùng endpoint đã có, không mở endpoint mới (một gap được ghi nhận, không tự vá — xem dưới).
+
+**Phát hiện, không tự sửa:**
+
+- `GLOSSARY.md` mục Enum khác vẫn ghi `document_halt.reason_code` là "Chờ Phase 8", nhưng `08-hitl.md` (đã đóng) đã liệt đủ sáu giá trị. Promote-vào-GLOSSARY mà Phase 8 chưa làm — không thuộc phạm vi Phase 11, đề nghị xử lý ở Phase 13 hoặc một lượt sửa riêng cho Phase 8.
+- `05-api.md` không có endpoint tổng hợp (aggregate count) cho dashboard SLA & tồn đọng theo `request_type` × trạng thái — đề xuất cho một bản sửa Phase 5, không tự thêm endpoint ở Phase 11.
+
+### Tự kiểm lại
+
+- Không số liệu giá token hay benchmark nào được bịa — mô hình chi phí ở mục 8 của `11-ops.md` thuần biến số; các số đề xuất ở mục Định cỡ A-022 đều gắn nhãn "chưa hiệu chỉnh" và có lý do suy luận, cùng khuôn A-014/A-017 đã dùng trước đó.
+- Không thiết kế lại state machine, schema, hay cơ chế `halt_for_human` — mọi mục tái sử dụng đều dẫn chiếu theo tên mục, không chép lại nội dung.
+- ADR-022 có phương án bị loại (Render one-off) với lý do loại riêng, không gộp vào Decision.
