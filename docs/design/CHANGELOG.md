@@ -1542,34 +1542,43 @@ Tiền lệ Phase 5: giữ `☐` khi còn đúng một mục hở. Ba câu hỏi
 
 ## 2026-09-15 — Phase 11: Ops, Cost & Deployment
 
+Phase này trải qua nhiều vòng duyệt trong cùng một phiên — bản đầu có bốn lỗi thật (không phải khác cách đọc) bị bắt và sửa trước khi chốt. Mục này ghi **trạng thái cuối**, không ghi từng vòng.
+
 **Tạo mới**
 
-- `docs/design/11-ops.md` — môi trường Render (dev/staging/prod, ánh xạ nguyên vẹn theo `02-architecture.md`), quan hệ `operating_mode` ↔ môi trường deploy, retry/backoff và job lỗi vĩnh viễn (đất trống, thiết kế mới), migration (đóng A-060), backup & restore (đất trống hoàn toàn, thiết kế mới), observability (log schema, metric taxonomy, bổ sung hai chỗ quan sát chưa có mã ADR), dashboard SLA & tồn đọng, mô hình chi phí LLM (công thức thuần biến số, không số ví dụ), ngưỡng cảnh báo & cơ chế cắt chi phí, định cỡ A-022.
-- `docs/design/decisions/ADR-022-migrate-qua-ci-pipeline.md` — migrate chạy ở CI pipeline, không qua thao tác one-off của Render. Đóng A-060.
+- `docs/design/11-ops.md` — môi trường Render (dev/staging/prod), ba lớp khoá `operating_mode` theo môi trường (ADR-023), retry/backoff và job lỗi vĩnh viễn, migration (đóng A-060), backup & restore (đất trống hoàn toàn trước phase này — đối soát sau khôi phục, cơ chế đẩy `document_register_counter` thay vì chèn lại entry đã gãy vì FK), observability (bổ sung nhiều chỗ quan sát mới), dashboard SLA & tồn đọng, mô hình chi phí LLM (công thức thuần biến số), ngưỡng cảnh báo & cơ chế cắt chi phí, định cỡ A-022.
+- `docs/design/decisions/ADR-022-migrate-qua-ci-pipeline.md` — migrate qua CI pipeline. Đóng A-060.
+- `docs/design/decisions/ADR-023-moi-truong-khoa-operating-mode.md` — ba lớp khoá `operating_mode` theo môi trường (chính sách cấp quyền, bước kiểm khởi động, chặn tại endpoint), áp phép thử J3. Định nghĩa `WARNING` (`GLOSSARY.md`) mở rộng thành danh sách đóng.
+- `docs/design/proposals/diff-06-structure-startup-checks.md`, `diff-04-data-object-metadata-tag.md`, `diff-05-api-job-failed-and-reject-error.md` — ba đề xuất diff chạm phase đã đóng, **chưa áp**, chờ duyệt riêng.
 
-**Bốn quyết định trực tiếp của anh, đã áp vào `11-ops.md`**
+**Bốn lỗi thật bị bắt trong phiên, đã sửa — không phải khác cách đọc**
 
-1. Ngữ cảnh chạy `migrate`: **CI pipeline** (ADR-022), không phải Render one-off Job/Shell.
-2. Backup & restore: **chỉ dựa managed backup** của Render + versioning của `object_storage` (đã là yêu cầu mua sắm ở A-024) — không tự dựng thêm lớp `pg_dump` định kỳ độc lập.
-3. Môi trường `staging`/`dev`: **bắt buộc `NON_PRODUCTION`** theo chính sách cấp quyền (không ai được `operating_mode.change` ở hai môi trường đó) — không phải ràng buộc bằng schema.
-4. Định cỡ A-022: **đề xuất giá trị khởi tạo nhãn "chưa hiệu chỉnh"** — `R = 3`, trần token 4.000/lời gọi, 64.000/`request` (phía `drafting_agent`) — thay vì để hoàn toàn `TBD`.
+1. **Trần token/`request` tính worst-case chỉ phía `drafting_agent` (64.000) rồi đặt thẳng làm trần cho cả `request`**, trong khi `ai_gateway` cộng dồn cả phần `intake_agent` chạy sau `request_open` vào cùng budget đó (mục Agent Registry của `03-agents.md`) — dư địa bằng 0 phía intake, chạm trần oan. Sửa: tách rõ hai loại — **cận trên cứng** (drafting, có `R` enforce) và **kích cỡ điển hình** (intake, không có trần lượt cho `ASK_SLOT`) — không gộp một loại.
+2. **`clarification_count` (state của `intake_graph`) không có cơ chế reset** — chỉ tăng ở cạnh `route_intent → ask_clarification`, cộng dồn suốt `chat_session`. Một phiên bình thường nhiều `request` nối tiếp có thể bị chuyển hướng "liên hệ trực tiếp" — đúng thứ NFR-04 cấm, và làm hỏng phép đo M3 ở UAT. Ghi thành **A-068**, không tự sửa `03-agents.md` (phase đã đóng).
+3. **Đối soát sau khôi phục PostgreSQL** (thiết kế lần đầu) dựa vào phân biệt object trong `object_storage` bằng khoá — khoá không mang thông tin đó, không đối soát được; và cách "chèn lại `document_register_entry`" bị FK (`document_id`, `issue_decision_id`) từ chối vì `document`/`decision_record` liên quan cũng đã mất theo cùng lần restore. Sửa: đề xuất object metadata (diff riêng, chờ duyệt Phase 4) cho việc phân biệt; thay chèn-lại-entry bằng đẩy `document_register_counter.next_seq` vượt số đã dùng thật — chấp nhận một loại "lỗ hổng số" mới, ngoài cơ chế `VOIDED` đã có, ghi thành **RISK-08**.
+4. **"GLOSSARY không đổi" bị khẳng định sai hai lần** trong phiên (bỏ sót thuật ngữ cho cờ `job_failed`; bỏ sót thao tác có tên `operating_mode_transition_reject`). Cả hai gộp vào lượt sửa GLOSSARY cho Phase 8, cùng với `document_halt.reason_code` chưa promote và `notification.event_code` (danh mục **chưa từng tồn tại**, xác nhận bằng grep ba nguồn, không chỉ chưa promote).
+
+**Quyết định trực tiếp của PO, đã áp**
+
+1. Migrate qua **CI pipeline** (ADR-022).
+2. Backup & restore: chỉ dựa managed backup của Render + versioning `object_storage` — không tự dựng `pg_dump` định kỳ.
+3. `staging`/`dev` bắt buộc `NON_PRODUCTION` bằng **ba lớp** (ADR-023), không chỉ chính sách cấp quyền.
+4. Định cỡ A-022 với giá trị khởi tạo nhãn "chưa hiệu chỉnh", đã khoá sau khi sửa bốn lỗi trên: `R=3`, `V=1`, trần/lời gọi (`drafting` 4.000, `classify_intent` 1.500, `extract_slots` 3.500, `select_procedure_passages` 6.000, `embed_query` 500), **trần `request` TỔNG = 92.000** (khoá). Trần `chat_session`: **32.000 đang hiệu lực**, 46.500 tự động áp khi A-068 đóng theo phương án (b') — không khoá, phụ thuộc A-068.
+5. Cột **"Người chấp nhận"** thêm thật vào bảng Risk register của `01-prd.md` (không chôn vào văn xuôi Residual risk — đúng chẩn đoán "trùng lặp là triệu chứng" đã dùng cho Owner/Hạn của `ASSUMPTIONS.md`, mục ngày 2026-09-12).
 
 **File sửa**
 
 | File | Thay đổi |
 |---|---|
-| `ASSUMPTIONS.md` → 0.23 | A-060 → **Đã chốt** (ADR-022); A-022 → **Thu hẹp** (giá trị khởi tạo đã gán, phần `chat_session` còn `Mở`); **A-066 mới** (diễn tập khôi phục, owner người triển khai) |
-| `_PLAN.md` | Phase 11 → `☐` — chờ anh duyệt |
+| `ASSUMPTIONS.md` → 0.24 | A-022 → số cuối đã khoá (mục trên); A-060 → Đã chốt (ADR-022); A-031 → thêm mốc F6 cho `classify_intent`/`extract_slots` (mốc ma sát, không phải mốc vỡ) + job retry defaults; **A-066, A-067, A-068 mới** |
+| `01-prd.md` → 0.10 | **RISK-08 mới**; cột **"Người chấp nhận"** thêm vào cả 8 dòng (7 dòng cũ để `—`, không bịa tên) |
+| `_PLAN.md` | Phase 11 giữ `☐` — PO đánh dấu, không phải trợ lý |
 
-**Không đổi:** `GLOSSARY.md` — phase này không thêm entity/agent/node/tool/API mới cần định danh chuẩn hoá; dashboard SLA & tồn đọng tái dùng endpoint đã có, không mở endpoint mới (một gap được ghi nhận, không tự vá — xem dưới).
-
-**Phát hiện, không tự sửa:**
-
-- `GLOSSARY.md` mục Enum khác vẫn ghi `document_halt.reason_code` là "Chờ Phase 8", nhưng `08-hitl.md` (đã đóng) đã liệt đủ sáu giá trị. Promote-vào-GLOSSARY mà Phase 8 chưa làm — không thuộc phạm vi Phase 11, đề nghị xử lý ở Phase 13 hoặc một lượt sửa riêng cho Phase 8.
-- `05-api.md` không có endpoint tổng hợp (aggregate count) cho dashboard SLA & tồn đọng theo `request_type` × trạng thái — đề xuất cho một bản sửa Phase 5, không tự thêm endpoint ở Phase 11.
+**Rà A-024/D-009 cho cột "Người chấp nhận" mới:** A-024 chỉ đòi tên người chấp nhận **có điều kiện** (nếu không nhà cung cấp nào đáp ứng) — chưa có dòng Risk register nào được tạo cho nó, không có gì để điền lúc này. D-009 dùng cơ chế ký khác (`operating_mode_change.decided_by_employee_id`), không phải cột này. Không tìm thấy dòng nào khác đang thiếu tên đã hứa.
 
 ### Tự kiểm lại
 
-- Không số liệu giá token hay benchmark nào được bịa — mô hình chi phí ở mục 8 của `11-ops.md` thuần biến số; các số đề xuất ở mục Định cỡ A-022 đều gắn nhãn "chưa hiệu chỉnh" và có lý do suy luận, cùng khuôn A-014/A-017 đã dùng trước đó.
-- Không thiết kế lại state machine, schema, hay cơ chế `halt_for_human` — mọi mục tái sử dụng đều dẫn chiếu theo tên mục, không chép lại nội dung.
-- ADR-022 có phương án bị loại (Render one-off) với lý do loại riêng, không gộp vào Decision.
+- Không số liệu giá token/benchmark nào bị bịa — mô hình chi phí ở mục 8 của `11-ops.md` thuần biến số; mọi số ở mục Định cỡ A-022 gắn nhãn "chưa hiệu chỉnh" kèm lý do suy luận (cùng khuôn A-014/A-017), và mỗi thành phần gắn nhãn loại (cận trên cứng / kích cỡ điển hình) để không ai hiệu chỉnh nhầm loại.
+- Không thiết kế lại state machine, schema, hay `halt_for_human` — ba thay đổi cần chạm phase đã đóng đều nằm ở đề xuất diff riêng, chưa áp.
+- A-068 không tự sửa `03-agents.md` — ghi thành giả định, owner là đợt sửa riêng do PO khởi động, không phải "Phase 3" (đã đóng, không ai nhặt) hay "Người triển khai" (sai vai — việc còn lại là viết thiết kế, không phải xác minh hạ tầng).
+- ADR-022 và ADR-023 đều có phương án bị loại với lý do loại riêng biệt cho từng phương án, không gộp.
