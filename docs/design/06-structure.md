@@ -1,6 +1,6 @@
 # Project Structure — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.2 · **Trạng thái:** Đã duyệt ở vòng duyệt Phase 6 · **v0.2:** Open Questions sau các phép B1 → B4; mục 9.4 về bộ kiểm trong repo; `tools/` trong cây gốc — mục ngày 2026-09-13 (lần 9) của `CHANGELOG.md` · **v0.3:** Open Questions sau phép bổ sung — mục ngày 2026-09-14
+**Phiên bản:** 0.4 · **Trạng thái:** Đã duyệt ở vòng duyệt Phase 6 · **v0.2:** Open Questions sau các phép B1 → B4; mục 9.4 về bộ kiểm trong repo; `tools/` trong cây gốc — mục ngày 2026-09-13 (lần 9) của `CHANGELOG.md` · **v0.3:** Open Questions sau phép bổ sung — mục ngày 2026-09-14 · **v0.4:** thêm bước kiểm khởi động #16–17 (ADR-023, Phase 11) — quyết định của PO khi duyệt đề xuất diff riêng, không phải một hệ quả của luật 5 (đổi tên cho nhất quán) trong `CLAUDE.md`; mục ngày 2026-09-16 của `CHANGELOG.md`
 
 > File này chốt cây thư mục của backend và frontend, luật "được import gì, cấm import gì" kèm **thứ gì chặn vi phạm**, entrypoint và cách chạy trên Render, bước kiểm khởi động, trình tự migration so với checkpointer, và kết quả xác minh contract DDL. File này **không** chứa implementation (DESIGN MODE — mục Chế độ làm việc hiện tại của `CLAUDE.md`). Hai khối `.importlinter` và `Dockerfile` bên dưới là **đặc tả**, không phải file. File này cũng **không** thiết kế màn hình tiếp quản hay quy tắc hiển thị theo độ nhạy (Phase 8), AuthZ chi tiết và quản lý secret (Phase 9), và **không** định cỡ tham số vận hành (Phase 11).
 
@@ -429,6 +429,10 @@ Chạy trước khi tiến trình phục vụ request hay giành job đầu tiê
 | 13 | Múi giờ của tổ chức có trong cấu hình | ✔ | ✔ | ✔ | **Chặn** — `issued_date` và kỳ đánh số phụ thuộc nó | A-041 |
 | 14 | `object_storage` với tới được | ✔ | ✔ | — | Cảnh báo — sự cố tạm thời không được làm tiến trình khởi động lại liên tục; thao tác hỏng lúc dùng trả `FILE_UNAVAILABLE` hoặc job thử lại | ADR-014 |
 | 15 | `operating_mode` hiện hành | ✔ | ✔ | — | Ghi log — chưa có dòng nào là `NON_PRODUCTION` | D-009 |
+| 16 | Biến môi trường `BO19_ENVIRONMENT` có mặt, giá trị ∈ `{dev, staging, prod}` | ✔ | ✔ | ✔ | **Chặn** — thiếu biến này không được mặc định thành `prod` (fail-closed) | ADR-023 |
+| 17 | Nếu `BO19_ENVIRONMENT ≠ prod`: `operating_mode` hiện hành (đọc cùng nguồn với bước #15) phải là `NON_PRODUCTION` | ✔ | ✔ | — | **Chặn** khi lệch | ADR-023 |
+
+Bước #16–17 (ADR-023, Phase 11) là lớp thứ hai trong ba lớp khoá `operating_mode` theo môi trường — không thay thế bước #15 (D-009, chỉ ghi log), và không thay thế chính sách cấp quyền hay chặn tại endpoint (`POST /operating-mode/transitions`, mục Endpoint của `05-api.md` sau khi diff riêng cho file đó được duyệt).
 
 ---
 

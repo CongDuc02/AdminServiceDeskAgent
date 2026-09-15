@@ -1,6 +1,6 @@
 # Đề xuất diff — `06-structure.md`, mục Bước kiểm khởi động
 
-**Trạng thái:** Chờ duyệt · **Nguồn:** ADR-023 (Phase 11) · **Không tự áp** — `06-structure.md` là phase đã đóng (☑ ở `_PLAN.md`)
+**Trạng thái:** ✅ Đã áp — 2026-09-16, PO duyệt · **Nguồn:** ADR-023 (Phase 11) · Xem `06-structure.md` mục Bước kiểm khởi động (v0.4) và mục ngày 2026-09-16 của `CHANGELOG.md`
 
 ---
 

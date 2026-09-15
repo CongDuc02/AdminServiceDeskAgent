@@ -1,12 +1,12 @@
 # Ops, Cost & Deployment — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.2 · **Trạng thái:** Draft chờ duyệt
+**Phiên bản:** 0.4 · **Trạng thái:** Draft chờ duyệt
 
-> File này chốt vận hành trên Render: môi trường dev/staging/prod, cold start, worker nền, cron, migration, backup & restore, observability, dashboard SLA & tồn đọng, mô hình chi phí LLM, ngưỡng cảnh báo & cơ chế cắt chi phí, và định cỡ A-022. File này **không** thiết kế lại state machine, schema DB, endpoint API, hay `halt_for_human` — chỉ tham chiếu và bổ sung phần vận hành chưa phase nào chạm tới. Ba thay đổi cần chạm phase đã đóng (`06-structure.md`, `04-data.md`, `05-api.md`/`openapi.yaml`) được viết thành **đề xuất diff riêng**, không tự áp — xem mục 13.
+> File này chốt vận hành trên Render: môi trường dev/staging/prod, cold start, worker nền, cron, migration, backup & restore, observability, dashboard SLA & tồn đọng, mô hình chi phí LLM, ngưỡng cảnh báo & cơ chế cắt chi phí, và định cỡ A-022. File này **không** thiết kế lại state machine, schema DB, endpoint API, hay `halt_for_human` — chỉ tham chiếu và bổ sung phần vận hành chưa phase nào chạm tới. Bốn thay đổi cần chạm phase đã đóng (`06-structure.md`, `04-data.md` ×2, `05-api.md`/`openapi.yaml`) được viết thành **đề xuất diff riêng**, không tự áp — xem mục 13.
 
 Tên entity, trạng thái, permission, agent, node, tool, component dùng đúng `GLOSSARY.md`. Quyết định `D-xxx`/`A-xxx` tham chiếu `00-domain.md` và `ASSUMPTIONS.md`.
 
-**Đã đối chiếu:** `CLAUDE.md`, `_PLAN.md`, `GLOSSARY.md`, `ASSUMPTIONS.md`, `00-domain.md`, `01-prd.md`, `02-architecture.md`, `03-agents.md`, `04-data.md`, `05-api.md`, `06-structure.md`, `07-prompts.md`, `08-hitl.md`, `09-security.md`, `10-eval.md`, `decisions/ADR-001` → `ADR-023`.
+**Đã đối chiếu:** `CLAUDE.md`, `_PLAN.md`, `GLOSSARY.md`, `ASSUMPTIONS.md`, `00-domain.md`, `01-prd.md`, `02-architecture.md`, `03-agents.md`, `04-data.md`, `05-api.md`, `06-structure.md`, `07-prompts.md`, `08-hitl.md`, `09-security.md`, `10-eval.md`, `decisions/ADR-001` → `ADR-024`.
 
 ---
 
@@ -148,7 +148,22 @@ Ai chịu trách nhiệm và tần suất — `TBD` (A-066).
 
 ### 6.1 Log schema
 
-Log JSON có cấu trúc ra stdout (mục `observability` của `02-architecture.md`). Mọi dòng: `trace_id` (cùng `llm_usage.trace_id`), `component`, `level`, `message` qua handler mask duy nhất (bước kiểm khởi động #10; quy tắc mask ở mục Mask trong log kỹ thuật của `09-security.md`). Khác `audit_event`: log kỹ thuật xoay vòng theo retention kỹ thuật (`TBD`, `[CẦN XÁC MINH]`), `audit_event` không bao giờ.
+Log JSON có cấu trúc ra stdout (mục `observability` của `02-architecture.md`). Mọi dòng: `trace_id`, `component`, `level`, `message` qua handler mask duy nhất (bước kiểm khởi động #10; quy tắc mask ở mục Mask trong log kỹ thuật của `09-security.md`). Khác `audit_event`: log kỹ thuật xoay vòng theo retention kỹ thuật, `audit_event` không bao giờ. Retention kỹ thuật — `TBD`, ghi thành **A-070** (mục 12 của `ASSUMPTIONS.md`), không để trống không ID.
+
+**Quy ước bổ sung — nguồn dữ liệu cho mục 6.3, không phải trang trí:** mọi lời gọi `tool_layer` và mọi truy vấn `persistence` trên đường nóng được nêu đích danh ở mục 6.3 ghi kèm `duration_ms` trong log kỹ thuật, gắn `trace_id`. Đây là quy ước log — thuộc phạm vi thiết kế của Phase 11 (`observability`), không đụng schema hay contract nào đã đóng. Cụ thể, bốn điểm đo **mới** cần thêm để mục 6.3 có nguồn thật (không chỉ áp cho các lời gọi đã hiển nhiên có `duration_ms`):
+
+1. Bước giành khoá (`SELECT ... FOR UPDATE SKIP LOCKED`) của `queue_worker` và bước tăng `document_register_counter` — mỗi bước log `duration_ms` **riêng**, tách khỏi thời lượng xử lý job/thời lượng giao dịch cấp số nói chung.
+2. `api` giữ một bộ đếm trong tiến trình (cùng khuôn "bộ giám sát lượt" của mục Cấu trúc dự án trong `GLOSSARY.md`) cho số connection stream tín hiệu đang mở, log định kỳ dưới dạng gauge.
+3. Endpoint tải file (`stored_file_fetch` và chiều tải lên) log `duration_ms` cùng kích thước file.
+4. Với lời gọi trả về một tập hợp có kích thước thay đổi (`extract_slots`), `ai_gateway` log thêm trường đếm số phần tử (`output_item_count`) — **không** phải cột mới trong `llm_usage` (vẫn cấm theo ADR-019), chỉ một trường log, vì `ai_gateway` vốn đã đọc cấu trúc JSON để ép schema nên biết số phần tử mà không cần lưu nội dung.
+
+**Giới hạn của quy ước này, nói thẳng:** nó cho nguồn ở mức **một lời gọi/một tiến trình**. Nó **không** cho được các chỉ số tổng hợp ở mức server (tỷ trọng IO của một loại truy vấn trên **tổng tải** `postgresql`) — hai tín hiệu như vậy ở mục 6.3 (ADR-004(c), một nửa ADR-013) cần `pg_stat_statements` hoặc bảng điều khiển giám sát của chính PostgreSQL managed trên Render, cùng họ chưa xác minh với A-030. Ghi rõ ở mục 6.3, không giả vờ đã có.
+
+**Định dạng `trace_id` — chốt bằng ADR-024, đóng câu bỏ ngỏ của ADR-019** (*"Thêm `CHECK` hình dạng cần định dạng của `trace_id`, mà chưa phase nào chốt — không bịa ở đây"*): **UUID v4, chữ thường, có gạch nối** (`8-4-4-4-12` hex, ví dụ `550e8400-e29b-41d4-a716-446655440000`) — cùng khuôn mọi khoá chính `uuid` khác trong `schema.sql`, không cần thư viện hay quy ước mới. Sinh **một lần cho mỗi đơn vị công việc** tại điểm vào: một lần cho mỗi request HTTP của `api` (một lượt chat, dù chạy ở task tách khỏi request theo ADR-016, vẫn sinh `trace_id` khi task bắt đầu — không tái dùng qua nhiều lượt); một lần cho mỗi lượt job của `queue_worker`. Truyền xuyên `orchestrator`/`tool_layer`/`ai_gateway` trong cùng đơn vị công việc, ghi vào mọi dòng log, `llm_usage.trace_id`, và `audit_event.trace_id`.
+
+**Có điều kiện đảo ngược — vì vậy là ADR-024, không phải một dòng cấu hình trơn:** công cụ APM chọn ở A-069 có thể ép một định dạng khác (ví dụ W3C Trace Context, 32 hex không gạch nối). Áp phép thử J3: có điều kiện đảo ngược nêu được → cần ADR. A-069 buộc chéo ngược lại ADR-024 — người chọn công cụ APM phải đọc được ràng buộc này trước khi chọn, không phát hiện xung đột sau khi đã chọn.
+
+**Kéo theo một `CHECK` mới trên `llm_usage.trace_id`, ở đúng hiện vật của nó — một migration, không phải sửa `contracts/schema.sql` đã đóng:** đề xuất `backend/migrations/schema/0003_observability_trace_id.sql`, chưa áp (mục 13, đúng tiền lệ Phase 9 — thay đổi DB đi vào migration mới, `contracts/schema.sql` giữ nguyên trạng đóng Phase 6).
 
 ### 6.2 Metric taxonomy
 
@@ -156,24 +171,48 @@ Log JSON có cấu trúc ra stdout (mục `observability` của `02-architecture
 |---|---|---|
 | Nghiệp vụ | Số `request`/`document` theo trạng thái, `request_type`; `sla_breached`; tỷ lệ tự duyệt | `postgresql` |
 | Chi phí | Token theo `request_type`, `outcome`; số lời gọi/`document` so với cận trên | `llm_usage` |
-| Độ tin cậy | Tỷ lệ job `SUCCEEDED`/`FAILED` theo `job_type`; độ trễ dispatch; độ trễ lease | `job` |
+| Độ tin cậy | Tỷ lệ job `SUCCEEDED`/`FAILED` theo `job_type`; độ trễ dispatch **tách theo `job_type`**; độ trễ lease | `job` |
 | Cổng & dừng | Tỷ lệ `document_halt` theo `reason_code`; thời lượng `IN_REVIEW`/`PENDING_SIGNATURE`/`PENDING_SEAL` | `document_halt`, `decision_record` |
 | Bảo mật | Số lần `rate_limit` chặn; số `INVALID_CREDENTIALS`; số lần Lớp 3 (ADR-023) từ chối | `rate_limit_window`, log kỹ thuật, `audit_event` |
 | Hạ tầng | Cold start `api`; độ trễ `soffice`; độ trễ upload `object_storage` | `observability`, đo trực tiếp |
 
-Công cụ APM/metric cụ thể: `TBD` (A-002).
+Đây là bảng **minh hoạ theo nhóm**, không phải danh sách đầy đủ — danh sách đầy đủ, đối chiếu từng tín hiệu của `_PLAN.md`, ở mục 6.3.
 
-### 6.3 Chỗ quan sát cho điều kiện đảo ngược — bổ sung của phase này
+**Công cụ APM/metric cụ thể — không phải một TBD chờ A-002 trả lời.** A-002 là số liệu vận hành (số nhân viên, số yêu cầu/tháng) — nó không bao giờ trả lời "dùng công cụ nào", chỉ xác nhận **có đủ tải để việc trả phí cho một công cụ đáng giá hay không**. Việc **chọn** công cụ là một quyết định riêng, ghi thành **A-069** (mục 12 của `ASSUMPTIONS.md`), owner Người triển khai, tiêu chí chọn nêu trong đó — không đội lốt TBD của A-002.
 
-Bảng đầy đủ đã chốt ở `_PLAN.md` (ADR-002, 004, 005, 011, 012, 013, 014, 015, 016) — không lặp lại, chỉ dẫn tới đó. Bổ sung các chỗ quan sát mới phát sinh trong phase này:
+### 6.3 Chỗ quan sát cho điều kiện đảo ngược — ánh xạ đầy đủ, đối chiếu từng dòng của `_PLAN.md`
 
-| Tín hiệu | Chỗ phải quan sát được |
-|---|---|
-| Bộ phát hiện thread kẹt dạng (1) — `document` ở trạng thái chờ mà thread không đứng ở `interrupt` tương ứng, không có job resume đang chờ | Đối chiếu `document.status` với `graph_thread.waiting_at_node` và `job` `QUEUED`/`RUNNING` cùng `document_id`; đếm ca lệch |
-| Bộ phát hiện thread kẹt dạng (2) — thread đứng đúng `interrupt` nhưng `request` cha đã kết thúc | Đối chiếu `graph_thread.status = WAITING` với trạng thái kết thúc của `request` cha; đếm ca lệch — lưới an toàn |
-| Token trung bình `classify_intent`, đặt cạnh số `request_type` đang hiệu lực, trên cùng trục thời gian | Trần 1.500/lời gọi là hằng số cấu hình build, không tự co giãn theo F6 — tín hiệu này phát hiện độ trôi trước khi `BUDGET_EXCEEDED` xảy ra |
-| Số lời gọi `extract_slots` trả về đúng `maxItems: 8` (bão hoà), đặt cạnh số slot `USER_INPUT` của `request_type` đang xử lý | Tín hiệu ma sát khai gộp tăng — một loại mới nhiều slot làm nhân viên phải lặp lại thông tin ở lượt sau |
-| Trần token `chat_session` đang dùng giá trị nào (32.000 hay 46.500) | Phụ thuộc A-068 — xem mục 10.4. Tự nó là một chỗ quan sát: nếu A-068 đóng mà cấu hình chưa cập nhật, hệ thống chạy sai giá trị |
+Không lặp lại **nội dung** tín hiệu (đã phát biểu đủ ở `_PLAN.md`) — bảng dưới trả lời đúng câu DoD hỏi: **mỗi tín hiệu có chỗ quan sát trong thiết kế này chưa, và ở đâu.** Chín nhóm ADR, mười ba dòng tín hiệu — không bỏ dòng nào; dòng nào chưa có trước phiên này thì bổ sung ngay, vì đây chính là việc `_PLAN.md` giao cho Phase 11.
+
+**Cột "Nguồn dữ liệu" trả lời đúng câu phải trả lời — metric lấy từ đâu, có thật hay còn là chỗ trống.** Dòng nào không chỉ được nguồn thì ghi thẳng "chưa có nguồn", không giả vờ đã tuân thủ.
+
+| ADR | Tín hiệu (rút gọn) | Chỗ quan sát trong `11-ops.md` | Nguồn dữ liệu |
+|---|---|---|---|
+| ADR-002 | Latency truy vấn nghiệp vụ chậm đúng lúc retrieval tăng | Latency trung bình truy vấn nghiệp vụ thường, đặt cạnh số truy vấn `procedure_retrieval`, cùng trục thời gian | **Có, sau quy ước mục 6.1** — `duration_ms` log trên truy vấn nghiệp vụ đường nóng (ví dụ `request_slots_write`, `request_transition`) + đếm log gọi `procedure_retrieval` |
+| ADR-002 | Reindex embedding làm chậm ghi giao dịch | Thời lượng `procedure_ingest` reindex, cạnh latency ghi giao dịch trong/ngoài cửa sổ | **Có** — `job.started_at`/`finished_at` (reindex) + `duration_ms` log (ghi giao dịch, quy ước mục 6.1) |
+| ADR-004 | Tranh khoá trên bảng `job` | Thời gian chờ khoá trên bảng `job`, tách khỏi độ trễ dispatch | **Có, sau quy ước mục 6.1 (điểm 1)** — `duration_ms` riêng cho bước giành khoá `SKIP LOCKED` |
+| ADR-004 | Độ trễ dispatch không chấp nhận được | Mục 6.2, dòng Độ tin cậy — "độ trễ dispatch, tách theo `job_type`" | **Có** — `job.enqueued_at`/`started_at` |
+| ADR-004 | Vòng poll chiếm IO đáng kể | Tỷ trọng truy vấn/IO do vòng poll `SKIP LOCKED`, trên tổng tải `postgresql` | **Chưa có nguồn** — cần thống kê server-level (`pg_stat_statements` hoặc bảng điều khiển giám sát của Render), `[CẦN XÁC MINH]`, cùng họ A-030. Quy ước log mục 6.1 chỉ cho thời lượng của **một** truy vấn, không cho tỷ trọng trên **tổng tải** |
+| ADR-005 · ADR-016 | Lượt tiến sát hạn chót/shutdown delay | Phân phối thời lượng một lượt `orchestrator` trong `api`, cạnh hạn chót và shutdown delay | **Có** — cặp log bắt đầu/kết thúc lượt cùng `trace_id` (mục 6.1) |
+| ADR-011 | Tranh khoá trên bộ đếm sổ số | Thời gian chờ khoá trên `document_register_counter`, tách theo sổ và dải | **Có, sau quy ước mục 6.1 (điểm 1)** |
+| ADR-012 | Tìm chính xác chậm dần khi kho lớn lên | Latency `procedure_retrieval` và số `procedure_chunk` hiệu lực, cùng trục thời gian | **Có** — `duration_ms` log (điểm 1, mục 6.1) + `COUNT(procedure_chunk) WHERE hiệu lực` |
+| ADR-013 | Vòng poll tín hiệu chiếm tải và connection | Tỷ trọng truy vấn/IO vòng poll stream tín hiệu trên tổng tải `postgresql`, và số connection mở, cạnh trần pool (A-057) | **Một nửa.** Số connection mở: **Có, sau quy ước mục 6.1 (điểm 2)** — gauge trong `api`. Tỷ trọng IO trên tổng tải: **Chưa có nguồn**, cùng lý do ADR-004(c) |
+| ADR-014 | Một lần tải file tiến sát giới hạn thời gian request | Phân phối thời lượng tải file, cạnh kích thước file và giới hạn request (A-025) | **Có, sau quy ước mục 6.1 (điểm 3)** |
+| ADR-015 | Cold start của `api` sau khi có LibreOffice | Đã có — mục 2, không lặp ở đây | **Có** — "đo trực tiếp", đã ở mục 6.2 từ Phase 2 |
+| ADR-015 | Lease `stored_object` so với thời lượng upload | Phân phối thời lượng upload bản render, cạnh độ dài lease, kèm số lần `render_integrity_check` trượt `RENDER_CHECKSUM_MISMATCH` | **Một phần.** Số lần trượt checksum: **Có** — `document_halt WHERE reason_code = 'RENDER_CHECKSUM_MISMATCH'`. Thời lượng upload: **Có, sau quy ước mục 6.1** (cùng điểm 1, mở rộng cho bước upload của `docx_render`/`pdf_export`) |
+| ADR-013 · A-050 | Proxy Render gom đệm stream | Không phải metric liên tục — phép thử một lần | **Không áp dụng** — nguồn là kết quả phép thử thủ công/CI một lần, theo dõi qua hạn A-050, không phải một dòng taxonomy |
+
+**Tổng kết trung thực:** 11/13 dòng có nguồn (một phần hoặc đầy đủ) sau khi mục 6.1 bổ sung bốn điểm đo mới; **2 dòng thật sự chưa có nguồn** — cả hai đều là "tỷ trọng IO trên tổng tải `postgresql`" (ADR-004(c), nửa của ADR-013), cần thống kê ở tầng PostgreSQL/Render mà quy ước log của riêng ứng dụng không tạo ra được. Không che giấu hai dòng này bằng chữ "Mới" mơ hồ như bản trước.
+
+**Bổ sung không gắn ADR, phát sinh trong phase này:**
+
+| Tín hiệu | Chỗ phải quan sát được | Nguồn dữ liệu |
+|---|---|---|
+| Bộ phát hiện thread kẹt dạng (1) | Đối chiếu `document.status` với `graph_thread.waiting_at_node` và `job` `QUEUED`/`RUNNING` cùng `document_id` | **Có** — ba bảng đều tồn tại (`04-data.md`) |
+| Bộ phát hiện thread kẹt dạng (2) | Đối chiếu `graph_thread.status = WAITING` với trạng thái kết thúc của `request` cha | **Có** |
+| Token trung bình `classify_intent`, cạnh số `request_type` đang hiệu lực | Phát hiện độ trôi trước khi `BUDGET_EXCEEDED` (mục 10.3) | **Có** — `llm_usage` (`call_name`, `token`) + `COUNT(request_type WHERE support_status='SUPPORTED')` |
+| Số lời gọi `extract_slots` bão hoà ở `maxItems: 8` | Tín hiệu ma sát khai gộp tăng (mục 10.3) | **Có, sau quy ước mục 6.1 (điểm 4)** — `output_item_count` trong log, không phải cột `llm_usage` |
+| Trần token `chat_session` đang dùng giá trị nào | Phụ thuộc A-068 (mục 10.4) | **Có** — log giá trị cấu hình hiện hành lúc khởi động |
 
 ### 6.4 Alert — nguyên tắc, không bịa ngưỡng
 
@@ -261,7 +300,7 @@ Nguyên tử chi phí (một lời gọi LLM sinh một biến), cận trên `(1
 
 Đây là **một điều kiện đảo ngược có tên** (chỗ quan sát ở mục 6.3): trần build với 32.000 nếu A-068 chưa đóng khi build; đổi sang 46.500 ngay khi A-068 đóng theo (b') — cấu hình phải cập nhật cùng lúc, không trễ.
 
-**Phương án (b') — đề xuất cho đợt sửa `03-agents.md` riêng (không thuộc Phase 11):** reset `clarification_count = 0` tại `load_turn`, khi node phát hiện `request` trước đó của phiên đã đạt một trong các trạng thái: `SUBMITTED`, `IN_REVIEW`, `CHANGES_REQUESTED`, `APPROVED`, `FULFILLED`, `REJECTED` (đích danh — không dùng chữ "kết thúc"). **Không bao giờ** reset khi trạng thái là `CANCELLED` hoặc `EXPIRED` — cả hai không phải một kết quả nhân viên đạt được, và `CANCELLED` từ `DRAFT` (đổi loại giữa chừng, EC-CV-02) không được phép cấp lại ngân sách miễn phí. Đã rà đủ 10 trạng thái của `request` (mục Trạng thái `request` của `GLOSSARY.md`), không còn trạng thái nào ở vùng xám. `load_turn` đã đọc sẵn điều kiện tương tự (bảng cạnh điều kiện, mục `6.3` của `03-agents.md`: *"request đã gửi, đã đóng hoặc hết hạn"*) — thêm nhánh reset là mở rộng logic đã có, không phải khớp nối mới; phương án (a) (reset tại `open_request`) và việc reset trực tiếp tại thời điểm `request_submit` bị loại vì lý do ở A-068.
+**Phương án (b') — đề xuất cho đợt sửa `03-agents.md` riêng (không thuộc Phase 11):** reset `clarification_count = 0` tại `load_turn`, khi node phát hiện `request` trước đó của phiên đã đạt một trong các trạng thái: `SUBMITTED`, `IN_REVIEW`, `CHANGES_REQUESTED`, `APPROVED`, `FULFILLED`, `REJECTED` (đích danh — không dùng chữ "kết thúc"). **Không bao giờ** reset khi trạng thái là `CANCELLED` hoặc `EXPIRED` — cả hai không phải một kết quả nhân viên đạt được, và `CANCELLED` từ `DRAFT` (đổi loại giữa chừng, EC-CV-02) không được phép cấp lại ngân sách miễn phí. **`DRAFT` và `NEEDS_INFO` không nằm ở cả hai danh sách** vì đó là request **chưa kết thúc** — điều kiện reset (đòi trạng thái sau cùng của request trước) không áp dụng cho một request còn đang chạy, không phải bị bỏ sót. Đã rà đủ 10 trạng thái của `request` (mục Trạng thái `request` của `GLOSSARY.md`): 6 trạng thái reset + `CANCELLED`/`EXPIRED` không reset + `DRAFT`/`NEEDS_INFO` không áp dụng = 10, không còn trạng thái nào ở vùng xám. `load_turn` đã đọc sẵn điều kiện tương tự (bảng cạnh điều kiện, mục `6.3` của `03-agents.md`: *"request đã gửi, đã đóng hoặc hết hạn"*) — thêm nhánh reset là mở rộng logic đã có, không phải khớp nối mới; phương án (a) (reset tại `open_request`) và việc reset trực tiếp tại thời điểm `request_submit` bị loại vì lý do ở A-068.
 
 ---
 
@@ -269,6 +308,7 @@ Nguyên tử chi phí (một lời gọi LLM sinh một biến), cận trên `(1
 
 **ADR-022** — Migrate qua CI pipeline, không qua thao tác one-off của Render. Đóng A-060.
 **ADR-023** — Ba lớp khoá `operating_mode` theo môi trường (chính sách cấp quyền, bước kiểm khởi động, chặn tại endpoint).
+**ADR-024** — Định dạng `trace_id`: UUID v4, điều kiện đảo ngược buộc chéo vào A-069. Đóng câu bỏ ngỏ của ADR-019.
 
 ---
 
@@ -293,12 +333,13 @@ Ba thay đổi chạm phase đã đóng, viết thành đề xuất riêng, khô
 
 | Đề xuất | File đích | Nội dung |
 |---|---|---|
-| `docs/design/proposals/diff-06-structure-startup-checks.md` | `06-structure.md` | Hai bước kiểm khởi động mới (Lớp 2 của ADR-023): #16 lệch `BO19_ENVIRONMENT`/`operating_mode` (Chặn), #17 thiếu `BO19_ENVIRONMENT` (Chặn). Không nâng mức bước #15 (giữ "Ghi log") |
+| `docs/design/proposals/diff-06-structure-startup-checks.md` | `06-structure.md` | **✅ Đã áp (2026-09-16).** Hai bước kiểm khởi động mới (Lớp 2 của ADR-023): #16 lệch `BO19_ENVIRONMENT`/`operating_mode` (Chặn), #17 thiếu `BO19_ENVIRONMENT` (Chặn). Không nâng mức bước #15 (giữ "Ghi log") |
 | `docs/design/proposals/diff-04-data-object-metadata-tag.md` | `04-data.md` | Gắn object metadata (`pin_reason`, `document_number`) lúc ghim bản `ISSUED` — phục vụ đối soát sau khôi phục (mục 5.2(b)) |
 | `docs/design/proposals/diff-05-api-job-failed-and-reject-error.md` | `05-api.md`, `contracts/openapi.yaml` | Trường `job_failed` trên `GET /review-queue`/`GET /issue-queue`; mã lỗi mới cho Lớp 3 (ADR-023) từ chối |
+| `docs/design/proposals/migration-0003-trace-id-format.md` | `backend/migrations/schema/0003_observability_trace_id.sql` (mới) + câu mô tả ở `04-data.md` — **không** sửa `contracts/schema.sql` | `CHECK` hình dạng UUID v4 trên `llm_usage.trace_id` (ADR-024) — đóng câu bỏ ngỏ của ADR-019 (mục 6.1) |
 
 ---
 
 ## Open Questions
 
-Không có câu hỏi mở chỉ tồn tại trong file này. Giả định liên quan: A-022 (thu hẹp, mục 10), A-025, A-031 (mốc F6 mới, mục 10.3), A-041, A-057, A-059, A-060 (đóng), A-062, A-063, A-065, A-066 (mới), **A-067 (Mở — ba vế secret CI)**, **A-068 (mới, Mở — reset `clarification_count`, phương án (b'), owner đợt sửa `03-agents.md` riêng do PO khởi động, hạn trước buổi UAT vì làm hỏng M3)**, A-024 (vẫn `Mở`) — xem `ASSUMPTIONS.md`.
+Không có câu hỏi mở chỉ tồn tại trong file này. Giả định liên quan: A-022 (thu hẹp, mục 10), A-025, A-031 (mốc F6 mới, mục 10.3), A-041, A-057, A-059, A-060 (đóng), A-062, A-063, A-065, A-066 (mới), **A-067 (Mở — ba vế secret CI)**, **A-068 (Mở — reset `clarification_count`, phương án (b'), owner đợt sửa `03-agents.md` riêng do PO khởi động, hạn trước buổi UAT vì làm hỏng M3)**, **A-069 (mới, Mở — chọn công cụ APM, không phải A-002 "trả lời")**, **A-070 (mới, Mở — retention log kỹ thuật, cân nhắc Nghị định 13/2023/NĐ-CP)**, A-024 (vẫn `Mở`) — xem `ASSUMPTIONS.md`. Bốn đề xuất diff chờ duyệt riêng — mục 13.

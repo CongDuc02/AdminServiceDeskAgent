@@ -15,7 +15,7 @@ Chạy **tuần tự, mỗi phase một phiên Claude Code mới** (tránh conte
 | 8   | HITL & Approval Workflow    | `08-hitl.md`                          | 3, 4      | ☑          |
 | 9   | Security & Guardrails       | `09-security.md`                      | 5, 8      | ☑          |
 | 10  | Evaluation Framework        | `10-eval.md`                          | 3, 7      | ☑          |
-| 11  | Ops, Cost & Deployment      | `11-ops.md`                           | tất cả    | ☐          |
+| 11  | Ops, Cost & Deployment      | `11-ops.md`                           | tất cả    | ☑          |
 | 12  | Roadmap                     | `12-roadmap.md`                       | tất cả    | ☐          |
 | 13  | Consistency Audit           | `13-audit.md`                         | tất cả    | ☐          |
 
