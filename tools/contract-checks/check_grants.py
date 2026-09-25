@@ -4,9 +4,13 @@
 KHÔNG phải mã ứng dụng. Không đóng gói vào image (Dockerfile chỉ chép backend/ và frontend/).
 Nơi đặt, lý do và khi nào chạy lại: tools/contract-checks/README.md.
 
-Hai chế độ:
+Ba chế độ:
   --local            Dựng PostgreSQL + pgvector tạm bằng pgserver, tạo hai role, áp schema.sql,
                      chạy setup() của checkpointer, cấp quyền thư viện, rồi kiểm.
+  --local-migrated   Như --local, nhưng bước 1 áp lần lượt backend/migrations/schema/*.sql
+                     (0001_initial.sql = schema.sql, rồi 0002, 0003, ...), mỗi file một giao dịch.
+                     Kiểm được bảng và quyền của migration sau schema.sql. Không có sổ
+                     schema_migration và không chạy data migration — không thay migrate_main.
   --app-dsn DSN      Chỉ kiểm, trên một cơ sở dữ liệu đã được migrate (ví dụ Render).
                      Không tạo role, không áp gì. Mọi phép thử dùng WHERE false hoặc giao dịch
                      rollback; TRUNCATE chỉ kiểm bằng has_table_privilege, không thực thi.
@@ -28,6 +32,7 @@ from psycopg.conninfo import conninfo_to_dict, make_conninfo
 
 REPO = Path(__file__).resolve().parents[2]
 SCHEMA = REPO / "docs" / "design" / "contracts" / "schema.sql"
+MIGRATIONS = REPO / "backend" / "migrations" / "schema"
 
 # --- Nhóm quyền — nguồn: mục Nguyên tắc dữ liệu của docs/design/04-data.md -------------------
 # Đổi nhóm ở 04-data.md và schema.sql thì đổi ở đây. Bảng mới không thuộc nhóm nào → lệch.
@@ -51,6 +56,13 @@ COLUMN_UPDATE = {
     "embedding_collection": ["status", "activated_at", "retired_at", "updated_at", "row_version"],
 }
 FULL_LIFECYCLE = ["job"]
+
+# --- Bảng của migration sau schema.sql --------------------------------------------------------
+# Nguồn: GRANT ở mục Migration bổ sung của Phase 9 trong docs/design/09-security.md
+# (backend/migrations/schema/0002_phase9_security.sql), thu hẹp bởi 0005_rate_limit_window_column_grant.sql. --local chỉ áp schema.sql nên các bảng này
+# vắng ở đó — bỏ qua kèm INFO. --local-migrated và --app-dsn chạy trên DB đã migrate đủ nên vắng là lệch.
+MIGRATION_READ_ONLY = ["employee_credential"]       # chỉ SELECT; ghi bằng thao tác vận hành (A-048)
+MIGRATION_COLUMN_UPDATE = {"rate_limit_window": ["attempt_count"]}   # + SELECT, INSERT, DELETE; không TRUNCATE (0005)
 
 # --- Bảng ngoài schema.sql ----------------------------------------------------------------------
 CHECKPOINT_DATA = ["checkpoints", "checkpoint_blobs", "checkpoint_writes"]
@@ -115,7 +127,7 @@ class Report:
             self.mismatch.append(f"{what}: muốn {want}, được {got}")
 
 
-def setup_local(workdir: Path, rep: Report):
+def setup_local(workdir: Path, rep: Report, migrated: bool = False):
     import pgserver  # chỉ cần cho --local
     from langgraph.checkpoint.postgres import PostgresSaver
     from psycopg.rows import dict_row
@@ -143,10 +155,14 @@ def setup_local(workdir: Path, rep: Report):
     # Bước 0 — extension, bằng role có quyền (mục Migration và checkpointer của 06-structure.md).
     with psycopg.connect(su_db, autocommit=True) as c:
         c.execute("create extension if not exists vector")
-    # Bước 1 — schema.sql, bằng bo19_migrator, một giao dịch.
+    # Bước 1 — schema.sql, hoặc mọi file của backend/migrations/schema theo thứ tự; bằng bo19_migrator,
+    # mỗi file một giao dịch (ADR-017).
+    files = sorted(MIGRATIONS.glob("*.sql")) if migrated else [SCHEMA]
     with psycopg.connect(mig) as c:
-        with c.transaction():
-            c.execute(SCHEMA.read_text(encoding="utf-8"))
+        for f in files:
+            with c.transaction():
+                c.execute(f.read_text(encoding="utf-8"))
+            rep.log("Đã áp:", f.relative_to(REPO).as_posix())
     # Bước 2 — setup() của checkpointer, autocommit (docs/reference/langgraph-checkpoint-postgres.md).
     with psycopg.connect(mig, autocommit=True, prepare_threshold=0, row_factory=dict_row) as c:
         PostgresSaver(c).setup()
@@ -154,11 +170,13 @@ def setup_local(workdir: Path, rep: Report):
     with psycopg.connect(mig) as c:
         with c.transaction():
             c.execute(CHECKPOINTER_GRANTS)
-    rep.log("Đã dựng: extension → schema.sql → setup() → quyền thư viện")
+    rep.log("Đã dựng: extension → " + ("migrations/schema/*.sql" if migrated else "schema.sql")
+            + " → setup() → quyền thư viện")
     return srv, app
 
 
-def run_checks(app_dsn: str, rep: Report, migrator_role: str | None, local: bool) -> None:
+def run_checks(app_dsn: str, rep: Report, migrator_role: str | None, local: bool,
+               migrated: bool = True) -> None:
     with psycopg.connect(app_dsn) as a:
         ext = a.execute("select extversion from pg_extension where extname = 'vector'").fetchone()
         rep.log("pgvector:", ext[0] if ext else "KHÔNG CÓ")
@@ -173,12 +191,21 @@ def run_checks(app_dsn: str, rep: Report, migrator_role: str | None, local: bool
         # Độ phủ: mọi bảng thuộc đúng một nhóm; mọi bảng của nhóm tồn tại.
         schema_groups = (READ_ONLY + APPEND_ONLY + INSERT_DELETE + MUTABLE_NO_DELETE
                          + list(COLUMN_UPDATE) + FULL_LIFECYCLE)
-        known = set(schema_groups) | set(CHECKPOINT_DATA) | set(CHECKPOINT_META) | set(LEDGER)
+        migration_groups = MIGRATION_READ_ONLY + list(MIGRATION_COLUMN_UPDATE)
+        known = (set(schema_groups) | set(migration_groups)
+                 | set(CHECKPOINT_DATA) | set(CHECKPOINT_META) | set(LEDGER))
         for t in sorted(tables - known):
             rep.mismatch.append(f"bảng {t} không thuộc nhóm quyền nào ở 04-data.md")
         for t in schema_groups:
             if t not in tables:
                 rep.mismatch.append(f"bảng {t} có trong nhóm quyền nhưng không có trong DB")
+        for t in migration_groups:
+            if t in tables:
+                continue
+            if not migrated:
+                rep.log(f"INFO bảng {t} của migration sau schema.sql không có ở --local — bỏ qua")
+            else:
+                rep.mismatch.append(f"bảng {t} có trong nhóm quyền nhưng không có trong DB đã migrate")
 
         def upd(t: str, col: str | None = None) -> str:
             col = col or columns(t)[0]
@@ -188,7 +215,7 @@ def run_checks(app_dsn: str, rep: Report, migrator_role: str | None, local: bool
             ok = a.execute("select has_table_privilege(current_user, %s, 'TRUNCATE')", (t,)).fetchone()[0]
             return "ALLOW" if ok else "DENY"
 
-        for t in (x for x in READ_ONLY if x in tables):
+        for t in (x for x in READ_ONLY + MIGRATION_READ_ONLY if x in tables):
             rep.expect(f"{t} SELECT", probe(a, f"select 1 from {t} limit 0"), "ALLOW")
             rep.expect(f"{t} INSERT", probe(a, f"insert into {t} default values"), "DENY")
             rep.expect(f"{t} UPDATE", probe(a, upd(t)), "DENY")
@@ -218,6 +245,17 @@ def run_checks(app_dsn: str, rep: Report, migrator_role: str | None, local: bool
         for t in (x for x in FULL_LIFECYCLE if x in tables):
             rep.expect(f"{t} UPDATE", probe(a, upd(t)), "ALLOW")
             rep.expect(f"{t} DELETE", probe(a, f"delete from {t} where false"), "ALLOW")
+        for t, allowed in MIGRATION_COLUMN_UPDATE.items():
+            if t not in tables:
+                continue
+            rep.expect(f"{t} SELECT", probe(a, f"select 1 from {t} limit 0"), "ALLOW")
+            rep.expect(f"{t} INSERT", probe(a, f"insert into {t} default values"), "ALLOW")
+            for col in allowed:
+                rep.expect(f"{t} UPDATE({col})", probe(a, upd(t, col)), "ALLOW")
+            for col in (c for c in columns(t) if c not in allowed):
+                rep.expect(f"{t} UPDATE({col})", probe(a, upd(t, col)), "DENY")
+            rep.expect(f"{t} DELETE", probe(a, f"delete from {t} where false"), "ALLOW")
+            rep.expect(f"{t} TRUNCATE", trunc(t), "DENY")
 
         if all(t in tables for t in CHECKPOINT_DATA + CHECKPOINT_META):
             for t in CHECKPOINT_DATA:
@@ -284,6 +322,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     mode = ap.add_mutually_exclusive_group(required=True)
     mode.add_argument("--local", action="store_true")
+    mode.add_argument("--local-migrated", action="store_true")
     mode.add_argument("--app-dsn")
     ap.add_argument("--migrator-role", default="bo19_migrator")
     args = ap.parse_args()
@@ -292,12 +331,14 @@ def main() -> int:
     rep.log("schema.sql sha256:", hashlib.sha256(SCHEMA.read_bytes()).hexdigest())
     workdir = None
     try:
-        if args.local:
+        local = args.local or args.local_migrated
+        migrated = not args.local
+        if local:
             workdir = Path(tempfile.mkdtemp(prefix="bo19-contract-"))
-            _srv, app_dsn = setup_local(workdir / "pgdata", rep)
+            _srv, app_dsn = setup_local(workdir / "pgdata", rep, migrated)
         else:
             app_dsn = args.app_dsn
-        run_checks(app_dsn, rep, args.migrator_role, args.local)
+        run_checks(app_dsn, rep, args.migrator_role, local, migrated)
     except (psycopg.Error, OSError) as e:
         rep.log("LỖI MÔI TRƯỜNG:", type(e).__name__, str(e).splitlines()[0] if str(e) else "")
         return 2
