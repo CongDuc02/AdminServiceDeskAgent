@@ -1,12 +1,14 @@
 # Đề xuất diff — `05-api.md` + `contracts/openapi.yaml`
 
-**Trạng thái:** Chờ duyệt · **Nguồn:** mục Background worker & Cron (`job_failed`) và ADR-023 (mã lỗi Lớp 3) của `11-ops.md` · **Không tự áp** — `05-api.md` là phase đã đóng (☑ ở `_PLAN.md`), theo đúng tiền lệ Phase 9 đã tự thêm endpoint 2.2b khi thiết kế của chính nó cần
+**Trạng thái:** ✅ Đã áp — 2026-09-25, PO duyệt · **Nguồn:** mục Background worker & Cron (`job_failed`) và ADR-023 (mã lỗi Lớp 3) của `11-ops.md` · Xem `05-api.md` mục Mã lỗi + mục 1.10, `contracts/openapi.yaml` (`DocumentSummary.job_failed`, `ErrorCode.ENVIRONMENT_NOT_ALLOWED`), `04-data.md` mục 3.8 (v0.9), `backend/migrations/schema/0003_job_failed_index.sql`, và mục ngày 2026-09-25 của `CHANGELOG.md`
 
 ---
 
 ## 1. Trường `job_failed` trên hàng đợi duyệt
 
-**Vì sao:** mục 3.2 của `11-ops.md` thiết kế cờ dẫn xuất `job_failed` (document có job `render_document`/`resume_document_graph`/`finalize_issue` mới nhất ở trạng thái `FAILED` vĩnh viễn) nhưng chưa endpoint nào trả nó.
+**Vì sao:** mục 3.2 của `11-ops.md` thiết kế cờ dẫn xuất `job_failed` cho document có job `resume_document_graph`/`finalize_issue` mới nhất ở trạng thái `FAILED` vĩnh viễn, nhưng chưa endpoint nào trả nó.
+
+**Sửa so với bản trước — phát hiện khi kiểm DDL thật:** bản đầu gồm cả `render_document` trong danh sách `job_type`. Sai: `contracts/schema.sql` — `CONSTRAINT ck_job_document_subject CHECK (job_type NOT IN ('resume_document_graph', 'finalize_issue') OR subject_document_id IS NOT NULL)` — chỉ ép `subject_document_id` cho hai loại đó; `render_document` **không có** `document_id` khi enqueue (document chưa tồn tại). Lọc theo `subject_document_id = :document_id AND job_type IN (..., 'render_document', ...)` sẽ không bao giờ khớp dòng `render_document` nào — cờ vẫn tính đúng cho hai loại kia, chỉ là "phủ cả `render_document`" trong mô tả cũ là sai, không phải lỗi tính toán. Đã sửa mục 3.2 của `11-ops.md`: `render_document` thất bại vĩnh viễn đi đường khác (`notification_send` tham chiếu `request_id`), không qua cờ này — một document mà `render_document` thất bại sẽ không bao giờ tồn tại hoặc không bao giờ tới `PENDING_APPROVAL` để xuất hiện trên hai endpoint dưới đây, nên việc loại nó khỏi cờ `document.job_failed` không mất khả năng quan sát nào, chỉ đúng lại phạm vi.
 
 **Diff đề xuất — response của `GET /review-queue` và `GET /issue-queue`:** thêm trường `job_failed: boolean` cạnh `halted`, `issue_in_progress` đã có (mục Hàng đợi duyệt của `08-hitl.md`).
 
@@ -14,24 +16,25 @@
 job_failed:
   type: boolean
   description: >
-    Job hạ tầng (render/resume/finalize) mới nhất cho document này đã FAILED
-    vĩnh viễn (hết max_attempts). Dẫn xuất, không lưu cột — mục Background
-    worker & Cron của 11-ops.md.
+    Job resume_document_graph hoặc finalize_issue mới nhất cho document này
+    đã FAILED vĩnh viễn (hết max_attempts). Dẫn xuất, không lưu cột — mục
+    Background worker & Cron của 11-ops.md. Không phủ render_document (xem
+    ghi chú cùng mục — document chưa tồn tại nếu job đó thất bại).
 ```
 
 **Cách tính (server, tại thời điểm trả response) — không cache, không lưu bảng:**
 
 ```sql
--- Với mỗi document trong trang kết quả: dòng job mới nhất theo job_type liên quan
+-- Với mỗi document trong trang kết quả: dòng job mới nhất trong hai loại có subject_document_id bắt buộc
 SELECT status = 'FAILED' AS job_failed
 FROM job
 WHERE subject_document_id = :document_id
-  AND job_type IN ('render_document', 'resume_document_graph', 'finalize_issue')
+  AND job_type IN ('resume_document_graph', 'finalize_issue')
 ORDER BY enqueued_at DESC
 LIMIT 1;
 ```
 
-**Index mới cần, chưa có:** `ix_job_pending_by_document` hiện chỉ là partial trên `QUEUED`/`RUNNING` (mục Vận hành của `04-data.md`) — không phủ truy vấn trên. Đề xuất thêm `ix_job_latest_by_document (subject_document_id, job_type, enqueued_at DESC)`, không điều kiện partial (cần đọc cả dòng `FAILED`). **Đây là một thay đổi tới `04-data.md`/`schema.sql`, cần duyệt cùng lượt**, không tự thêm.
+**Index mới cần, chưa có:** `ix_job_pending_by_document` hiện chỉ là partial trên `QUEUED`/`RUNNING` (mục Vận hành của `04-data.md`) — không phủ truy vấn trên. Đề xuất `ix_job_latest_by_document (subject_document_id, enqueued_at DESC)` — **không** gồm `job_type` trong index: với mỗi `document_id`, tổng số job đời nó rất nhỏ (`resume_document_graph`/`finalize_issue` là hai trong sáu loại, không phải job lặp lại nhiều lần bình thường), nên lọc `job_type` như một điều kiện phụ sau khi tra `subject_document_id` rẻ hơn việc giữ index rộng hơn cho một trường ít chọn lọc. Không điều kiện partial (cần đọc cả dòng `FAILED`, không chỉ `QUEUED`/`RUNNING` như index đã có). **Đây là một thay đổi tới `04-data.md`/`schema.sql`, duyệt cùng lượt với đề xuất này** — không tự thêm.
 
 ## 2. Mã lỗi cho Lớp 3 (ADR-023) từ chối chuyển `operating_mode`
 

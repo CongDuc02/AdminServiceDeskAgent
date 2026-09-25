@@ -1614,3 +1614,103 @@ Theo quyết định của PO (không viện dẫn rule 5 của `CLAUDE.md` — 
 | `11-ops.md` mục 13 | Dòng đề xuất `06-structure.md` → đánh dấu "✅ Đã áp" |
 
 **Còn lại, chưa duyệt:** ba đề xuất — `diff-04-data-object-metadata-tag.md`, `diff-05-api-job-failed-and-reject-error.md`, `migration-0003-trace-id-format.md` — chờ duyệt từng cái một, theo đúng thứ tự PO chọn.
+
+### Làm rõ #15/#17 sau ba câu kiểm của PO (2026-09-16, cùng ngày)
+
+Ba câu hỏi phát hiện một lỗ thật: mô hình chạy của bước kiểm khởi động là **"chạy hết rồi gom danh sách mã trượt"** (đã có trong câu mở đầu mục 7 từ Phase 6, số nhiều "danh sách"), không phải fail-fast — nghĩa là #17 vẫn chạy dù #16 đã trượt, và bản đầu chưa nói #17 tự vệ thế nào. Sửa: #15 và #17 dùng chung **một lần đọc** `operating_mode` (không đọc lại); #17 chỉ kích hoạt khi `BO19_ENVIRONMENT ≠ prod` — một `prod` mới dựng, chưa có dòng `operating_mode_change`, luôn qua được; #17 tự bỏ qua phần so khớp (không crash) khi `BO19_ENVIRONMENT` không đọc được, tránh báo trùng mã với #16.
+
+| File | Thay đổi |
+|---|---|
+| `06-structure.md` → v0.5 | Dòng #15: ghi rõ "một lần đọc, dùng chung với #17". Dòng #17: viết lại — chỉ áp dụng ngoài `prod`, tự vệ khi thiếu biến. Thêm câu nhắc mô hình chạy hết-rồi-gom sau bảng |
+| `11-ops.md` | Mục 2: bỏ số đếm "15 bước", trỏ theo tên mục — áp làm quy ước, tránh lỗi cùng họ "45/47 bảng" của Phase 9 lặp lại khi bảng dài thêm |
+
+### Áp đề xuất diff thứ hai (2026-09-25) — `04-data.md`, object metadata cho bản ghim `ISSUED`
+
+PO duyệt sau khi xem đầy đủ: nguyên văn thay đổi, chỗ chạm giao thức ghi một lần, và phần tách rõ "đã chốt" (mục `object_storage` của `02-architecture.md`: *"không phải nơi truy vấn metadata"*) khỏi lý lẽ hoà giải (của trợ lý, không phải điều đã chốt — nguyên tắc nói về vận hành bình thường, đề xuất chỉ chạy trong đúng tình huống PITR khiến `postgresql` không còn là nguồn sự thật đầy đủ). Thứ tự duyệt do PO chọn — bắt đầu từ `04-data.md` vì bán kính lớn nhất: `11-ops.md` mục 5.2(c) và `01-prd.md` RISK-08 đều đã viết dựa trên cơ chế này trước khi nó được duyệt.
+
+**File sửa:**
+
+| File | Thay đổi |
+|---|---|
+| `04-data.md` → v0.8 | Mục 5.1: thêm gạch đầu dòng object metadata (`x-bo19-pin-reason`, `x-bo19-document-number`) tại bước ghim `ISSUED`. Mục 5.3: thêm câu — hai trường set trong cùng lệnh `PUT` ở bước 3, không phải lệnh riêng |
+| `docs/design/proposals/diff-04-data-object-metadata-tag.md` | Trạng thái → "✅ Đã áp — 2026-09-25" |
+| `11-ops.md` → v0.5 | Mục 1 (header): "bốn thay đổi... không tự áp" → "hai đã áp, hai còn chờ". Mục 5.2(b): đánh dấu "✅ Đã áp", bốn điều kiện chuyển từ thì tương lai sang thì đã áp. Mục 13: dòng đề xuất → "✅ Đã áp" |
+
+**Không tạo ADR mới cho quyết định này** — áp phép thử J3: không có điều kiện đảo ngược nêu được rõ ràng (khác `trace_id`/ADR-024, nơi lựa chọn công cụ APM ở A-069 là một sự kiện tương lai cụ thể có thể buộc mở lại quyết định). Nội dung Context/Decision/Consequences đã đủ trong chính đề xuất và trong mục này của `CHANGELOG.md`.
+
+**Còn lại, chưa duyệt:** `diff-05-api-job-failed-and-reject-error.md` (tiếp theo — kéo theo câu hỏi index thuộc `04-data.md`, nay quyết được vì `04-data.md` đã duyệt), `migration-0003-trace-id-format.md` (cuối — phụ thuộc A-069 còn sống).
+
+### Áp đề xuất diff thứ ba (2026-09-25) — `05-api.md` + `contracts/openapi.yaml` + `04-data.md`, `job_failed` và `ENVIRONMENT_NOT_ALLOWED`
+
+**Lỗi thật tự bắt trước khi trình bày, không phải khác cách đọc:** bản đề xuất gốc lọc `job_type IN ('render_document', 'resume_document_graph', 'finalize_issue')` theo `subject_document_id`. Đối chiếu `contracts/schema.sql` thật: `CONSTRAINT ck_job_document_subject CHECK (job_type NOT IN ('resume_document_graph', 'finalize_issue') OR subject_document_id IS NOT NULL)` — chỉ hai loại đó bắt buộc có `document_id`; `render_document` không có (document chưa tồn tại lúc enqueue, đúng câu đã ghi ở mục Vận hành của `04-data.md`). Sửa: bỏ `render_document` khỏi truy vấn/mô tả `job_failed`; tách một dòng riêng trong mục 3.2 của `11-ops.md` cho `render_document` — thông báo qua `request_id`, không qua cờ `document.job_failed`; ghi nhận đây là gap còn hở (chưa có nơi hiển thị "job hạ tầng thất bại" trên một `request`), không tự mở rộng phạm vi đề xuất để giải nốt.
+
+PO duyệt bản đã sửa.
+
+**File sửa:**
+
+| File | Thay đổi |
+|---|---|
+| `11-ops.md` → v0.6 | Mục 3.2: tách dòng `render_document` khỏi nhóm `job_failed`, ghi rõ lý do và gap. Mục 7: `job_failed` hết điều kiện "nếu được duyệt", thêm gap (2) không phủ `render_document`. Mục 12: thêm mục 7 — phát hiện `OPERATING_MODE_UNCHANGED`/`RATE_LIMITED` thiếu trong enum `ErrorCode` của `openapi.yaml` (lệch có trước Phase 11, không tự sửa). Mục 13: đề xuất → "✅ Đã áp"; dòng `migration-0003-trace-id-format.md` đổi số thành `0004` |
+| `05-api.md` → v0.10 | Mục Mã lỗi: +`ENVIRONMENT_NOT_ALLOWED` (403). Mục 1.10: +câu về `document.job_failed`. **Sửa số phiên bản đầu dòng** (lệch có trước, không thuộc thay đổi lần này) |
+| `contracts/openapi.yaml` → 0.2.2 | `DocumentSummary`: +`job_failed` (required). `ErrorCode` enum: +`ENVIRONMENT_NOT_ALLOWED`. `Forbidden` response: +mã này. Endpoint `operating_mode_transition`: +mô tả ca từ chối |
+| `04-data.md` → v0.9 | Mục 3.8: +index `ix_job_latest_by_document`, ghi rõ bảng của `backend/migrations/schema/0003_job_failed_index.sql`, không của `contracts/schema.sql` |
+| `backend/migrations/schema/0003_job_failed_index.sql` | Tạo mới — một `CREATE INDEX`, không `CREATE TABLE`, không `GRANT` mới |
+| `docs/design/proposals/diff-05-api-job-failed-and-reject-error.md` | Trạng thái → "✅ Đã áp — 2026-09-25" |
+| `docs/design/proposals/migration-0003-trace-id-format.md` | Đổi số `0003` → `0004` (0003 đã dùng), ghi chú đầu file |
+
+**Phát hiện khác, không tự sửa:** `OPERATING_MODE_UNCHANGED` và `RATE_LIMITED` có trong bảng Mã lỗi của `05-api.md` nhưng thiếu trong enum `ErrorCode` của `openapi.yaml` — lệch có trước Phase 11, ngoài phạm vi đề xuất vừa duyệt.
+
+**Còn lại, chưa duyệt:** `migration-0003-trace-id-format.md` (nay `0004`) — cuối, phụ thuộc A-069 còn sống.
+
+### Áp đề xuất diff thứ tư và cuối (2026-09-25) — `backend/migrations/schema/0004_observability_trace_id.sql`
+
+**Lỗi thật thứ ba tự bắt trong vòng duyệt bốn đề xuất, trước khi trình bày:** đối chiếu `contracts/schema.sql` thật, `llm_usage.trace_id` là `text NOT NULL` — không nullable như bản đề xuất trước giả định. `CHECK (trace_id IS NULL OR ...)` là nhánh chết dựa trên tiền đề sai (khác `audit_event.trace_id`, cột đó thật sự nullable, không đụng ở đề xuất này). Sửa `CHECK` thành `CHECK (trace_id ~ '...')`, bỏ nhánh `IS NULL OR`.
+
+PO duyệt bản đã sửa. **Cả bốn đề xuất diff của Phase 11 nay đã áp.**
+
+**File sửa:**
+
+| File | Thay đổi |
+|---|---|
+| `backend/migrations/schema/0004_observability_trace_id.sql` | Tạo mới — một `ALTER TABLE ... ADD CONSTRAINT`, không `GRANT` mới |
+| `04-data.md` → v0.10 | Dòng `llm_usage`: +câu định dạng `trace_id` (ADR-024), trỏ migration `0004` |
+| `11-ops.md` → v0.8 | Mục 6.1: "Đã áp", sửa câu về `NOT NULL`. Mục 13: tiêu đề + dòng đề xuất → "✅ Đã áp", ghi rõ chưa kiểm bằng `tools/contract-checks` (công cụ chỉ áp `contracts/schema.sql`, không chạy migration `0002`–`0004`). Mục Open Questions: "bốn đề xuất — cả bốn đã áp" |
+| `docs/design/proposals/migration-0004-trace-id-format.md` | Trạng thái → "✅ Đã áp — 2026-09-25"; thêm ghi chú giới hạn xác minh |
+
+**Nói thẳng, không giấu:** không công cụ nào trong repo chạy thật `ALTER TABLE ... ADD CONSTRAINT` này trên một PostgreSQL — `tools/contract-checks` không phủ migration. Xác minh thật thuộc người triển khai khi có môi trường Render đầu tiên, cùng lượt A-040/A-047.
+
+**Việc còn lại sau Phase 11:** đợt sửa `03-agents.md` riêng cho A-068 (reset `clarification_count`, phương án (b')); lượt GLOSSARY/contract cho Phase 5 và Phase 8 — bảy việc ở mục 12 của `11-ops.md`, cả hai do PO khởi động, không tự làm.
+
+---
+
+## 2026-09-25 — Phase 12: Roadmap
+
+**Tạo mới:** `docs/design/12-roadmap.md` v0.1.
+
+### Quyết định của phase
+
+Quyết định sản phẩm của PO trong phiên, không phải lựa chọn công nghệ — không ADR mới (mục Tech stack của `CLAUDE.md`).
+
+| Câu hỏi | Quyết định | Cách có |
+|---|---|---|
+| Loại yêu cầu của Sprint 1 | `WORK_CONFIRMATION` | Mặc định, PO không trả lời khác |
+| Nợ Phase 8 | Đặt từng giả định vào cổng của sprint cần nó; **không** mở lại Phase 8 | Mặc định |
+| Độ dài sprint, năng lực | `TBD` — A-071; roadmap chỉ có thứ tự | Mặc định |
+| Sprint 1 chạy E2E ở đâu | **Local**; Render `dev` ở Sprint 2 | PO chọn |
+| Spike 1 | **Gộp vào Sprint 1**, thành track riêng; bước S0 là việc đầu tiên | PO chọn |
+
+### File sửa
+
+| File | Thay đổi |
+|---|---|
+| `ASSUMPTIONS.md` → 0.26 | Thêm A-071 (độ dài sprint, năng lực), A-072 (object storage cho local, cần ADR), A-073 (nhánh ngoài phạm vi cần embedding cả khi kho rỗng), A-074 (loại yêu cầu thứ ba cho AC cứng của F6) |
+| `GLOSSARY.md` → 0.20 | Thêm ba thuật ngữ ở mục Thuật ngữ nghiệp vụ: **Sprint đầu**, **Sprint 1**, **Lát cắt dọc** — để "Sprint đầu" của PRD không bị đọc thành Sprint 1 của roadmap. Không đổi tên nào đã có |
+| `_PLAN.md` | **Không đổi.** Phase 12 giữ ☐ — PO đánh dấu |
+
+**Không đổi:** `00-domain.md` → `11-ops.md`, `contracts/`, ADR-001 → ADR-024, `CLAUDE.md`, `tools/contract-checks/`.
+
+### Phát hiện — báo cáo, không tự sửa
+
+1. `_PLAN.md` ghi Phase 8 ☑, nhưng A-052 có hạn cứng "Phase 8 không được duyệt khi A-052 chưa giải", và vẫn `Mở`. A-029, A-034, A-038, A-044, A-053, A-054, A-055, A-056 — owner Phase 8 — cũng `Mở`.
+2. `tools/contract-checks/check_grants.py` không xếp nhóm cho `employee_credential` và `rate_limit_window` (tạo ở `0002_phase9_security.sql`); chạy `--app-dsn` trên DB đã migrate sẽ báo lệch độ phủ. Đưa vào deliverable của Sprint 1.
+3. Nhánh ngoài phạm vi luôn gọi `embed_query`, kể cả khi kho rỗng — A-073.

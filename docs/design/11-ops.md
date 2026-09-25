@@ -1,8 +1,8 @@
 # Ops, Cost & Deployment — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.4 · **Trạng thái:** Draft chờ duyệt
+**Phiên bản:** 0.8 · **Trạng thái:** Draft chờ duyệt — bốn đề xuất diff đã áp, còn chờ đợt sửa `03-agents.md` (A-068) và lượt GLOSSARY/contract cho Phase 5, 8
 
-> File này chốt vận hành trên Render: môi trường dev/staging/prod, cold start, worker nền, cron, migration, backup & restore, observability, dashboard SLA & tồn đọng, mô hình chi phí LLM, ngưỡng cảnh báo & cơ chế cắt chi phí, và định cỡ A-022. File này **không** thiết kế lại state machine, schema DB, endpoint API, hay `halt_for_human` — chỉ tham chiếu và bổ sung phần vận hành chưa phase nào chạm tới. Bốn thay đổi cần chạm phase đã đóng (`06-structure.md`, `04-data.md` ×2, `05-api.md`/`openapi.yaml`) được viết thành **đề xuất diff riêng**, không tự áp — xem mục 13.
+> File này chốt vận hành trên Render: môi trường dev/staging/prod, cold start, worker nền, cron, migration, backup & restore, observability, dashboard SLA & tồn đọng, mô hình chi phí LLM, ngưỡng cảnh báo & cơ chế cắt chi phí, và định cỡ A-022. File này **không** thiết kế lại state machine, schema DB, endpoint API, hay `halt_for_human` — chỉ tham chiếu và bổ sung phần vận hành chưa phase nào chạm tới. Bốn thay đổi cần chạm phase đã đóng (`06-structure.md`, `04-data.md` ×2, `05-api.md`/`openapi.yaml`) được viết thành **đề xuất diff riêng**, duyệt từng cái một — **cả bốn đã áp**, PO duyệt lần lượt 2026-09-16 và 2026-09-25 — xem mục 13.
 
 Tên entity, trạng thái, permission, agent, node, tool, component dùng đúng `GLOSSARY.md`. Quyết định `D-xxx`/`A-xxx` tham chiếu `00-domain.md` và `ASSUMPTIONS.md`.
 
@@ -46,7 +46,7 @@ Bảng secret đã chốt ở mục Secret management trên Render của `09-sec
 
 ## 2. Cold start, khởi động và tắt tiến trình êm
 
-Không thiết kế lại — tham chiếu nguyên vẹn: mục Đặc tả `Dockerfile` của `06-structure.md` (ADR-015), mục Bước kiểm khởi động của `06-structure.md` (15 bước hiện có — Lớp 2 của ADR-023 là đề xuất bước thứ 16 và 17, xem mục 13), mục Tắt tiến trình êm của `06-structure.md` (ADR-016).
+Không thiết kế lại — tham chiếu nguyên vẹn: mục Đặc tả `Dockerfile` của `06-structure.md` (ADR-015), mục Bước kiểm khởi động của `06-structure.md` (Lớp 2 của ADR-023 đã áp thành hai bước bổ sung ở cuối bảng đó, mục 13; **không đếm số bước ở đây** — đúng luật 12 của `CLAUDE.md`, trỏ theo tên mục chứ không theo một con số có thể gãy khi bảng dài ra, đúng họ lỗi "45 bảng/47 bảng" của Phase 9), mục Tắt tiến trình êm của `06-structure.md` (ADR-016).
 
 **Chỗ quan sát:** cold start của `api` sau khi thêm LibreOffice, đặt cạnh kích thước image — dòng ADR-015 ở bảng chỗ quan sát của `_PLAN.md`.
 
@@ -72,13 +72,14 @@ Cột bảng `job`, sáu `job_type`, cơ chế lease, bảng index — đã ch�
 
 | Nhóm | Khi `FAILED` vĩnh viễn | Vì sao |
 |---|---|---|
-| `render_document`, `resume_document_graph`, `finalize_issue` | Enqueue một job `notification_send` riêng, đường mã hoá cứng; `document` hiện cờ **`job_failed`** trên hàng đợi duyệt (mục 7) | `document` không được mồ côi mà không ai biết. **Khác `halt_for_human`:** đây là hạ tầng không chạy được job, graph chưa tới node nào |
+| `resume_document_graph`, `finalize_issue` | Enqueue một job `notification_send` riêng, đường mã hoá cứng; `document` hiện cờ **`job_failed`** trên hàng đợi duyệt (mục 7) | `document` không được mồ côi mà không ai biết. **Khác `halt_for_human`:** đây là hạ tầng không chạy được job, graph chưa tới node nào |
+| `render_document` | Enqueue một job `notification_send` riêng, tham chiếu `request_id` (từ `payload`) — **không** qua cờ `document.job_failed` | **Sửa sau khi kiểm DDL thật (mục Vận hành của `04-data.md`):** `job.subject_document_id` **không** bắt buộc cho `render_document` — *"render_document không có vì document chưa tồn tại lúc enqueue"*, và `ck_job_document_subject` chỉ ép NOT NULL cho `resume_document_graph`/`finalize_issue`. Một `render_document` thất bại vĩnh viễn nghĩa là **chưa từng có `document`** — không có `document_id` nào để gắn cờ, và document (nếu có) sẽ không bao giờ tới `PENDING_APPROVAL` để xuất hiện trên `GET /review-queue`/`GET /issue-queue` (mục 7) trong mọi trường hợp. Đường thông báo đúng là qua `request` đang `SUBMITTED`, không qua `document` — **gap còn hở, chưa thiết kế ở đây** (không có endpoint/màn hình nào hiện hiển thị "job hạ tầng thất bại" trên một `request`); ghi nhận, không tự mở rộng phạm vi đề xuất `job_failed` để giải nốt |
 | `checkpoint_purge`, `notification_send` | Ghi metric + alert `observability`, không tự tạo job/enqueue lại | Sổ sách kỹ thuật, tránh vòng lặp job báo lỗi chính nó |
 | `procedure_ingest` | Ghi metric + alert `observability` | Không trên đường tới cổng HITL |
 
 Job `FAILED` vĩnh viễn **không tự động retry** — người xem alert enqueue lại thủ công sau khi sửa nguyên nhân.
 
-**`job_failed` — cờ dẫn xuất, chưa có chỗ đứng trong contract:** tính từ dòng `job` mới nhất theo từng `job_type` liên quan cho một `document_id`; bật khi dòng đó `status = FAILED`. Chưa có trong response nào của `05-api.md`; `ix_job_pending_by_document` là partial trên `QUEUED`/`RUNNING`, không phủ truy vấn `FAILED` theo `document_id` — cần index mới nếu contract dưới được duyệt. **Đề xuất diff cho `05-api.md`+`openapi.yaml`, chưa áp — mục 13.**
+**`job_failed` — cờ dẫn xuất, chưa có chỗ đứng trong contract:** tính từ dòng `job` mới nhất trong `{resume_document_graph, finalize_issue}` cho một `document_id` (**không** gồm `render_document` — lý do ở bảng trên); bật khi dòng đó `status = FAILED`. Chưa có trong response nào của `05-api.md`; `ix_job_pending_by_document` là partial trên `QUEUED`/`RUNNING`, không phủ truy vấn `FAILED` theo `document_id` — cần index mới nếu contract dưới được duyệt. **Đề xuất diff cho `05-api.md`+`openapi.yaml`, chưa áp — mục 13.**
 
 ### 3.3 Cron
 
@@ -128,7 +129,7 @@ Một point-in-time restore về T đưa **cả** `document_register_counter` **
 
 **(a) Thứ tự khôi phục.** `object_storage` không lùi theo `postgresql` (địa chỉ theo khoá bất biến). Thứ tự bắt buộc: khôi phục `postgresql` về T → **không nhận traffic** → chạy đối soát (b) → chỉ mở lại sau khi có người xác nhận.
 
-**(b) Phát hiện "phát hành ma".** Khoá object hiện tại (`renders/{document_id}/{input_hash}`) không phân biệt được bản ghim `ISSUED` với các bản nháp tích luỹ dưới cùng `document_id` — không đối soát được bằng khoá. **Đề xuất (chưa áp, cần duyệt Phase 4 — mục 13):** gắn object metadata (không phải khoá, không phải byte nội dung) lúc ghim bản cuối — `pin_reason`, `document_number`. Bốn điều kiện của đề xuất: (1) chỉ gắn cho bản ghim `ISSUED`, không gắn bản nháp; (2) chỉ hai trường trên, không gì khác; (3) `postgresql` vẫn là nguồn sự thật duy nhất — tag chỉ đọc lúc thảm hoạ, không đường truy vấn nào ở code đường-nóng đọc nó; (4) **giới hạn phải nói thẳng:** tag chỉ tồn tại trên object ghi **sau** khi thay đổi này triển khai — không phủ ngược các văn bản phát hành trước đó. Đối soát có một ngày bắt đầu.
+**(b) Phát hiện "phát hành ma".** Khoá object hiện tại (`renders/{document_id}/{input_hash}`) không phân biệt được bản ghim `ISSUED` với các bản nháp tích luỹ dưới cùng `document_id` — không đối soát được bằng khoá riêng. **✅ Đã áp (2026-09-25, PO duyệt):** gắn object metadata (không phải khoá, không phải byte nội dung) lúc ghim bản cuối — `x-bo19-pin-reason`, `x-bo19-document-number` (mục 5.1/5.3 của `04-data.md`, v0.8). Bốn điều kiện đã áp: (1) chỉ gắn cho bản ghim `ISSUED`, không gắn bản nháp; (2) chỉ hai trường trên, không gì khác; (3) `postgresql` vẫn là nguồn sự thật duy nhất — tag chỉ đọc lúc thảm hoạ, không đường truy vấn nào ở code đường-nóng đọc nó; (4) **giới hạn phải nói thẳng:** tag chỉ tồn tại trên object ghi **sau** khi thay đổi này triển khai (2026-09-25) — không phủ ngược các văn bản phát hành trước đó. Đối soát có một ngày bắt đầu, không phải một cơ chế toàn diện.
 
 **(c) Sổ số văn bản sau restore.** Không chèn lại `document_register_entry` — FK `document_id`/`issue_decision_id` trỏ tới `document`/`decision_record`, cả hai đã mất theo cùng lần restore, `INSERT` bù không qua được FK. **Cơ chế:** `document_register_counter.next_seq` là bảng riêng, không FK tới `document` — sau khi (b) xác nhận số lớn nhất dùng thật, **đẩy `next_seq` vượt qua số đó**, chặn cấp trùng mà không cần entry row. **Cái giá:** khoảng số bị nhảy qua không có dòng sổ nào, kể cả không đánh dấu `VOIDED` được (`VOIDED` cần một entry đã tồn tại). Đây là một loại "lỗ hổng số" **ngoài** cơ chế đã thiết kế ở Phase 4 — ghi thành **RISK-08** (mục Risk register của `01-prd.md`, xem mục 10 dưới), rủi ro chấp nhận có người ký, không phải cơ chế đã giải quyết.
 
@@ -163,7 +164,7 @@ Log JSON có cấu trúc ra stdout (mục `observability` của `02-architecture
 
 **Có điều kiện đảo ngược — vì vậy là ADR-024, không phải một dòng cấu hình trơn:** công cụ APM chọn ở A-069 có thể ép một định dạng khác (ví dụ W3C Trace Context, 32 hex không gạch nối). Áp phép thử J3: có điều kiện đảo ngược nêu được → cần ADR. A-069 buộc chéo ngược lại ADR-024 — người chọn công cụ APM phải đọc được ràng buộc này trước khi chọn, không phát hiện xung đột sau khi đã chọn.
 
-**Kéo theo một `CHECK` mới trên `llm_usage.trace_id`, ở đúng hiện vật của nó — một migration, không phải sửa `contracts/schema.sql` đã đóng:** đề xuất `backend/migrations/schema/0003_observability_trace_id.sql`, chưa áp (mục 13, đúng tiền lệ Phase 9 — thay đổi DB đi vào migration mới, `contracts/schema.sql` giữ nguyên trạng đóng Phase 6).
+**Kéo theo một `CHECK` mới trên `llm_usage.trace_id`, ở đúng hiện vật của nó — một migration, không phải sửa `contracts/schema.sql` đã đóng:** **✅ Đã áp (2026-09-25)** — `backend/migrations/schema/0004_observability_trace_id.sql` (mục 13, đúng tiền lệ Phase 9 — `contracts/schema.sql` giữ nguyên trạng đóng Phase 6). `trace_id` của `llm_usage` đã là `NOT NULL` trong `contracts/schema.sql` (khác `audit_event.trace_id`, cột đó nullable) — `CHECK` chỉ thêm hình dạng, không có nhánh `IS NULL OR`.
 
 ### 6.2 Metric taxonomy
 
@@ -222,7 +223,7 @@ Alert "cứng": job `FAILED` vĩnh viễn, `document_halt` tăng đột biến, 
 
 ## 7. Dashboard SLA & tồn đọng
 
-Dành cho `ADMIN_OFFICER`, composed từ endpoint đã có: `GET /review-queue`, `GET /issue-queue` (cờ `halted`, `issue_in_progress`, và **`job_failed`** nếu contract ở mục 13 được duyệt), `GET /self-approvals`, danh sách `request` (cờ `sla_breached`). **Gap đã biết, chưa tự vá:** không có endpoint đếm tổng hợp theo `request_type` × trạng thái — nằm trong đề xuất diff `05-api.md` ở mục 13. Job/queue backlog, chi phí, độ trễ **không** thuộc dashboard này — dữ liệu vận hành cho kỹ sư (mục 6), khác đối tượng đọc.
+Dành cho `ADMIN_OFFICER`, composed từ endpoint đã có: `GET /review-queue`, `GET /issue-queue` (cờ `halted`, `issue_in_progress`, **`job_failed`** — cả ba đã trong `DocumentSummary` của `contracts/openapi.yaml`), `GET /self-approvals`, danh sách `request` (cờ `sla_breached`). **Gap còn hở, chưa tự vá:** (1) không có endpoint đếm tổng hợp theo `request_type` × trạng thái; (2) `job_failed` không phủ `render_document` thất bại — document đó chưa từng tồn tại hoặc không bao giờ tới hàng đợi này (mục 3.2). Job/queue backlog, chi phí, độ trễ **không** thuộc dashboard này — dữ liệu vận hành cho kỹ sư (mục 6), khác đối tượng đọc.
 
 ---
 
@@ -321,25 +322,26 @@ Theo mục 4 (luật 1 và 11) của `CLAUDE.md` — rà lại toàn bộ file n
 3. `job_failed` — cờ dẫn xuất mới, cần một dòng ở mục Thuật ngữ của `GLOSSARY.md` (cùng tiền lệ `issue_in_progress`/`sla_breached`). **Chưa sửa**, phụ thuộc contract ở mục 13 được duyệt.
 4. `operating_mode_transition_reject` — thao tác `tool_layer` mới, cần thêm vào nhóm "Thao tác do endpoint gọi" của mục Agent, graph, node, tool của `GLOSSARY.md`. **Chưa sửa.**
 5. Định nghĩa `WARNING` (mục Enum khác của `GLOSSARY.md`) cần mở rộng thành danh sách đóng: áp cho tự duyệt (D-006) và cho lần thử chuyển `operating_mode` bị chặn bởi luật môi trường (ADR-023); thêm ca mới là một quyết định có ADR, không phải một phép suy. **Chưa sửa.**
-6. `BO19_ENVIRONMENT` — biến môi trường mới (ADR-023), tham chiếu xuyên ba file (`11-ops.md`, và hai đề xuất diff cho `06-structure.md`/`05-api.md` ở mục 13) — cùng loại định danh hạ tầng đã có trong mục Cấu trúc dự án của `GLOSSARY.md` (`bo19_migrator`, `bo19_app`, `schema_migration`). **Chưa sửa.** *(Không cần GLOSSARY: `ENVIRONMENT_NOT_ALLOWED` — error code, GLOSSARY tự nói "`error_code` — nguồn duy nhất là `05-api.md`, không chép lại"; các trường object metadata đề xuất ở mục 13 — khoá kỹ thuật nội bộ, không xuất hiện trong API response hay màn hình nào.)*
+6. `BO19_ENVIRONMENT` — biến môi trường mới (ADR-023), tham chiếu xuyên nhiều file — cùng loại định danh hạ tầng đã có trong mục Cấu trúc dự án của `GLOSSARY.md` (`bo19_migrator`, `bo19_app`, `schema_migration`). **Chưa sửa.** *(Không cần GLOSSARY: `ENVIRONMENT_NOT_ALLOWED` — error code, GLOSSARY tự nói "`error_code` — nguồn duy nhất là `05-api.md`, không chép lại"; các trường object metadata đã áp — khoá kỹ thuật nội bộ, không xuất hiện trong API response hay màn hình nào.)*
+7. **Phát hiện ngoài phạm vi đề xuất `05-api.md`, khi thêm `ENVIRONMENT_NOT_ALLOWED` vào enum `ErrorCode` của `contracts/openapi.yaml`:** `OPERATING_MODE_UNCHANGED` và `RATE_LIMITED` — cả hai có trong bảng Mã lỗi của `05-api.md` và được nhắc tới trong `description` của endpoint liên quan — **không có mặt trong chính enum `ErrorCode`** (đã kiểm bằng đọc file, không suy đoán). Lệch giữa `05-api.md` và `openapi.yaml`, có trước Phase 11, không thuộc phạm vi đề xuất vừa duyệt nên **không tự sửa**.
 
-Cả sáu gộp vào lượt sửa GLOSSARY cho Phase 8, một phiên riêng, sau khi ba đề xuất diff ở mục 13 được duyệt (mục 3, 4, 6 phụ thuộc kết quả duyệt đó).
+Bảy việc trên gộp vào lượt sửa GLOSSARY/contract cho Phase 8 và Phase 5, một phiên riêng — mục 1–6 đã đủ điều kiện xử lý (ba đề xuất liên quan đều đã áp); mục 7 là việc của `05-api.md`/`openapi.yaml` (Phase 5), không phải Phase 8.
 
 ---
 
-## 13. Đề xuất diff chờ duyệt riêng — chưa áp
+## 13. Đề xuất diff — cả bốn đã áp (2026-09-16, 2026-09-25)
 
-Ba thay đổi chạm phase đã đóng, viết thành đề xuất riêng, không tự áp vào file gốc:
+Bốn thay đổi chạm phase đã đóng, viết thành đề xuất riêng, duyệt từng cái một — **cả bốn đã áp** (2026-09-16, 2026-09-25 ×3):
 
 | Đề xuất | File đích | Nội dung |
 |---|---|---|
 | `docs/design/proposals/diff-06-structure-startup-checks.md` | `06-structure.md` | **✅ Đã áp (2026-09-16).** Hai bước kiểm khởi động mới (Lớp 2 của ADR-023): #16 lệch `BO19_ENVIRONMENT`/`operating_mode` (Chặn), #17 thiếu `BO19_ENVIRONMENT` (Chặn). Không nâng mức bước #15 (giữ "Ghi log") |
-| `docs/design/proposals/diff-04-data-object-metadata-tag.md` | `04-data.md` | Gắn object metadata (`pin_reason`, `document_number`) lúc ghim bản `ISSUED` — phục vụ đối soát sau khôi phục (mục 5.2(b)) |
-| `docs/design/proposals/diff-05-api-job-failed-and-reject-error.md` | `05-api.md`, `contracts/openapi.yaml` | Trường `job_failed` trên `GET /review-queue`/`GET /issue-queue`; mã lỗi mới cho Lớp 3 (ADR-023) từ chối |
-| `docs/design/proposals/migration-0003-trace-id-format.md` | `backend/migrations/schema/0003_observability_trace_id.sql` (mới) + câu mô tả ở `04-data.md` — **không** sửa `contracts/schema.sql` | `CHECK` hình dạng UUID v4 trên `llm_usage.trace_id` (ADR-024) — đóng câu bỏ ngỏ của ADR-019 (mục 6.1) |
+| `docs/design/proposals/diff-04-data-object-metadata-tag.md` | `04-data.md` | **✅ Đã áp (2026-09-25).** Object metadata (`x-bo19-pin-reason`, `x-bo19-document-number`) lúc ghim bản `ISSUED` — phục vụ đối soát sau khôi phục (mục 5.2(b)) |
+| `docs/design/proposals/diff-05-api-job-failed-and-reject-error.md` | `05-api.md`, `contracts/openapi.yaml`, `04-data.md` | **✅ Đã áp (2026-09-25).** Trường `job_failed` trên `DocumentSummary` (`GET /review-queue`/`GET /issue-queue`); mã lỗi `ENVIRONMENT_NOT_ALLOWED` cho Lớp 3 (ADR-023) từ chối; index `ix_job_latest_by_document` — `backend/migrations/schema/0003_job_failed_index.sql`, không sửa `contracts/schema.sql` |
+| `docs/design/proposals/migration-0004-trace-id-format.md` | `backend/migrations/schema/0004_observability_trace_id.sql` + câu mô tả ở `04-data.md` — **không** sửa `contracts/schema.sql` | **✅ Đã áp (2026-09-25).** `CHECK` hình dạng UUID v4 trên `llm_usage.trace_id` (ADR-024) — đóng câu bỏ ngỏ của ADR-019 (mục 6.1). Cột đã `NOT NULL`, không thêm `IS NULL OR`. **Chưa kiểm bằng `tools/contract-checks`** — công cụ đó chỉ áp `contracts/schema.sql`, không chạy migration `0002`–`0004` |
 
 ---
 
 ## Open Questions
 
-Không có câu hỏi mở chỉ tồn tại trong file này. Giả định liên quan: A-022 (thu hẹp, mục 10), A-025, A-031 (mốc F6 mới, mục 10.3), A-041, A-057, A-059, A-060 (đóng), A-062, A-063, A-065, A-066 (mới), **A-067 (Mở — ba vế secret CI)**, **A-068 (Mở — reset `clarification_count`, phương án (b'), owner đợt sửa `03-agents.md` riêng do PO khởi động, hạn trước buổi UAT vì làm hỏng M3)**, **A-069 (mới, Mở — chọn công cụ APM, không phải A-002 "trả lời")**, **A-070 (mới, Mở — retention log kỹ thuật, cân nhắc Nghị định 13/2023/NĐ-CP)**, A-024 (vẫn `Mở`) — xem `ASSUMPTIONS.md`. Bốn đề xuất diff chờ duyệt riêng — mục 13.
+Không có câu hỏi mở chỉ tồn tại trong file này. Giả định liên quan: A-022 (thu hẹp, mục 10), A-025, A-031 (mốc F6 mới, mục 10.3), A-041, A-057, A-059, A-060 (đóng), A-062, A-063, A-065, A-066 (mới), **A-067 (Mở — ba vế secret CI)**, **A-068 (Mở — reset `clarification_count`, phương án (b'), owner đợt sửa `03-agents.md` riêng do PO khởi động, hạn trước buổi UAT vì làm hỏng M3)**, **A-069 (mới, Mở — chọn công cụ APM, không phải A-002 "trả lời")**, **A-070 (mới, Mở — retention log kỹ thuật, cân nhắc Nghị định 13/2023/NĐ-CP)**, A-024 (vẫn `Mở`) — xem `ASSUMPTIONS.md`. Bốn đề xuất diff — cả bốn đã áp (mục 13). Còn chờ: đợt sửa `03-agents.md` riêng cho A-068, và lượt GLOSSARY/contract cho Phase 5 và Phase 8 (bảy việc, mục 12).

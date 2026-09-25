@@ -1,6 +1,6 @@
 # GLOSSARY — BO-19 Admin Service Desk Agent
 
-**Phiên bản:** 0.19 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5, vòng duyệt Phase 5, Phase 6 và Phase 9
+**Phiên bản:** 0.20 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5, vòng duyệt Phase 5, Phase 6, Phase 9 và Phase 12
 
 > Đây là danh sách tên chuẩn. Từ Phase 1 trở đi, mọi tài liệu, diagram, DDL, endpoint và prompt phải dùng **đúng** các định danh trong file này. Muốn đổi tên thì sửa file này trước, rồi ghi vào [`CHANGELOG.md`](./CHANGELOG.md).
 
@@ -230,6 +230,9 @@ Theo phép thử ở mục Nguyên tắc dữ liệu của `04-data.md`: enum xu
 | **Thu hồi** | Đánh dấu văn bản đã phát hành mất hiệu lực. Không phải xoá |
 | **Văn bản ngoài** | File do bên thứ ba soạn, nhân viên tải lên. Nội dung là **dữ liệu không tin cậy** đối với agent |
 | **Uỷ quyền** | `delegation` — cho phép hành động thay người khác trong khoảng thời gian có hiệu lực |
+| **Sprint đầu** | Phạm vi phát hành đầu tiên: mọi hạng mục không mang nhãn `[Should]`/`[Could]`, nghiệm thu bằng mục Definition of Done của `01-prd.md` qua buổi UAT. Trải trên Sprint 1 → Sprint 4 của `12-roadmap.md` — **không** đồng nghĩa với Sprint 1 |
+| **Sprint 1** | Sprint đầu tiên của `12-roadmap.md`. Kết thúc bằng một lát cắt dọc cho `WORK_CONFIRMATION`, không phải bằng việc nghiệm thu Sprint đầu |
+| **Lát cắt dọc** | Một hành trình chạy xuyên mọi tầng — `client` → `api` → `orchestrator` → `tool_layer` → `postgresql`, `object_storage` — cho **một** `request_type`, từ đăng nhập tới lúc tải văn bản |
 
 ---
 

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: BO-19 Admin Service Desk Agent API
-  version: 0.2.1
+  version: 0.2.2
   description: |
     Contract máy đọc được của `docs/design/05-api.md` (Phase 5). Diễn giải, lý do và
     giới hạn nằm ở file đó; file này không lặp lại lập luận.
@@ -121,6 +121,9 @@ paths:
         from_mode do server tự gán bằng chế độ hiệu lực hiện tại. to_mode trùng
         chế độ hiện tại trả OPERATING_MODE_UNCHANGED. Ghi audit_event mức WARNING
         trong cùng giao dịch. Một permission gác cả hai chiều NON_PRODUCTION <-> PRODUCTION.
+        to_mode = PRODUCTION khi BO19_ENVIRONMENT != prod trả 403 ENVIRONMENT_NOT_ALLOWED
+        (Lớp 3, ADR-023) — vẫn ghi audit_event mức WARNING qua operating_mode_transition_reject,
+        không ghi operating_mode_change (mục Môi trường Render của 11-ops.md).
       x-bo19-operation: operating_mode_transition
       x-bo19-permission: [operating_mode.change]
       x-bo19-execution: SYNC
@@ -1604,7 +1607,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
     Forbidden:
-      description: CSRF_HEADER_MISSING · PERMISSION_DENIED · SELF_APPROVAL_BLOCKED
+      description: CSRF_HEADER_MISSING · PERMISSION_DENIED · SELF_APPROVAL_BLOCKED · ENVIRONMENT_NOT_ALLOWED
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
@@ -1789,6 +1792,7 @@ components:
         - CSRF_HEADER_MISSING
         - PERMISSION_DENIED
         - SELF_APPROVAL_BLOCKED
+        - ENVIRONMENT_NOT_ALLOWED
         - NOT_FOUND
         - NOT_ACCEPTABLE
         - IDEMPOTENCY_KEY_REQUIRED
@@ -2219,7 +2223,7 @@ components:
     # ------------------------------------------------------------------ văn bản
     DocumentSummary:
       type: object
-      required: [id, request_id, request_type_code, status, status_label, status_changed_at, revision_round, operating_mode, requires_seal, seal_type, issue_in_progress, halted, document_number, issued_date, row_version]
+      required: [id, request_id, request_type_code, status, status_label, status_changed_at, revision_round, operating_mode, requires_seal, seal_type, issue_in_progress, halted, job_failed, document_number, issued_date, row_version]
       properties:
         id: { $ref: '#/components/schemas/Uuid' }
         request_id: { $ref: '#/components/schemas/Uuid' }
@@ -2240,6 +2244,12 @@ components:
           type: boolean
         halted:
           description: Có document_halt chưa được tiếp quản
+          type: boolean
+        job_failed:
+          description: >-
+            Job resume_document_graph hoặc finalize_issue mới nhất cho
+            document này đã FAILED vĩnh viễn. Không phủ render_document —
+            mục Background worker & Cron của 11-ops.md.
           type: boolean
         document_number:
           description: Chỉ có từ ISSUED trở đi

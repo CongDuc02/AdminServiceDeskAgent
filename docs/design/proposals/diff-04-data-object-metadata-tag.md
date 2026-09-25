@@ -1,6 +1,6 @@
 # Đề xuất diff — `04-data.md`, mục Lưu trữ file và bất biến bản render
 
-**Trạng thái:** Chờ duyệt · **Nguồn:** mục Backup & Restore của `11-ops.md` (5.2(b)) · **Không tự áp** — `04-data.md` là phase đã đóng (☑ ở `_PLAN.md`)
+**Trạng thái:** ✅ Đã áp — 2026-09-25, PO duyệt · **Nguồn:** mục Backup & Restore của `11-ops.md` (5.2(b)) · Xem `04-data.md` mục 5.1/5.3 (v0.8) và mục ngày 2026-09-25 của `CHANGELOG.md`
 
 ---
 
