@@ -1714,3 +1714,148 @@ Quyết định sản phẩm của PO trong phiên, không phải lựa chọn c
 1. `_PLAN.md` ghi Phase 8 ☑, nhưng A-052 có hạn cứng "Phase 8 không được duyệt khi A-052 chưa giải", và vẫn `Mở`. A-029, A-034, A-038, A-044, A-053, A-054, A-055, A-056 — owner Phase 8 — cũng `Mở`.
 2. `tools/contract-checks/check_grants.py` không xếp nhóm cho `employee_credential` và `rate_limit_window` (tạo ở `0002_phase9_security.sql`); chạy `--app-dsn` trên DB đã migrate sẽ báo lệch độ phủ. Đưa vào deliverable của Sprint 1.
 3. Nhánh ngoài phạm vi luôn gọi `embed_query`, kể cả khi kho rỗng — A-073.
+
+---
+
+## 2026-09-25 (vòng duyệt Phase 12) — Duyệt có điều kiện, `12-roadmap.md` v0.1 → v0.2
+
+PO duyệt Phase 12 có điều kiện; `_PLAN.md` giữ ☐ tới khi PO đánh dấu.
+
+### Quyết định của PO
+
+| # | Quyết định |
+|---|---|
+| 1 | **Phase 8 giữ ☑.** Hạn của A-052 đổi từ "Phase 8 không được duyệt khi A-052 chưa giải" thành "trước cổng Sprint 3", khớp mục Nợ thiết kế Phase 8 — cổng theo sprint của `12-roadmap.md` |
+| 2 | **A-073 theo hướng (a):** không có collection `ACTIVE` thì không gọi `embed_query`, trả hướng xử lý thủ công tất định. Sửa `03-agents.md` gộp vào đợt sửa của A-068, chưa làm. Embedding model (A-028) vẫn phải chọn trước cổng Sprint 3 |
+| 3 | Bổ sung ngay nhóm quyền của `employee_credential` và `rate_limit_window` vào `tools/contract-checks/check_grants.py`; lần chạy `--app-dsn` trên DB đã migrate giữ ở Sprint 1 |
+| 4 | A-074: đề xuất tiêu chí và tối đa hai ứng viên; PO chọn trước cổng Sprint 3 |
+| 5 | Owner "Phase 8" ở cổng 1.3 và ở mục nợ Phase 8 của roadmap đổi thành Product Owner |
+
+### Thêm vào `12-roadmap.md` sau khi đọc đủ `07-prompts.md`, `09-security.md` và đối chiếu `openapi.yaml`
+
+| Nguồn | Thêm | Sprint |
+|---|---|---|
+| `07-prompts.md` | `ai_gateway` đủ lối vào: allowlist fail-closed, budget và `llm_usage`, ép JSON hai nhánh, sửa parse một lần; P1, P2, P4 có `prompt_module_version`; AC-1.9 kiểm allowlist | 1 |
+| `07-prompts.md` | P5 với `previous_statement`/`change_reason` chỉ tới biến trong `change_targets` (AC-2.2) | 2 |
+| `07-prompts.md` | P3, E1, E2 — nhánh có kho; kiểm input biến nội dung tự do lúc tải template, `audit_event` khi danh sách input đổi (AC-3.3) | 3 |
+| `09-security.md` | `argon2id`, một mã `INVALID_CREDENTIALS`, rate limit đăng nhập trước khi chạm `employee_credential` (AC-1.10); cổng 1.10, 1.11 cho ngưỡng rate limit và tham số `argon2id` | 1 |
+| `09-security.md` | Rate limit trên Render theo A-062, cron dọn `rate_limit_window`; secret theo môi trường, `bo19_migrator` chỉ ở CI (AC-2.9, cổng 2.7) | 2 |
+| `09-security.md` | Data migration danh mục permission; seed `employee_permission_grant` bằng thao tác vận hành | 1, 3 |
+| `09-security.md` | Ba kiểm an ninh của `validate_free_content` (AC-1.11); hiển thị theo `slot_sensitivity`, `RES` ẩn mặc định (AC-1.5); tải file chỉ qua `stored_file_fetch`, bản gốc template chỉ cho `template.manage` | 1, 3 |
+| `09-security.md` | Bộ lọc quyền kho quy trình theo `department_scope` và `procedure.read_all` (AC-3.7) | 3 |
+| ADR-023 | Lớp 1 — không cấp `operating_mode.change`; lớp 2 — bước kiểm khởi động #16–17 (AC-1.7) | 1 |
+| ADR-020, ADR-023 | **Chuyển từ "sau UAT" vào Sprint 4:** `POST`/`GET /operating-mode/transitions`, lớp 3, `operating_mode_transition_reject`, `ENVIRONMENT_NOT_ALLOWED` (AC-4.6). Lý do: endpoint không mang `x-bo19-scope: Should` là Sprint đầu (mục Nhãn phạm vi và loại trừ có chủ đích của `05-api.md`) — bản v0.1 xếp sai | 4 |
+| `openapi.yaml` | Mục mới Endpoint → sprint: mọi cặp method–path đều có sprint; `GET …/messages`, `GET /requests` (`scope=OWN`) vào Sprint 1; `GET /audit-events`, xem trước đổi độ nhạy, `GET /employee-imports/{import_id}` vào Sprint 3 | 1, 3 |
+| A-074 | Mục mới Loại yêu cầu thứ ba — tiêu chí T1–T10, hai ứng viên `[ĐỀ XUẤT]` | — |
+
+### File sửa
+
+| File | Thay đổi |
+|---|---|
+| `12-roadmap.md` → 0.2 | Như trên; "Đã đối chiếu" không còn câu "chỉ đọc mục lục"; owner nợ Phase 8 là Product Owner |
+| `ASSUMPTIONS.md` → 0.27 | A-052: hạn mới (quyết định PO). A-029, A-034, A-038, A-044, A-052, A-053, A-054, A-055, A-056: owner "Phase 8" → "Product Owner"; hạn "Trong Phase 8" của tám dòng → cổng sprint tương ứng — **hệ quả nhất quán, chờ PO xác nhận**. A-073: ghi hướng (a) và hạn của A-028. A-074: trỏ tới tiêu chí và ứng viên. **A-075 mới** |
+| `tools/contract-checks/check_grants.py` | Hai nhóm cho bảng của migration sau `schema.sql`: `MIGRATION_READ_ONLY = [employee_credential]`, `MIGRATION_WINDOW_COUNTER = [rate_limit_window]`, lấy từ `GRANT` ở mục Migration bổ sung của Phase 9 trong `09-security.md`. Vắng ở `--local` thì `INFO` và bỏ qua; vắng ở `--app-dsn` là lệch. Không thể thêm thẳng vào nhóm cũ: `--local` chỉ áp `schema.sql` nên sẽ báo lệch vì bảng không có |
+| `tools/contract-checks/README.md` | Một dòng ở mục Nó kiểm gì |
+
+**Không đổi:** `_PLAN.md`, `GLOSSARY.md`, `00-domain.md` → `11-ops.md`, `contracts/`, ADR, `CLAUDE.md`.
+
+### Đã chạy
+
+- `check_grants.py --local`, sau khi sửa: 49 bảng; **169** từ chối đúng; **63** cho phép đúng; **Lệch: 0**; mã thoát `0`; hai dòng `INFO` cho hai bảng vắng. Trùng khít lần chạy ở mục Xác minh contract của `06-structure.md`.
+- Kiểm riêng hai nhóm mới bằng script tạm ngoài repo: dựng như `--local`, áp thêm `0002_phase9_security.sql` bằng `bo19_migrator`, rồi chạy phần kiểm như `--app-dsn`: 51 bảng; **174** từ chối đúng (+5); **68** cho phép đúng (+5); **Lệch: 0**. Đây là phép kiểm đoạn code vừa sửa, **không** phải AC-1.6 — không dùng `migrate_main`, không có `schema_migration`, không áp `0003`/`0004`.
+- Lần chạy đầu `--local` hỏng vì console Windows mã hoá `cp1252` khi chuyển hướng stdout ra file; chạy lại với `PYTHONIOENCODING=utf-8`. Lỗi của môi trường, không của thay đổi.
+
+### Phát hiện — báo cáo, không tự sửa
+
+1. **A-075:** enum `intent` của P1 và `variable_name` của P4/P5 khoá cứng mã trong prompt module, chặn AC cứng của F6.
+2. **`rate_limit_window`:** `04-data.md` ghi `UPDATE (attempt_count)`, `0002_phase9_security.sql` và `09-security.md` cấp `UPDATE` cả bảng. `check_grants.py` theo `09-security.md`.
+3. **`07-prompts.md`:** cụm "hệ số 2 cho再生 sau trượt kiểm" ở mục Chiến lược ép JSON và xử lý lỗi parse mang ký tự không phải tiếng Việt.
+
+---
+
+## 2026-09-25 (duyệt Phase 12) — PO duyệt `12-roadmap.md` v0.2; lên v0.3
+
+**PO duyệt Phase 12.** `_PLAN.md`: Phase 12 → ☑ — trợ lý đánh dấu theo yêu cầu trực tiếp của PO.
+
+### Quyết định của PO
+
+| # | Quyết định |
+|---|---|
+| 1 | **Chấp nhận** các sửa owner/hạn ở `ASSUMPTIONS.md` của vòng duyệt trước: A-029, A-034, A-038, A-044, A-052, A-053, A-054, A-055, A-056 — owner Product Owner, hạn theo cổng sprint ở mục Nợ thiết kế Phase 8 — cổng theo sprint của `12-roadmap.md` |
+| 2 | **A-075 là lỗi thật.** Hướng: enum `intent` của `ClassifyIntentResult` do `ai_gateway` sinh lúc gọi, từ mã `SUPPORTED` và `KNOWN_UNSUPPORTED` của `request_type_catalog`, cộng `OUT_OF_SCOPE`, `NEED_CLARIFICATION`; node vẫn kiểm lại. Thiết kế chi tiết vào đợt sửa gộp A-068, A-073, A-075 — kế hoạch trình trước Phase 13 |
+| 3 | Sửa lỗi gõ ở `07-prompts.md` ngay. `rate_limit_window`: quyền theo cột của `04-data.md` là chuẩn — viết đề xuất migration, **chưa áp** |
+| 4 | Script tạm áp `0002`: xoá, hoặc đưa hẳn vào `tools/contract-checks` có README |
+| 5 | R1-2 phải ghi thứ tự cắt cho track build và phần an ninh không được cắt |
+
+### File sửa
+
+| File | Thay đổi |
+|---|---|
+| `_PLAN.md` | Phase 12 → ☑ |
+| `07-prompts.md` | Mục Chiến lược ép JSON và xử lý lỗi parse: "hệ số 2 cho再生 sau trượt kiểm" → "hệ số 2 cho sinh lại sau trượt kiểm". Sửa lỗi gõ ở file phase đã đóng, theo phép của PO; không đổi nghĩa, không đổi phiên bản |
+| `12-roadmap.md` → 0.3 | R1-2: bảy bậc cắt theo thứ tự, hai phần an ninh cắt có điều kiện (rate limit đăng nhập, `RES` ẩn mặc định — phải có trước cổng Sprint 2), mười phần an ninh không được cắt kèm lý do. Cổng 2.8 mới. Open Questions cập nhật theo câu trả lời của PO |
+| `ASSUMPTIONS.md` → 0.28 | A-075: ghi hướng PO chọn, trạng thái "đã chọn hướng, chờ đợt sửa" |
+| `tools/contract-checks/check_grants.py` | Chế độ mới **`--local-migrated`**: như `--local` nhưng áp lần lượt `backend/migrations/schema/*.sql` thay cho `schema.sql`, mỗi file một giao dịch. Thay cho script tạm của vòng trước — script đó đã xoá |
+| `tools/contract-checks/README.md` | Cách chạy `--local-migrated`, khi nào dùng, giới hạn (không thay `migrate_main`); ghi chú `PYTHONIOENCODING=utf-8` trên Windows |
+| `proposals/migration-0005-rate-limit-window-column-grant.md` | **Mới, chưa áp.** `REVOKE UPDATE` cả bảng, `GRANT UPDATE (attempt_count)`; diff `check_grants.py` phải áp cùng commit |
+
+### Đã chạy
+
+- `0001_initial.sql` và `contracts/schema.sql` trùng sha256 (`0ce8dd…`) — căn cứ để `--local-migrated` áp `0001` thay cho `schema.sql`.
+- `check_grants.py --local`: 169 / 63 / **Lệch 0**.
+- `check_grants.py --local-migrated`: áp `0001`→`0004`; 51 bảng; 174 / 68 / **Lệch 0**. **Lần đầu `0003_job_failed_index.sql` và `0004_observability_trace_id.sql` được áp lên một PostgreSQL thật** (16.2 local) — đóng vế "chưa xác minh bằng công cụ" của đề xuất `migration-0004-trace-id-format.md`, ở mức local; trên Render vẫn chưa.
+- Bằng chứng cho đề xuất `0005` — số đo ghi trong chính đề xuất: UPSERT và `DELETE` của `bo19_app` chạy được với `UPDATE (attempt_count)`; `UPDATE` hai cột khoá chính bị từ chối; checker đã sửa cho 176 / 68 / 0 khi có `0005`, và bắt đúng 2 lệch khi thiếu. Chạy inline và trên bản sao tạm trong scratchpad, đã xoá.
+
+---
+
+## 2026-09-25 (đợt sửa A-068, A-073, A-075) — sửa `03-agents.md`, `07-prompts.md`; áp migration `0005`
+
+PO duyệt kế hoạch có điều kiện. Chưa sang Phase 13.
+
+### Quyết định của PO
+
+| # | Quyết định |
+|---|---|
+| 1 | A-073: tool chỉ đọc `procedure_store_status`, kèm biện minh; chọn phương án ít node hơn, ghi phương án bị loại |
+| 2 | A-068: chấp nhận `last_seen_request_status`, giữ `request` ở `CHANGES_REQUESTED` trong phiên; sửa câu ở `11-ops.md`; thêm ca eval chứng minh trần `C` vẫn chạm được sau `SUBMITTED` |
+| 3 | `prompt_module_version` không đổi khi catalog đổi, truy vết bằng dấu vân tay catalog; thêm loại qua F6 không qua regression gate thành giả định mới, owner PO, có biện pháp bù tối thiểu, đưa vào AC của F6 |
+| 4 | Gộp `variable_name` của P4/P5, `secondary_intent` (tối đa một giá trị, cùng enum sinh lúc gọi, chỉ lưu mã), enum của `EvalCase`; bảng ánh xạ có dòng `MULTIPLE` |
+| 5 | Viết ADR-025 |
+| 6 | Migration `0005` duyệt — áp cùng bản sửa `check_grants.py` |
+
+### Quyết định thiết kế trong đợt, cần PO đọc
+
+- **A-073 — chọn phương án không có trong hai phương án PO nêu.** `route_intent` vốn đã là một node tất định (mục Agent, graph, node, tool của `GLOSSARY.md`), nên nó gọi `procedure_store_status` **chỉ** ở lượt ngoài phạm vi, ghi mã vào state, cạnh ra rẽ theo mã. Loại: node mới `check_procedure_store` (thêm node không có lý do cụ thể); `load_turn` gọi tool ở mọi lượt (không thêm node nhưng đọc kho ở gần như mọi lượt). Tool trả kết quả **theo quyền của người đang chat**, không theo toàn kho.
+- **A-068 — sửa thêm một lỗi cùng gốc.** Cạnh `load_turn → resume_context` có điều kiện "`request` đã `SUBMITTED` trở đi", đúng ở **mọi** lượt sau khi gửi: nhân viên kẹt ở `resume_context`, không mở được yêu cầu mới trong phiên. `last_seen_request_status` giải cả hai — `resume_context` và phép đặt lại bộ đếm cùng chạy đúng một lần mỗi lần trạng thái đổi. Kèm theo: `route_intent` chỉ coi `request` là "loại đang mở" ở `DRAFT`, `NEEDS_INFO`, `CHANGES_REQUESTED` — nhờ vậy ca `SLOT_DATA` bổ sung được dữ liệu qua hội thoại, điều thiết kế cũ không làm được.
+- **`secondary_intent` bỏ `NEED_CLARIFICATION`** khỏi enum — lệch nhẹ khỏi chữ "cùng enum" của chỉ thị: một nhu cầu thứ hai "chưa rõ" không mở được `request` nào, không có mã để lưu.
+- **EC-CV-03 và EC-WC-03 (câu kiểm thêm của PO).** Ánh xạ `KNOWN_UNSUPPORTED → OUT_OF_SCOPE` giữ được EC-WC-03 và EC-CV-03 chiều (a). **Không giữ được** EC-CV-03 chiều (b) khi P1 phân loại nhầm một cách tự tin — không ánh xạ nào giữ được. Ba biện pháp: khuôn riêng cho loại `KNOWN_UNSUPPORTED` (nêu tên loại, liệt kê mọi loại đang hỗ trợ), guardrail mới của P1, và M8 đo đúng ca này. Thêm trường state `unsupported_type`. `retrieval_query` nay có cả ở mã `KNOWN_UNSUPPORTED`, vì loại đó vẫn cần hướng xử lý thủ công.
+- **Ca eval K1, K2 ngoài 37 ca**, không vào 37 ca: NFR-07 cấm thêm ca tuỳ ý, và hai ca này kiểm cơ chế graph với output P1 giả lập, không kiểm hành vi trên ngôn ngữ thật. Vào nhóm hard của regression gate.
+
+### File sửa
+
+| File | Thay đổi |
+|---|---|
+| `03-agents.md` → 0.12 | Tool Registry: `procedure_store_status` + biện minh và ba phương án gọi. Allowlist: `classify_intent`, `embed_query`. State: `unsupported_type`, `procedure_store`, `last_seen_request_status`. `intake_graph`: hai cạnh sửa, một cạnh mới, luật `load_turn`, định nghĩa "loại đang mở", bảng ánh xạ 8 dòng, phân tích EC-CV-03/EC-WC-03. Hai nhánh output. Dòng phiên bản đầu file còn ghi 0.8 dù ghi chú đã tới v0.11 — sửa cùng lượt |
+| `07-prompts.md` → 0.2 | P1: enum sinh lúc gọi, `secondary_intent`, `retrieval_query` cho `KNOWN_UNSUPPORTED`, guardrail EC-CV-03 (b), few-shot `MULTIPLE`. P4/P5: `variable_name` sinh lúc gọi. Mục Phiên bản và thay đổi: luật phiên bản khi catalog đổi, `catalog_fingerprint` |
+| `decisions/ADR-025-output-contract-sinh-tu-cau-hinh.md` | **Mới.** Chọn C; loại A, B, D |
+| `10-eval.md` → 0.2 | Mục Ca kiểm cơ chế graph (K1, K2); `catalog_fingerprint` trong bản ghi kết quả; regression gate: K1/K2 vào nhóm hard, nói thẳng gate không bắt được thay đổi catalog; enum `request_type` của `EvalCase` thành `pattern` |
+| `11-ops.md` → 0.9 | Mục Định cỡ A-022: 46.500 đang hiệu lực, 32.000 là giá trị cũ; câu "(b') là mở rộng logic có sẵn" gạch và sửa; ghi hệ quả với lý do đã loại phương án (d) |
+| `GLOSSARY.md` → 0.21 | `procedure_store_status` vào nhóm tool của `intake_agent`; thuật ngữ `catalog_fingerprint` |
+| `ASSUMPTIONS.md` → 0.29 | A-068, A-073, A-075 → Đã chốt. A-028: hạn trước cổng Sprint 3 (chuyển từ A-073). A-074: T6 bỏ. **A-076 mới** — thay đổi catalog qua F6 không qua regression gate, owner PO, hai biện pháp bù |
+| `12-roadmap.md` → 0.4 | Cổng 2.3 và 3.6 đạt. Sprint 1, 2 thêm deliverable theo đợt sửa. AC-2.6, AC-2.8 sửa; **AC-2.10 mới**. AC-3.2, AC-4.4 thêm biện pháp bù của A-076. `request_type_upsert` từ chối `SUPPORTED` khi `example_phrases` rỗng. T6 bỏ, giữ ID. R3-1, Open Questions cập nhật |
+| `backend/migrations/schema/0005_rate_limit_window_column_grant.sql` | **Mới** — `REVOKE UPDATE` cả bảng, `GRANT UPDATE (attempt_count)` |
+| `tools/contract-checks/check_grants.py`, `README.md` | Nhóm `MIGRATION_COLUMN_UPDATE` thay `MIGRATION_WINDOW_COUNTER`, đúng diff của đề xuất |
+| `09-security.md` | Một đoạn dưới khối SQL tóm tắt `0002` trỏ tới `0005`; khối SQL không đổi |
+| `proposals/migration-0005-rate-limit-window-column-grant.md` | Trạng thái → ✅ Đã áp |
+
+**Không đổi:** `contracts/schema.sql`, `contracts/openapi.yaml`, `0001`–`0004`, `04-data.md`, `05-api.md`, `06-structure.md`, `08-hitl.md`, `CLAUDE.md`, `_PLAN.md`.
+
+### Đã chạy
+
+- `check_grants.py --local-migrated` sau khi áp `0005`: áp `0001`→`0005`; 51 bảng; **176** từ chối đúng; **68** cho phép đúng; **Lệch 0**. Trùng khít số đã đo trước trong đề xuất.
+- `check_grants.py --local`: 169 / 63 / **Lệch 0** — không đổi.
+
+### Còn mở, phát hiện trong đợt
+
+- Nhân viên quay lại ở một `chat_session` **mới** vẫn không thấy `request` đang dở của mình — A-038, không thuộc đợt này.
+- `request` đã `SUBMITTED` rồi mới quay về `CHANGES_REQUESTED` sau khi phiên đã mở `request` khác: phiên chỉ gắn một `request`, nên lần đổi đó không được báo trong chat — nhân viên vẫn nhận qua thông báo và trang yêu cầu của mình. Cùng họ A-038.

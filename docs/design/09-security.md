@@ -308,6 +308,8 @@ GRANT SELECT ON employee_credential TO bo19_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON rate_limit_window TO bo19_app;
 ```
 
+**Thu hẹp sau Phase 12 — `backend/migrations/schema/0005_rate_limit_window_column_grant.sql`:** quyền `UPDATE` của `bo19_app` trên `rate_limit_window` còn đúng cột `attempt_count`, khớp nhóm "Đếm và dọn theo cửa sổ" ở mục Nguyên tắc dữ liệu của `04-data.md`. Khối SQL trên chép đúng `0002`, và `0002` không đổi. Lý do và số đo ở `proposals/migration-0005-rate-limit-window-column-grant.md`.
+
 ### Data migration — `backend/migrations/data/0001_permission_catalog.sql`
 
 `INSERT` cho `permission` (25 dòng), `role` (3 dòng), `role_permission` (gói theo mục Gói permission theo vai trò của `00-domain.md`). Chi tiết ở mục 3.2. **Không** ghi `employee_role` hay `employee_permission_grant` — cả hai cần `employee_id` thật, chưa tồn tại ở thời điểm thiết kế.

@@ -1,6 +1,6 @@
 # Agent & Tool Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.8 · **Trạng thái:** Draft chờ duyệt · **v0.2–0.3:** hai vòng sửa theo review — xem các mục ngày 2026-09-12 (lần 5, lần 6) của `CHANGELOG.md` · **v0.4:** sửa ở Phase 4 theo phép K1 và J2 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.5:** danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1) — mục ngày 2026-09-13 (lần 2) · **v0.6:** tool `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.7:** thao tác `request_slot_confirm` (mục 5.4 mới, mục 5.4 và 5.5 cũ đánh số lại thành 5.5 và 5.6), failure handling của `intake_agent` — mục ngày 2026-09-13 (lần 4) · **v0.8:** mục 5.7, bản kê thao tác do endpoint gọi — vòng duyệt Phase 5 (A2), mục ngày 2026-09-13 (lần 5) · **v0.9:** danh sách ngoại lệ đóng có ba mục, thêm `llm_usage` (ADR-019) — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.10:** biên node và ca canary thứ hai ở mục Checkpointer và PII; `FONT_MISSING` của `pdf_export` — vòng duyệt Phase 6 (B2, B3), mục ngày 2026-09-13 (lần 9) · **v0.11:** dòng "Chạy ở" của `intake_agent` và dòng độ trễ ở bảng năng lực model theo ADR-016 — mục ngày 2026-09-14
+**Phiên bản:** 0.12 · **Trạng thái:** Draft chờ duyệt · **v0.2–0.3:** hai vòng sửa theo review — xem các mục ngày 2026-09-12 (lần 5, lần 6) của `CHANGELOG.md` · **v0.4:** sửa ở Phase 4 theo phép K1 và J2 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.5:** danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1) — mục ngày 2026-09-13 (lần 2) · **v0.6:** tool `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.7:** thao tác `request_slot_confirm` (mục 5.4 mới, mục 5.4 và 5.5 cũ đánh số lại thành 5.5 và 5.6), failure handling của `intake_agent` — mục ngày 2026-09-13 (lần 4) · **v0.8:** mục 5.7, bản kê thao tác do endpoint gọi — vòng duyệt Phase 5 (A2), mục ngày 2026-09-13 (lần 5) · **v0.9:** danh sách ngoại lệ đóng có ba mục, thêm `llm_usage` (ADR-019) — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.10:** biên node và ca canary thứ hai ở mục Checkpointer và PII; `FONT_MISSING` của `pdf_export` — vòng duyệt Phase 6 (B2, B3), mục ngày 2026-09-13 (lần 9) · **v0.11:** dòng "Chạy ở" của `intake_agent` và dòng độ trễ ở bảng năng lực model theo ADR-016 — mục ngày 2026-09-14 · **v0.12:** đợt sửa A-068, A-073, A-075 — ánh xạ output của `classify_intent`, `procedure_store_status`, luật `last_seen_request_status`; dòng phiên bản đầu file trước đó còn ghi 0.8 dù ghi chú đã tới v0.11 — sửa cùng lượt — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md`
 
 > File này chốt agent nào tồn tại, mỗi agent được đọc gì, gọi tool nào, chạy trên graph LangGraph nào, dừng ở đâu chờ người, nhớ gì và quên gì. File này **không** viết nội dung prompt (Phase 7), **không** thiết kế bảng/cột (Phase 4), **không** thiết kế màn hình duyệt hay cơ chế dừng khi chạm trần (Phase 8).
 
@@ -62,10 +62,10 @@ Xuất phát từ giả thuyết **một agent + nhiều tool**. Chỉ tách khi
 | **Chạy ở** | `intake_graph`, thread theo `chat_session`, gọi từ tiến trình `api` mỗi lượt chat (ADR-005), ở một task tách khỏi vòng đời request (ADR-016) |
 | **Node gọi LLM** | `classify_intent`, `extract_slots`, `select_procedure_passages`; lời gọi embedding `embed_query`. Input đích danh ở mục 4 |
 | **Output** | Không có văn bản tự do hiển thị cho nhân viên (ADR-007). Output của từng node là JSON: mã `request_type` ứng viên, giá trị slot `USER_INPUT` kèm đoạn trích bằng chứng, id đoạn quy trình. Câu trả lời trong chat do `render_reply` lắp từ khuôn |
-| **Tool được phép** | `request_open` · `request_slots_write` · `request_slots_read` · `request_transition` · `employee_lookup` · `prior_attempt_lookup` · `procedure_retrieval` · `[Should]` `room_availability_check`. Không có `notification_send`: không node nào của `intake_graph` gửi thông báo — câu trả lời trong chat đi qua `render_reply`, còn nhắc hạn `NEEDS_INFO` là job của `queue_worker` |
+| **Tool được phép** | `request_open` · `request_slots_write` · `request_slots_read` · `request_transition` · `employee_lookup` · `prior_attempt_lookup` · `procedure_store_status` · `procedure_retrieval` · `[Should]` `room_availability_check`. Không có `notification_send`: không node nào của `intake_graph` gửi thông báo — câu trả lời trong chat đi qua `render_reply`, còn nhắc hạn `NEEDS_INFO` là job của `queue_worker` |
 | **Model tier** | **Rẻ.** Output bị schema chặn chặt (mã enum, id, giá trị có bằng chứng nguyên văn) nên chất lượng câu chữ của model không đi vào đâu. RISK-02/M8 không được canh bằng độ mạnh của model mà bằng quy tắc "hỏi, không đoán" cộng khuôn câu hỏi làm rõ. **Không** leo thang sang model mạnh khi model rẻ "kém tự tin": confidence tự báo của LLM chưa hiệu chỉnh, và F1 đã chốt hành vi khi không chắc là **hỏi** |
 | **Failure handling** | Lỗi gọi model (timeout, lỗi provider): retry có backoff, số lần theo A-031; hết lượt thì trả khuôn "hệ thống đang bận, thử lại sau" và **không đổi dữ liệu nghiệp vụ**. Thứ duy nhất nhánh lỗi được ghi là **đúng một dòng `chat_message` của agent mang mã khuôn lỗi**, để client dựng lại được lượt đó bằng GET khi stream đứt (mục SSE của `05-api.md`). Nhánh lỗi **không** tạo `request`, **không** ghi `request_slot`, **không** chuyển trạng thái `request`. Những gì các node chạy **trước** lỗi trong cùng lượt đã ghi — ví dụ `open_request` chạy trước `extract_slots` — đứng nguyên, không hoàn tác; chúng idempotent theo tin nhắn của lượt nên gửi lại không nhân đôi. JSON không qua schema: sửa lỗi parse đúng một lần; lần hai hỏng thì coi như không hiểu và hỏi lại bằng khuôn. Giá trị slot không có đoạn trích nguyên văn khớp tin nhắn: loại, coi như thiếu, hỏi lại |
-| **Điều kiện thoát vòng lặp** | Trong một lượt, `intake_graph` là DAG, không có cạnh quay lui — mỗi lượt chạy tới `END`. Ở mức hội thoại, hỏi làm rõ lặp quá số lần theo A-031 thì chuyển sang khuôn hướng dẫn liên hệ phòng hành chính trực tiếp. Không có vòng tự lặp nào không cần nhân viên gõ thêm |
+| **Điều kiện thoát vòng lặp** | Trong một lượt, `intake_graph` là DAG, không có cạnh quay lui — mỗi lượt chạy tới `END`. Ở mức hội thoại, hỏi làm rõ lặp quá số lần theo A-031 thì chuyển sang khuôn hướng dẫn liên hệ phòng hành chính trực tiếp. Bộ đếm được đặt lại **đúng một lần cho mỗi `request`**, khi `request` đó rời giai đoạn thu thập (luật ở mục 6.3, A-068) — không đặt lại ở mọi lượt. Không có vòng tự lặp nào không cần nhân viên gõ thêm |
 | **Token budget** | Tính chung vào budget của `request` tại `ai_gateway`, gồm cả token embedding. Lượt chat trước khi có `request` (chưa phân loại) tính vào budget của `chat_session`. Giá trị: `TBD` (A-022). Chạm trần: dừng lượt, khuôn chuyển liên hệ phòng hành chính; cơ chế chi tiết thuộc Phase 8 |
 
 ### 3.2 `drafting_agent`
@@ -109,9 +109,9 @@ Yêu cầu tương tự áp cho embedding model (A-028), cộng thêm: cùng m�
 
 | Lời gọi | Model | Slot | Input không phải slot | Không nhận |
 |---|---|---|---|---|
-| `classify_intent` | LLM rẻ | Không slot nào | `current_turn_text` — tin nhắn thô **chỉ lượt hiện tại**; có thể mang **mọi thứ**, kể cả dữ liệu `RES` chưa gán vào slot nào. `pending_question` — mã khuôn câu hỏi agent vừa hỏi cùng danh sách `request_type` ứng viên; `INT`. `active_request_type` — mã enum; `INT`. `request_type_catalog` — mã, tên, mô tả và cụm từ ví dụ của loại đang hỗ trợ và loại đã biết là chưa hỗ trợ, lấy từ cấu hình; `INT` | Lịch sử hội thoại các lượt trước; mọi giá trị slot đã thu; mọi dữ liệu `employee` |
+| `classify_intent` | LLM rẻ | Không slot nào | `current_turn_text` — tin nhắn thô **chỉ lượt hiện tại**; có thể mang **mọi thứ**, kể cả dữ liệu `RES` chưa gán vào slot nào. `pending_question` — mã khuôn câu hỏi agent vừa hỏi cùng danh sách `request_type` ứng viên; `INT`. `active_request_type` — mã enum; `INT`. `request_type_catalog` — mã, tên, mô tả và cụm từ ví dụ của loại đang hỗ trợ và loại đã biết là chưa hỗ trợ, lấy từ cấu hình; `INT`. **Enum của `intent` và `secondary_intent` trong output sinh từ chính giá trị này** tại lúc gọi (ADR-025) — không phải một input thêm | Lịch sử hội thoại các lượt trước; mọi giá trị slot đã thu; mọi dữ liệu `employee` |
 | `extract_slots` | LLM rẻ | Không nhận giá trị slot nào. **Output** chỉ được chứa slot nguồn `USER_INPUT` của đúng `request_type` đang mở — `WORK_CONFIRMATION`: `purpose`, `recipient_org`, `copies_count`, `language` `[Could]` · `INTRODUCTION_LETTER`: `bearer_employee_code`, `recipient_org`, `recipient_person`, `work_content`, `valid_from`, `valid_to`, `accompanying_persons` · `ROOM_BOOKING` `[Should]`: `start_at`, `end_at`, `attendee_count`, `purpose`, `external_guests`, cùng tham chiếu tới `room_id` và `equipment_needed` để đối chiếu tất định với danh mục | `current_turn_text` — như trên. `pending_question` — như trên, để hiểu câu trả lời ngắn kiểu "Ngân hàng ABC". `slot_specs` — tên, kiểu, mô tả của các slot `USER_INPUT` của loại đang mở; `INT` | Giá trị slot đã thu; mọi slot `HR_PROFILE` và `SYSTEM` — schema output không có chỗ cho chúng, nên model không thể "điền" chúng |
-| `embed_query` | Embedding | Không slot nào | `retrieval_query` — cụm chủ đề ngắn, giới hạn độ dài, do `classify_intent` trích khi ý định ngoài phạm vi, lưu cùng dòng `chat_message` của lượt hiện tại; **chỉ lượt hiện tại**. Có thể mang dữ liệu `PER`/`RES` chép từ lời nhân viên (ví dụ "giấy tờ để ra toà") — đối xử là `RES` | `current_turn_text` nguyên văn. Gửi cụm chủ đề thay vì cả tin nhắn là tối thiểu hoá: phần lớn tin nhắn không bao giờ rời hệ thống qua đường này |
+| `embed_query` | Embedding | Không slot nào | `retrieval_query` — cụm chủ đề ngắn, giới hạn độ dài, do `classify_intent` trích khi ý định ngoài phạm vi hoặc là một loại `KNOWN_UNSUPPORTED`, lưu cùng dòng `chat_message` của lượt hiện tại; **chỉ lượt hiện tại**. **Chỉ gọi khi `procedure_store_status` trả `READY`** (A-073): kho chưa sẵn sàng thì không có gì để tìm, và `retrieval_query` không rời hệ thống — cũng không được lưu. Có thể mang dữ liệu `PER`/`RES` chép từ lời nhân viên (ví dụ "giấy tờ để ra toà") — đối xử là `RES` | `current_turn_text` nguyên văn. Gửi cụm chủ đề thay vì cả tin nhắn là tối thiểu hoá: phần lớn tin nhắn không bao giờ rời hệ thống qua đường này |
 | `select_procedure_passages` | LLM rẻ | Không slot nào | `retrieval_query` — như trên. `retrieved_procedure_chunks` — top-k đoạn của **lần truy hồi trong lượt hiện tại**, đã lọc quyền trong SQL; văn bản của kho quy trình, **không chứa PII theo chính sách nạp kho**, là **dữ liệu không tin cậy**. Output chỉ là tập con id của chính các đoạn này | Tin nhắn thô; mọi slot. Model không thấy đoạn nào ngoài tập đã lọc quyền |
 
 ### 4.2 `drafting_agent`
@@ -168,6 +168,7 @@ Bảng này mô tả từng tool. **Ai được gọi tool nào, và mỗi nhóm
 | `request_transition` | Chuyển trạng thái `request` mà graph được phép tự làm: `DRAFT ↔ NEEDS_INFO` | `request_id`, trạng thái đích | Trạng thái mới | Ghi `postgresql` | Tác nhân hệ thống | `ILLEGAL_TRANSITION` | Chuyển sang trạng thái đang có = không làm gì | Trước `SUBMITTED`. **Không** gồm `SUBMITTED` — đó là thao tác của nhân viên (mục 5.2) |
 | `prior_attempt_lookup` | Lấy giá trị slot `INT`/`PER` nguồn `USER_INPUT` còn giữ trên `request` `EXPIRED` gần nhất để **đề xuất lại** (A-014, F1) | `beneficiary_employee_id`, `request_type` | Danh sách (tên slot, giá trị, `request_id` nguồn), **mọi mục ở trạng thái chưa xác nhận** | Đọc | Người thụ hưởng chính là người đang chat | `NONE` — không có lần thử nào, không phải lỗi | Đọc | Trước `SUBMITTED`. Chỉ đọc từ `EXPIRED`; không đọc từ `FULFILLED` (memory yêu cầu định kỳ, `[Could]`). Giá trị không còn qua rule — ví dụ `valid_from` đã ở quá khứ — thì không đề xuất |
 | `procedure_retrieval` | Hybrid search trên kho `procedure_document` (mục 8) | `query_text`, `query_embedding`, `top_k`, ngữ cảnh quyền của người đang chat | Danh sách đoạn: id, tên tài liệu, phiên bản, đường dẫn mục, văn bản | Đọc | Bộ lọc quyền lắp trong SQL từ phòng ban và permission của người đang chat | Không có lỗi "rỗng" — kho rỗng hay không có đoạn nào liên quan đều trả danh sách rỗng, và đó là nhánh được thiết kế | Đọc | Trước `SUBMITTED` |
+| `procedure_store_status` | Cho biết kho quy trình có sẵn sàng truy hồi cho **người đang chat** không, trước khi nhánh ngoài phạm vi gửi gì ra embedding (A-073). Thêm ở đợt sửa sau Phase 12 | Ngữ cảnh quyền của người đang chat — không nhận văn bản nào | `READY` · `NOT_READY` kèm lý do `NO_ACTIVE_COLLECTION` hoặc `NO_VISIBLE_CHUNK` | Đọc | Cùng bộ lọc quyền với `procedure_retrieval`, lắp trong SQL | Không có lỗi "rỗng" — `NOT_READY` là kết quả được thiết kế | Đọc | Trước `SUBMITTED`. Lớp timeout: tool chỉ đọc `postgresql` |
 | `template_fetch` | Lấy template đang hiệu lực của `request_type` bằng **tra cứu chính xác**, không bằng vector search (F2) | `request_type` | `template_id`, phiên bản, danh mục biến: tên biến, loại (điền thẳng từ slot / nội dung tự do / `SYSTEM`), cờ *điền sau duyệt*, `variable_guidance`, giới hạn độ dài | Đọc | Tác nhân hệ thống | `NO_ACTIVE_TEMPLATE` | Đọc | Trước cổng 1 |
 | `document_draft_save` | Ghi văn bản các biến nội dung tự do vừa sinh, kèm phiên bản prompt module và dấu vân tay input đã dùng (để tính phụ thuộc, ADR-009) | `document_id`, (tên biến, văn bản, phiên bản prompt module) | Tên biến đã ghi | Ghi `postgresql` | Tác nhân hệ thống; `document` phải ở `DRAFT` | `NOT_DRAFT` — **chặn cứng mọi lần ghi nội dung khi document không ở `DRAFT`**; đây là lớp thứ hai của INV-01 | Theo (`document_id`, tên biến, số lần sinh) | Trước cổng 1 |
 | `review_readiness_check` | Kiểm tất định định nghĩa **đủ điều kiện trình duyệt** (F2) | `document_id` | Đạt / danh sách mã lỗi | Đọc | Tác nhân hệ thống | Mã lỗi: `VARIABLE_MISSING` · `PLACEHOLDER_VALUE` · `WRONG_SOURCE` · `FRAME_TEXT_IN_VARIABLE` · `SEAL_UNDETERMINED` · `TEMPLATE_NOT_ACTIVE_AT_RENDER` | Đọc | Trước cổng 1 |
@@ -180,6 +181,14 @@ Bảng này mô tả từng tool. **Ai được gọi tool nào, và mỗi nhóm
 | `document_halt_record` | Ghi việc `document_graph` dừng có kiểm soát: mã lý do, node dừng, vòng sửa hiện tại | `document_id`, `reason_code`, `at_node`, `revision_round`, `trace_id` | Id bản ghi dừng | Ghi `postgresql`, sinh `audit_event` cùng giao dịch như mọi tool ghi. **Không** đổi trạng thái `document` — document giữ nguyên trạng thái lúc dừng | Tác nhân hệ thống; chỉ `halt_for_human` gọi | `UNKNOWN_REASON_CODE` — mã ngoài bảng mã; bảng mã thuộc Phase 8 · `DOCUMENT_NOT_FOUND` | Theo (`document_id`, `at_node`, `revision_round`): ghi lại cùng một lần dừng không tạo bản ghi thứ hai | Mọi vị trí — dừng xảy ra được cả trước cổng 1 lẫn sau mọi cổng. Chỉ mang mã, **không** mang giá trị slot hay văn bản |
 | `render_integrity_check` | Kiểm **toàn vẹn byte** của một bản render, ngay trước người hay bước đầu tiên dựa vào byte của nó. Thêm ở Phase 4 | `render_id` | Đạt / mã lỗi | Đọc `object_storage` và `postgresql` | Tác nhân hệ thống | `RENDER_CHECKSUM_MISMATCH` — byte đọc lại không khớp checksum đã commit ở `stored_object_commit` → `halt_for_human` · `RENDER_OBJECT_MISSING` → `halt_for_human` | Đọc | Bản đã duyệt nội dung: giữa hai cổng, gọi từ `route_signing` **trước** `signing_route`. Bản cuối: sau mọi cổng, trong `finalize_issue`, trước giao dịch chuyển `ISSUED`. Lớp timeout: tool chạm `object_storage` |
 | `room_availability_check` `[Should]` | Kiểm xung đột lịch và sức chứa (EC-RB-01, EC-RB-02) | `room_id`, `start_at`, `end_at`, `attendee_count` | Trống / các khung bận (không kèm chủ đề cuộc họp người khác) / phòng thay thế | Đọc | `request.create` | `ROOM_NOT_FOUND` | Đọc | Trước `SUBMITTED` |
+
+**`procedure_store_status` — vì sao là tool riêng, và vì sao không thêm node.**
+
+- **Không mở rộng `procedure_retrieval`.** Tool đó nhận `query_embedding`, nên chỉ chạy được **sau** `embed_query` — đúng lời gọi mà A-073 muốn tránh khi kho chưa sẵn sàng. Cho nó một chế độ "chỉ kiểm" là một tool hai hợp đồng, cùng lập luận đã tách `render_integrity_check` khỏi `signing_route`.
+- **Không đọc thẳng DB từ node.** Mọi phép đọc của graph đi qua `tool_layer` (mục 5.5); ngoại lệ đóng ở đầu mục này chỉ gồm các phép ghi đã liệt.
+- **Không cache lúc khởi động.** Collection có thể được kích hoạt giữa chừng bởi `procedure_ingest`; một cờ đọc lúc khởi động sẽ cũ mà không ai biết. Bước kiểm khởi động #4c chỉ ghi cảnh báo, không phải nguồn cho định tuyến.
+- **Theo quyền của người đang chat, không theo toàn kho.** Kho chỉ có tài liệu `DEPARTMENT_ONLY` ngoài phòng ban của người đang chat thì với người đó kho là rỗng — trả `NO_VISIBLE_CHUNK`, và `retrieval_query` của họ không rời hệ thống.
+- **Gọi ở đâu — ba phương án, chọn (c).** (a) Node mới `check_procedure_store` giữa `route_intent` và `embed_query` — **loại**: thêm một node chỉ để bọc một phép đọc, không có lý do cụ thể nào đòi riêng một node. (b) `load_turn` gọi tool ở **mọi** lượt, ghi mã vào state, cạnh của `route_intent` rẽ theo mã — **loại**: không thêm node, nhưng đọc kho ở cả những lượt không ngoài phạm vi, tức gần như mọi lượt. (c) **`route_intent` — vốn đã là một node tất định (mục Agent, graph, node, tool của `GLOSSARY.md`) — gọi tool chỉ khi kết quả phân loại rơi vào nhánh ngoài phạm vi**, ghi mã vào `procedure_store` của state, và cạnh ra của nó rẽ theo mã đó. Không thêm node, không thêm lượt đọc thừa. Cạnh điều kiện vẫn chỉ đọc state, không gọi tool.
 
 **`render_integrity_check` nằm ở đâu, và vì sao là tool riêng.**
 
@@ -272,6 +281,7 @@ Bốn nhóm caller trong graph. Một tool có mặt ở hai nhóm thì mỗi nh
 | `request_slots_write` | ✔ | — | — | — | Trước `SUBMITTED` |
 | `request_transition` | ✔ | — | — | — | Trước `SUBMITTED` |
 | `prior_attempt_lookup` | ✔ | — | — | — | Trước `SUBMITTED` |
+| `procedure_store_status` | ✔ `route_intent` | — | — | — | Trước `SUBMITTED`. Chỉ đọc |
 | `procedure_retrieval` | ✔ | — | — | — | Trước `SUBMITTED` |
 | `room_availability_check` `[Should]` | ✔ | — | — | — | Trước `SUBMITTED` |
 | `request_slots_read` | ✔ | ✔ | — | — | Trước cổng 1 |
@@ -347,6 +357,7 @@ from typing import Literal, TypedDict
 
 RequestTypeCode = str   # một mã ở mục Mã loại yêu cầu của GLOSSARY.md
 SlotName = str          # một tên ở mục Slot schema của 00-domain.md
+RequestStatusCode = str # một mã ở mục Trạng thái request của GLOSSARY.md
 VariableName = str      # tên biến trong danh mục biến của template — không Literal,
                         # vì thêm request_type mới không được đòi sửa code (F6)
 
@@ -381,9 +392,15 @@ class IntakeState(TypedDict):
     intent_result: Literal[
         "SUPPORTED", "AMBIGUOUS", "OUT_OF_SCOPE", "TYPE_CHANGED", "MULTIPLE", "UNPARSEABLE"
     ] | None
+    unsupported_type: RequestTypeCode | None    # mã KNOWN_UNSUPPORTED mà classify_intent nhận ra ở lượt này —
+                                                # để khuôn trả lời nêu tên loại (EC-WC-03); None ở mọi lượt khác
+    procedure_store: Literal["READY", "NOT_READY"] | None   # do route_intent đặt, chỉ ở lượt rơi vào
+                                                            # nhánh ngoài phạm vi (A-073)
     pending_intents: list[PendingIntent]
     pending_question: PendingQuestion | None
-    clarification_count: int
+    clarification_count: int                    # đặt lại đúng một lần cho mỗi request — luật ở mục 6.3 (A-068)
+    last_seen_request_status: RequestStatusCode | None   # trạng thái của request gắn với phiên mà load_turn
+                                                         # thấy ở lượt trước; do load_turn và open_request ghi
     missing_slots: list[SlotName]
     rejected_slots: list[SlotName]          # bị tool loại ở lượt này: thiếu bằng chứng, trượt rule
     proposed_slots: list[SlotName]          # đang chờ nhân viên xác nhận
@@ -427,6 +444,8 @@ class DocumentState(TypedDict):
     halt: HaltInfo | None
 ```
 
+**Ba trường thêm ở đợt sửa A-068, A-073, A-075** — `unsupported_type`, `procedure_store`, `last_seen_request_status` — đều là mã, đúng ADR-008. Chưa có thread nào chạy, nên đây là định nghĩa của `schema_version` đầu tiên, không cần chuỗi nâng cấp (mục 6.7).
+
 `request_type`, `template_version` và trạng thái nghiệp vụ có trong state chỉ để định tuyến. Mọi node ra quyết định **đọc lại trạng thái từ DB**; state không bao giờ là nguồn sự thật về trạng thái của `request` hay `document`.
 
 ### 6.3 `intake_graph`
@@ -452,11 +471,12 @@ flowchart TD
     END_T([het luot])
 
     START_T --> load_turn
-    load_turn -->|request da gui, da dong hoac het han| resume_context
-    load_turn -->|con dang thu thap hoac chua co request| classify_intent
+    load_turn -->|trang thai request vua doi, da roi giai doan thu thap| resume_context
+    load_turn -->|con lai| classify_intent
     classify_intent --> route_intent
     route_intent -->|nhap nhang hoac khong doc duoc| ask_clarification
-    route_intent -->|ngoai pham vi| embed_query
+    route_intent -->|ngoai pham vi, kho READY| embed_query
+    route_intent -->|ngoai pham vi, kho NOT_READY| render_reply
     route_intent -->|loai moi, doi loai hoac nhieu nhu cau| open_request
     route_intent -->|dung loai dang mo| extract_slots
     embed_query --> procedure_retrieval
@@ -476,13 +496,47 @@ flowchart TD
 
 | Cạnh điều kiện | Điều kiện | Ghi chú |
 |---|---|---|
-| `load_turn` → `resume_context` | `request` đang gắn với phiên đã `SUBMITTED` trở đi, đã kết thúc, hoặc `EXPIRED` | EC-CV-04: `EXPIRED` thì báo rõ đã hết hạn và vì sao; nếu nhân viên muốn làm lại, lượt sau đi vào `open_request` và `propose_values` sẽ đề xuất lại giá trị còn giữ. Có `pending_intents` thì hỏi có xử lý tiếp nhu cầu kế tiếp (EC-CV-01) |
+| `load_turn` → `resume_context` | Trạng thái `request` gắn với phiên **khác** `last_seen_request_status`, và không phải `DRAFT` hay `NEEDS_INFO` — tức vừa rời giai đoạn thu thập, vừa đổi sau đó, hoặc vừa `EXPIRED`/`CANCELLED`. **Chạy đúng một lần cho mỗi lần đổi**; lượt sau đi `classify_intent`. Sửa ở đợt sửa A-068: điều kiện cũ "đã `SUBMITTED` trở đi" đúng ở **mọi** lượt sau khi gửi, nên nhân viên không bao giờ ra khỏi `resume_context` để mở yêu cầu mới | EC-CV-04: `EXPIRED` thì báo rõ đã hết hạn và vì sao; nếu nhân viên muốn làm lại, lượt sau đi vào `open_request` và `propose_values` sẽ đề xuất lại giá trị còn giữ. Có `pending_intents` thì hỏi có xử lý tiếp nhu cầu kế tiếp (EC-CV-01) |
 | `route_intent` → `ask_clarification` | `AMBIGUOUS` hoặc `UNPARSEABLE` | Tăng `clarification_count`; quá ngưỡng (A-031) thì khuôn hướng dẫn liên hệ phòng hành chính |
-| `route_intent` → `embed_query` | `OUT_OF_SCOPE` | Nhánh hướng xử lý thủ công, mục 8 |
+| `route_intent` → `embed_query` | `OUT_OF_SCOPE` và `procedure_store = READY` | Nhánh hướng xử lý thủ công, mục 8. `route_intent` gọi `procedure_store_status` **chỉ** ở lượt rơi vào nhánh này (mục 5.1) |
+| `route_intent` → `render_reply` | `OUT_OF_SCOPE` và `procedure_store = NOT_READY` | Khuôn "chưa hỗ trợ" và "kho quy trình không có căn cứ" — tất định, không gọi `embed_query`, không gọi `select_procedure_passages`, không lưu `retrieval_query` (A-073, mục 8.6) |
 | `route_intent` → `open_request` | `SUPPORTED` khi chưa có `request` · `TYPE_CHANGED` · `MULTIPLE` | `TYPE_CHANGED`: `request` cũ còn `DRAFT` thì `CANCELLED`, slot cũ **không** mang sang (EC-CV-02). `MULTIPLE`: mở `request` cho nhu cầu thứ nhất, các nhu cầu còn lại vào `pending_intents` — nêu rõ cả hai trong câu trả lời, không bỏ im |
 | `check_completeness` | Chạy **đúng hàm kiểm** mà `request_submit` dùng lại (định nghĩa ở F1) | Hai nơi kiểm là cùng một hàm; `request_submit` không tin kết quả của graph mà chạy lại |
 
 `ask_missing` gọi `request_transition` sang `NEEDS_INFO`. Lượt sau nhân viên bổ sung thì `extract_slots` đưa `request` về `DRAFT` qua cùng tool.
+
+**Luật của `load_turn` — thêm ở đợt sửa A-068.** Mỗi lượt, theo thứ tự:
+
+1. Đọc trạng thái `s` của `request` gắn với phiên (`active_request_id`), nếu có.
+2. **Đặt lại bộ đếm:** nếu `last_seen_request_status` ∈ {`DRAFT`, `NEEDS_INFO`} và `s` ∈ {`SUBMITTED`, `IN_REVIEW`, `CHANGES_REQUESTED`, `APPROVED`, `FULFILLED`, `REJECTED`} thì `clarification_count = 0`. Không bao giờ đặt lại khi `s` là `CANCELLED` hay `EXPIRED` — hai trạng thái đó không phải kết quả nhân viên đạt được, và `CANCELLED` do đổi loại giữa chừng (EC-CV-02) không được cấp lại ngân sách làm rõ. Điều kiện đòi `last_seen_request_status` còn ở giai đoạn thu thập, nên phép đặt lại xảy ra **đúng một lần** cho mỗi `request`: lần gửi lại sau `CHANGES_REQUESTED` là `CHANGES_REQUESTED → SUBMITTED`, không đặt lại lần hai.
+3. Rẽ theo cạnh ở bảng trên.
+4. Ghi `last_seen_request_status = s`. `open_request` ghi `DRAFT` khi mở `request` mới.
+
+**`request` nào còn là "loại đang mở".** `request` gắn với phiên **không bị gỡ** khỏi phiên ở bất kỳ trạng thái nào — nhờ vậy lần đổi trạng thái sau của nó vẫn được báo qua `resume_context`. Nhưng `route_intent` chỉ coi nó là "loại đang mở" khi chat còn sửa được nó: `DRAFT`, `NEEDS_INFO`, hoặc `CHANGES_REQUESTED` — trạng thái này của `request` chỉ có ở ca `SLOT_DATA`, vì ca `FREE_CONTENT` giữ `request` ở `IN_REVIEW` (mục 9). Nhờ vậy nhân viên bổ sung được dữ liệu cho ca `SLOT_DATA` qua chính hội thoại, đúng đường `request_slots_write` đã cho phép. Ở mọi trạng thái khác, `route_intent` coi như phiên chưa có `request` đang mở: nhu cầu mới đi `open_request`, không kèm `replaces_request_id`.
+
+**Ánh xạ output của `classify_intent` sang `intent_result` — thêm ở đợt sửa A-075.** `route_intent` xét theo thứ tự, dòng đầu tiên khớp thì dừng. `catalog` là bản `request_type_catalog` đã nạp cho chính lời gọi đó (ADR-025).
+
+| # | Output của `classify_intent` | Điều kiện thêm | `intent_result` | Ghi chú |
+|---|---|---|---|---|
+| 1 | JSON hỏng lần hai, hoặc `intent`/`secondary_intent` là mã **không có** trong `catalog` | — | `UNPARSEABLE` | Node kiểm lại dù schema đã sinh từ `catalog` — lớp thứ hai cho nhánh provider không ép được schema (mục Chiến lược ép JSON và xử lý lỗi parse của `07-prompts.md`) |
+| 2 | `intent = NEED_CLARIFICATION`, hoặc `confidence = low` | — | `AMBIGUOUS` | `candidate_types` gồm các mã P1 đã trả, nếu có |
+| 3 | `secondary_intent` khác rỗng và khác `intent` | Ít nhất một trong hai là mã `SUPPORTED` | `MULTIPLE` | Mở `request` cho nhu cầu `SUPPORTED` — là `intent` nếu cả hai cùng `SUPPORTED`; nhu cầu còn lại vào `pending_intents`, chỉ lưu mã (`OUT_OF_SCOPE` lưu `None`). Câu trả lời nêu cả hai (EC-CV-01) |
+| 4 | `secondary_intent` khác rỗng và khác `intent` | Không cái nào là mã `SUPPORTED` | `OUT_OF_SCOPE` | Nhu cầu thứ hai vào `pending_intents`; câu trả lời nêu cả hai |
+| 5 | Mã `SUPPORTED` | Không có "loại đang mở", hoặc trùng loại đang mở | `SUPPORTED` | — |
+| 6 | Mã `SUPPORTED` | Khác loại đang mở | `TYPE_CHANGED` | EC-CV-02 |
+| 7 | Mã `KNOWN_UNSUPPORTED` | — | `OUT_OF_SCOPE` | Ghi `unsupported_type`; khuôn trả lời riêng, nêu **tên loại** chưa hỗ trợ |
+| 8 | `intent = OUT_OF_SCOPE` | — | `OUT_OF_SCOPE` | `unsupported_type = None` |
+
+**EC-CV-03 và EC-WC-03 dưới ánh xạ này.** `04-data.md` giữ dòng `KNOWN_UNSUPPORTED` trong catalog chính để nhận ra hai ca này. Kiểm từng chiều:
+
+- **EC-WC-03** — từ ngữ của `WORK_CONFIRMATION`, ý định là chứng minh thu nhập. P1 trả `INCOME_CONFIRMATION` (`KNOWN_UNSUPPORTED`) → dòng 7 → báo rõ chưa hỗ trợ giấy xác nhận thu nhập, kèm hướng xử lý thủ công. **Giữ được**, và rõ hơn khuôn chung vì nêu đúng tên loại — đó là lý do cần `unsupported_type`.
+- **EC-CV-03 chiều (a)** — nhập nhằng giữa hai loại đang hỗ trợ. P1 trả `NEED_CLARIFICATION` hoặc `low` → dòng 2 → hỏi lại. **Giữ được.**
+- **EC-CV-03 chiều (b)** — từ ngữ của `INCOME_CONFIRMATION`, ý định thật là `WORK_CONFIRMATION`. P1 trả `NEED_CLARIFICATION` hoặc `low` → dòng 2 → hỏi lại: **giữ được**. P1 **tự tin trả nhầm** `INCOME_CONFIRMATION` → dòng 7 → báo chưa hỗ trợ: **không giữ được** — nhân viên cần một loại đang hỗ trợ lại được báo là chưa hỗ trợ. Không ánh xạ nào sửa được một lỗi phân loại tự tin. Ba biện pháp, không cái nào là bảo đảm:
+  1. **Khuôn riêng cho dòng 7**, khác khuôn của dòng 8: nêu tên loại chưa hỗ trợ, rồi liệt kê **mọi** loại đang hỗ trợ — không chọn một loại "gần nhất", vì đó chính là ép vào loại gần giống mà F1 cấm. Nhân viên thật ra cần giấy xác nhận công tác thấy ngay đường đi tiếp; nhân viên ở ca EC-WC-03 vẫn nhận câu báo chưa hỗ trợ rõ ràng.
+  2. **Guardrail của P1:** từ ngữ khớp một loại chưa hỗ trợ nhưng mục đích nêu ra khớp một loại đang hỗ trợ thì trả `NEED_CLARIFICATION` (mục P1 `classify_intent` của `07-prompts.md`).
+  3. **Đo bằng M8.** Ca này thuộc nhóm G của bộ eval; M8 là metric Bất biến, ngưỡng 0 ca sai. Lỗi tự tin ở đây làm trượt cổng nghiệm thu, không bị che đi.
+
+  Hỏng theo hướng này là **hỏng an toàn**: không có văn bản sai loại nào được sinh ra — đúng loại lỗi RISK-02 sợ nhất.
 
 ### 6.4 `document_graph`
 
@@ -744,7 +798,7 @@ Phase 2 từng nối retrieval vào bước soạn thảo; đã sửa ở sequen
 | Nhánh | Khi nào | Nhân viên thấy gì |
 |---|---|---|
 | **Có căn cứ** | `select_procedure_passages` trả ít nhất một id | Câu báo chưa hỗ trợ, cộng **văn bản nguyên văn** của từng đoạn được chọn, đọc từ DB theo id, kèm tên tài liệu, phiên bản, đường dẫn mục |
-| **Không có căn cứ** | Kho rỗng; truy hồi rỗng; hoặc không đoạn nào được chọn | Câu báo chưa hỗ trợ, hướng dẫn chung liên hệ phòng hành chính, và **nói rõ là kho quy trình không có căn cứ cho việc này** |
+| **Không có căn cứ** | `procedure_store_status` trả `NOT_READY` — không gọi embedding, không truy hồi, không gọi P3 (A-073); hoặc kho sẵn sàng nhưng truy hồi rỗng; hoặc không đoạn nào được chọn | Câu báo chưa hỗ trợ, hướng dẫn chung liên hệ phòng hành chính, và **nói rõ là kho quy trình không có căn cứ cho việc này** |
 
 Model không viết lại đoạn trích, nên không tồn tại đường nào để nó thêm một bước, một đầu mối hay một thời hạn không có trong nguồn. Định nghĩa "Hướng xử lý thủ công đủ căn cứ" và các ca bị coi là KHÔNG đạt nằm ở F1 của `01-prd.md`; bộ eval phủ cả hai nhánh (nhóm J ở NFR-07).
 

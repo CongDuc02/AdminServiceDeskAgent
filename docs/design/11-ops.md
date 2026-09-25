@@ -1,6 +1,6 @@
 # Ops, Cost & Deployment — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.8 · **Trạng thái:** Draft chờ duyệt — bốn đề xuất diff đã áp, còn chờ đợt sửa `03-agents.md` (A-068) và lượt GLOSSARY/contract cho Phase 5, 8
+**Phiên bản:** 0.9 · **Trạng thái:** Draft chờ duyệt — bốn đề xuất diff đã áp; đợt sửa `03-agents.md` cho A-068 đã áp (2026-09-25); còn chờ lượt GLOSSARY/contract cho Phase 5, 8 · **v0.9:** mục 10.4 — trần `chat_session` 46.500 thành giá trị đang hiệu lực, sửa câu về phương án (b') — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md`
 
 > File này chốt vận hành trên Render: môi trường dev/staging/prod, cold start, worker nền, cron, migration, backup & restore, observability, dashboard SLA & tồn đọng, mô hình chi phí LLM, ngưỡng cảnh báo & cơ chế cắt chi phí, và định cỡ A-022. File này **không** thiết kế lại state machine, schema DB, endpoint API, hay `halt_for_human` — chỉ tham chiếu và bổ sung phần vận hành chưa phase nào chạm tới. Bốn thay đổi cần chạm phase đã đóng (`06-structure.md`, `04-data.md` ×2, `05-api.md`/`openapi.yaml`) được viết thành **đề xuất diff riêng**, duyệt từng cái một — **cả bốn đã áp**, PO duyệt lần lượt 2026-09-16 và 2026-09-25 — xem mục 13.
 
@@ -213,7 +213,7 @@ Không lặp lại **nội dung** tín hiệu (đã phát biểu đủ ở `_PLA
 | Bộ phát hiện thread kẹt dạng (2) | Đối chiếu `graph_thread.status = WAITING` với trạng thái kết thúc của `request` cha | **Có** |
 | Token trung bình `classify_intent`, cạnh số `request_type` đang hiệu lực | Phát hiện độ trôi trước khi `BUDGET_EXCEEDED` (mục 10.3) | **Có** — `llm_usage` (`call_name`, `token`) + `COUNT(request_type WHERE support_status='SUPPORTED')` |
 | Số lời gọi `extract_slots` bão hoà ở `maxItems: 8` | Tín hiệu ma sát khai gộp tăng (mục 10.3) | **Có, sau quy ước mục 6.1 (điểm 4)** — `output_item_count` trong log, không phải cột `llm_usage` |
-| Trần token `chat_session` đang dùng giá trị nào | Phụ thuộc A-068 (mục 10.4) | **Có** — log giá trị cấu hình hiện hành lúc khởi động |
+| Trần token `chat_session` đang dùng giá trị nào | A-068 đã đóng — 46.500 (mục 10.4); log vẫn giữ để thấy cấu hình có được cập nhật cùng lúc không | **Có** — log giá trị cấu hình hiện hành lúc khởi động |
 
 ### 6.4 Alert — nguyên tắc, không bịa ngưỡng
 
@@ -290,18 +290,20 @@ Nguyên tử chi phí (một lời gọi LLM sinh một biến), cận trên `(1
 
 **Owner + mốc kích hoạt (A-031):** người vận hành đo lại token thật (qua provider thật, khi có A-026) và điều chỉnh trần khi: (a) tổng số `request_type` active vượt bội số kế tiếp của 5 (mốc kế: 10); hoặc (b) một `request_type` mới có > 8 slot `USER_INPUT` (mốc ma sát khai gộp, không phải mốc vỡ token). Chỗ quan sát tương ứng — mục 6.3.
 
-### 10.4 Trần `chat_session` — giá trị đang hiệu lực, phụ thuộc A-068
+### 10.4 Trần `chat_session` — giá trị đang hiệu lực sau khi A-068 đóng
 
-**A-068** (mới — xem mục 12 của `ASSUMPTIONS.md`): `clarification_count` (state của `intake_graph`) không có cơ chế reset trong thiết kế đã chốt — chỉ tăng ở cạnh `route_intent → ask_clarification`. Với một phiên nhiều `request` nối tiếp, bộ đếm cộng dồn cả phiên.
+**A-068** (xem `ASSUMPTIONS.md`): ở bản thiết kế trước đợt sửa ngày 2026-09-25, `clarification_count` (state của `intake_graph`) không có cơ chế reset — chỉ tăng ở cạnh `route_intent → ask_clarification`, nên một phiên nhiều `request` nối tiếp cộng dồn bộ đếm cả phiên. **Đã đóng** theo phương án (b') đã sửa — đoạn cuối mục này.
 
 | Giá trị | Trạng thái | Điều kiện |
 |---|---|---|
-| **32.000** | **ĐANG HIỆU LỰC** | `(C+N)×1.500 + N×6.500` = `8×1.500+3×6.500` — đúng với thiết kế hiện tại, `clarification_count` không reset |
-| 46.500 | Giá trị thay thế, tự động áp khi A-068 đóng theo phương án (b') | `N×C×1.500 + N×1.500 + N×6.500` = `3×5×1.500+3×1.500+3×6.500` — mỗi chu kỳ yêu cầu được cấp lại đủ `C` lượt làm rõ |
+| 32.000 | Giá trị cũ — hiệu lực tới khi A-068 đóng (2026-09-25) | `(C+N)×1.500 + N×6.500` = `8×1.500+3×6.500` — đúng với thiết kế cũ, `clarification_count` không reset |
+| **46.500** | **ĐANG HIỆU LỰC** — A-068 đóng theo (b') ngày 2026-09-25 | `N×C×1.500 + N×1.500 + N×6.500` = `3×5×1.500+3×1.500+3×6.500` — mỗi chu kỳ yêu cầu được cấp lại đủ `C` lượt làm rõ |
 
-Đây là **một điều kiện đảo ngược có tên** (chỗ quan sát ở mục 6.3): trần build với 32.000 nếu A-068 chưa đóng khi build; đổi sang 46.500 ngay khi A-068 đóng theo (b') — cấu hình phải cập nhật cùng lúc, không trễ.
+Đây là **một điều kiện đảo ngược có tên** (chỗ quan sát ở mục 6.3): trần build với 32.000 nếu A-068 chưa đóng khi build; đổi sang 46.500 ngay khi A-068 đóng theo (b') — cấu hình phải cập nhật cùng lúc, không trễ. **A-068 đã đóng trước khi có build nào** (2026-09-25), nên bản build đầu tiên dùng thẳng 46.500.
 
-**Phương án (b') — đề xuất cho đợt sửa `03-agents.md` riêng (không thuộc Phase 11):** reset `clarification_count = 0` tại `load_turn`, khi node phát hiện `request` trước đó của phiên đã đạt một trong các trạng thái: `SUBMITTED`, `IN_REVIEW`, `CHANGES_REQUESTED`, `APPROVED`, `FULFILLED`, `REJECTED` (đích danh — không dùng chữ "kết thúc"). **Không bao giờ** reset khi trạng thái là `CANCELLED` hoặc `EXPIRED` — cả hai không phải một kết quả nhân viên đạt được, và `CANCELLED` từ `DRAFT` (đổi loại giữa chừng, EC-CV-02) không được phép cấp lại ngân sách miễn phí. **`DRAFT` và `NEEDS_INFO` không nằm ở cả hai danh sách** vì đó là request **chưa kết thúc** — điều kiện reset (đòi trạng thái sau cùng của request trước) không áp dụng cho một request còn đang chạy, không phải bị bỏ sót. Đã rà đủ 10 trạng thái của `request` (mục Trạng thái `request` của `GLOSSARY.md`): 6 trạng thái reset + `CANCELLED`/`EXPIRED` không reset + `DRAFT`/`NEEDS_INFO` không áp dụng = 10, không còn trạng thái nào ở vùng xám. `load_turn` đã đọc sẵn điều kiện tương tự (bảng cạnh điều kiện, mục `6.3` của `03-agents.md`: *"request đã gửi, đã đóng hoặc hết hạn"*) — thêm nhánh reset là mở rộng logic đã có, không phải khớp nối mới; phương án (a) (reset tại `open_request`) và việc reset trực tiếp tại thời điểm `request_submit` bị loại vì lý do ở A-068.
+**Phương án (b') — đề xuất cho đợt sửa `03-agents.md` riêng (không thuộc Phase 11):** reset `clarification_count = 0` tại `load_turn`, khi node phát hiện `request` trước đó của phiên đã đạt một trong các trạng thái: `SUBMITTED`, `IN_REVIEW`, `CHANGES_REQUESTED`, `APPROVED`, `FULFILLED`, `REJECTED` (đích danh — không dùng chữ "kết thúc"). **Không bao giờ** reset khi trạng thái là `CANCELLED` hoặc `EXPIRED` — cả hai không phải một kết quả nhân viên đạt được, và `CANCELLED` từ `DRAFT` (đổi loại giữa chừng, EC-CV-02) không được phép cấp lại ngân sách miễn phí. **`DRAFT` và `NEEDS_INFO` không nằm ở cả hai danh sách** vì đó là request **chưa kết thúc** — điều kiện reset (đòi trạng thái sau cùng của request trước) không áp dụng cho một request còn đang chạy, không phải bị bỏ sót. Đã rà đủ 10 trạng thái của `request` (mục Trạng thái `request` của `GLOSSARY.md`): 6 trạng thái reset + `CANCELLED`/`EXPIRED` không reset + `DRAFT`/`NEEDS_INFO` không áp dụng = 10, không còn trạng thái nào ở vùng xám. ~~`load_turn` đã đọc sẵn điều kiện tương tự (bảng cạnh điều kiện, mục `6.3` của `03-agents.md`: *"request đã gửi, đã đóng hoặc hết hạn"*) — thêm nhánh reset là mở rộng logic đã có, không phải khớp nối mới~~; phương án (a) (reset tại `open_request`) và việc reset trực tiếp tại thời điểm `request_submit` bị loại vì lý do ở A-068.
+
+**Sửa ở đợt sửa ngày 2026-09-25 (quyết định PO) — câu gạch ở trên sai.** Điều kiện "`request` đã gửi, đã đóng hoặc hết hạn" đúng ở **mọi** lượt sau khi gửi, không chỉ lượt đầu. Đặt lại bộ đếm theo điều kiện đó nghĩa là đặt lại ở mọi lượt, và trần `C` không bao giờ chạm. (b') vì vậy **không** mở rộng được logic có sẵn mà không thêm gì: cần thêm một trường mã trạng thái, `last_seen_request_status`, để đặt lại **đúng một lần** — khi `request` rời `DRAFT`/`NEEDS_INFO` lần đầu. Cùng trường đó sửa luôn cạnh `load_turn → resume_context`, vốn cũng đúng ở mọi lượt. Luật đầy đủ ở mục `intake_graph` của `03-agents.md`; ca kiểm K1, K2 ở mục Ca kiểm cơ chế graph của `10-eval.md`. Hệ quả với lý do đã loại phương án (d) ở A-068 — "thêm trường `IntakeState` mới, xâm lấn nhiều hơn (b') trong khi (b') đủ": vế "(b') đủ" không còn đúng. (b') đã sửa vẫn được giữ vì trường thêm vào là một mã trạng thái, không phải bộ đếm thứ hai — nghĩa của `clarification_count` vẫn là một bộ đếm duy nhất.
 
 ---
 

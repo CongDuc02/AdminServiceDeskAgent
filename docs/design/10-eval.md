@@ -1,6 +1,6 @@
 # Evaluation Framework — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.1 · **Trạng thái:** Draft chờ duyệt
+**Phiên bản:** 0.2 · **Trạng thái:** Draft chờ duyệt · **v0.2:** đợt sửa A-068, A-073, A-075 — ca kiểm cơ chế K1, K2; enum `request_type` của `EvalCase` không còn viết cứng; `catalog_fingerprint` trong bản ghi kết quả; giới hạn của regression gate với thay đổi catalog (A-076) — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md`
 
 > File này chốt: bộ dữ liệu vàng (golden dataset) dùng để đo, metric cho từng chặng xử lý, cách chạy offline/online, rubric người chấm, phân loại lỗi (failure mode) và điều kiện được phép đổi prompt hoặc model. File này **không** định nghĩa lại nội dung hay phân bố 37 ca của bộ eval — nguồn duy nhất là mục Bộ eval chuẩn của `01-prd.md` (NFR-07). File này **không** thiết kế dashboard SLA hay ngưỡng cảnh báo vận hành (Phase 11), **không** chọn provider/model cụ thể (A-026, A-028, A-065), **không** viết prompt (Phase 7 đã chốt), **không** thiết kế bảng mã lý do dừng (Phase 8).
 
@@ -23,6 +23,7 @@ Ba việc PRD không phủ, vì lý do khác nhau, thuộc về Phase 10:
 1. **Canary suite** — kiểm hạ tầng (checkpoint không chứa PII), không kiểm hành vi nghiệp vụ. Giao cho Phase 10 ở mục Checkpointer và PII của `03-agents.md`.
 2. **Phương pháp recall@k** — NFR-07 dùng kho quy trình *giả lập* cho nhóm J vì kho thật chưa tồn tại (A-027); đó là 5 ca hội thoại, không phải một bộ đo retrieval. A-028 giao Phase 10 tiêu chí chọn embedding model bằng recall@k trên "bộ eval của chính dự án" — cần một bộ đo riêng, tách khỏi 37 ca.
 3. **Phương pháp so tier rẻ/mạnh** — `04-data.md` mục 3.8 (định nghĩa `llm_usage`) để ngỏ câu "có hạ tier được không là câu hỏi của Phase 10", và mục Agent Registry của `03-agents.md` nhắc lại đúng câu đó cho `drafting_agent`.
+4. **Ca kiểm cơ chế graph** *(thêm ở v0.2)* — kiểm một cơ chế của `intake_graph` mà 37 ca không phủ vì chúng chấm hành vi trên ngôn ngữ thật, không chấm bộ đếm hay luật rẽ. Mục 2.4.
 
 Cả ba việc trên đều dừng ở **phương pháp**, không ra **kết quả** — xem lý do ở mục 9.
 
@@ -85,6 +86,19 @@ Bộ đo trên **được phép chạy trên kho giả lập của nhóm J** —
 
 **Ai gán "đoạn nào đúng cho câu hỏi nào" khi có kho thật:** chưa quyết — xem A-064.
 
+### 2.4 Ca kiểm cơ chế graph — ngoài 37 ca *(thêm ở v0.2)*
+
+**Vì sao không vào 37 ca.** NFR-07 dẫn xuất 37 ca theo công thức cố định, và cấm thêm ca tuỳ ý. Hai ca dưới đây không phải hành vi agent trên một tin nhắn thật mà là **cơ chế** của `intake_graph` — bộ đếm `clarification_count` và luật đặt lại của nó (A-068, mục `intake_graph` của `03-agents.md`). Chúng chạy với **output P1 giả lập theo kịch bản** — mỗi lượt được định trước là `NEED_CLARIFICATION` — để cô lập logic của graph khỏi chất lượng model. Tiêu chí đạt nhị phân, máy chấm, không cần đáp án chuẩn của Trưởng phòng Hành chính — cùng loại với canary, khác loại với 37 ca.
+
+`C` là trần số lượt làm rõ (A-031; giá trị khởi tạo ở mục Định cỡ A-022 của `11-ops.md`).
+
+| Ca | Kịch bản | Điều kiện đạt | Chứng minh gì |
+|---|---|---|---|
+| K1 — trần vẫn chạm được sau khi gửi | Phiên có một `request` đã `SUBMITTED`. Nhân viên gửi `C + 2` lượt, mỗi lượt P1 giả lập trả `NEED_CLARIFICATION` | Lượt đầu đi `resume_context` đúng một lần; các lượt sau đi `ask_clarification`, `clarification_count` tăng đều, **không** về 0 giữa chừng; lượt vượt `C` nhận khuôn hướng dẫn liên hệ phòng hành chính trực tiếp | Luật đặt lại chỉ chạy một lần — đúng lỗi mà phương án (b') bản đầu mắc: đặt lại ở mọi lượt thì trần không bao giờ chạm |
+| K2 — `request` mới được cấp lại đủ `C` | Phiên có `request` thứ nhất đã dùng `C − 1` lượt làm rõ rồi mới `SUBMITTED`; nhân viên bắt đầu nhu cầu thứ hai, P1 giả lập trả `NEED_CLARIFICATION` ở các lượt tiếp | Nhu cầu thứ hai được hỏi làm rõ đủ `C` lượt trước khi nhận khuôn liên hệ trực tiếp | Bộ đếm được đặt lại khi `request` thứ nhất rời giai đoạn thu thập — đúng lý do A-068 tồn tại (M3) |
+
+Một ca kiểm cơ chế thứ ba cho A-073 — nhánh ngoài phạm vi khi kho chưa sẵn sàng không gọi `embed_query` — **không** thêm ở đây: nó đã là một ca của nhóm J ("kho rỗng"), và tiêu chí phụ "không có dòng `llm_usage` của `embed_query` ở lượt đó" chấm bằng máy trên chính ca đó.
+
 ---
 
 ## 3. Metric theo từng chặng
@@ -122,11 +136,11 @@ Mỗi ca trong 37 ca (mục 2.1) được đưa qua đúng graph mà nó kiểm:
 - Nhóm H: `intake_graph` tới `SUBMITTED`, rồi `document_graph` tới `check_review_readiness` — nhóm này kiểm F2, cần bản render thật tồn tại.
 - Nhóm J: `intake_graph`, nhánh ngoài phạm vi (`embed_query` → `procedure_retrieval` → `select_procedure_passages`), chạy trên kho giả lập.
 
-Canary suite (mục 2.2) chạy **riêng**, không lẫn vào 37 ca — vì tiêu chí đạt khác loại (quét PII, không so đáp án nghiệp vụ).
+Canary suite (mục 2.2) và ca kiểm cơ chế (mục 2.4) chạy **riêng**, không lẫn vào 37 ca — vì tiêu chí đạt khác loại: quét PII, hoặc kiểm cơ chế với output model giả lập, không so đáp án nghiệp vụ.
 
 ### 4.2 Bản ghi kết quả và baseline
 
-Mỗi lần chạy gắn với: phiên bản `prompt_module_version` của mọi prompt module liên quan (`07-prompts.md` mục 7), tier/provider model nếu đã chọn (A-026), phiên bản template dùng để render (nhóm H), commit mã nguồn. Đây là artefact vận hành của việc build/CI, **không** là bảng nghiệp vụ trong `contracts/schema.sql` — nơi lưu và định dạng file cụ thể thuộc Phase 11/người triển khai.
+Mỗi lần chạy gắn với: phiên bản `prompt_module_version` của mọi prompt module liên quan (`07-prompts.md` mục 7), **`catalog_fingerprint` của `request_type_catalog` đã dùng** (ADR-025 — cùng phiên bản P1 mà catalog khác là một lần chạy khác), tier/provider model nếu đã chọn (A-026), phiên bản template dùng để render (nhóm H), commit mã nguồn. Đây là artefact vận hành của việc build/CI, **không** là bảng nghiệp vụ trong `contracts/schema.sql` — nơi lưu và định dạng file cụ thể thuộc Phase 11/người triển khai.
 
 **Baseline là kết quả chạy gần nhất được coi là "đúng như mong đợi".** Kỹ thuật (Phase 11/người triển khai) tự chốt baseline mới sau một thay đổi cải thiện có chủ đích, **miễn đáp án chuẩn không đổi** — đáp án chuẩn (nội dung 37 ca, mục 2.1) chỉ Trưởng phòng Hành chính đổi được (A-023). Hai việc này phải tách: đổi baseline (kỹ thuật tự làm) khác đổi đáp án chuẩn (cần duyệt lại theo nghiệp vụ) — lẫn hai việc là tự cho phép sửa đáp án qua đường kỹ thuật.
 
@@ -194,13 +208,15 @@ Trước khi merge/deploy một thay đổi thuộc bất kỳ loại nào dư�
 - Đổi embedding model (A-028).
 - Đổi phiên bản library `langgraph`/`langgraph-checkpoint-postgres`, hoặc sửa biên node của `orchestrator` (A-045).
 
+**Thứ gate này không chặn được — nói thẳng.** Đổi `request_type_catalog` — thêm loại, đổi `support_status`, sửa `example_phrases` — là đổi input của mọi lời gọi P1 sau đó, nhưng đi bằng `request_type_upsert` lúc chạy, không qua CI (F6, ADR-025). Gate ở đây không bao giờ thấy thay đổi đó. Không đưa nó vào danh sách trên, vì liệt kê một kích hoạt mà cơ chế không bắt được là trông như đã tuân thủ. Ghi thành A-076, kèm biện pháp bù tối thiểu.
+
 ### 8.2 Quy trình
 
 ```mermaid
 flowchart TD
     START([Thay doi thuoc muc 8.1])
     RUN[Chay lai 37 ca + canary suite]
-    INVCHECK{Nhom tuong duong Bat bien<br/>nhom G, nhom J, canary}
+    INVCHECK{Nhom tuong duong Bat bien<br/>nhom G, nhom J, canary, ca co che K}
     WARNCHECK{Nhom tuong duong Canh bao<br/>nhom A/B/H validate/halt rate}
     HARDBLOCK([Khong duoc merge/deploy])
     SOFTWARN[Ghi canh bao vao ban ghi ket qua<br/>khong chan merge/deploy]
@@ -215,8 +231,8 @@ flowchart TD
     SOFTWARN --> PASS
 ```
 
-1. Chạy lại toàn bộ 37 ca (mục 2.1) và canary suite (mục 2.2).
-2. **Nhóm tương đương Bất biến** — mọi ca chấm bằng tiêu chí M8 (nhóm G) hay M6 (nhóm J), cộng canary C1/C2: **0 sai lệch** là điều kiện **hard**. Trượt một ca ở đây thì không được merge/deploy, không có ngoại lệ — đúng tinh thần "Bất biến là ngưỡng tuyệt đối" của `01-prd.md` mục 2.
+1. Chạy lại toàn bộ 37 ca (mục 2.1), canary suite (mục 2.2) và ca kiểm cơ chế (mục 2.4).
+2. **Nhóm tương đương Bất biến** — mọi ca chấm bằng tiêu chí M8 (nhóm G) hay M6 (nhóm J), cộng canary C1/C2 và ca kiểm cơ chế K1/K2: **0 sai lệch** là điều kiện **hard**. K1/K2 vào nhóm hard vì chúng canh điều kiện thoát vòng lặp của `intake_agent` (mục Agent Registry của `03-agents.md`) — trượt là hội thoại không có trần, hoặc nhân viên hợp lệ bị đẩy sang liên hệ trực tiếp, tức hỏng M3. Trượt một ca ở đây thì không được merge/deploy, không có ngoại lệ — đúng tinh thần "Bất biến là ngưỡng tuyệt đối" của `01-prd.md` mục 2.
 3. **Nhóm tương đương Cảnh báo** — tỷ lệ trượt `validate_free_content`/`halt_for_human` ở nhóm A/B/H, và M1-proxy (phân loại sai ngoài nhóm G): xấu đi so với baseline chỉ **cảnh báo**, ghi vào bản ghi kết quả của lần chạy, **không chặn** merge/deploy. Đây là lựa chọn đã chốt: giữ đúng triết lý "Cảnh báo không phải cổng nghiệm thu" của PRD cho cả gate kỹ thuật, không riêng gì cổng nghiệm thu UAT.
 4. Đáp án chuẩn (nội dung 37 ca) **không đổi** trong một lần gate. Nếu trong lúc chạy gate phát hiện một ca cũ có đáp án sai, đó là một thay đổi riêng, cần Trưởng phòng Hành chính duyệt lại và ghi `CHANGELOG.md` — không lẫn vào kết quả của lần gate đang chạy.
 
@@ -263,7 +279,8 @@ Contract cho một ca trong bộ eval hành vi (mục 2.1). Chỉ khai field và
     },
     "request_type": {
       "type": ["string", "null"],
-      "enum": ["WORK_CONFIRMATION", "INTRODUCTION_LETTER", "ROOM_BOOKING", "SEAL_REQUEST", "INCOME_CONFIRMATION", "BUSINESS_TRIP_ORDER", null]
+      "pattern": "^[A-Z][A-Z0-9_]*$",
+      "description": "Mã request_type viết HOA. Không liệt kê cứng — loại thêm qua F6 phải biểu diễn được (A-075). Harness kiểm mã có trong catalog của lần chạy, cùng catalog_fingerprint ghi ở bản ghi kết quả"
     },
     "conversation_turns": {
       "type": "array",
@@ -316,6 +333,7 @@ Không có câu hỏi mở chỉ tồn tại trong file này. Ba giả định m
 - **A-028** — cập nhật ở phase này: phương pháp chọn model đã đặc tả (mục 2.3, 9.2), việc chọn vẫn `Mở` vì thiếu dữ liệu thật (A-027, A-002).
 - **A-023** — đáp án chuẩn của 37 ca vẫn `Mở`, chưa có gì đổi; Phase 10 chỉ làm rõ đáp án chuẩn cần ở dạng máy đọc được.
 - **A-045** — canary C2 (mục 2.2) là cách đóng vế còn lại của giả định này khi được chạy thật; tới lúc đó vẫn `Đã chốt — trừ vế tuần tự hoá exception`.
+- **A-076** *(thêm ở v0.2)* — thay đổi catalog qua F6 không đi qua regression gate (mục 8.1).
 
 ---
 

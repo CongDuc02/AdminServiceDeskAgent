@@ -1,6 +1,6 @@
 # GLOSSARY — BO-19 Admin Service Desk Agent
 
-**Phiên bản:** 0.20 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5, vòng duyệt Phase 5, Phase 6, Phase 9 và Phase 12
+**Phiên bản:** 0.21 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5, vòng duyệt Phase 5, Phase 6, Phase 9, Phase 12 và đợt sửa A-068, A-073, A-075
 
 > Đây là danh sách tên chuẩn. Từ Phase 1 trở đi, mọi tài liệu, diagram, DDL, endpoint và prompt phải dùng **đúng** các định danh trong file này. Muốn đổi tên thì sửa file này trước, rồi ghi vào [`CHANGELOG.md`](./CHANGELOG.md).
 
@@ -294,7 +294,7 @@ Tên **agent**, **node LangGraph** cụ thể bên trong `orchestrator`, và **t
 
 **Tool của `tool_layer`, theo nhóm được gọi** — bảng đầy đủ, kèm vị trí so với cổng HITL, ở mục Tool Registry của `03-agents.md`:
 
-- `intake_agent`: `employee_lookup` · `request_open` · `request_slots_write` · `request_slots_read` · `request_transition` · `prior_attempt_lookup` · `procedure_retrieval` · `room_availability_check` `[Should]`
+- `intake_agent`: `employee_lookup` · `request_open` · `request_slots_write` · `request_slots_read` · `request_transition` · `prior_attempt_lookup` · `procedure_store_status` *(thêm ở đợt sửa A-073 — chỉ đọc, `route_intent` gọi ở lượt ngoài phạm vi để biết kho có sẵn sàng cho người đang chat không)* · `procedure_retrieval` · `room_availability_check` `[Should]`
 - `drafting_agent`, toàn bộ trước cổng 1: `template_fetch` · `request_slots_read` · `document_draft_save` · `review_readiness_check` · `document_transition` (ba chuyển đổi trước cổng) · `docx_render` và `pdf_export` (bản nháp)
 - Node tất định sau cổng, không thuộc agent nào: `render_integrity_check` *(thêm ở Phase 4 — kiểm toàn vẹn byte của bản render ngay trước người hay bước đầu tiên dựa vào byte)* · `signing_route` · `document_number_assign` · `document_transition` (sang `ISSUED`) · `docx_render` và `pdf_export` (bản cuối) · `notification_send`
 - Node dùng chung của `document_graph`: `notification_send` và `document_halt_record` (cùng gọi từ `halt_for_human`)
@@ -349,6 +349,7 @@ Node `open_request` gọi tool `request_open`; hai tên khác nhau có chủ đ�
 | **`change_reason`** | Lý do sửa, văn bản tự do, bắt buộc. Tới `revise_free_content` như dữ liệu, chỉ cho biến đã chọn |
 | **`approved_content_hash`** | Hash ghi lúc duyệt nội dung, kiểm lại ở `finalize_issue` để thực thi INV-01 |
 | **Danh sách nạp** | Danh sách input tự khai của prompt module, dùng để nạp dữ liệu và kiểm prompt. Quên khai thì mất chức năng, không rò dữ liệu |
+| **`catalog_fingerprint`** · dấu vân tay catalog | sha256 của bản tuần tự hoá chuẩn của `request_type_catalog` đã nạp cho một lời gọi `classify_intent`. Enum output của lời gọi đó sinh từ chính catalog này (ADR-025), nên `prompt_module_version` một mình không tái tạo được lời gọi. Ghi vào log kỹ thuật và bản ghi eval, không vào `llm_usage`. Thêm ở đợt sửa A-075 |
 | **Khoảng hoàn tất phát hành** · cờ `issue_in_progress` | Từ lúc `document_issue` ghi lệnh phát hành tới lúc `finalize_issue` commit `ISSUED` hoặc bỏ cuộc. Document đứng yên ở `SIGNED`/`SEALED`; phần đầu chưa có `document_number`. Là **cờ dẫn xuất** như `sla_breached`, **không** phải trạng thái. Hiển thị thuộc Phase 8 |
 
 ---
