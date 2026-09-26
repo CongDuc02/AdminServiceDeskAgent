@@ -1859,3 +1859,35 @@ PO duyệt kế hoạch có điều kiện. Chưa sang Phase 13.
 
 - Nhân viên quay lại ở một `chat_session` **mới** vẫn không thấy `request` đang dở của mình — A-038, không thuộc đợt này.
 - `request` đã `SUBMITTED` rồi mới quay về `CHANGES_REQUESTED` sau khi phiên đã mở `request` khác: phiên chỉ gắn một `request`, nên lần đổi đó không được báo trong chat — nhân viên vẫn nhận qua thông báo và trang yêu cầu của mình. Cùng họ A-038.
+
+---
+
+## 2026-09-26 — Phase 13: Consistency Audit
+
+**Tạo mới:** `docs/design/13-audit.md` v0.1 — 22 lỗi `AUD-01` → `AUD-22`: 2 **Chặn**, 14 Cao, 6 Thấp. Kèm thứ tự sửa theo sáu đợt, ba việc được giao đích danh cho Phase 13, và phụ lục lệnh và script để chạy lại.
+
+**Không sửa file nào khác.** Phase này chỉ báo cáo. Không có giả định mới, ADR mới, tên mới trong `GLOSSARY.md`. `_PLAN.md` giữ ☐ — PO đánh dấu.
+
+### Mặc định PO đã duyệt trước khi viết
+
+| # | Mặc định |
+|---|---|
+| 1 | Đối chiếu theo F1–F6/NFR; việc thiếu ID `FR-xx` ghi thành lỗi riêng (AUD-19) |
+| 2 | Không liệt kê 55 giả định `Mở`; chỉ báo dòng có hạn lỗi thời, owner không phải người, chặn cổng mà thiếu owner/hạn, trạng thái lệch nội dung (AUD-13) |
+| 3 | Phạm vi gồm `backend/migrations/` và cây `backend/src/bo19/`; không gồm nội dung `frontend/` |
+| 4 | Chạy `check_grants.py` hai chế độ; render Mermaid bằng `mermaid-cli` trong scratchpad, không thêm phụ thuộc vào repo |
+| 5 | Không thêm `A-xxx` cho lỗi audit |
+
+Bổ sung của PO: thứ bậc nguồn sự thật (ADR `Superseded` thua ADR thay thế; hai ADR `Accepted` mâu thuẫn thì ghi lỗi và tạm lấy cái mới hơn; `openapi.yaml` ngang `05-api.md`; migration thắng `schema.sql`), định nghĩa Cao/Thấp, cùng nguyên nhân gốc thì gộp một AUD, trích dẫn không kiểm được ghi "chưa xác minh được", header phiên bản lệch thì ghi hướng nâng.
+
+### Đã chạy
+
+- `check_grants.py --local`: 169 / 63 / **Lệch 0**. `--local-migrated` (`0001` → `0005`): 176 / 68 / **Lệch 0**. Trùng số đã ghi ở mục ngày 2026-09-25.
+- `openapi-spec-validator` 0.9.0 (venv trong scratchpad): `openapi.yaml` hợp lệ.
+- `@mermaid-js/mermaid-cli` 12.0.0 qua `npx` trong scratchpad: 31/31 sơ đồ render được; lớn nhất 17 node.
+- Script đối chiếu `05-api.md` ↔ `openapi.yaml`: 50/50 method–path; 35 mã lỗi ở `05-api.md` so với 33 trong enum.
+
+### Hai lỗi mức Chặn — cần PO quyết trước cổng 1.2 của `12-roadmap.md`
+
+1. **AUD-01** — không thao tác nào đưa `request` sang `APPROVED`, nên `FULFILLED` không tới được. Gắn vào lúc duyệt nội dung thì gãy ở nhánh người ký trả lại.
+2. **AUD-02** — phần giao cho Phase 8 chưa làm và chưa vào sổ nợ của `12-roadmap.md`: ba bảng mã (`reason_code`, `archive_reason`, `event_code`), thao tác tiếp quản `TAKEOVER_RESOLVED`, chi tiết đường thoát tự duyệt — trong đó contract thu hồi mâu thuẫn trực tiếp D-006.
