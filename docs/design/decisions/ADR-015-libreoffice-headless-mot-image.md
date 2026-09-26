@@ -88,7 +88,7 @@ Ba ràng buộc đi kèm:
 
 **B — Private service riêng.** Không sai; cô lập được bộ nhớ và sự cố của trình chuyển đổi. Loại cho Sprint đầu vì thêm một service phải deploy, giám sát và bảo vệ, đổi lấy một lợi ích — cô lập tài nguyên — mà chưa có số đo nào cho thấy cần (A-002). Giữ ở điều kiện đảo ngược.
 
-**C — Dịch vụ chuyển đổi bên ngoài.** Loại vì file render chứa giá trị `HR_PROFILE` và biến nội dung tự do — dữ liệu `PER`/`RES`. Gửi nó đi là thêm một bên thứ ba vào data flow diagram của `02-architecture.md` chỉ để đổi định dạng file, với nghĩa vụ chuyển dữ liệu theo Nghị định 13/2023/NĐ-CP `[CẦN XÁC MINH]`.
+**C — Dịch vụ chuyển đổi bên ngoài.** Loại vì file render chứa giá trị `HR_PROFILE` và biến nội dung tự do — dữ liệu `PER`/`RES`. Gửi nó đi là thêm một bên thứ ba vào data flow diagram của `02-architecture.md` chỉ để đổi định dạng file, với nghĩa vụ chuyển dữ liệu theo Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP (A-080) `[CẦN XÁC MINH]`.
 
 **D — Dựng PDF bằng thư viện Python.** Loại vì bỏ qua file `.docx` — nơi duy nhất giữ khung thể thức (ADR-001). PDF dựng lại bố cục bằng code là một bản thể thức thứ hai, không ai kiểm, và sẽ lệch khỏi template ở chính những chỗ pháp luật quy định.
 

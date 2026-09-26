@@ -1,6 +1,6 @@
 # Consistency Audit — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.7 · **Trạng thái:** Draft chờ duyệt · **Ngày chạy:** 2026-09-26 · **v0.2:** theo chỉ đạo của PO khi nhận kết quả — tách AUD-02 thành AUD-02 (Chặn) và AUD-23 (Cao); quét lại AUD-11 bằng `grep`, thêm vị trí còn sót và AUD-24 phát hiện trong lượt quét; bảng so sánh hai phương án của AUD-01; ghi ba quyết định của PO và bảng quyết định cho năm câu còn lại ở Open Questions. ID các AUD cũ giữ nguyên · **v0.3:** ghi quyết định của PO vòng ba — AUD-01 chọn (A) kèm hai điều kiện; nhận AUD-24 kèm hạn; xác nhận lượt sửa `08-hitl.md` ở đợt 3; ADR-026 đã viết (`Proposed`); việc (f) của AUD-23 dời từ đợt 1 sang đợt 3 vì phụ thuộc việc (e) · **v0.4:** ghi quyết định của PO vòng bốn — câu 3, câu 5, câu 6, hai index, hạn AUD-24, ADR-026 `Accepted`; câu 7 hoãn tới trước đợt 4; thêm **AUD-25** (phụ thuộc Python của skeleton trái ADR), tìm thấy khi làm migration `0006` · **v0.5:** quyết định của PO vòng năm — AUD-07 gắn `SUBMITTED → REJECTED` vào thao tác tiếp quản (đợt 3); AUD-25 sửa theo ADR thành đợt 2b; xác nhận xoá router `health` khớp câu 6a · **v0.6:** ghi tiến độ đợt sửa 3 — mục 7.1; ba việc PO cần duyệt từ đợt 3 ở mục Chờ PO chốt · **v0.7:** quyết định của PO khi nhận đợt 3 — mục Đã quyết; tiến độ đợt 3b ở mục 7.2
+**Phiên bản:** 0.8 · **Trạng thái:** Draft chờ duyệt · **Ngày chạy:** 2026-09-26 · **v0.2:** theo chỉ đạo của PO khi nhận kết quả — tách AUD-02 thành AUD-02 (Chặn) và AUD-23 (Cao); quét lại AUD-11 bằng `grep`, thêm vị trí còn sót và AUD-24 phát hiện trong lượt quét; bảng so sánh hai phương án của AUD-01; ghi ba quyết định của PO và bảng quyết định cho năm câu còn lại ở Open Questions. ID các AUD cũ giữ nguyên · **v0.3:** ghi quyết định của PO vòng ba — AUD-01 chọn (A) kèm hai điều kiện; nhận AUD-24 kèm hạn; xác nhận lượt sửa `08-hitl.md` ở đợt 3; ADR-026 đã viết (`Proposed`); việc (f) của AUD-23 dời từ đợt 1 sang đợt 3 vì phụ thuộc việc (e) · **v0.4:** ghi quyết định của PO vòng bốn — câu 3, câu 5, câu 6, hai index, hạn AUD-24, ADR-026 `Accepted`; câu 7 hoãn tới trước đợt 4; thêm **AUD-25** (phụ thuộc Python của skeleton trái ADR), tìm thấy khi làm migration `0006` · **v0.5:** quyết định của PO vòng năm — AUD-07 gắn `SUBMITTED → REJECTED` vào thao tác tiếp quản (đợt 3); AUD-25 sửa theo ADR thành đợt 2b; xác nhận xoá router `health` khớp câu 6a · **v0.6:** ghi tiến độ đợt sửa 3 — mục 7.1; ba việc PO cần duyệt từ đợt 3 ở mục Chờ PO chốt · **v0.7:** quyết định của PO khi nhận đợt 3 — mục Đã quyết; tiến độ đợt 3b ở mục 7.2 · **v0.8:** thêm **AUD-26** (căn cứ bảo vệ dữ liệu cá nhân đã cũ — PO phát hiện, đã sửa) và **AUD-27** (ngữ nghĩa `x-bo19-permission` không khai — xếp vào đợt 4); quyết định PO sau đợt 3b
 
 > File này đối chiếu toàn bộ `docs/design/` với nhau và với phần repo mà tài liệu dựa vào (`backend/migrations/`, cây thư mục backend, `tools/contract-checks/`). Kết quả là bảng lỗi `AUD-xx` kèm thứ tự sửa đề xuất. File này **chỉ báo cáo**: không sửa file nào khác, ngoài một mục mới trong `CHANGELOG.md`. Nó **không** quyết thay PO những chỗ cần quyết định, **không** thêm giả định, ADR hay tên mới, và **không** mở lại quyết định đã chốt.
 
@@ -96,6 +96,8 @@
 | AUD-23 | Cao | Nợ thiết kế chưa giao | Phần còn lại của nợ Phase 8, không chặn Sprint 2: phép xác định "chỉ còn một người đủ quyền", đường thoát tự duyệt cho thu hồi (trái D-006), hiển thị `issue_in_progress`, thao tác đóng phiên nhàn rỗi, hai giao diện được giao | Đã quyết một phần |
 | AUD-24 | Cao | Nợ thiết kế chưa giao | Việc giao cho Phase 9 và Phase 11 mà hai phase đó không nhận — nặng nhất là quyền của chủ thể dữ liệu theo Nghị định 13/2023/NĐ-CP | Đã quyết — hạn |
 | AUD-25 | Cao | Cấu trúc, ADR | `backend/pyproject.toml` và `backend/requirements.txt` ghim phụ thuộc trái ADR-017, ADR-021, A-045, A-026 | Có |
+| AUD-26 | Cao | Trích dẫn, căn cứ pháp lý | Căn cứ bảo vệ dữ liệu cá nhân đã cũ: 17 chỗ ở 8 file trỏ Nghị định 13/2023/NĐ-CP, văn bản đã được thay từ 01/01/2026 (theo PO). *Thêm ở v0.8, PO phát hiện* | Đã quyết — đã sửa |
+| AUD-27 | Cao | Contract | Ngữ nghĩa của `x-bo19-permission` — cần một hay cần tất cả — không khai ở đâu; điều kiện `request.read_all` của hai hàng đợi chỉ nằm trong `description`. *Thêm ở v0.8, PO phát hiện* | Đã quyết — đợt 4 |
 | AUD-17 | Thấp | Luật 12 | Tham chiếu chéo theo số dòng (47 chỗ trong tài liệu, 30 trong skeleton) và theo số mục (36 chỗ); có tham chiếu trỏ vào mục không tồn tại | Không |
 | AUD-18 | Thấp | Trình bày | Số phiên bản đầu file lệch ghi chú phiên bản ở ba file | Không |
 | AUD-19 | Thấp | Truy vết | 8 operation không có `x-bo19-feature`; PRD không có feature đăng nhập; không có ID `FR-xx`/`US-xx` (luật 8) | Đã quyết — `AC-Fx.y` |
@@ -536,6 +538,42 @@ Chú thích đầu `backend/requirements.txt` ghi "phiên bản còn lại ghim 
 
 ---
 
+#### AUD-26 — Căn cứ bảo vệ dữ liệu cá nhân đã cũ · **Cao**
+
+*Thêm ở v0.8. PO phát hiện khi nhận đợt 3b; audit v0.1–v0.7 không bắt được — mục Không kiểm được của mục 1.2 không kiểm hiệu lực của văn bản pháp luật.*
+
+Theo PO: từ 01/01/2026, Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP có hiệu lực, thay Nghị định 13/2023/NĐ-CP; Điều 5 của Nghị định 356 quy định thời hạn thực hiện quyền của chủ thể dữ liệu. Chưa văn bản nào có bản gốc trong `docs/reference/`, nên mọi số hiệu, điều khoản và thời hạn vẫn `[CẦN XÁC MINH]` — ghi ở A-080.
+
+| Vị trí | Số chỗ |
+|---|---|
+| `ASSUMPTIONS.md` — A-010, A-014, A-026, A-055, A-070, A-079 | 9 |
+| `09-security.md` — mục Mô hình mối đe doạ, mục Quyền của chủ thể dữ liệu | 2 |
+| `00-domain.md`, `01-prd.md` (NFR-05), `03-agents.md`, `04-data.md`, `11-ops.md` | 1 mỗi file |
+| `decisions/ADR-015` | 1 |
+| `CLAUDE.md` mục Ràng buộc domain bắt buộc phải xử lý | 1 — **không sửa** (luật 11), PO xử lý |
+| `CHANGELOG.md`, AUD-24 của file này | Bản ghi lịch sử — không sửa |
+
+**Hệ quả.** Thiết kế không trích điều khoản nào, nên nghĩa vụ ghi ở mức nguyên tắc không sai theo. Hai chỗ đổi thật: thời hạn thực hiện quyền của chủ thể thành một yêu cầu thời gian mà thiết kế chưa có (vế (4) của A-079); và mọi câu dẫn văn bản cũ trỏ sai tên.
+
+**Đã sửa — mục ngày 2026-09-26 (AUD-26) của `CHANGELOG.md`.** Mọi chỗ ở bảng trên, trừ ba dòng cuối, đổi sang hai văn bản mới kèm trỏ A-080. `09-security.md` thêm câu về thời hạn thực hiện quyền. Câu `grep` ở phụ lục A.9.
+
+---
+
+#### AUD-27 — Ngữ nghĩa `x-bo19-permission` không khai · **Cao**
+
+*Thêm ở v0.8, PO phát hiện khi đọc báo cáo đợt 3.*
+
+| Vị trí | Nói gì |
+|---|---|
+| `contracts/openapi.yaml`, phần mô tả extension ở đầu file | "`x-bo19-permission` — permission cần có". Không nói danh sách nhiều phần tử là cần một hay cần tất cả |
+| `GET /review-queue`, `GET /takeover-queue` | Danh sách ba permission, nghĩa thật là cần một. Riêng `/takeover-queue` còn **bắt buộc** `request.read_all` — điều kiện chỉ nằm trong `description`, công cụ sinh type hay kiểm quyền không đọc được. `/review-queue` dùng `request.read_all`/`request.read_assigned` để lọc phạm vi, cũng chỉ trong `description` và `05-api.md` |
+
+**Hệ quả.** Người viết lớp kiểm quyền của `api` đọc danh sách theo nghĩa cần tất cả thì chặn gần hết người dùng; theo nghĩa cần một thì bỏ sót điều kiện `request.read_all` của `/takeover-queue`. Test sinh từ contract thừa hưởng đúng chỗ mơ hồ đó.
+
+**Sửa — đợt 4 (quyết định PO):** ghi ngữ nghĩa của `x-bo19-permission` vào `contracts/README.md`; đưa điều kiện `request.read_all` của `/takeover-queue` và `/review-queue` từ `description` vào một trường máy đọc được.
+
+---
+
 #### AUD-17 — Tham chiếu chéo theo số dòng và số mục (luật 12) · **Thấp**
 
 | File | Dạng | Số chỗ |
@@ -662,7 +700,7 @@ Gom theo file, để mỗi lượt chạm ít file và mỗi file chỉ mở m�
 | 2 — Tên, thao tác, ID | Lượt `GLOSSARY.md` của `11-ops.md`; đặt tên năm thao tác; bản kê ở `03-agents.md`; áp hướng đã chọn của AUD-01; cạnh của AUD-07; đổi tên ở AUD-20; skeleton; **ID `AC-Fx.y` cho PRD** (đã quyết) | 01, 05, 07, 08, 10, 16, 19, 20 | `GLOSSARY.md`, `00-domain.md`, `01-prd.md`, `02-architecture.md`, `03-agents.md`, `12-roadmap.md`, `backend/src/` | Sprint 1 |
 | 3 — Phase 8 | Lượt sửa `08-hitl.md` có phép (PO đồng ý): sửa phần sai, giao bốn việc thiếu; đường thoát tự duyệt cho thu hồi (việc (f), đã quyết) cùng việc (e) mà nó phụ thuộc; thêm vế EC-CV-02 vào A-053 | 02, 06, 07, 23 | `08-hitl.md`, `05-api.md`, `openapi.yaml`, `02-architecture.md`, `ASSUMPTIONS.md`; có thể một migration cho `approval_step.step_kind` | Sprint 2 (cổng 2.2) |
 | 3b — Phase 8 và Phase 9 còn lại | Việc (g)–(j) của AUD-23; quyền của chủ thể dữ liệu ở AUD-24 | 23, 24 | `08-hitl.md`, `09-security.md` hoặc `ASSUMPTIONS.md` | Sprint 3 (mục Cổng trước Sprint 3 của `12-roadmap.md`); quyền của chủ thể trước sprint đầu tiên lưu dữ liệu cá nhân thật |
-| 4 — Quét nội dung cũ | Từng file theo bảng AUD-11; hạn và owner ở `ASSUMPTIONS.md`; hai dòng chỗ quan sát; schema P2; ba việc Thấp của AUD-24 | 11, 12, 13, 14, 22, 24 | Mọi file phase, `_PLAN.md` (PO), `ASSUMPTIONS.md`, `07-prompts.md` | Sprint 1 — rẻ, và đợt 2 đã mở phần lớn các file này |
+| 4 — Quét nội dung cũ | Từng file theo bảng AUD-11; hạn và owner ở `ASSUMPTIONS.md`; hai dòng chỗ quan sát; schema P2; ba việc Thấp của AUD-24; **AUD-27** — ngữ nghĩa `x-bo19-permission` vào `contracts/README.md`, `request.read_all` của hai hàng đợi vào trường máy đọc được | 11, 12, 13, 14, 22, 24, 27 | Mọi file phase, `_PLAN.md` (PO), `ASSUMPTIONS.md`, `07-prompts.md` | Sprint 1 — rẻ, và đợt 2 đã mở phần lớn các file này |
 | 5 — Cơ học | Tham chiếu theo tên mục; số phiên bản; trích dẫn | 17, 18, 21 | Mọi file có trong bảng | Bất kỳ lúc nào; gộp được với đợt 4 |
 
 ### 7.1 Tiến độ — đợt sửa 3
@@ -695,7 +733,11 @@ Gom theo file, để mỗi lượt chạm ít file và mỗi file chỉ mở m�
 
 **Chạm `03-agents.md` ngoài con trỏ — cần PO đọc:** hai quy tắc của việc (i) đổi hành vi của `document_request_changes` và `propose_values`. `03-agents.md` chỉ thêm câu trỏ; quy tắc đầy đủ nằm ở mục Ca `SLOT_DATA` do `HR_PROFILE` sai của `08-hitl.md`, vì `03-agents.md` đã giao ca này cho Phase 8.
 
-**Việc chạm `CLAUDE.md` — chỉ báo cáo, PO tự xử lý (luật 11):** mục Ràng buộc domain (BM25 — ADR kênh lexical sẽ ghi rõ độ lệch, AUD-09) và mục Cấu trúc output (`backend/migrations/` là nơi chứa DDL sau Phase 6, AUD-03).
+### 7.3 Tiến độ — AUD-26
+
+Sửa ngay khi PO mở, commit riêng. 17 chỗ ở 8 file đổi sang Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP, trỏ A-080 (mới, `Mở`, cùng hạn A-079). Còn lại: `CLAUDE.md` — PO sửa; bản gốc hai văn bản — người phụ trách pháp chế (A-080).
+
+**Việc chạm `CLAUDE.md` — chỉ báo cáo, PO tự xử lý (luật 11):** **Thêm ở v0.8 (AUD-26):** mục Ràng buộc domain bắt buộc phải xử lý còn ghi "tham chiếu Nghị định 13/2023/NĐ-CP" — căn cứ đã được thay (A-080). mục Ràng buộc domain (BM25 — ADR kênh lexical sẽ ghi rõ độ lệch, AUD-09) và mục Cấu trúc output (`backend/migrations/` là nơi chứa DDL sau Phase 6, AUD-03).
 
 ---
 
@@ -728,6 +770,8 @@ Không có giả định mới ở phase này. ADR mới duy nhất là ADR-026 
 | Đợt 3b — việc (i) | Nhận hai thay đổi hành vi ở `03-agents.md`: bỏ xác nhận slot `HR_PROFILE` ở `document_request_changes`, đề xuất lại ở `propose_values` | AUD-23 (i) |
 | Đợt 3b — A-078 | Chọn (a) — cấp permission tạm. Điều kiện: ghi lý do, người duyệt, ngày dự kiến thu hồi (migration `0008`); người được cấp không phải người thụ hưởng; runbook ở mục Runbook — cấp và thu hồi permission tạm của `11-ops.md`. `Đã chốt` | AUD-23 (e) |
 | Đợt 3b — A-079 | Để `Mở`; PO tìm người phụ trách pháp chế | AUD-24 |
+| AUD-26 | Mở AUD mức Cao; đổi mọi chỗ trỏ Nghị định 13/2023/NĐ-CP sang Luật 2025 và Nghị định 356/2025/NĐ-CP, giữ `[CẦN XÁC MINH]`; không sửa `CLAUDE.md`, chỉ báo | AUD-26 |
+| AUD-27 | Đưa vào đợt 4 | AUD-27 |
 
 ### Chờ PO chốt
 
@@ -889,3 +933,16 @@ for f in *.mmd; do npx -y -p @mermaid-js/mermaid-cli@12.0.0 mmdc -q -i "$f" -o "
 ```
 
 Kết quả ở mục 7.1. Script tách khối và so cạnh chạy ngoài repo, trong scratchpad; không thêm tệp hay phụ thuộc nào vào repo.
+
+### A.9 Căn cứ bảo vệ dữ liệu cá nhân — AUD-26
+
+```bash
+# trước khi sửa: đếm chỗ trỏ văn bản cũ theo file
+grep -rnoE ".{0,60}(Nghị định 13|13/2023).{0,80}" docs/design CLAUDE.md --include=*.md | awk -F: '{print $1}' | sort | uniq -c
+
+# sau khi sửa: chỉ còn câu "thay Nghị định số 13/2023/NĐ-CP" cố ý giữ, CHANGELOG và AUD-24
+grep -rn "Nghị định 13\|Nghị định số 13" docs/design --include=*.md | grep -v "CHANGELOG\|13-audit"
+
+# mọi chỗ trỏ căn cứ mới
+grep -rn "A-080" docs/design --include=*.md
+```

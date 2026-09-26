@@ -1,6 +1,6 @@
 # Security & Guardrails — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.3 · **Trạng thái:** Draft chờ duyệt · **v0.3:** đợt sửa 3b sau Phase 13 — thêm mục 13, quyền của chủ thể dữ liệu ở mức nghĩa vụ (AUD-24 của `13-audit.md`); không sửa mục nào khác
+**Phiên bản:** 0.4 · **Trạng thái:** Draft chờ duyệt · **v0.3:** đợt sửa 3b sau Phase 13 — thêm mục 13, quyền của chủ thể dữ liệu ở mức nghĩa vụ (AUD-24 của `13-audit.md`); không sửa mục nào khác · **v0.4:** căn cứ bảo vệ dữ liệu cá nhân đổi sang Luật 2025 và Nghị định 356/2025/NĐ-CP (AUD-26); thời hạn thực hiện quyền của chủ thể
 
 > File này chốt AuthN/AuthZ, rate limit, PII masking và hiển thị theo `slot_sensitivity`, phòng thủ prompt injection, output validation trước khi render, bảo vệ template gốc, và secret management trên Render. File này **không** thiết kế màn hình (Phase 8 đã đóng phần của nó), **không** định cỡ tham số vận hành bằng số liệu tải thật (Phase 11), và **không** lặp lại lập luận đã có ở ADR-001, ADR-007, ADR-008, ADR-013.
 
@@ -20,7 +20,7 @@ Sản phẩm giao có tên do ADR-013 trỏ tới (điều kiện đảo ngượ
 
 | Tài sản | Vì sao |
 |---|---|
-| Giá trị slot `PER`/`RES` | Dữ liệu cá nhân, nghĩa vụ theo Nghị định 13/2023/NĐ-CP (`[CẦN XÁC MINH]`, A-036) |
+| Giá trị slot `PER`/`RES` | Dữ liệu cá nhân, nghĩa vụ theo Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP (A-080) (`[CẦN XÁC MINH]`, A-036) |
 | `employee_credential` | Mất là mất toàn bộ AuthN |
 | Bản gốc `template` | Sai thể thức = văn bản vô hiệu (RISK-01); rò khung thể thức ra ngoài là rò mẫu con dấu, mẫu chữ ký |
 | `document_register` / `document_number` | Nguồn sự thật pháp lý (ADR-011) |
@@ -280,7 +280,7 @@ Endpoint có contract: 48 → **49** (con số 48 được xác nhận ở lần
 
 `03-agents.md` mục Memory và `04-data.md` mục Lưu trữ và xoá dữ liệu cá nhân giao việc này cho Phase 9; bản 0.2 của file này không có mục nào làm. Mục đích thu thập và thời hạn lưu đã có chỗ (NFR-05, A-010). Mục này xử lý vế thứ ba mà mục Ràng buộc domain bắt buộc phải xử lý của `CLAUDE.md` đòi: **quyền của chủ thể**.
 
-**Giới hạn — nói trước.** Nghị định 13/2023/NĐ-CP chưa có bản gốc trong `docs/reference/`. Danh mục các quyền, điều khoản, thời hạn phải đáp ứng yêu cầu và ngoại lệ: `[CẦN XÁC MINH]`. Mục này **không** phán quyết pháp lý. Nó trả lời một câu hỏi kỹ thuật: với dữ liệu hệ thống đang giữ, hệ thống **làm được** gì khi có một yêu cầu xem, sửa, hay xoá dữ liệu về một người — và chỗ nào chưa làm được. Ba nhóm việc này do chính dữ liệu của hệ thống đặt ra, không phải bản liệt kê quyền theo Nghị định.
+**Giới hạn — nói trước.** Căn cứ là Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP — theo PO, có hiệu lực từ 01/01/2026 và thay Nghị định số 13/2023/NĐ-CP (A-080, AUD-26). Chưa văn bản nào có bản gốc trong `docs/reference/`. Danh mục các quyền, điều khoản, thời hạn phải đáp ứng yêu cầu và ngoại lệ: `[CẦN XÁC MINH]`. PO nêu Điều 5 của Nghị định 356/2025/NĐ-CP quy định thời hạn thực hiện quyền của chủ thể — số điều và thời hạn `[CẦN XÁC MINH]` bằng bản gốc. Mục này **không** phán quyết pháp lý. Nó trả lời một câu hỏi kỹ thuật: với dữ liệu hệ thống đang giữ, hệ thống **làm được** gì khi có một yêu cầu xem, sửa, hay xoá dữ liệu về một người — và chỗ nào chưa làm được. Ba nhóm việc này do chính dữ liệu của hệ thống đặt ra, không phải bản liệt kê quyền theo Nghị định.
 
 ### 13.1 Chủ thể là ai
 
@@ -308,6 +308,7 @@ Endpoint có contract: 48 → **49** (con số 48 được xác nhận ở lần
 - **Không thêm endpoint, thao tác hay DDL.** Kênh tiếp nhận yêu cầu ở Sprint đầu nằm **ngoài hệ thống**: nhân viên gửi phòng hành chính. Phần làm được thì làm bằng đường ở bảng trên.
 - **Ba chỗ hở thành A-079**, owner Product Owner, hạn theo quyết định PO về AUD-24: **trước cổng Sprint 4, hoặc trước khi nạp dữ liệu cá nhân thật đầu tiên — tuỳ cái nào sớm hơn.** (1) Tổng hợp mọi dữ liệu về một chủ thể. (2) Thao tác ẩn danh hồ sơ và giá trị slot về một chủ thể. (3) Xung đột giữa quyền xoá và nghĩa vụ lưu trữ văn bản đã phát hành.
 - **Vì sao không thiết kế luôn (1), (2).** Cả hai tuỳ vào (3) và vào thời hạn ở A-010: ẩn danh giá trị slot trên một `request` đã `FULFILLED` là sửa bằng chứng đi kèm một văn bản đã phát hành. Thiết kế thao tác trước khi biết phạm vi được phép xoá là đoán luật.
+- **Thời hạn thực hiện yêu cầu của chủ thể** có quy định riêng (A-080) mà thiết kế chưa có. Kênh tiếp nhận nằm ngoài hệ thống, nên giữ hạn là việc của quy trình tiếp nhận — vế thứ tư của A-079.
 - **Không có dữ liệu cá nhân thật nào được nạp** khi A-079 còn `Mở` — cùng điều kiện với hạn ở trên. UAT dùng dữ liệu giả (quyết định PO về AUD-24).
 
 ---

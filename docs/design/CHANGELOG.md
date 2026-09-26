@@ -2189,3 +2189,25 @@ PO nhận đợt 3b: nhận hai thay đổi hành vi của việc (i) ở `03-ag
 ### Đã chạy
 
 - `check_grants.py --local-migrated`, áp `0001` → `0008`: **176 / 68 / Lệch 0**, mã thoát 0.
+
+---
+
+## 2026-09-26 (AUD-26) — Căn cứ bảo vệ dữ liệu cá nhân: Luật 2025 và Nghị định 356/2025/NĐ-CP
+
+PO mở AUD-26, mức Cao: theo PO, từ 01/01/2026 Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP có hiệu lực, thay Nghị định 13/2023/NĐ-CP; Điều 5 của Nghị định 356 quy định thời hạn thực hiện quyền của chủ thể dữ liệu. Không văn bản nào có bản gốc trong `docs/reference/`: số hiệu, ngày hiệu lực, điều khoản, thời hạn giữ `[CẦN XÁC MINH]`.
+
+### File sửa
+
+| File | Thay đổi |
+|---|---|
+| `ASSUMPTIONS.md` → 0.33 | Chín chỗ ở A-010, A-014, A-026, A-055, A-070, A-079 đổi căn cứ. Danh mục văn bản cần lấy bản gốc của A-010 ghi rõ văn bản mới thay văn bản cũ. A-079 thêm vế (4): thời hạn thực hiện quyền. **A-080 mới** — căn cứ pháp lý, mọi thứ `[CẦN XÁC MINH]`, cùng hạn A-079 |
+| `09-security.md` → 0.4 | Mục Mô hình mối đe doạ; mục Quyền của chủ thể dữ liệu — câu giới hạn nêu văn bản mới và Điều 5 theo PO, thêm dòng thời hạn thực hiện quyền |
+| `00-domain.md` → 0.14, `01-prd.md` → 0.12, `03-agents.md` → 0.17, `04-data.md` → 0.16, `11-ops.md` → 0.11 | Một chỗ mỗi file |
+| `decisions/ADR-015-…` | Một chỗ trong phần Rejected alternatives — đổi tên văn bản được dẫn, không đổi quyết định |
+| `13-audit.md` → 0.8 | AUD-26 (đã sửa), AUD-27 (việc 6 của PO, xếp vào đợt 4); mục 7.3; hai dòng Đã quyết; ghi chú `CLAUDE.md`; phụ lục A.9 |
+
+**Không sửa:** `CLAUDE.md` mục Ràng buộc domain bắt buộc phải xử lý vẫn ghi "tham chiếu Nghị định 13/2023/NĐ-CP" — báo PO (luật 11). Bản ghi lịch sử — các mục cũ của `CHANGELOG.md`, AUD-24 của `13-audit.md` — giữ nguyên.
+
+### Đã chạy
+
+- `grep` theo phụ lục A.9 của `13-audit.md`: trước sửa 17 chỗ ở 8 file thiết kế (cộng `CLAUDE.md`, `CHANGELOG.md`, `13-audit.md`); sau sửa chỉ còn hai câu "thay Nghị định số 13/2023/NĐ-CP" cố ý giữ để ghi quan hệ thay thế.

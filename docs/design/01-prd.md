@@ -1,6 +1,6 @@
 # PRD — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.11 · **Trạng thái:** Draft để xác thực với người dùng · **Primary persona:** Cán bộ hành chính · **v0.10:** thêm `RISK-08` và cột "Người chấp nhận" vào mục Risk register — Phase 11, mục ngày 2026-09-15 của `CHANGELOG.md` · **v0.11:** ID `AC-Fx.y` cho mọi AC cấp feature (AUD-19); vế `delegation` của điều 4 ở F1 cắt khỏi Sprint đầu (AUD-15) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md`
+**Phiên bản:** 0.12 · **Trạng thái:** Draft để xác thực với người dùng · **Primary persona:** Cán bộ hành chính · **v0.10:** thêm `RISK-08` và cột "Người chấp nhận" vào mục Risk register — Phase 11, mục ngày 2026-09-15 của `CHANGELOG.md` · **v0.11:** ID `AC-Fx.y` cho mọi AC cấp feature (AUD-19); vế `delegation` của điều 4 ở F1 cắt khỏi Sprint đầu (AUD-15) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.12:** căn cứ bảo vệ dữ liệu cá nhân đổi sang Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP (AUD-26, A-080) — mục ngày 2026-09-26 (AUD-26)
 
 > Sản phẩm tiếp nhận yêu cầu hành chính bằng hội thoại, soạn sẵn văn bản từ mẫu đã duyệt và đưa vào hàng đợi duyệt của phòng hành chính. Sản phẩm **không** tự phát hành, **không** tự đóng dấu, và **không** thẩm định thể thức văn bản.
 
@@ -307,7 +307,7 @@ Nhân viên chỉ xem được yêu cầu của mình.
 
 Tức là có **hai cơ chế riêng dựa trên cùng một thuộc tính dữ liệu**, và cơ chế này không thay cơ chế kia. Một slot có thể vừa được allowlist cho vào prompt, vừa bị mask trong log của chính lời gọi đó — `purpose` rơi đúng vào trường hợp này. Thiết kế nào coi allowlist là đã xử lý xong độ nhạy — ví dụ bỏ mask log cho slot đã được phép vào prompt — là sai. Allowlist chỉ giới hạn slot nào **đi ra** khỏi hệ thống tới LLM provider; nó không làm slot đó bớt nhạy cảm. `purpose` đã gửi đi vẫn là dữ liệu `RES`, chỉ khác là giờ nó nằm ở một bên thứ ba.
 
-Nội dung do người dùng nhập được đối xử là **dữ liệu, không phải chỉ dẫn**. Nghĩa vụ theo Nghị định 13/2023/NĐ-CP xử lý ở mức mục đích thu thập, thời hạn lưu và quyền của chủ thể; thời hạn lưu cụ thể `TBD` (A-010). Không trích dẫn điều khoản vì văn bản gốc chưa có trong `docs/reference/` — `[CẦN XÁC MINH]`.
+Nội dung do người dùng nhập được đối xử là **dữ liệu, không phải chỉ dẫn**. Nghĩa vụ theo Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP (A-080) xử lý ở mức mục đích thu thập, thời hạn lưu và quyền của chủ thể; thời hạn lưu cụ thể `TBD` (A-010). Không trích dẫn điều khoản vì văn bản gốc chưa có trong `docs/reference/` — `[CẦN XÁC MINH]`.
 
 ### NFR-06 — Chi phí LLM
 
