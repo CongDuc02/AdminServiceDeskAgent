@@ -2211,3 +2211,21 @@ PO mở AUD-26, mức Cao: theo PO, từ 01/01/2026 Luật Bảo vệ dữ liệ
 ### Đã chạy
 
 - `grep` theo phụ lục A.9 của `13-audit.md`: trước sửa 17 chỗ ở 8 file thiết kế (cộng `CLAUDE.md`, `CHANGELOG.md`, `13-audit.md`); sau sửa chỉ còn hai câu "thay Nghị định số 13/2023/NĐ-CP" cố ý giữ để ghi quan hệ thay thế.
+
+---
+
+## 2026-09-26 (cài thử phụ thuộc) — `backend/pyproject.toml` cài và import được
+
+Việc 5 của PO sau đợt 3b. Chạy hoàn toàn trong scratchpad, ngoài repo. **Không thêm lockfile:** repo chưa có quy ước cho lockfile — mục Đặc tả `Dockerfile` của `06-structure.md` để việc đó cho BUILD MODE.
+
+### Đã chạy
+
+- Venv mới, Python 3.11.9 (`requires-python >= 3.11`). `pip install` 17 dòng `dependencies` của `pyproject.toml`: lần đầu hỏng vì mạng (`ReadTimeoutError` khi tải file), lần hai với `--timeout 180 --retries 8` thành công.
+- 17/17 phụ thuộc ghim cài đúng phiên bản ghim. `pip check`: không có yêu cầu nào hỏng.
+- Import thử 19 điểm vào — `fastapi`, `uvicorn`, `pydantic`, `pydantic_settings`, `email_validator`, `jwt`, `psycopg`, `psycopg_pool`, `pgvector.psycopg`, `langgraph.graph.StateGraph`, `langgraph.types.interrupt`, `langgraph.checkpoint.postgres.PostgresSaver`, `docx`, `docxtpl`, `lxml.etree`, `boto3`, `botocore`, `structlog`: 18 đạt. Điểm hỏng là lỗi của script kiểm: `python-multipart` 0.0.9 đặt tên module là `multipart`, không phải `python_multipart`. Kiểm lại bằng một route FastAPI nhận `UploadFile` và `Form` qua `TestClient`: 200, đọc đủ byte.
+- `PyJWT`: ký và kiểm HMAC khứ hồi đạt (ADR-028).
+
+### Ghi nhận — chưa sửa, chỉ báo
+
+- **Phụ thuộc bắc cầu không ghim** trôi theo ngày cài. Lần này: `langgraph-checkpoint` 4.2.0 (`langgraph-checkpoint-postgres` 3.1.2 đòi `>=4.1.0,<5.0.0`, theo `docs/reference/langgraph-checkpoint-postgres.md`), `langchain-core` 1.6.5, `anyio` 4.15.1. `docs/reference/` không ghi A-045 đã xác minh với `langgraph-checkpoint` bản nào. Lockfile ở BUILD MODE giải việc này.
+- **`langsmith` 0.14.1 vào bắc cầu qua `langchain-core`.** Đây là thư viện gửi trace ra ngoài. Hành vi mặc định khi không đặt biến môi trường nào: `[CẦN XÁC MINH]` theo tài liệu của phiên bản đó. Chạm luật allowlist (INV-03, ADR-008): mọi dữ liệu rời hệ thống phải đi qua `ai_gateway`. Đề xuất cho BUILD MODE: bước kiểm khởi động từ chối chạy khi có biến môi trường bật tracing của thư viện này.
