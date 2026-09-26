@@ -2164,3 +2164,28 @@ PO nhận đợt 3 và quyết: ADR-027 `Accepted`, A-044 `Đã chốt`; giữ `
 
 - Không đổi contract, DDL hay sơ đồ Mermaid nào — không chạy lại `check_grants.py`, `openapi-spec-validator`, `mmdc`.
 - Rà tay các con trỏ mới theo luật 12: mọi tên mục được trỏ đều có trong file đích.
+
+---
+
+## 2026-09-26 (quyết định PO sau đợt sửa 3b) — A-078 Đã chốt, runbook cấp permission tạm
+
+PO nhận đợt 3b: nhận hai thay đổi hành vi của việc (i) ở `03-agents.md`; A-078 chọn (a) kèm ba điều kiện; A-079 để `Mở`.
+
+### File sửa
+
+| File | Thay đổi |
+|---|---|
+| `backend/migrations/schema/0008_temporary_permission_grant.sql` | **Mới.** Ba cột `grant_reason`, `approved_by_employee_id`, `expected_revoke_on` trên `employee_permission_grant`; `CHECK`: đủ cả ba hoặc không cái nào, lý do không rỗng, người duyệt khác người được cấp. Không `GRANT` mới |
+| `contracts/README.md` | Dòng `0008` |
+| `11-ops.md` → 0.10 | Mục 14 mới — runbook cấp và thu hồi permission tạm: khi nào dùng, ai làm gì, kiểm trước (người được cấp không phải người thụ hưởng), ghi, xác minh, thu hồi, gia hạn, quá hạn, dấu vết |
+| `04-data.md` → 0.15 | Ba cột mới của `employee_permission_grant` |
+| `ASSUMPTIONS.md` | A-078 → `Đã chốt` |
+| `08-hitl.md` | Câu vắng mặt trỏ runbook |
+| `12-roadmap.md` | Cổng 2.2 và bảng nợ: A-078 đã chốt |
+| `13-audit.md` | Ba dòng Đã quyết |
+
+**Điều kiện "người được cấp không phải người thụ hưởng" đứng ở hai lớp.** Runbook kiểm trước khi cấp. Phép kiểm D-006 lúc thao tác vẫn chặn người được cấp trên chính văn bản của họ, vì người vắng vẫn nằm trong tập người thay thế. Không viết được bằng `CHECK`: cấp permission theo người, không theo văn bản.
+
+### Đã chạy
+
+- `check_grants.py --local-migrated`, áp `0001` → `0008`: **176 / 68 / Lệch 0**, mã thoát 0.

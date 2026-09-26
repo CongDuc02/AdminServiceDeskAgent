@@ -725,6 +725,9 @@ Không có giả định mới ở phase này. ADR mới duy nhất là ADR-026 
 | Đợt 3 — ba chỗ trợ lý tự quyết | Nhận: tên `DOCUMENT_AWAITING_TAKEOVER`; mỗi lệnh phát hành tiêu tối đa một số; `RETRY`/`RETURN_TO_ISSUE_QUEUE` không kiểm D-006 — **kèm** ca kiểm chứng minh cổng sau chặn tự duyệt: K3, K4 ở `10-eval.md` | AUD-02 |
 | Đợt 3 — người nghỉ vẫn nằm trong tập người thay thế | Giữ. Vì uỷ quyền đã cắt, cần lối ra khi người đủ quyền còn lại vắng dài ngày: **chỉ đề xuất, chưa sửa thiết kế** — A-078, hạn trước cổng Sprint 2 | AUD-23 (e) |
 | AUD-25 — hai dòng còn treo | `python-jose` → `PyJWT` (ADR-021 không chỉ định gì cho token) — ADR-028. `structlog` giữ — ADR-029 | AUD-25 |
+| Đợt 3b — việc (i) | Nhận hai thay đổi hành vi ở `03-agents.md`: bỏ xác nhận slot `HR_PROFILE` ở `document_request_changes`, đề xuất lại ở `propose_values` | AUD-23 (i) |
+| Đợt 3b — A-078 | Chọn (a) — cấp permission tạm. Điều kiện: ghi lý do, người duyệt, ngày dự kiến thu hồi (migration `0008`); người được cấp không phải người thụ hưởng; runbook ở mục Runbook — cấp và thu hồi permission tạm của `11-ops.md`. `Đã chốt` | AUD-23 (e) |
+| Đợt 3b — A-079 | Để `Mở`; PO tìm người phụ trách pháp chế | AUD-24 |
 
 ### Chờ PO chốt
 

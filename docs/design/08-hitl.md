@@ -83,7 +83,7 @@ Mỗi hàng đợi duyệt là **một** trạng thái, vì cột đầu của `
 Người đang thao tác **bị chặn** khi họ là người thụ hưởng, hoặc — với `document.revoke_confirm` — là người khởi tạo. **Đường thoát áp dụng khi và chỉ khi người đó bị chặn và E(P, d) rỗng.**
 
 - Tính **tại lúc thao tác, trong chính giao dịch của nó**, từ bảng quyền. Không cache, không cờ cấu hình, không danh sách trắng. Client không gửi cờ nào; client chỉ gửi `self_approval_reason`.
-- **Vắng mặt không làm ai rời khỏi E** — quyết định PO, 2026-09-26. Người khác mang P mà đang nghỉ vẫn nằm trong E, nên không có đường thoát. Lối cho người vắng mặt là uỷ quyền `[Should]`, đã cắt khỏi Sprint đầu (AUD-15). Lối ra khi mọi người khác mang P vắng dài ngày: A-078, hạn trước cổng Sprint 2. Quan hệ giữa E và uỷ quyền chốt khi uỷ quyền được kích hoạt.
+- **Vắng mặt không làm ai rời khỏi E** — quyết định PO, 2026-09-26. Người khác mang P mà đang nghỉ vẫn nằm trong E, nên không có đường thoát. Lối cho người vắng mặt là uỷ quyền `[Should]`, đã cắt khỏi Sprint đầu (AUD-15). Lối ra khi mọi người khác mang P vắng dài ngày — A-078, `Đã chốt`: người vận hành cấp P tạm cho một người thay thế không phải người thụ hưởng, ghi lý do, người duyệt, ngày dự kiến thu hồi (mục Runbook — cấp và thu hồi permission tạm của `11-ops.md`). Quan hệ giữa E và uỷ quyền chốt khi uỷ quyền được kích hoạt.
 - `approval_step.self_approval_expected` chỉ là **gợi ý** cho giao diện, tính lúc mở bước (ví dụ `signing_route`). Nó có thể cũ. Phép xác định lúc thao tác mới là quyết định.
 
 **Kết quả:**
@@ -467,7 +467,7 @@ Màn hình `/config/request-types` (mục Tuyến của `06-structure.md`), dòn
 
 ## Open Questions
 
-Không có câu hỏi mở chỉ tồn tại trong file này. Giả định liên quan: A-022 (trần), A-029 (`CHANGES_REQUESTED` ca `SLOT_DATA` sang `EXPIRED`), A-034 (lối ra ở `PENDING_SEAL`), A-044 (`Đã chốt` theo ADR-027), A-078 (người vắng dài ngày), A-052 (nhập hộ, uỷ quyền), A-053 (huỷ ở `NEEDS_INFO` và vế EC-CV-02), A-077 (lối tiếp quản chưa có trong Sprint đầu).
+Không có câu hỏi mở chỉ tồn tại trong file này. Giả định liên quan: A-022 (trần), A-029 (`CHANGES_REQUESTED` ca `SLOT_DATA` sang `EXPIRED`), A-034 (lối ra ở `PENDING_SEAL`), A-044 (`Đã chốt` theo ADR-027), A-078 (người vắng dài ngày — `Đã chốt`, cấp permission tạm), A-052 (nhập hộ, uỷ quyền), A-053 (huỷ ở `NEEDS_INFO` và vế EC-CV-02), A-077 (lối tiếp quản chưa có trong Sprint đầu).
 
 ---
 

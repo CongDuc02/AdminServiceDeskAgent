@@ -180,7 +180,7 @@ Bảng bước, giả định cần đóng và luật riêng ở `.claude/comman
 | # | Điều kiện | Nguồn | Chặn |
 |---|---|---|---|
 | 2.1 | S0 của Spike 1 đạt, hoặc đã có quyết định thay kiến trúc dữ liệu | `spike.md`, AC-1.13 | Khởi động |
-| 2.2 | A-029, A-034, A-038, A-053, A-078 có quyết định. ~~A-044~~ — `Đã chốt` ngày 2026-09-26 (ADR-027) | Mục 10 | Khởi động |
+| 2.2 | A-029, A-034, A-038, A-053 có quyết định. ~~A-044~~ — `Đã chốt` ngày 2026-09-26 (ADR-027). ~~A-078~~ — `Đã chốt` ngày 2026-09-26: cấp permission tạm, runbook ở `11-ops.md` | Mục 10 | Khởi động |
 | 2.3 | ~~Đợt sửa `03-agents.md` cho A-068 và A-073 hướng (a) đã áp~~ **Đã đạt** — áp 2026-09-25 | A-068, A-073 | — |
 | 2.4 | Thời hạn chờ ở `NEEDS_INFO` trước `EXPIRED` có giá trị làm việc | A-014 | AC-2.7 |
 | 2.5 | Chọn nhà cung cấp object storage | A-024, kết quả S7 | AC-2.1 |
@@ -382,7 +382,7 @@ Phase 8 giữ ☑ (quyết định PO, 2026-09-25). Các giả định dưới �
 | A-038 | Quay lại trong hạn ở một `chat_session` mới | Product Owner | Trước Sprint 2 | AC-2.7 |
 | ~~A-044~~ | Khoá idempotency của `document_halt_record` — **`Đã chốt` 2026-09-26** (ADR-027 `Accepted`) | — | — | — |
 | A-077 | Tiếp quản chưa có lối soạn tay, chưa có lối ra cho `CONTENT_HASH_MISMATCH` | Product Owner | Trước Sprint 4 | Hạn gốc "trước UAT"; Sprint 4 là sprint sẵn sàng UAT |
-| A-078 | Người mang permission duy nhất khác người thụ hưởng vắng dài ngày, uỷ quyền đã cắt | Product Owner | Trước Sprint 2 | Sprint 2 dựng vòng duyệt, cổng 1 là chỗ đầu tiên chạm ca này |
+| ~~A-078~~ | Người mang permission duy nhất khác người thụ hưởng vắng dài ngày — **`Đã chốt` 2026-09-26**: cấp permission tạm (mục Runbook — cấp và thu hồi permission tạm của `11-ops.md`) | — | — | — |
 | A-053 | Huỷ ở `NEEDS_INFO`, `SUBMITTED`, `IN_REVIEW` | Product Owner | Trước Sprint 2 | Sprint 2 dựng `request_cancel` |
 | A-068 | Reset `clarification_count` | Product Owner — đợt sửa `03-agents.md` riêng, gộp cùng A-073 hướng (a) | Trước Sprint 2 | Hạn gốc "trước UAT"; kéo sớm lên vì Sprint 2 dựng EC-CV-01 (AC-2.8) |
 | A-056 | Lượt chat chết giữa chừng không có điểm dừng có tên | Product Owner | Trước Sprint 3 | Phải có trước UAT; nếu quyết thêm một thao tác thì cần một sprint để dựng |

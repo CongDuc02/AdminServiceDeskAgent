@@ -1,6 +1,6 @@
 # Ops, Cost & Deployment — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.9 · **Trạng thái:** Draft chờ duyệt — bốn đề xuất diff đã áp; đợt sửa `03-agents.md` cho A-068 đã áp (2026-09-25); còn chờ lượt GLOSSARY/contract cho Phase 5, 8 · **v0.9:** mục 10.4 — trần `chat_session` 46.500 thành giá trị đang hiệu lực, sửa câu về phương án (b') — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md`
+**Phiên bản:** 0.10 · **Trạng thái:** Draft chờ duyệt — bốn đề xuất diff đã áp; đợt sửa `03-agents.md` cho A-068 đã áp (2026-09-25); còn chờ lượt GLOSSARY/contract cho Phase 5, 8 · **v0.10:** mục 14 — runbook cấp và thu hồi permission tạm (A-078 `Đã chốt`), mục ngày 2026-09-26 (quyết định PO sau đợt 3b) · **v0.9:** mục 10.4 — trần `chat_session` 46.500 thành giá trị đang hiệu lực, sửa câu về phương án (b') — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md`
 
 > File này chốt vận hành trên Render: môi trường dev/staging/prod, cold start, worker nền, cron, migration, backup & restore, observability, dashboard SLA & tồn đọng, mô hình chi phí LLM, ngưỡng cảnh báo & cơ chế cắt chi phí, và định cỡ A-022. File này **không** thiết kế lại state machine, schema DB, endpoint API, hay `halt_for_human` — chỉ tham chiếu và bổ sung phần vận hành chưa phase nào chạm tới. Bốn thay đổi cần chạm phase đã đóng (`06-structure.md`, `04-data.md` ×2, `05-api.md`/`openapi.yaml`) được viết thành **đề xuất diff riêng**, duyệt từng cái một — **cả bốn đã áp**, PO duyệt lần lượt 2026-09-16 và 2026-09-25 — xem mục 13.
 
@@ -341,6 +341,40 @@ Bốn thay đổi chạm phase đã đóng, viết thành đề xuất riêng, d
 | `docs/design/proposals/diff-04-data-object-metadata-tag.md` | `04-data.md` | **✅ Đã áp (2026-09-25).** Object metadata (`x-bo19-pin-reason`, `x-bo19-document-number`) lúc ghim bản `ISSUED` — phục vụ đối soát sau khôi phục (mục 5.2(b)) |
 | `docs/design/proposals/diff-05-api-job-failed-and-reject-error.md` | `05-api.md`, `contracts/openapi.yaml`, `04-data.md` | **✅ Đã áp (2026-09-25).** Trường `job_failed` trên `DocumentSummary` (`GET /review-queue`/`GET /issue-queue`); mã lỗi `ENVIRONMENT_NOT_ALLOWED` cho Lớp 3 (ADR-023) từ chối; index `ix_job_latest_by_document` — `backend/migrations/schema/0003_job_failed_index.sql`, không sửa `contracts/schema.sql` |
 | `docs/design/proposals/migration-0004-trace-id-format.md` | `backend/migrations/schema/0004_observability_trace_id.sql` + câu mô tả ở `04-data.md` — **không** sửa `contracts/schema.sql` | **✅ Đã áp (2026-09-25).** `CHECK` hình dạng UUID v4 trên `llm_usage.trace_id` (ADR-024) — đóng câu bỏ ngỏ của ADR-019 (mục 6.1). Cột đã `NOT NULL`, không thêm `IS NULL OR`. **Chưa kiểm bằng `tools/contract-checks`** — công cụ đó chỉ áp `contracts/schema.sql`, không chạy migration `0002`–`0004` |
+
+---
+
+## 14. Runbook — cấp và thu hồi permission tạm (A-078)
+
+*Thêm theo quyết định PO sau đợt sửa 3b sau Phase 13: A-078 chọn (a).*
+
+**Khi nào dùng.** Văn bản đứng ở hàng đợi vì mọi người khác mang permission P đang vắng dài ngày, và người có mặt duy nhất mang P là người thụ hưởng — D-006 chặn người đó, còn người vắng vẫn nằm trong tập người thay thế (mục Tách biệt trách nhiệm — D-006 của `08-hitl.md`). Cũng dùng khi không ai có mặt mang P. "Dài ngày" là phán đoán của người duyệt nghiệp vụ; không có ngưỡng số.
+
+**Ai làm gì.**
+
+- **Người duyệt** — một nhân viên có trong `employee`, do tổ chức chỉ định — quyết cấp, cho ai, vì sao, tới ngày nào. Không phải người được cấp: `ck_permission_grant_approver_not_grantee`.
+- **Người vận hành** chạy lệnh qua CI bằng `bo19_migrator` — credential đó chỉ có ở CI (ADR-022). Không có endpoint: không có thao tác cấp permission ở `tool_layer` (mục AuthZ của `09-security.md`).
+
+**Cấp — một giao dịch:**
+
+1. **Chốt đủ năm thứ:** permission P; người được cấp S; lý do; người duyệt A; ngày dự kiến thu hồi R, không sớm hơn hôm nay.
+2. **Kiểm trước, chỉ đọc:**
+   - S `is_active = true`.
+   - S **không phải người thụ hưởng** của văn bản nào đang chờ ở bước dùng P — điều kiện của PO cho A-078. Cấp cho người thụ hưởng là vô ích: phép kiểm D-006 lúc thao tác vẫn chặn S trên chính văn bản của S, vì người vắng vẫn nằm trong tập người thay thế.
+   - S chưa mang P — qua vai trò, hay qua một dòng `employee_permission_grant` chưa thu hồi.
+3. **Ghi** một dòng `employee_permission_grant`: `employee_id` = S, `permission_code` = P, `grant_reason`, `approved_by_employee_id` = A, `expected_revoke_on` = R. Thiếu một trong ba trường cuối thì `ck_permission_grant_temporary_complete` từ chối (migration `0008`).
+4. **Xác minh:** `GET /me` của S có P — `Me.permissions` gồm quyền cấp lẻ còn hiệu lực. Từ đây S nằm trong tập người thay thế và duyệt được văn bản của người thụ hưởng kia; đường thoát tự duyệt không mở cho ai.
+
+**Thu hồi:**
+
+1. **Khi nào:** người vắng trở lại, hoặc tới R — tuỳ cái nào sớm hơn.
+2. **Kiểm trước:** không còn `approval_step` `OPEN` nào giao cho S (`assignee_employee_id` = S) ở bước dùng P — ví dụ bước ký mà `signing_route` đã chọn S. Còn thì S làm xong trước; định tuyến lại bước đang mở chưa được thiết kế.
+3. **Ghi** `revoked_at = now()` trên đúng dòng đó, bằng `UPDATE` có điều kiện `revoked_at IS NULL`.
+4. **Gia hạn** không sửa `expected_revoke_on` của dòng cũ: thu hồi dòng cũ, cấp một dòng mới với lý do mới — lịch sử cấp giữ được từng lần.
+
+**Quá hạn chưa thu hồi.** Truy vấn: dòng có `expected_revoke_on < current_date` và `revoked_at IS NULL`. Người vận hành chạy mỗi ngày làm việc; tự động hoá thành cảnh báo đi cùng công cụ ở A-069. Bảng nhỏ, không cần index.
+
+**Dấu vết.** Việc cấp và thu hồi không qua `tool_layer`, nên không sinh `audit_event`. Bằng chứng là chính dòng `employee_permission_grant` — lý do, người duyệt, thời điểm cấp, thời điểm thu hồi — cộng nhật ký lần chạy CI. Mọi quyết định S đưa ra trong thời gian được cấp là `decision_record` thường, có `actor_employee_id` = S.
 
 ---
 
