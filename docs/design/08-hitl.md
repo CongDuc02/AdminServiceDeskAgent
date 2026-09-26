@@ -1,6 +1,6 @@
 # HITL & Approval Workflow — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.3 · **Trạng thái:** Draft chờ duyệt · **v0.3:** đợt sửa 3 sau Phase 13, lượt sửa có phép của PO — viết lại phần sai (AUD-06), giao bốn việc thiếu (AUD-02: ba bảng mã, thao tác tiếp quản), cạnh `SUBMITTED → REJECTED` gắn vào tiếp quản (AUD-07), phép xác định "chỉ còn một người đủ quyền" và đường thoát tự duyệt cho thu hồi (AUD-23 (e)(f)); sửa theo AUD-01, AUD-05, AUD-08, AUD-11, AUD-17 phần nằm trong file này. Chi tiết ở mục ngày 2026-09-26 (đợt sửa 3) của `CHANGELOG.md`
+**Phiên bản:** 0.4 · **Trạng thái:** Draft chờ duyệt · **v0.3:** đợt sửa 3 sau Phase 13, lượt sửa có phép của PO — viết lại phần sai (AUD-06), giao bốn việc thiếu (AUD-02: ba bảng mã, thao tác tiếp quản), cạnh `SUBMITTED → REJECTED` gắn vào tiếp quản (AUD-07), phép xác định "chỉ còn một người đủ quyền" và đường thoát tự duyệt cho thu hồi (AUD-23 (e)(f)); sửa theo AUD-01, AUD-05, AUD-08, AUD-11, AUD-17 phần nằm trong file này. Chi tiết ở mục ngày 2026-09-26 (đợt sửa 3) của `CHANGELOG.md` · **v0.4:** quyết định PO khi nhận đợt 3 — ADR-027 `Accepted`, A-044 `Đã chốt`; ca K3, K4 ở `10-eval.md`; A-078 cho người vắng dài ngày
 
 > File này chốt luồng người duyệt: hàng đợi, thứ tự, tách biệt trách nhiệm, yêu cầu sửa, định tuyến ký, duyệt dấu, thu hồi, dừng có kiểm soát và tiếp quản, bảng mã. File này **không** thiết kế AuthZ chi tiết hay rate limit (`09-security.md`), không định cỡ trần (`11-ops.md`), không viết prompt (`07-prompts.md`).
 
@@ -83,7 +83,7 @@ Mỗi hàng đợi duyệt là **một** trạng thái, vì cột đầu của `
 Người đang thao tác **bị chặn** khi họ là người thụ hưởng, hoặc — với `document.revoke_confirm` — là người khởi tạo. **Đường thoát áp dụng khi và chỉ khi người đó bị chặn và E(P, d) rỗng.**
 
 - Tính **tại lúc thao tác, trong chính giao dịch của nó**, từ bảng quyền. Không cache, không cờ cấu hình, không danh sách trắng. Client không gửi cờ nào; client chỉ gửi `self_approval_reason`.
-- **Vắng mặt không làm ai rời khỏi E.** Người khác mang P mà đang nghỉ vẫn nằm trong E, nên không có đường thoát. Lối cho người vắng mặt là uỷ quyền `[Should]`; Sprint đầu không có (A-052). Quan hệ giữa E và uỷ quyền chốt khi uỷ quyền được kích hoạt.
+- **Vắng mặt không làm ai rời khỏi E** — quyết định PO, 2026-09-26. Người khác mang P mà đang nghỉ vẫn nằm trong E, nên không có đường thoát. Lối cho người vắng mặt là uỷ quyền `[Should]`, đã cắt khỏi Sprint đầu (AUD-15). Lối ra khi mọi người khác mang P vắng dài ngày: A-078, hạn trước cổng Sprint 2. Quan hệ giữa E và uỷ quyền chốt khi uỷ quyền được kích hoạt.
 - `approval_step.self_approval_expected` chỉ là **gợi ý** cho giao diện, tính lúc mở bước (ví dụ `signing_route`). Nó có thể cũ. Phép xác định lúc thao tác mới là quyết định.
 
 **Kết quả:**
@@ -105,7 +105,7 @@ Người đang thao tác **bị chặn** khi họ là người thụ hưởng, h
 
 Cấm mọi phương án tự động bỏ qua: cấu hình tắt ràng buộc, whitelist, im lặng cho qua.
 
-**Không bị D-006 chặn:** lối ra `RETRY` và `RETURN_TO_ISSUE_QUEUE` của thao tác tiếp quản. Chúng không quyết định gì về văn bản — mọi cổng phía sau vẫn còn nguyên và vẫn kiểm D-006.
+**Không bị D-006 chặn:** lối ra `RETRY` và `RETURN_TO_ISSUE_QUEUE` của thao tác tiếp quản. Chúng không quyết định gì về văn bản — mọi cổng phía sau vẫn còn nguyên và vẫn kiểm D-006. Ca K3, K4 ở mục Ca kiểm cơ chế graph của `10-eval.md` chứng minh điều đó bằng máy.
 
 **Luồng cấu hình `request_type`** dùng permission `request_type.manage` — đã có trong danh mục từ Phase 9 (A-042 `Đã chốt`, mục AuthZ của `09-security.md`).
 
@@ -396,10 +396,10 @@ Tự động hoá bất kỳ hành động nào ở trên là vi phạm M4 — m
 
 ## Open Questions
 
-Không có câu hỏi mở chỉ tồn tại trong file này. Giả định liên quan: A-022 (trần), A-029 (`CHANGES_REQUESTED` ca `SLOT_DATA` sang `EXPIRED`), A-034 (lối ra ở `PENDING_SEAL`), A-044 (đề xuất đóng theo ADR-027 ở v0.3 — chờ PO duyệt ADR), A-052 (nhập hộ, uỷ quyền), A-053 (huỷ ở `NEEDS_INFO` và vế EC-CV-02), A-077 (lối tiếp quản chưa có trong Sprint đầu).
+Không có câu hỏi mở chỉ tồn tại trong file này. Giả định liên quan: A-022 (trần), A-029 (`CHANGES_REQUESTED` ca `SLOT_DATA` sang `EXPIRED`), A-034 (lối ra ở `PENDING_SEAL`), A-044 (`Đã chốt` theo ADR-027), A-078 (người vắng dài ngày), A-052 (nhập hộ, uỷ quyền), A-053 (huỷ ở `NEEDS_INFO` và vế EC-CV-02), A-077 (lối tiếp quản chưa có trong Sprint đầu).
 
 ---
 
 ## Quyết định kiến trúc
 
-ADR-027 (mới ở v0.3, `Proposed`) — cờ tự duyệt và việc tiếp quản nằm trên `approval_step`. Phần còn lại dựa trên ADR-009, ADR-010, ADR-011, ADR-019, ADR-022, D-006, D-009 đã chốt.
+ADR-027 (mới ở v0.3, `Accepted` 2026-09-26) — cờ tự duyệt và việc tiếp quản nằm trên `approval_step`. Phần còn lại dựa trên ADR-009, ADR-010, ADR-011, ADR-019, ADR-022, D-006, D-009 đã chốt.

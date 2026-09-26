@@ -1,6 +1,6 @@
 # Consistency Audit — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.6 · **Trạng thái:** Draft chờ duyệt · **Ngày chạy:** 2026-09-26 · **v0.2:** theo chỉ đạo của PO khi nhận kết quả — tách AUD-02 thành AUD-02 (Chặn) và AUD-23 (Cao); quét lại AUD-11 bằng `grep`, thêm vị trí còn sót và AUD-24 phát hiện trong lượt quét; bảng so sánh hai phương án của AUD-01; ghi ba quyết định của PO và bảng quyết định cho năm câu còn lại ở Open Questions. ID các AUD cũ giữ nguyên · **v0.3:** ghi quyết định của PO vòng ba — AUD-01 chọn (A) kèm hai điều kiện; nhận AUD-24 kèm hạn; xác nhận lượt sửa `08-hitl.md` ở đợt 3; ADR-026 đã viết (`Proposed`); việc (f) của AUD-23 dời từ đợt 1 sang đợt 3 vì phụ thuộc việc (e) · **v0.4:** ghi quyết định của PO vòng bốn — câu 3, câu 5, câu 6, hai index, hạn AUD-24, ADR-026 `Accepted`; câu 7 hoãn tới trước đợt 4; thêm **AUD-25** (phụ thuộc Python của skeleton trái ADR), tìm thấy khi làm migration `0006` · **v0.5:** quyết định của PO vòng năm — AUD-07 gắn `SUBMITTED → REJECTED` vào thao tác tiếp quản (đợt 3); AUD-25 sửa theo ADR thành đợt 2b; xác nhận xoá router `health` khớp câu 6a · **v0.6:** ghi tiến độ đợt sửa 3 — mục 7.1; ba việc PO cần duyệt từ đợt 3 ở mục Chờ PO chốt
+**Phiên bản:** 0.7 · **Trạng thái:** Draft chờ duyệt · **Ngày chạy:** 2026-09-26 · **v0.2:** theo chỉ đạo của PO khi nhận kết quả — tách AUD-02 thành AUD-02 (Chặn) và AUD-23 (Cao); quét lại AUD-11 bằng `grep`, thêm vị trí còn sót và AUD-24 phát hiện trong lượt quét; bảng so sánh hai phương án của AUD-01; ghi ba quyết định của PO và bảng quyết định cho năm câu còn lại ở Open Questions. ID các AUD cũ giữ nguyên · **v0.3:** ghi quyết định của PO vòng ba — AUD-01 chọn (A) kèm hai điều kiện; nhận AUD-24 kèm hạn; xác nhận lượt sửa `08-hitl.md` ở đợt 3; ADR-026 đã viết (`Proposed`); việc (f) của AUD-23 dời từ đợt 1 sang đợt 3 vì phụ thuộc việc (e) · **v0.4:** ghi quyết định của PO vòng bốn — câu 3, câu 5, câu 6, hai index, hạn AUD-24, ADR-026 `Accepted`; câu 7 hoãn tới trước đợt 4; thêm **AUD-25** (phụ thuộc Python của skeleton trái ADR), tìm thấy khi làm migration `0006` · **v0.5:** quyết định của PO vòng năm — AUD-07 gắn `SUBMITTED → REJECTED` vào thao tác tiếp quản (đợt 3); AUD-25 sửa theo ADR thành đợt 2b; xác nhận xoá router `health` khớp câu 6a · **v0.6:** ghi tiến độ đợt sửa 3 — mục 7.1; ba việc PO cần duyệt từ đợt 3 ở mục Chờ PO chốt · **v0.7:** quyết định của PO khi nhận đợt 3 — mục Đã quyết; tiến độ đợt 3b ở mục 7.2
 
 > File này đối chiếu toàn bộ `docs/design/` với nhau và với phần repo mà tài liệu dựa vào (`backend/migrations/`, cây thư mục backend, `tools/contract-checks/`). Kết quả là bảng lỗi `AUD-xx` kèm thứ tự sửa đề xuất. File này **chỉ báo cáo**: không sửa file nào khác, ngoài một mục mới trong `CHANGELOG.md`. Nó **không** quyết thay PO những chỗ cần quyết định, **không** thêm giả định, ADR hay tên mới, và **không** mở lại quyết định đã chốt.
 
@@ -711,17 +711,19 @@ Không có giả định mới ở phase này. ADR mới duy nhất là ADR-026 
 | AUD-07 — cạnh `SUBMITTED → REJECTED` | **Không xoá cạnh.** Gắn vào thao tác tiếp quản — việc (d) của AUD-02 — làm cùng đợt 3 | AUD-07 |
 | AUD-25 — phụ thuộc Python | Sửa theo ADR thành **đợt 2b**, commit riêng: bỏ `passlib` (ADR-021), bỏ `alembic`/`SQLAlchemy` (ADR-017), `langgraph` ghim đúng bản đã xác minh ở A-045, gỡ SDK OpenAI tới khi A-026 chốt — không ghim tạm; `pyproject.toml` là nguồn sự thật duy nhất, `requirements.txt` sinh ra từ nó hoặc bỏ | AUD-25 |
 | 8 — ID cho AC của PRD | Có, dạng `AC-Fx.y` | AUD-19 |
+| Đợt 3 — ADR-027, A-044 | ADR-027 `Accepted`; A-044 `Đã chốt` | AUD-02, AUD-23 |
+| Đợt 3 — trần số vòng | Giữ thiết kế hiện tại: `route_review` dừng chờ tiếp quản; không đổi `03-agents.md` | AUD-02 |
+| Đợt 3 — ba chỗ trợ lý tự quyết | Nhận: tên `DOCUMENT_AWAITING_TAKEOVER`; mỗi lệnh phát hành tiêu tối đa một số; `RETRY`/`RETURN_TO_ISSUE_QUEUE` không kiểm D-006 — **kèm** ca kiểm chứng minh cổng sau chặn tự duyệt: K3, K4 ở `10-eval.md` | AUD-02 |
+| Đợt 3 — người nghỉ vẫn nằm trong tập người thay thế | Giữ. Vì uỷ quyền đã cắt, cần lối ra khi người đủ quyền còn lại vắng dài ngày: **chỉ đề xuất, chưa sửa thiết kế** — A-078, hạn trước cổng Sprint 2 | AUD-23 (e) |
+| AUD-25 — hai dòng còn treo | `python-jose` → `PyJWT` (ADR-021 không chỉ định gì cho token) — ADR-028. `structlog` giữ — ADR-029 | AUD-25 |
 
 ### Chờ PO chốt
 
-Câu 7, hoãn tới trước đợt 4; và ba việc từ đợt 3.
+Còn một câu — câu 7, hoãn tới trước đợt 4.
 
 | Câu | Phương án | Khuyến nghị | File bị chạm |
 |---|---|---|---|
 | 7 — AUD-13: owner là người | Gán từng dòng | **Người triển khai:** A-022 (hiệu chỉnh), A-025, A-031, A-045 (vế còn lại — canary C2), A-048 (tham số), A-057, A-063, A-065. **Product Owner:** A-061, A-013, A-014, A-010. Đổi hạn A-002, A-024, A-030, A-041 sang cổng của `12-roadmap.md` | `ASSUMPTIONS.md`; kiểm lại `12-roadmap.md` mục Cổng trước Sprint 1 cho khớp |
-| Đợt 3 — ADR-027 | `Proposed` → `Accepted`: cờ tự duyệt và việc tiếp quản nằm trên `approval_step`, gồm bước sinh ra đã `DECIDED` | Duyệt — giữ nguyên chữ của D-006 điều kiện 2 | `decisions/ADR-027-…`; kéo theo A-044 sang `Đã chốt` ở `ASSUMPTIONS.md`, `12-roadmap.md` |
-| Đợt 3 — A-044 | Khoá idempotency theo bước `TAKEOVER` đang mở (đã áp ở migration `0007`), thay vì thêm số lần tiếp quản vào khoá | Duyệt cùng ADR-027 | `ASSUMPTIONS.md` |
-| Đợt 3 — trần số vòng | (i) Giữ: `route_review` dừng khi chạm trần — đã áp, cần cạnh `request CHANGES_REQUESTED → REJECTED` và mã `DOCUMENT_AWAITING_TAKEOVER` cho `submit` ca `SLOT_DATA`. (ii) Kiểm trần ngay ở `document_request_changes`: người duyệt nhận lỗi và chỉ còn duyệt hay từ chối — bỏ được lần dừng ở `route_review`, cạnh mới của `request` và ca `SLOT_DATA` đang dừng | (i) cho Sprint đầu — đã áp, đúng thiết kế đã chốt của `03-agents.md`. (ii) gọn hơn nhưng sửa một quyết định đã chốt, nên chỉ nêu | (ii): `03-agents.md`, `05-api.md`, `openapi.yaml`, `08-hitl.md`, `00-domain.md`, `02-architecture.md` |
 
 ---
 

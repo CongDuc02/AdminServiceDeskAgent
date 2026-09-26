@@ -2107,3 +2107,29 @@ Quyết định của PO: nhận AUD-25, sửa ngay thành đợt riêng trướ
 - **A-053** (huỷ ở `NEEDS_INFO` và vế EC-CV-02): chỉ ghi, chờ PO — cổng 2.2.
 - **ADR-027, A-044, lựa chọn trần số vòng:** chờ PO — mục Chờ PO chốt của `13-audit.md`.
 - Các câu "thuộc Phase 8" còn lại ở file khác không nằm trong phạm vi đợt 3: đợt 4.
+
+---
+
+## 2026-09-26 (quyết định PO sau đợt sửa 3) — ADR-027 Accepted, ca K3–K4, A-078, PyJWT, structlog
+
+PO nhận đợt 3 và quyết: ADR-027 `Accepted`, A-044 `Đã chốt`; giữ `route_review` dừng khi chạm trần số vòng; nhận ba chỗ trợ lý tự quyết, kèm ca kiểm chứng minh cổng sau chặn tự duyệt; giữ "người nghỉ vẫn nằm trong tập người thay thế" nhưng đòi lối ra khi người đủ quyền còn lại vắng dài ngày — chỉ đề xuất; `python-jose` → `PyJWT` trừ khi ADR-021 chỉ định khác; giữ `structlog` và ghi lại.
+
+### File sửa
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-027-…` | `Proposed` → `Accepted` |
+| `decisions/ADR-028-pyjwt-cho-token-phien.md` | **Mới, `Accepted`.** ADR-021 chỉ nói về hash mật khẩu, không chỉ định gì cho token, nên theo quyết định PO. Loại: `python-jose`, tự ký bằng `hmac` |
+| `decisions/ADR-029-structlog-cho-log-co-cau-truc.md` | **Mới, `Accepted`.** Chỉ `bo19.observability.log` import `structlog`. Loại: chỉ `logging` chuẩn, formatter JSON cho `logging` chuẩn |
+| `backend/pyproject.toml` | `python-jose[cryptography]==3.4.0` → `PyJWT==2.15.0`; chú thích trỏ ADR-028, ADR-029. Vẫn 17 phụ thuộc |
+| `ASSUMPTIONS.md` → 0.32 | A-044 `Đã chốt`. **A-078 mới:** lối ra khi mọi người khác mang permission vắng dài ngày — ba phương án, khuyến nghị (a) cấp permission tạm bằng thao tác vận hành đã có; hạn trước cổng Sprint 2 |
+| `10-eval.md` → 0.4 | Ca kiểm cơ chế K3 (`RETRY` không vòng qua cổng 1, gồm vế đường thoát khi E rỗng) và K4 (`RETURN_TO_ISSUE_QUEUE` không vòng qua lệnh phát hành; lệnh mới nhận số mới) |
+| `12-roadmap.md` → 0.7 | Cổng 2.2: A-044 đã chốt, thêm A-078; bảng nợ Phase 8; Sprint 2 chạy K1–K4 |
+| `08-hitl.md` → 0.4 | ADR-027 `Accepted`; câu vắng mặt trỏ A-078; K3, K4 |
+| `06-structure.md` → 0.8 | Mục Auth flow: token JWT qua `PyJWT` (ADR-028); `observability/log.py` là file duy nhất import `structlog` (ADR-029) |
+| `13-audit.md` → 0.7 | Mục Đã quyết thêm năm dòng; mục Chờ PO chốt còn câu 7 |
+
+### Đã chạy
+
+- `pip index versions PyJWT`, `pip index versions structlog` (2026-09-26): `2.15.0` và `25.4.0` có trên PyPI. Không cài thử.
+- `tomllib` đọc được `pyproject.toml`: 17 phụ thuộc. Skeleton không file `.py` nào import `jose` hay `structlog`.

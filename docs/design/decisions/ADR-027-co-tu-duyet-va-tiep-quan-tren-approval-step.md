@@ -1,6 +1,6 @@
 # ADR-027 — Cờ tự duyệt và việc tiếp quản nằm trên `approval_step`
 
-**Trạng thái:** Proposed · **Ngày:** 2026-09-26 · **Quyết định tại:** đợt sửa 3 sau Phase 13 (AUD-02 (d), AUD-23 (e)(f) của `13-audit.md`; A-044) · **Liên quan:** D-006 (mục Tách biệt trách nhiệm — quyết định D-006 của `00-domain.md`), ADR-010 (resume qua job), mục Duyệt và quyết định của `04-data.md`, mục Tách biệt trách nhiệm — D-006 và mục Tiếp quản sau `halt_for_human` của `08-hitl.md`, migration `0007_takeover_and_self_approval.sql`
+**Trạng thái:** Accepted · **Ngày:** 2026-09-26 · **Duyệt:** PO, 2026-09-26, khi nhận đợt sửa 3 — `Proposed` → `Accepted`; A-044 sang `Đã chốt` · **Quyết định tại:** đợt sửa 3 sau Phase 13 (AUD-02 (d), AUD-23 (e)(f) của `13-audit.md`; A-044) · **Liên quan:** D-006 (mục Tách biệt trách nhiệm — quyết định D-006 của `00-domain.md`), ADR-010 (resume qua job), mục Duyệt và quyết định của `04-data.md`, mục Tách biệt trách nhiệm — D-006 và mục Tiếp quản sau `halt_for_human` của `08-hitl.md`, migration `0007_takeover_and_self_approval.sql`
 
 ---
 
