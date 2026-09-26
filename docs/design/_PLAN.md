@@ -17,7 +17,7 @@ Chạy **tuần tự, mỗi phase một phiên Claude Code mới** (tránh conte
 | 10  | Evaluation Framework        | `10-eval.md`                          | 3, 7      | ☑          |
 | 11  | Ops, Cost & Deployment      | `11-ops.md`                           | tất cả    | ☑          |
 | 12  | Roadmap                     | `12-roadmap.md`                       | tất cả    | ☑          |
-| 13  | Consistency Audit           | `13-audit.md`                         | tất cả    | ☐          |
+| 13  | Consistency Audit           | `13-audit.md`                         | tất cả    | ☑          |
 
 ---
 

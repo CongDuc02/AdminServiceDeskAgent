@@ -1,6 +1,6 @@
 # ADR-002 — `vector_store` là `pgvector` trong cùng PostgreSQL, không phải vector DB riêng
 
-**Trạng thái:** Accepted · **Ngày:** 2026-09-12 · **Quyết định tại:** Phase 2 — System Architecture · **Sửa lập luận:** 2026-09-12, Phase 3 — quyết định giữ nguyên · **Liên quan:** mục Tech stack của `CLAUDE.md`, `02-architecture.md`, `03-agents.md`, A-027
+**Trạng thái:** Accepted · **Ngày:** 2026-09-12 · **Quyết định tại:** Phase 2 — System Architecture · **Sửa lập luận:** 2026-09-12, Phase 3 — quyết định giữ nguyên · **Sửa câu chữ:** 2026-09-26, đợt sửa 1 sau Phase 13 (AUD-09) — kênh lexical là full-text lõi, chưa phải BM25 (ADR-026); quyết định giữ nguyên · **Liên quan:** mục Tech stack của `CLAUDE.md`, `02-architecture.md`, `03-agents.md`, A-027
 
 ---
 
@@ -23,7 +23,7 @@
 **Chọn B.**
 
 - `vector_store` không phải một thành phần triển khai riêng — nó là extension `pgvector` trong cùng instance PostgreSQL managed trên Render.
-- Hybrid search (BM25 + vector) chạy được trong **một câu truy vấn SQL** kết hợp `tsvector` và `pgvector`, không cần join chéo hệ thống.
+- Hybrid search chạy được trong **một câu truy vấn SQL** kết hợp `tsvector` (kênh lexical) và `pgvector` (kênh vector), không cần join chéo hệ thống. Kênh lexical dùng xếp hạng full-text lõi của PostgreSQL, **chưa phải BM25** — ADR-026 (`Proposed`). *Bản trước viết "BM25 + vector"; `04-data.md` chưa từng chọn BM25.*
 - Phiên bản đang hiệu lực của `procedure_document` và embedding của nó nằm trong cùng một cơ sở dữ liệu: điều kiện "chỉ phiên bản đang hiệu lực" là một mệnh đề trong cùng câu truy vấn, và việc kích hoạt phiên bản mới cùng tắt phiên bản cũ nằm trong một giao dịch.
 
 ## Consequences

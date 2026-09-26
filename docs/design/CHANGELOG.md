@@ -1891,3 +1891,66 @@ Bổ sung của PO: thứ bậc nguồn sự thật (ADR `Superseded` thua ADR t
 
 1. **AUD-01** — không thao tác nào đưa `request` sang `APPROVED`, nên `FULFILLED` không tới được. Gắn vào lúc duyệt nội dung thì gãy ở nhánh người ký trả lại.
 2. **AUD-02** — phần giao cho Phase 8 chưa làm và chưa vào sổ nợ của `12-roadmap.md`: ba bảng mã (`reason_code`, `archive_reason`, `event_code`), thao tác tiếp quản `TAKEOVER_RESOLVED`, chi tiết đường thoát tự duyệt — trong đó contract thu hồi mâu thuẫn trực tiếp D-006.
+
+---
+
+## 2026-09-26 (lần 2) — Phase 13: `13-audit.md` v0.2 → v0.3; ADR-026; đánh dấu Phase 13
+
+**`13-audit.md` v0.2** — theo chỉ đạo của PO khi nhận kết quả v0.1:
+
+- **24 lỗi: 2 Chặn / 16 Cao / 6 Thấp.** Bản v0.1 ghi 22.
+- AUD-02 tách đôi: (a)–(d) giữ mức Chặn; (e)–(h) sang **AUD-23** (Cao) — (h) xếp Cao.
+- **AUD-24 mới** (Cao): việc giao cho Phase 9 và Phase 11 mà hai phase đó không nhận, nặng nhất là quyền của chủ thể dữ liệu theo Nghị định 13/2023/NĐ-CP.
+- AUD-11 quét lại bằng `grep` — 19 từ khoá, 213 dòng khớp — từ 25 lên 42 vị trí. Từ khoá và lệnh ở phụ lục A.7.
+- AUD-01 có bảng so sánh (A), (B1), (B2).
+
+**`13-audit.md` v0.3** — ghi quyết định của PO:
+
+| # | Quyết định |
+|---|---|
+| 1 | AUD-01: chọn (A) — `request → APPROVED` trong `document_sign`. Điều kiện: `GLOSSARY.md` định nghĩa lại `APPROVED` = "đã ký"; dòng A-034 ghi rõ chọn lối trả lại ở cổng dấu thì mở lại AUD-01 |
+| 2 | Giữ D-006, sửa contract thu hồi cho có đường thoát tự duyệt; một lượt sửa `08-hitl.md` có phép ở đợt 3 |
+| 3 | Viết ADR kênh lexical ngay, `Proposed` |
+| 4 | AUD-24: nhận, mức Cao, hạn trước sprint đầu tiên lưu dữ liệu cá nhân thật |
+| 5 | ID cho AC của PRD dạng `AC-Fx.y` |
+
+Việc (f) của AUD-23 — đường thoát tự duyệt cho thu hồi — dời từ đợt 1 sang đợt 3, vì nó cần chính phép xác định "chỉ còn một người đủ quyền" (việc (e)).
+
+**Tạo mới:** `decisions/ADR-026-kenh-lexical-full-text-loi.md` — **Proposed**. Đề xuất giữ full-text lõi của PostgreSQL làm kênh lexical, chưa phải BM25. Loại ba phương án: B (BM25 qua extension — chưa xác minh trên Render), C (biểu diễn thưa từ model embedding), D (BM25 ở tầng ứng dụng). **Ghi rõ lệch khỏi mục Ràng buộc domain bắt buộc phải xử lý của `CLAUDE.md`** — PO xử lý file đó.
+
+**`_PLAN.md`:** Phase 13 → ☑, theo yêu cầu trực tiếp của PO.
+
+**Còn chờ PO chốt:** câu 3, 5, 6, 7 ở mục Open Questions của `13-audit.md`, và hai index ở mục 5.
+
+---
+
+## 2026-09-26 (đợt sửa 1) — Contract và ADR, theo `13-audit.md`
+
+Đợt 1 của mục Thứ tự sửa đề xuất trong `13-audit.md`. Chỉ làm phần không phụ thuộc câu hỏi còn chờ PO.
+
+### File sửa
+
+| File | Thay đổi | AUD |
+|---|---|---|
+| `contracts/openapi.yaml` → 0.2.3 | Enum `ErrorCode` thêm `OPERATING_MODE_UNCHANGED`, `RATE_LIMITED` (33 → 35); `ErrorDetails` thêm `current_mode`; `RateLimited` ghi `details.retry_after_seconds` | AUD-04 |
+| | Bỏ `x-bo19-permission-status` ở 6 operation `/config/request-types…` và bỏ định nghĩa của nó ở đầu file | AUD-05 |
+| | `trace_id` của `ErrorEnvelope` và `AuditEvent`: `format: uuid` (ADR-024) | AUD-11 |
+| | `x-bo19-feature`: `NFR-05` cho `POST`/`DELETE /auth/session`, `GET /me`; `NFR-03` cho `POST`/`GET /operating-mode/transitions`. Mô tả extension: "feature (F1–F6) hoặc NFR (NFR-xx)" | AUD-19 |
+| `05-api.md` → 0.11 | Mục Mã lỗi: `RATE_LIMITED` dùng `retry_after_seconds` | AUD-04 |
+| | Mục Phân quyền ở tầng API, mục Endpoint — Cấu hình, bảng Không có endpoint vì chưa có thao tác, mục Open Questions: `request_type.manage` đã có trong danh mục, cấp lẻ. Cấu hình sổ văn bản vẫn chưa có permission — đổi căn cứ từ A-042 sang AUD-05 và tiêu chí T7 | AUD-05 |
+| | Ví dụ `trace_id` thành UUID v4, bảng trường lỗi ghi ADR-024; ngoại lệ đóng "hai mục" → "ba mục" (ADR-019); quản lý secret và rủi ro phiên trỏ về `09-security.md`; `request.read_all` org-wide trỏ về mục Row-level theo phòng ban của `09-security.md` | AUD-11 |
+| `decisions/ADR-002` | Câu Decision: kênh lexical là full-text lõi, chưa phải BM25 (ADR-026); quyết định giữ nguyên | AUD-09 |
+| `02-architecture.md` → 0.11 | `vector_store`: "full-text lõi + vector"; số phiên bản đầu dòng từ 0.8 lên 0.11 | AUD-09, AUD-18 |
+| `03-agents.md` → 0.13 | Mục Hybrid search: full-text lõi, BM25 là hướng đảo ngược | AUD-09 |
+
+### Đã chạy
+
+- `openapi-spec-validator` 0.9.0: hợp lệ.
+- Script đối chiếu `05-api.md` ↔ `openapi.yaml` (phụ lục A.2 của `13-audit.md`): 50/50 method–path; mã lỗi **35 = 35**; không còn operation nào mang `x-bo19-permission-status`; 3 operation không có `x-bo19-feature` — ba endpoint `/delegations`.
+
+### Chưa làm trong đợt này
+
+- **AUD-03** (biểu diễn schema sau migration) và **migration `0006`** (hai index ở mục 5 của `13-audit.md`): chờ PO chốt.
+- `x-bo19-feature` cho ba endpoint `/delegations`: chờ câu 5 (AUD-15) — nghĩa của `delegation` quyết định nó thuộc feature nào.
+- Việc (f) của AUD-23 (đường thoát tự duyệt cho thu hồi): dời sang đợt 3.
+- `CLAUDE.md` mục Ràng buộc domain (BM25): PO xử lý, theo ADR-026.

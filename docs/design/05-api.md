@@ -1,6 +1,6 @@
 # API Spec — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.10 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 5 — mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md` · **v0.3:** vòng duyệt Phase 5 lần 2 — mục ngày 2026-09-13 (lần 6) · **v0.4:** đóng Phase 5 — mục ngày 2026-09-13 (lần 7) · **v0.5:** `manifest.required_fonts` và mã lỗi `TEMPLATE_FONTS_INVALID` (ADR-015) — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.6:** mục SSE và dòng `SYNC_GRAPH` theo ADR-016 — bỏ cận dưới của hạn chót lượt — vòng duyệt Phase 6 (A), mục ngày 2026-09-13 (lần 9) · **v0.7:** `FONT_MISSING` ở bảng mã lỗi của tool — mục ngày 2026-09-14 của `CHANGELOG.md` · **v0.8:** endpoint `operating_mode_transition` (mục 2.2b), ADR-020 — Phase 9, mục ngày 2026-09-14 (lần 2) của `CHANGELOG.md`. Endpoint có contract: 48 → 49 · **v0.9:** `GET /operating-mode/transitions` chỉ còn permission `audit.read_all` — mục ngày 2026-09-14 (lần 3) của `CHANGELOG.md` · **v0.10:** mã lỗi `ENVIRONMENT_NOT_ALLOWED` (Lớp 3, ADR-023), câu `document.job_failed` ở mục 1.10 — Phase 11, PO duyệt, mục ngày 2026-09-25 của `CHANGELOG.md`. **Sửa số phiên bản đầu dòng** — lệch với các ghi chú v0.5–v0.9 đã có từ trước, không thuộc thay đổi lần này, sửa cho khớp
+**Phiên bản:** 0.11 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 5 — mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md` · **v0.3:** vòng duyệt Phase 5 lần 2 — mục ngày 2026-09-13 (lần 6) · **v0.4:** đóng Phase 5 — mục ngày 2026-09-13 (lần 7) · **v0.5:** `manifest.required_fonts` và mã lỗi `TEMPLATE_FONTS_INVALID` (ADR-015) — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.6:** mục SSE và dòng `SYNC_GRAPH` theo ADR-016 — bỏ cận dưới của hạn chót lượt — vòng duyệt Phase 6 (A), mục ngày 2026-09-13 (lần 9) · **v0.7:** `FONT_MISSING` ở bảng mã lỗi của tool — mục ngày 2026-09-14 của `CHANGELOG.md` · **v0.8:** endpoint `operating_mode_transition` (mục 2.2b), ADR-020 — Phase 9, mục ngày 2026-09-14 (lần 2) của `CHANGELOG.md`. Endpoint có contract: 48 → 49 · **v0.9:** `GET /operating-mode/transitions` chỉ còn permission `audit.read_all` — mục ngày 2026-09-14 (lần 3) của `CHANGELOG.md` · **v0.10:** mã lỗi `ENVIRONMENT_NOT_ALLOWED` (Lớp 3, ADR-023), câu `document.job_failed` ở mục 1.10 — Phase 11, PO duyệt, mục ngày 2026-09-25 của `CHANGELOG.md`. **Sửa số phiên bản đầu dòng** — lệch với các ghi chú v0.5–v0.9 đã có từ trước, không thuộc thay đổi lần này, sửa cho khớp · **v0.11:** đợt sửa 1 sau Phase 13 — `request_type.manage` đã có trong danh mục (AUD-05), `RATE_LIMITED` dùng `retry_after_seconds` (AUD-04), `trace_id` là UUID v4 và ba câu trỏ về Phase 9/ngoại lệ đóng đã cũ (AUD-11) — mục ngày 2026-09-26 (đợt sửa 1) của `CHANGELOG.md`
 
 > File này chốt contract giữa `client` và `api`: endpoint REST, hai stream SSE, xác thực, lỗi chuẩn hoá, phân trang, idempotency và cách xử lý hai người thao tác cùng lúc. Contract máy đọc được nằm ở [`contracts/openapi.yaml`](./contracts/openapi.yaml). File này **không** thiết kế cấu trúc code (Phase 6), màn hình duyệt, bảng mã lý do hay cơ chế tiếp quản (Phase 8), chi tiết AuthZ, rate limit và vòng đời credential (Phase 9), và **không** định cỡ tham số vận hành (Phase 11).
 
@@ -33,8 +33,8 @@ Tên entity, trạng thái, enum, permission, agent, tool dùng đúng `GLOSSARY
 Lập luận và phương án bị loại ở ADR-013.
 
 - **Session cookie** `bo19_session`: `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api`.
-- **Phiên không lưu DB** (ADR-013). Cookie mang một token **ký bằng secret phía server**, stateless: định danh nhân viên cộng thời điểm hết hạn, không mang permission. Không bảng nào trong `schema.sql` giữ phiên, và đăng nhập không ghi gì vào `postgresql`. Mỗi request, `api` kiểm chữ ký và hạn, rồi **đọc lại từ DB** `employee.is_active` và permission hiệu lực — nên nghỉ việc hay bị thu quyền có hiệu lực ngay ở request kế tiếp. Thời hạn token `TBD` (A-048); quản lý secret thuộc Phase 9.
-- **Cái phải chấp nhận, nói thẳng:** không thu hồi được **một** phiên đơn lẻ trước khi hết hạn. `DELETE /auth/session` chỉ xoá cookie ở trình duyệt đó; một token đã bị sao chép vẫn dùng được tới hạn. Cách duy nhất để vô hiệu hoá sớm là đổi secret — và nó vô hiệu hoá **mọi** phiên. Chấp nhận cho Sprint đầu, như một **rủi ro có chủ** — owner Phase 9 (A-048).
+- **Phiên không lưu DB** (ADR-013). Cookie mang một token **ký bằng secret phía server**, stateless: định danh nhân viên cộng thời điểm hết hạn, không mang permission. Không bảng nào trong `schema.sql` giữ phiên, và đăng nhập không ghi gì vào `postgresql`. Mỗi request, `api` kiểm chữ ký và hạn, rồi **đọc lại từ DB** `employee.is_active` và permission hiệu lực — nên nghỉ việc hay bị thu quyền có hiệu lực ngay ở request kế tiếp. Thời hạn token `TBD` (A-048); quản lý secret ở mục Secret management trên Render của `09-security.md`.
+- **Cái phải chấp nhận, nói thẳng:** không thu hồi được **một** phiên đơn lẻ trước khi hết hạn. `DELETE /auth/session` chỉ xoá cookie ở trình duyệt đó; một token đã bị sao chép vẫn dùng được tới hạn. Cách duy nhất để vô hiệu hoá sớm là đổi secret — và nó vô hiệu hoá **mọi** phiên. Chấp nhận cho Sprint đầu, như một **rủi ro có chủ** — A-048, mục AuthN của `09-security.md`.
 - **Đăng nhập** bằng `employee_code` và mật khẩu. Credential sống ở một **bảng riêng**, không ở `employee`, do Phase 9 thêm bằng migration — nên import CSV không bao giờ chạm tới nó (A-048). Mật khẩu ban đầu do một thao tác vận hành seed và giao ngoài hệ thống.
 - **Không thuộc Sprint đầu:** buộc đổi mật khẩu lần đầu, đổi, quên, khoá sau nhiều lần sai — không endpoint nào cho chúng. Mọi ca đăng nhập sai trả `INVALID_CREDENTIALS` đồng nhất. **Không** có mã khoá tài khoản: một mã như vậy để lộ tài khoản nào tồn tại. Chống dò mật khẩu là rate limit của Phase 9.
 - **Chống CSRF — hai lớp, cả hai bắt buộc:**
@@ -49,9 +49,9 @@ Lập luận và phương án bị loại ở ADR-013.
 - **Tài nguyên tồn tại nhưng người gọi không được xem thì trả `NOT_FOUND`**, không trả `PERMISSION_DENIED`. Nếu trả 403 thì người gọi dò được sự tồn tại của yêu cầu và văn bản của người khác.
 - `PERMISSION_DENIED` chỉ dùng khi người gọi đã được xem tài nguyên nhưng không có permission cho hành động — ví dụ cán bộ xem được văn bản nhưng không có `document.apply_seal`.
 - **Tách biệt trách nhiệm (D-006)** kiểm ở thao tác cổng, không kiểm ở tầng HTTP: thao tác cần dữ liệu từ `request.beneficiary_employee_id`. Cách xác định "chỉ còn một người đủ quyền" thuộc Phase 8. Contract chốt ba điều: trường `self_approval_reason` có mặt trên mọi endpoint duyệt, ký, đóng dấu, phát hành; hai mã lỗi `SELF_APPROVAL_BLOCKED` và `SELF_APPROVAL_REASON_REQUIRED`; và `approval_step.self_approval_expected` được trả về để giao diện biết khi nào phải hỏi lý do.
-- Lọc theo phòng ban cho `request.read_all` thuộc Phase 9. Contract không giả định có hay không.
+- `request.read_all` giữ org-wide ở Sprint đầu; lọc theo phòng ban chỉ kích hoạt khi A-001 bị bác bỏ (A-061, mục Row-level theo phòng ban của `09-security.md`). Contract không đổi khi lọc được kích hoạt.
 
-**Permission chưa có trong danh mục.** Endpoint cấu hình `request_type` và slot schema (mục 2.10) khai permission **`request_type.manage`** — *chưa có trong danh mục permission, A-042, chưa cấp cho vai trò nào*. Tên này **không** được đưa vào mục Permission của `GLOSSARY.md` hay mục Permission và vai trò của `00-domain.md`: danh mục là của Phase 0, và chỉ Phase 9 được thêm vào. Hệ quả: các endpoint đó **từ chối mọi người** cho tới khi Phase 9 quyết. Có một tên thay vì `TBD` là để contract không có một permission rỗng — `TBD` trong file contract sẽ thành `null` trong code, và một kiểm quyền với `null` là lỗ.
+**Permission của luồng cấu hình `request_type`.** Endpoint cấu hình `request_type` và slot schema (mục 2.10) dùng permission **`request_type.manage`**. Nó vào danh mục ở Phase 9 (A-042 `Đã chốt`), cấp lẻ, không thuộc gói vai trò nào (mục AuthZ của `09-security.md`), và vào DB qua data migration `0001_permission_catalog.sql`. Endpoint chỉ phục vụ được **sau khi** data migration đó chạy. Bài học giữ lại từ bản trước: contract khai một tên permission cụ thể thay vì `TBD`, vì `TBD` trong contract thành `null` trong code, và một phép kiểm quyền với `null` là lỗ.
 
 ### 1.5 Đồng bộ hay enqueue
 
@@ -77,7 +77,7 @@ Mỗi endpoint ghi khai **chạy ở đâu**. Đây là sự thật ở mức co
 {
   "error_code": "STATE_CONFLICT",
   "message": "Văn bản đã được người khác xử lý. Hãy tải lại để xem trạng thái mới.",
-  "trace_id": "4f1c2e7a9b0d4c3e",
+  "trace_id": "3f2b8c1e-7a4d-4e9b-9c21-5d6f0a8b1e47",
   "details": { "current_status": "APPROVED" }
 }
 ```
@@ -88,7 +88,7 @@ Mỗi endpoint ghi khai **chạy ở đâu**. Đây là sự thật ở mức co
 |---|---|---|
 | `error_code` | ✔ | Một mã trong danh mục ở mục 4.1. Ổn định: `client` rẽ nhánh theo mã này, không theo `message` |
 | `message` | ✔ | Tiếng Việt, nói rõ **người dùng cần làm gì tiếp** (NFR-04). **Không bao giờ** chứa giá trị slot, tên người, nội dung văn bản hay tên node, tên prompt, tên bảng |
-| `trace_id` | ✔ | Nối sang log kỹ thuật đã mask ở `observability`. Có cả ở lỗi 500 |
+| `trace_id` | ✔ | UUID v4 chữ thường (ADR-024). Nối sang log kỹ thuật đã mask ở `observability`. Có cả ở lỗi 500 |
 | `details` | — | Chỉ tên trường, tên slot, tên biến, số dòng, mã con, số đếm. **Không giá trị** |
 
 Lỗi xảy ra **sau khi** stream lượt chat đã bắt đầu thì không đổi được mã HTTP nữa; nó đi thành sự kiện `turn.error` mang đúng envelope trên (mục 3.1).
@@ -176,7 +176,7 @@ Hệ quả cho Phase 6: **mọi** câu `UPDATE` chuyển trạng thái phải gh
 
 ### 2.1 Thao tác của `tool_layer` được đặt tên ở Phase 5
 
-Luật ở mục Tool Registry của `03-agents.md`: **mọi** ghi `postgresql` đi qua `tool_layer`, trừ danh sách ngoại lệ đóng gồm hai mục (bảng checkpoint và `graph_thread`); mọi thao tác ghi sinh `audit_event`. Phase 3 đặt tên cho tool của graph, thao tác cổng, thao tác vận hành và một thao tác cấu hình, nhưng chưa đặt tên cho các lệnh ghi mà chỉ endpoint gây ra — ví dụ `03-agents.md` ghi "`api` ghi mỗi lượt" cho `chat_message` mà không nói qua thao tác nào. Không có tên thì Phase 13 không truy vết được endpoint về thao tác. Các tên dưới đây được đặt vì lý do đó, và **chỉ** endpoint gọi chúng — không node nào của graph gọi. Bản kê của chúng nằm ở mục Tool Registry của `03-agents.md`. Mọi thao tác ghi dưới đây sinh `audit_event` theo luật chung; với `chat_message_append` và `stored_file_fetch`, luật đó đang kéo ngược định nghĩa của `audit_event` — A-055, chưa giải.
+Luật ở mục Tool Registry của `03-agents.md`: **mọi** ghi `postgresql` đi qua `tool_layer`, trừ danh sách ngoại lệ đóng gồm ba mục (bảng checkpoint, `graph_thread`, và `llm_usage` — ADR-019); mọi thao tác ghi sinh `audit_event`. Phase 3 đặt tên cho tool của graph, thao tác cổng, thao tác vận hành và một thao tác cấu hình, nhưng chưa đặt tên cho các lệnh ghi mà chỉ endpoint gây ra — ví dụ `03-agents.md` ghi "`api` ghi mỗi lượt" cho `chat_message` mà không nói qua thao tác nào. Không có tên thì Phase 13 không truy vết được endpoint về thao tác. Các tên dưới đây được đặt vì lý do đó, và **chỉ** endpoint gọi chúng — không node nào của graph gọi. Bản kê của chúng nằm ở mục Tool Registry của `03-agents.md`. Mọi thao tác ghi dưới đây sinh `audit_event` theo luật chung; với `chat_message_append` và `stored_file_fetch`, luật đó đang kéo ngược định nghĩa của `audit_event` — A-055, chưa giải.
 
 | Thao tác | Ghi gì, trong một giao dịch | Endpoint |
 |---|---|---|
@@ -350,7 +350,7 @@ Không có endpoint đánh dấu đã đọc. Cột `notification.read_at` và `
 
 - `metadata.pii_free_attested` phải là `true` — cam kết của người nạp (A-033). Kích hoạt phiên bản mới và tắt phiên bản cũ xảy ra trong job `procedure_ingest`, không trong request. Trong lúc có collection đang `BUILDING`, job hoãn (mục Vector collection của `04-data.md`).
 
-**Loại yêu cầu và slot schema** — `request_type.manage`: *chưa có trong danh mục permission, A-042, chưa cấp cho vai trò nào.* Từ chối mọi người cho tới khi Phase 9 quyết.
+**Loại yêu cầu và slot schema** — `request_type.manage`, cấp lẻ (mục AuthZ của `09-security.md`).
 
 | Method | Path | Thao tác | Chạy | Khoá | Body → Response |
 |---|---|---|---|---|---|
@@ -365,7 +365,7 @@ Không có endpoint đánh dấu đã đọc. Cột `notification.read_at` và `
 - **`PUT` theo khoá tự nhiên, không cần `Idempotency-Key`.** Không có `expected_row_version` là tạo mới; có thì là sửa có điều kiện.
 - **`slot_definition_upsert` không đổi độ nhạy của một slot đã có.** Khác độ nhạy hiện hành thì trả `USE_SENSITIVITY_CHANGE`. Đổi độ nhạy chỉ đi qua `change-sensitivity`, vì nâng lên `RES` là thao tác **phá huỷ** (mục Lưu trữ và xoá dữ liệu cá nhân của `04-data.md`).
 - **Nhãn phá huỷ ở mức contract:** `preview` trả số dòng sẽ bị xoá giá trị. Khi thay đổi là phá huỷ, `change-sensitivity` bắt buộc có `expected_erase_count`: thiếu thì trả `DESTRUCTIVE_CONFIRMATION_REQUIRED`, lệch với số đếm lúc chạy thì trả `DESTRUCTIVE_COUNT_CHANGED` và không xoá gì. Người thực hiện vì vậy luôn thấy trước đúng số dòng mình sẽ xoá. Giao diện thuộc Phase 8.
-- Cấu hình sổ văn bản và định dạng số không có endpoint: chưa có permission nào (A-042). Bản đầu nạp bằng data migration (mục Nguyên tắc dữ liệu của `04-data.md`).
+- Cấu hình sổ văn bản và định dạng số không có endpoint: chưa có permission nào — A-042 chỉ thêm `request_type.manage`, không phủ sổ văn bản (AUD-05 của `13-audit.md`; tiêu chí T7 ở mục Loại yêu cầu thứ ba của `12-roadmap.md`). Bản đầu nạp bằng data migration (mục Nguyên tắc dữ liệu của `04-data.md`).
 
 ### 2.11 Nhật ký và tự duyệt — NFR-02, F3
 
@@ -408,7 +408,7 @@ Ngoài ba loại trừ có chủ đích ở mục 1.10:
 | Chuyển `document` sang `SUPERSEDED` | Chưa có thao tác | A-054 |
 | Huỷ `request` ở `NEEDS_INFO`, `SUBMITTED`, `IN_REVIEW` | Sơ đồ không có cạnh | A-053 |
 | Đặt người thụ hưởng khác người tạo — nhập hộ, ở cả `WORK_CONFIRMATION` lẫn `INTRODUCTION_LETTER` | Không thao tác nào ghi `request.beneficiary_employee_id` | A-052 |
-| Cấu hình sổ văn bản | Chưa có permission | A-042 |
+| Cấu hình sổ văn bản | Chưa có permission — A-042 chỉ phủ `request_type` | AUD-05 của `13-audit.md` |
 | Rate limit ngoài đăng nhập (API nói chung) | Chỉ `POST /auth/session` có rate limit ở Sprint đầu — nó là endpoint công khai duy nhất nhận ghi từ người chưa xác thực | Mục Rate limit của `09-security.md` |
 | `SEAL_REQUEST` và văn bản ngoài; memory yêu cầu định kỳ | `[Could]` | Mục Scope & priority của PRD |
 
@@ -534,7 +534,7 @@ Nguồn duy nhất của danh mục. `openapi.yaml` khai đúng tập này dư�
 | `STATE_CONFLICT` | 409 | Trạng thái hay `row_version` không còn như lúc đọc (mục 1.9) | Tải lại để xem trạng thái mới | `current_status` |
 | `SEPARATION_OF_DUTIES_VIOLATION` | 409 | Người xác nhận thu hồi trùng người khởi tạo | Chuyển cho người khác xác nhận | — |
 | `OPERATING_MODE_UNCHANGED` | 422 | `to_mode` trùng chế độ hiệu lực hiện tại | Kiểm `GET /me` trước khi gửi | `current_mode` |
-| `RATE_LIMITED` | 429 | Vượt ngưỡng `rate_limit_window` — chỉ `POST /auth/session` ở Sprint đầu | Thử lại sau | `retry_after` |
+| `RATE_LIMITED` | 429 | Vượt ngưỡng `rate_limit_window` — chỉ `POST /auth/session` ở Sprint đầu | Thử lại sau | `retry_after_seconds` |
 | `REQUEST_NOT_EDITABLE` | 409 | Xác nhận slot khi `request` không còn ở trạng thái bổ sung được | Tải lại yêu cầu | `current_status` |
 | `SLOT_NOT_PROPOSED` | 409 | Xác nhận một slot không có giá trị đang chờ xác nhận | Tải lại yêu cầu | `slot_names` |
 | `SLOT_VALUE_STALE` | 409 | Giá trị đề xuất đã đổi kể từ lúc hiển thị | Xem lại giá trị mới rồi xác nhận | `slot_names` |
@@ -601,12 +601,7 @@ Cho Phase 13: mọi thao tác của `tool_layer` có một đích, hoặc có l�
 
 Mọi mục có owner và hạn ở `ASSUMPTIONS.md`. Mục này chỉ gom lại những gì Phase 5 phát hiện hoặc làm nặng thêm.
 
-**A-042 — chặn nghiệm thu, đã có đường ra: chọn đường (i).** AC cứng của F6, và điều 4 ở mục Definition of Done của PRD, đòi **thêm một `request_type` thứ ba trong UAT, không sửa code, không deploy lại**. Endpoint cấu hình `request_type` hôm nay từ chối mọi người, vì `request_type.manage` chưa có trong danh mục. **Khi đó cách duy nhất để thêm loại thứ ba là data migration — đúng thứ AC loại trừ.** Hai đường ra:
-
-- **(i) — chọn.** Thêm `request_type.manage` vào danh mục permission. Owner Phase 9; hạn cứng: Phase 9 không được duyệt khi chưa thêm. Bản thân việc thêm chỉ là một dòng trong danh mục; câu hỏi thật là nó vào gói vai trò nào, hay được cấp lẻ như `procedure.manage` (A-033).
-- **(ii) — loại.** Sửa điều 4 của Definition of Done cho khớp thực tế. Loại vì điều 4 kiểm đúng giá trị cốt lõi của F6: hạ cổng nghiệm thu để hợp với một ô trống trong danh mục là sửa ngược chiều. Và sửa riêng điều 4 là chưa đủ — AC của F6 cũng thành sai theo, tức phải cắt phạm vi của một feature Must.
-
-Chi tiết ở A-042.
+**A-042 — đã chốt ở Phase 9, theo đường (i) chọn ở vòng duyệt Phase 5.** `request_type.manage` vào danh mục permission, cấp lẻ, và vào DB qua data migration. Điều 4 ở mục Definition of Done của `01-prd.md` giữ nguyên. Đường (ii) — hạ điều 4 cho khớp một ô trống trong danh mục — đã bị loại. Chi tiết ở A-042.
 
 **A-052 — chạm cổng nghiệm thu.** Nhập hộ giữ trong Sprint đầu, nhưng chưa chạy được ở **cả hai** loại yêu cầu: `WORK_CONFIRMATION` không có đường đặt người thụ hưởng khác người tạo, và không thao tác nào ghi `request.beneficiary_employee_id` từ `bearer_employee_code` của `INTRODUCTION_LETTER`. EC-IL-01 là một ca của nhóm E trong bộ eval; nhóm E do M6 chấm; M6 là metric loại Bất biến — tức cổng nghiệm thu. Chừng nào A-052 chưa giải, ca đó không đạt được **đúng căn cứ**.
 

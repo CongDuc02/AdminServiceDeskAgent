@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: BO-19 Admin Service Desk Agent API
-  version: 0.2.2
+  version: 0.2.3
   description: |
     Contract máy đọc được của `docs/design/05-api.md` (Phase 5). Diễn giải, lý do và
     giới hạn nằm ở file đó; file này không lặp lại lập luận.
@@ -13,11 +13,10 @@ info:
     Extension dùng trong file:
       x-bo19-operation          tên thao tác của tool_layer (GLOSSARY.md mục 12, 05-api.md mục 2.1)
       x-bo19-permission         permission cần có (D-005 — permission, không phải vai trò)
-      x-bo19-permission-status  NOT_IN_CATALOG_A042 khi permission chưa có trong danh mục
       x-bo19-execution          SYNC | SYNC_ENQUEUE | SYNC_OBJECT_STORAGE | SYNC_GRAPH | STREAM
       x-bo19-enqueues           loại job enqueue trong cùng giao dịch
       x-bo19-idempotency-key    dòng chính mà Idempotency-Key phải bằng id của nó; "none" nếu không cần
-      x-bo19-feature            feature ở PRD
+      x-bo19-feature            feature (F1–F6) hoặc NFR (NFR-xx) ở PRD mà endpoint phục vụ
       x-bo19-scope              Should — hạng mục bị cắt khỏi Sprint đầu
       x-bo19-sse-events         tên sự kiện SSE -> schema của trường data
 
@@ -46,6 +45,7 @@ paths:
       summary: Đăng nhập
       description: Sai mã nhân viên hay sai mật khẩu đều trả INVALID_CREDENTIALS. Vòng đời credential ở A-048.
       security: []
+      x-bo19-feature: NFR-05
       x-bo19-execution: SYNC
       x-bo19-idempotency-key: none
       parameters:
@@ -71,6 +71,7 @@ paths:
       tags: [auth]
       operationId: deleteSession
       summary: Đăng xuất
+      x-bo19-feature: NFR-05
       x-bo19-execution: SYNC
       x-bo19-idempotency-key: none
       parameters:
@@ -86,6 +87,7 @@ paths:
       tags: [auth]
       operationId: getMe
       summary: Nhân viên đang đăng nhập, permission hiệu lực, chế độ vận hành
+      x-bo19-feature: NFR-05
       responses:
         '200':
           description: OK
@@ -101,6 +103,7 @@ paths:
       operationId: listOperatingModeTransitions
       summary: Lịch sử đổi chế độ vận hành, mới nhất trước
       x-bo19-permission: [audit.read_all]
+      x-bo19-feature: NFR-03
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -126,6 +129,7 @@ paths:
         không ghi operating_mode_change (mục Môi trường Render của 11-ops.md).
       x-bo19-operation: operating_mode_transition
       x-bo19-permission: [operating_mode.change]
+      x-bo19-feature: NFR-03
       x-bo19-execution: SYNC
       x-bo19-idempotency-key: operating_mode_change
       parameters:
@@ -1171,7 +1175,6 @@ paths:
       operationId: listRequestTypeConfigs
       summary: Cấu hình loại yêu cầu, theo code
       x-bo19-permission: [request_type.manage, template.manage]
-      x-bo19-permission-status: NOT_IN_CATALOG_A042
       x-bo19-feature: F6
       parameters:
         - $ref: '#/components/parameters/Cursor'
@@ -1195,7 +1198,6 @@ paths:
       operationId: getRequestTypeConfig
       summary: Một loại yêu cầu, gồm slot schema
       x-bo19-permission: [request_type.manage, template.manage]
-      x-bo19-permission-status: NOT_IN_CATALOG_A042
       x-bo19-feature: F6
       responses:
         '200':
@@ -1213,7 +1215,6 @@ paths:
       summary: Tạo hoặc sửa loại yêu cầu — không có expected_row_version là tạo
       x-bo19-operation: request_type_upsert
       x-bo19-permission: [request_type.manage]
-      x-bo19-permission-status: NOT_IN_CATALOG_A042
       x-bo19-execution: SYNC
       x-bo19-idempotency-key: none
       x-bo19-feature: F6
@@ -1246,7 +1247,6 @@ paths:
       summary: Tạo hoặc sửa slot — không đổi độ nhạy của slot đã có
       x-bo19-operation: slot_definition_upsert
       x-bo19-permission: [request_type.manage]
-      x-bo19-permission-status: NOT_IN_CATALOG_A042
       x-bo19-execution: SYNC
       x-bo19-idempotency-key: none
       x-bo19-feature: F6
@@ -1279,7 +1279,6 @@ paths:
       operationId: previewSensitivityChange
       summary: Xem trước số dòng sẽ bị xoá giá trị
       x-bo19-permission: [request_type.manage]
-      x-bo19-permission-status: NOT_IN_CATALOG_A042
       x-bo19-feature: F6
       parameters:
         - name: to
@@ -1308,7 +1307,6 @@ paths:
       summary: Đổi độ nhạy; nâng lên RES là phá huỷ
       x-bo19-operation: slot_sensitivity_change
       x-bo19-permission: [request_type.manage]
-      x-bo19-permission-status: NOT_IN_CATALOG_A042
       x-bo19-execution: SYNC
       x-bo19-idempotency-key: none
       x-bo19-feature: F6
@@ -1648,7 +1646,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
     RateLimited:
-      description: RATE_LIMITED — chỉ POST /auth/session ở Sprint đầu (mục Rate limit của 09-security.md)
+      description: RATE_LIMITED — chỉ POST /auth/session ở Sprint đầu (mục Rate limit của 09-security.md). details.retry_after_seconds
       headers:
         Retry-After: { schema: { type: integer } }
       content:
@@ -1808,6 +1806,8 @@ components:
         - TURN_NOT_FINISHED
         - USE_SENSITIVITY_CHANGE
         - DESTRUCTIVE_COUNT_CHANGED
+        - OPERATING_MODE_UNCHANGED
+        - RATE_LIMITED
         - PAYLOAD_TOO_LARGE
         - UNSUPPORTED_MEDIA_TYPE
         - VALIDATION_FAILED
@@ -1839,7 +1839,10 @@ components:
         message:
           description: Tiếng Việt, nói rõ cần làm gì tiếp. Không bao giờ chứa giá trị slot
           type: string
-        trace_id: { type: string }
+        trace_id:
+          description: UUID v4 chữ thường (ADR-024)
+          type: string
+          format: uuid
         details: { $ref: '#/components/schemas/ErrorDetails' }
     ErrorDetails:
       description: Chỉ tên, mã, số đếm — không giá trị
@@ -1905,6 +1908,7 @@ components:
         message_saved: { type: boolean }
         turn_abandoned: { type: boolean }
         retry_after_seconds: { type: integer, minimum: 0 }
+        current_mode: { $ref: '#/components/schemas/OperatingMode' }
     FailedRule:
       type: object
       additionalProperties: false
@@ -2556,7 +2560,9 @@ components:
           description: Chỉ mã, id, tên slot, số đếm
           type: object
         trace_id:
+          description: UUID v4 chữ thường (ADR-024)
           type: [string, 'null']
+          format: uuid
     AuditEventPage:
       allOf:
         - $ref: '#/components/schemas/Page'
