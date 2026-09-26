@@ -25,3 +25,27 @@ Không sửa `schema.sql` — kể cả chỉ một dòng chú thích. Sửa th�
 Diễn giải từng bảng, cột và index — kể cả phần do migration thêm — ở mục Bảng chi tiết của `04-data.md`. Ngoài schema, còn hai thư mục migration khác: `backend/migrations/data/` (dữ liệu danh mục) và `backend/migrations/library/` (quyền trên bảng của thư viện checkpointer). Thứ tự áp cả ba thư mục ở mục Migration và checkpointer của `06-structure.md`.
 
 **Thêm migration mới thì cập nhật bảng trên trong cùng thay đổi**, rồi chạy `check_grants.py --local-migrated`.
+
+## Extension `x-bo19-*` về quyền trong `openapi.yaml`
+
+*Thêm ở đợt sửa 4 sau Phase 13 (AUD-27).*
+
+| Extension | Kiểu | Nghĩa |
+|---|---|---|
+| `x-bo19-permission` | danh sách permission | **Any-of** — người gọi có **ít nhất một** permission trong danh sách thì qua lớp kiểm ở `api`. Không bao giờ nghĩa là cần tất cả |
+| `x-bo19-permission-also` | danh sách **nhóm**, mỗi nhóm là danh sách permission | Mỗi nhóm là any-of; người gọi phải thoả **mọi** nhóm, **cộng** `x-bo19-permission`. Vắng mặt nghĩa là không có điều kiện thêm |
+
+Điều kiện đầy đủ ở `api` = any-of(`x-bo19-permission`) **và** any-of(từng nhóm của `x-bo19-permission-also`).
+
+| Operation | `x-bo19-permission` | `x-bo19-permission-also` | Đọc thành |
+|---|---|---|---|
+| `GET /review-queue` | `document.approve_content`, `document.sign`, `document.apply_seal` | `[[request.read_all, request.read_assigned]]` | Một permission của hàng đợi **và** một trong hai quyền xem |
+| `GET /takeover-queue` | `document.approve_content`, `document.reject`, `document.issue` | `[[request.read_all]]` | Một permission tiếp quản **và** `request.read_all` |
+
+**Ngoài phạm vi của hai extension — vẫn ở `description` và ở `tool_layer`:**
+
+- Permission phụ thuộc giá trị tham số — ví dụ `GET /review-queue?status=PENDING_SEAL` cần đúng `document.apply_seal`.
+- Phạm vi dòng thấy được — `request.read_all` thấy mọi dòng, `request.read_assigned` chỉ dòng có bước giao cho mình, `request.read_own` chỉ dòng do mình tạo.
+- D-006 — cần dữ liệu của dòng, kiểm ở thao tác cổng (mục Phân quyền ở tầng API của `05-api.md`).
+
+Lớp kiểm ở `api` là điều kiện cần, không phải lớp duy nhất: `tool_layer` kiểm lại (mục Phân quyền ở tầng API của `05-api.md`).

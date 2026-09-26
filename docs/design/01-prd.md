@@ -1,6 +1,6 @@
 # PRD — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.12 · **Trạng thái:** Draft để xác thực với người dùng · **Primary persona:** Cán bộ hành chính · **v0.10:** thêm `RISK-08` và cột "Người chấp nhận" vào mục Risk register — Phase 11, mục ngày 2026-09-15 của `CHANGELOG.md` · **v0.11:** ID `AC-Fx.y` cho mọi AC cấp feature (AUD-19); vế `delegation` của điều 4 ở F1 cắt khỏi Sprint đầu (AUD-15) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.12:** căn cứ bảo vệ dữ liệu cá nhân đổi sang Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP (AUD-26, A-080) — mục ngày 2026-09-26 (AUD-26)
+**Phiên bản:** 0.13 · **Trạng thái:** Draft để xác thực với người dùng · **Primary persona:** Cán bộ hành chính · **v0.10:** thêm `RISK-08` và cột "Người chấp nhận" vào mục Risk register — Phase 11, mục ngày 2026-09-15 của `CHANGELOG.md` · **v0.11:** ID `AC-Fx.y` cho mọi AC cấp feature (AUD-19); vế `delegation` của điều 4 ở F1 cắt khỏi Sprint đầu (AUD-15) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.12:** căn cứ bảo vệ dữ liệu cá nhân đổi sang Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP (AUD-26, A-080) — mục ngày 2026-09-26 (AUD-26) · **v0.13:** đợt sửa 4 sau Phase 13 — con trỏ cũ tới Phase 4, 8, 9, 11 (AUD-11); ba lỗi nhỏ ở Goals & metrics, DoD, M4 (AUD-22)
 
 > Sản phẩm tiếp nhận yêu cầu hành chính bằng hội thoại, soạn sẵn văn bản từ mẫu đã duyệt và đưa vào hàng đợi duyệt của phòng hành chính. Sản phẩm **không** tự phát hành, **không** tự đóng dấu, và **không** thẩm định thể thức văn bản.
 
@@ -28,7 +28,7 @@ Nhân viên gửi yêu cầu hành chính — xác nhận công tác, giấy gi�
 
 **Không có pilot.** D-009 buộc hệ thống chạy ở `operating_mode = NON_PRODUCTION`: văn bản mang watermark không gỡ được, cấp số từ dải `TRIAL`, không đóng dấu thật. Vì vậy không có văn bản thật nào được phát hành, và mọi con số lấy từ một "pilot" trong trạng thái này sẽ là số giả. Metric được neo vào hai nguồn đo thật:
 
-- **UAT có kịch bản** — một buổi làm việc với tập yêu cầu soạn sẵn, người thật thao tác trên hệ thống, có người chấm kết quả. Số người, số ca và người chấm chốt ở mục 9.
+- **UAT có kịch bản** — một buổi làm việc với tập yêu cầu soạn sẵn, người thật thao tác trên hệ thống, có người chấm kết quả. Số người, số ca và người chấm: A-020.
 - **Bộ eval offline** — tập ca kiểm thử dẫn xuất từ bảng edge case Phase 0, đặc tả ở mục 7.
 
 Metric chia **hai loại**, và chỉ loại thứ nhất là cổng nghiệm thu:
@@ -39,7 +39,7 @@ Metric chia **hai loại**, và chỉ loại thứ nhất là cổng nghiệm th
 | ID | Loại | Metric | Nguồn đo | Ngưỡng |
 |---|---|---|---|---|
 | M8 | **Bất biến** | Ca ở nhóm G của bộ eval bị sinh **sai loại văn bản** | Bộ eval | **0 ca** |
-| M4 | **Bất biến** | Văn bản đi qua đủ hai cổng HITL trước khi `ISSUED`; văn bản `ISSUED` có số cấp từ `document_register` | Kiểm tra dữ liệu sau UAT | Toàn bộ, không ngoại lệ |
+| M4 | **Bất biến** | Văn bản đi qua đủ hai cổng HITL trước khi `ISSUED` — cổng 2 khi `requires_seal = true`, như NFR-01; văn bản `ISSUED` có số cấp từ `document_register` | Kiểm tra dữ liệu sau UAT | Toàn bộ, không ngoại lệ |
 | M5 | **Bất biến** | Văn bản sinh ra ở `NON_PRODUCTION` mang watermark và số thuộc dải `TRIAL` | Kiểm tra dữ liệu sau UAT | Toàn bộ, không ngoại lệ |
 | M6 | **Bất biến** | Ca "không đủ điều kiện" và "ngoài phạm vi" được agent báo rõ là chưa xử lý được, không tự suy diễn cho xong | Bộ eval | Toàn bộ, không ngoại lệ |
 | M1 | Cảnh báo | Số ca phân loại sai `request_type` **ngoài** nhóm G | Bộ eval | Mong đợi 0. Từ 2 ca trở lên thì mở rà soát |
@@ -303,7 +303,7 @@ Nhân viên chỉ xem được yêu cầu của mình.
 
 1. Slot nào bị mask trong log kỹ thuật.
 2. Slot nào bị xoá giá trị khi `request` `EXPIRED` (A-014).
-3. Slot nào hiển thị ở dạng nào trên màn hình duyệt. Quy tắc hiển thị cụ thể **chưa được đặc tả ở đâu cả** — thuộc Phase 8 (màn hình duyệt) và Phase 9.
+3. Slot nào hiển thị ở dạng nào trên màn hình duyệt. Quy tắc hiển thị cụ thể: mục PII masking và hiển thị theo `slot_sensitivity` của `09-security.md`.
 
 Tức là có **hai cơ chế riêng dựa trên cùng một thuộc tính dữ liệu**, và cơ chế này không thay cơ chế kia. Một slot có thể vừa được allowlist cho vào prompt, vừa bị mask trong log của chính lời gọi đó — `purpose` rơi đúng vào trường hợp này. Thiết kế nào coi allowlist là đã xử lý xong độ nhạy — ví dụ bỏ mask log cho slot đã được phép vào prompt — là sai. Allowlist chỉ giới hạn slot nào **đi ra** khỏi hệ thống tới LLM provider; nó không làm slot đó bớt nhạy cảm. `purpose` đã gửi đi vẫn là dữ liệu `RES`, chỉ khác là giờ nó nằm ở một bên thứ ba.
 
@@ -311,7 +311,7 @@ Nội dung do người dùng nhập được đối xử là **dữ liệu, khô
 
 ### NFR-06 — Chi phí LLM
 
-Model rẻ cho phân loại và trích slot, model mạnh cho soạn nội dung tự do. Khung thể thức không đi qua LLM nên không tốn token lặp lại ở mọi văn bản (ADR-001). Token budget mỗi request và ngưỡng cảnh báo: `TBD`, định cỡ ở Phase 11 khi có giả định giá (A-022).
+Model rẻ cho phân loại và trích slot, model mạnh cho soạn nội dung tự do. Khung thể thức không đi qua LLM nên không tốn token lặp lại ở mọi văn bản (ADR-001). Token budget mỗi request: mục Định cỡ A-022 của `11-ops.md`. Ngưỡng cảnh báo: mục Ngưỡng cảnh báo & cơ chế cắt chi phí của `11-ops.md` — giá trị còn chờ giả định giá (A-022).
 
 **Hành vi khi chạm trần là cam kết sản phẩm, con số trần thì không.** Chạm trần token hoặc trần số lần render, hệ thống **không bao giờ** được âm thầm dừng giữa chừng và để lại một `document` dở dang. Nó phải dừng có kiểm soát và **chuyển cho người thật xử lý**, nêu rõ đã dừng ở đâu và vì sao. Một bản nháp thiếu nội dung nhưng trông hoàn chỉnh nguy hiểm hơn hẳn việc không có bản nháp nào. Cấm ghi giá token hay con số benchmark chưa xác minh.
 
@@ -370,7 +370,7 @@ Không đặt ngưỡng p95 trong Sprint đầu vì chưa có số liệu tải 
 
 Sprint đầu done khi:
 
-1. **Hành trình end-to-end chạy được cho một `request_type`**: nhân viên đăng nhập → mô tả nhu cầu bằng chat → agent phân loại và hỏi đủ slot → nhân viên xác nhận giá trị `HR_PROFILE` → gửi → cán bộ hành chính duyệt nội dung → duyệt dấu → cấp số và phát hành → nhân viên thấy trạng thái `FULFILLED` và tải được văn bản có watermark.
+1. **Hành trình end-to-end chạy được cho một `request_type`**: nhân viên đăng nhập → mô tả nhu cầu bằng chat → agent phân loại và hỏi đủ slot → nhân viên xác nhận giá trị `HR_PROFILE` → gửi → cán bộ hành chính duyệt nội dung → người có thẩm quyền ký → duyệt dấu khi văn bản cần dấu → cấp số và phát hành → nhân viên thấy trạng thái `FULFILLED` và tải được văn bản có watermark.
 2. Toàn bộ **Must features (F1, F2, F3, F4, F6)** đạt AC cấp feature ở mục 6.
 3. **Đạt toàn bộ metric loại Bất biến** ở mục 2 — M8, M4, M5, M6 — trên bộ eval 37 ca và buổi UAT. Đây là ngưỡng tuyệt đối, không thương lượng.
 
@@ -391,8 +391,8 @@ M7 và milestone sản xuất **không** thuộc Definition of Done này.
 | RISK-04 | Template sai hoặc thiếu biến → mọi văn bản sinh từ nó đều sai | Thấp | Cao | Kiểm biến khi tải template lên (AC F6); template có phiên bản, văn bản ghi lại phiên bản đã dùng | Hàng loạt văn bản cùng loại bị trả lại cùng một lý do | **Còn lại:** hệ thống chỉ kiểm **sự có mặt** của biến, không kiểm **nội dung** khung. Template là điểm lỗi tập trung: một file sai làm hỏng mọi văn bản cùng loại cho tới khi có người nhận ra | — |
 | RISK-05 | Prompt injection qua văn bản người dùng nhập | Thấp | Trung bình | Nội dung do người dùng nhập được đối xử là dữ liệu, không phải chỉ dẫn (NFR-05); LLM chỉ sinh nội dung tự do, không chạm khung thể thức và không gọi tool ghi dữ liệu ở bước soạn thảo | Nội dung văn bản chứa câu chữ không đến từ slot nào | **Còn lại:** hẹp trong Sprint đầu. ADR-001 đã bịt phần lớn bề mặt — khung thể thức không do model sinh nên không bị chèn qua prompt; và văn bản ngoài do người dùng tải lên, bề mặt injection lớn nhất, hiện ở mức **Could** nên chưa tồn tại. Còn lại chủ yếu là text nhân viên tự nhập vào slot, đi vào phần nội dung tự do. Rủi ro này **sẽ tăng đáng kể** khi `SEAL_REQUEST` được kích hoạt, và phải đánh giá lại tại thời điểm đó | — |
 | RISK-06 | Hồ sơ `employee` cũ so với thực tế → văn bản ghi sai thông tin nhân sự | Trung bình | Trung bình | Agent chỉ đề xuất, nhân viên xác nhận từng giá trị, người duyệt thấy `source` và `synced_at` (D-002) | Nhân viên từ chối xác nhận giá trị đề xuất; lệch giữa lời khai và hồ sơ | **Còn lại:** ngưỡng để cảnh báo `synced_at` quá cũ chưa có căn cứ (A-017), nên việc đánh giá độ cũ phụ thuộc vào người đọc màn hình duyệt | — |
-| RISK-07 | Chi phí LLM vượt dự kiến | Trung bình | Trung bình | Model routing theo bước; khung thể thức không qua LLM (ADR-001) | Chi phí mỗi request vượt ngưỡng cảnh báo | **Còn lại:** chưa có ngưỡng vì chưa có giả định giá (NFR-06). Không đo được cho tới Phase 11 | — |
-| RISK-08 | Khôi phục `postgresql` về một thời điểm T sau sự cố hạ tầng làm mất không hồi phục được: (a) khoảng số `document_register` bị nhảy qua, không có dòng sổ nào — kể cả `VOIDED`; (b) `audit_event` ghi sau T, dù bất biến chỉ-thêm; (c) dòng `document` của văn bản đã `ISSUED` ngoài đời thật sau T | Thấp | Cao | Đối soát bắt buộc trước khi mở traffic sau restore (mục Backup & Restore của `11-ops.md`): quét `object_storage` tìm bằng chứng vật lý bản phát hành sau T; đẩy `document_register_counter.next_seq` vượt số lớn nhất xác nhận dùng thật trước khi cho cấp số mới | Một lần point-in-time restore thật; đối soát tìm thấy object mang bằng chứng phát hành mà DB không còn ghi nhận | **Còn lại:** cơ chế đối soát chỉ phủ được các bản phát hành **sau** khi tag metadata (đề xuất, chờ duyệt Phase 4) được triển khai — không phủ ngược quá khứ. `audit_event` và dòng `document` đã mất là mất vĩnh viễn, không có thủ tục phục hồi nào. Khoảng số bị nhảy qua nằm **ngoài** cơ chế `VOIDED` đã thiết kế ở Phase 4 (không có dòng sổ để đánh dấu). Chấp nhận có ý thức | *(để trống, chờ ký)* |
+| RISK-07 | Chi phí LLM vượt dự kiến | Trung bình | Trung bình | Model routing theo bước; khung thể thức không qua LLM (ADR-001) | Chi phí mỗi request vượt ngưỡng cảnh báo | **Còn lại:** chưa có ngưỡng vì chưa có giả định giá (NFR-06). Chỗ đo đã có — mục Ngưỡng cảnh báo & cơ chế cắt chi phí của `11-ops.md` | — |
+| RISK-08 | Khôi phục `postgresql` về một thời điểm T sau sự cố hạ tầng làm mất không hồi phục được: (a) khoảng số `document_register` bị nhảy qua, không có dòng sổ nào — kể cả `VOIDED`; (b) `audit_event` ghi sau T, dù bất biến chỉ-thêm; (c) dòng `document` của văn bản đã `ISSUED` ngoài đời thật sau T | Thấp | Cao | Đối soát bắt buộc trước khi mở traffic sau restore (mục Backup & Restore của `11-ops.md`): quét `object_storage` tìm bằng chứng vật lý bản phát hành sau T; đẩy `document_register_counter.next_seq` vượt số lớn nhất xác nhận dùng thật trước khi cho cấp số mới | Một lần point-in-time restore thật; đối soát tìm thấy object mang bằng chứng phát hành mà DB không còn ghi nhận | **Còn lại:** cơ chế đối soát chỉ phủ được các bản phát hành **sau** khi tag metadata (đã áp 2026-09-25, mục Lưu trữ file và bất biến bản render của `04-data.md`) được triển khai — không phủ ngược quá khứ. `audit_event` và dòng `document` đã mất là mất vĩnh viễn, không có thủ tục phục hồi nào. Khoảng số bị nhảy qua nằm **ngoài** cơ chế `VOIDED` đã thiết kế ở Phase 4 (không có dòng sổ để đánh dấu). Chấp nhận có ý thức | *(để trống, chờ ký)* |
 
 ---
 

@@ -1,6 +1,6 @@
 # Security & Guardrails — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.4 · **Trạng thái:** Draft chờ duyệt · **v0.3:** đợt sửa 3b sau Phase 13 — thêm mục 13, quyền của chủ thể dữ liệu ở mức nghĩa vụ (AUD-24 của `13-audit.md`); không sửa mục nào khác · **v0.4:** căn cứ bảo vệ dữ liệu cá nhân đổi sang Luật 2025 và Nghị định 356/2025/NĐ-CP (AUD-26); thời hạn thực hiện quyền của chủ thể
+**Phiên bản:** 0.5 · **Trạng thái:** Draft chờ duyệt · **v0.3:** đợt sửa 3b sau Phase 13 — thêm mục 13, quyền của chủ thể dữ liệu ở mức nghĩa vụ (AUD-24 của `13-audit.md`); không sửa mục nào khác · **v0.4:** căn cứ bảo vệ dữ liệu cá nhân đổi sang Luật 2025 và Nghị định 356/2025/NĐ-CP (AUD-26); thời hạn thực hiện quyền của chủ thể · **v0.5:** đợt sửa 4 — dòng A-082 ở mục Mô hình mối đe doạ; `audit.read_all` ở mục Row-level theo phòng ban (AUD-24); nội dung cũ (AUD-11, AUD-22)
 
 > File này chốt AuthN/AuthZ, rate limit, PII masking và hiển thị theo `slot_sensitivity`, phòng thủ prompt injection, output validation trước khi render, bảo vệ template gốc, và secret management trên Render. File này **không** thiết kế màn hình (Phase 8 đã đóng phần của nó), **không** định cỡ tham số vận hành bằng số liệu tải thật (Phase 11), và **không** lặp lại lập luận đã có ở ADR-001, ADR-007, ADR-008, ADR-013.
 
@@ -27,6 +27,8 @@ Sản phẩm giao có tên do ADR-013 trỏ tới (điều kiện đảo ngượ
 | Session secret, `bo19_migrator` credential, provider API key | Chiếm được là chiếm quyền của toàn hệ thống hoặc của DB |
 
 **Bề mặt tấn công chính** — ai đứng ở đâu: nhân viên đã đăng nhập (chat, upload `external_file` ở `SEAL_REQUEST` `[Could]`), người ngoài chưa đăng nhập (`POST /auth/session`, stream tín hiệu công khai không có), nội dung do bên thứ ba tạo mà hệ thống hiển thị lại (`procedure_document`, `external_document`).
+
+**Đường rời hệ thống ngoài `ai_gateway` qua phụ thuộc bắc cầu:** `langsmith` vào cây phụ thuộc qua `langchain-core`; hành vi mặc định `[CẦN XÁC MINH]`, lớp chặn là bước kiểm khởi động từ chối chạy khi biến bật tracing được đặt — A-082, trước cổng Sprint 1 *(đợt sửa 4 sau Phase 13)*.
 
 **Cái đang được chấp nhận có chủ, không phải khoảng trống**
 
@@ -115,6 +117,8 @@ Vế permission của A-043 xong; vế phòng ban (`department_scope`) đã có 
 
 ### 5.2 `request.read_all` — trục thứ hai, org-wide đã áp
 
+*`audit.read_all` theo cùng quyết định (đợt sửa 4 sau Phase 13, AUD-24): org-wide ở Sprint đầu, cùng điều kiện kích hoạt lọc (A-061) và cùng chỗ bám kỹ thuật — lọc `audit_event` theo phòng ban của người thụ hưởng của `request` mà sự kiện gắn vào. Sự kiện không gắn `request` nào — cấu hình, đổi chế độ — không lọc theo phòng ban.*
+
 **Quyết định: giữ org-wide ở Sprint đầu — đã sửa trực tiếp** vào mục Gói permission theo vai trò của `00-domain.md`, không còn là câu cũ kèm chú thích. Lý do: A-001 giả định một pháp nhân đơn nhất; đề bài mô tả **một** Phòng Hành chính xử lý tập trung mọi yêu cầu của tổ chức (mục Bối cảnh đề tài của `CLAUDE.md`), nên `ADMIN_OFFICER` — vai trò duy nhất mang `request.read_all` ở Sprint đầu — về đúng nghĩa vụ cần thấy toàn bộ để xử lý.
 
 **A-061 viết lại theo đúng nghĩa của nó: không phải "có sửa câu hay không" (đã sửa) mà là điều kiện kích hoạt lọc.** Org-wide đứng được chừng nào A-001 còn đúng. Điều kiện kích hoạt lọc theo phòng ban: A-001 bị bác bỏ — tổ chức thật ra có **từ hai Phòng Hành chính xử lý độc lập trở lên**. Khi đó "xem mọi yêu cầu" không còn là một nghĩa vụ duy nhất mà là nhiều nghĩa vụ tách biệt theo đơn vị.
@@ -148,7 +152,7 @@ Tăng bộ đếm và dọn cửa sổ **không** sinh `audit_event`. Đây là 
 
 ### 6.5 Ngưỡng — chưa định cỡ
 
-Số lần thử mỗi cửa sổ, độ dài cửa sổ: `TBD`. Thêm vào **A-031** (cùng họ tham số vận hành owner Phase 11, cơ chế chốt ở Phase 9).
+Số lần thử mỗi cửa sổ, độ dài cửa sổ: `TBD`. Thêm vào **A-031** (cùng họ tham số vận hành, owner Product Owner theo câu 7 — trước đó "Phase 11"; cơ chế chốt ở Phase 9).
 
 ---
 
@@ -227,7 +231,7 @@ Trượt bất kỳ dòng nào ở trên đi theo đúng con đường đã có:
 | Secret | Ai giữ | Xoay vòng |
 |---|---|---|
 | Session secret (ADR-013) | Biến môi trường của `api` | Không tự động — người vận hành quyết, xem mục 2 |
-| Credential `bo19_migrator` | Ngữ cảnh chạy bước `migrate` — **chưa chọn** (A-060, `[CẦN XÁC MINH]` theo tài liệu Render) | Cùng owner với A-060 |
+| Credential `bo19_migrator` | Ngữ cảnh chạy bước `migrate` — **đã chọn:** CI pipeline (ADR-022; A-060 `Đã chốt`) | Cùng owner với A-060 |
 | Credential `bo19_app` | Biến môi trường của `api`/`queue_worker` | Theo chính sách chung của DB managed, `[CẦN XÁC MINH]` |
 | Provider API key (LLM, embedding — A-026) | Biến môi trường của `ai_gateway` | `[CẦN XÁC MINH]` theo nhà cung cấp được chọn |
 | S3-compatible credential (A-024) | Biến môi trường của `tool_layer` | `[CẦN XÁC MINH]` theo nhà cung cấp được chọn |
@@ -272,7 +276,7 @@ Thao tác đặt tên **`operating_mode_transition`** — khác tên entity `ope
 
 ### 12.3 Phạm vi contract đổi
 
-Endpoint có contract: 48 → **49** (con số 48 được xác nhận ở lần đối chiếu tự động Phase 5/6, mục ngày 2026-09-13 của `CHANGELOG.md`). Sửa `05-api.md` (thêm mục 2.2b, cập nhật mục Nhãn phạm vi và loại trừ có chủ đích để trỏ sang endpoint thật thay vì liệt kê như loại trừ) và `contracts/openapi.yaml` (thêm path, hai schema). Bộ kiểm đối chiếu tự động ở `tools/contract-checks/` (nhắc ở A-047) cần chạy lại sau thay đổi này — **không chạy ở đây**, vì đó là code, ngoài phạm vi DESIGN MODE (mục 0 của `CLAUDE.md`); người triển khai chạy lại trước khi build.
+Endpoint có contract: 48 → **50** — bản trước ghi 49, thêm hai operation nên phải là 50 (AUD-22, sửa ở đợt 4) (con số 48 được xác nhận ở lần đối chiếu tự động Phase 5/6, mục ngày 2026-09-13 của `CHANGELOG.md`). Sửa `05-api.md` (thêm mục 2.2b, cập nhật mục Nhãn phạm vi và loại trừ có chủ đích để trỏ sang endpoint thật thay vì liệt kê như loại trừ) và `contracts/openapi.yaml` (thêm path, hai schema). Bộ kiểm đối chiếu tự động ở `tools/contract-checks/` (nhắc ở A-047) cần chạy lại sau thay đổi này — **không chạy ở đây**, vì đó là code, ngoài phạm vi DESIGN MODE (mục 0 của `CLAUDE.md`); người triển khai chạy lại trước khi build.
 
 ---
 

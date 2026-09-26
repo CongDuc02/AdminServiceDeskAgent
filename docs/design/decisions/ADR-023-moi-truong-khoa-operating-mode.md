@@ -43,7 +43,7 @@ Lấy A làm nền — không loại, vì nó vẫn là lớp rẻ nhất và kh
 
 **Tên thao tác: `operating_mode_transition_reject`** — **không** dùng lại `operating_mode_transition` (Phase 9): thao tác đó có hợp đồng "ghi một dòng `operating_mode_change`"; ở đây không dòng nào được ghi (transition bị chặn), dùng chung tên làm Phase 13 không truy vết được theo đúng luật "mỗi lệnh ghi do endpoint gây ra phải có tên" (`05-api.md`). `operating_mode_transition_reject` chỉ ghi `audit_event` mức `WARNING`, action `operating_mode.transition_reject` — không ghi `operating_mode_change`, không đổi `operating_mode` hiện hành. **`audit_event.action` không cần danh mục đóng để thêm giá trị này:** DDL (`ck_audit_event_action`) chỉ kiểm hình dạng `entity.action` bằng regex, không có bảng mã đóng nào được tuyên bố ở bất kỳ phase nào — khác `notification.event_code`/`document_halt.reason_code`, hai cột có tuyên bố rõ "bảng mã thuộc Phase 8". Tên thao tác `operating_mode_transition_reject` vẫn cần thêm vào mục Agent, graph, node, tool của `GLOSSARY.md` (nhóm "Thao tác do endpoint gọi") — lý do khác: nó là một thao tác có tên, không phải vì giá trị `action`.
 
-**Mã lỗi HTTP cho Lớp 3** — chưa có trong `05-api.md`, đề xuất riêng (`docs/design/proposals/diff-05-api-job-failed-and-reject-error.md`), chờ duyệt cùng lượt với contract `job_failed`.
+**Mã lỗi HTTP cho Lớp 3** — chưa có trong `05-api.md`, đề xuất riêng (`docs/design/proposals/diff-05-api-job-failed-and-reject-error.md`), chờ duyệt cùng lượt với contract `job_failed` — đã áp 2026-09-25.
 
 ## Consequences
 

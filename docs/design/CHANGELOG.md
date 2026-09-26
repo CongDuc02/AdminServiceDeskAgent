@@ -2229,3 +2229,47 @@ Việc 5 của PO sau đợt 3b. Chạy hoàn toàn trong scratchpad, ngoài rep
 
 - **Phụ thuộc bắc cầu không ghim** trôi theo ngày cài. Lần này: `langgraph-checkpoint` 4.2.0 (`langgraph-checkpoint-postgres` 3.1.2 đòi `>=4.1.0,<5.0.0`, theo `docs/reference/langgraph-checkpoint-postgres.md`), `langchain-core` 1.6.5, `anyio` 4.15.1. `docs/reference/` không ghi A-045 đã xác minh với `langgraph-checkpoint` bản nào. Lockfile ở BUILD MODE giải việc này.
 - **`langsmith` 0.14.1 vào bắc cầu qua `langchain-core`.** Đây là thư viện gửi trace ra ngoài. Hành vi mặc định khi không đặt biến môi trường nào: `[CẦN XÁC MINH]` theo tài liệu của phiên bản đó. Chạm luật allowlist (INV-03, ADR-008): mọi dữ liệu rời hệ thống phải đi qua `ai_gateway`. Đề xuất cho BUILD MODE: bước kiểm khởi động từ chối chạy khi có biến môi trường bật tracing của thư viện này.
+
+---
+
+## 2026-09-26 (đợt sửa 4) — Quét nội dung cũ, owner theo câu 7, schema P2, ngữ nghĩa quyền (AUD-11, 12, 13, 14, 22, 24, 27)
+
+Đợt 4 của mục Thứ tự sửa đề xuất trong `13-audit.md`, cộng quyết định PO sau lần cài thử: câu 7 (owner), A-081, A-082, bổ sung A-045. Căn cứ pháp lý (việc 3 của PO): chưa có file nào mới ở `docs/reference/` — giữ nguyên `[CẦN XÁC MINH]`.
+
+### File sửa
+
+| File | Thay đổi | AUD |
+|---|---|---|
+| `00-domain.md` → 0.15 | Hạn A-009, mẫu `.docx` → cổng 1.7, 1.6; ghi chú cập nhật cho D-008 (không viết lại quyết định); cơ chế sổ số, chế độ phi sản xuất trỏ về nơi đã làm | 11 |
+| `01-prd.md` → 0.13 | Quy tắc hiển thị theo độ nhạy, token budget, RISK-07, RISK-08 trỏ về nơi đã làm; Goals & metrics trỏ A-020; DoD điều 1 có bước ký và "duyệt dấu khi văn bản cần dấu"; M4 nói rõ cổng 2 khi `requires_seal` | 11, 22 |
+| `02-architecture.md` → 0.14 | Công cụ APM là A-069; danh mục tool ở `03-agents.md` | 11 |
+| `03-agents.md` → 0.18 | Hai dòng Token budget trỏ `11-ops.md`; bốn "owner Phase 8/9" → Product Owner hoặc đã chốt; checkpointer: A-045 đã chốt, còn một vế; năm con trỏ "thuộc Phase 4/8/11" | 11 |
+| `04-data.md` → 0.17 | Row-level: đã chốt org-wide; `bo19_migrator` → ADR-022; `operating_mode_change` → ADR-020, ADR-023; log → A-070; `audit.read_all` org-wide; object mồ côi trỏ runbook; A-038 owner | 11, 24 |
+| `05-api.md` → 0.15 | Mục Phân quyền ở tầng API: ngữ nghĩa any-of và `x-bo19-permission-also`; rate limit trỏ `09-security.md`; A-048; ghi chú 48 → 50 | 27, 11, 22 |
+| `06-structure.md` → 0.10 | Ba chế độ của `check_grants.py`; diff Lớp 3 đã áp; `trace_id` có `CHECK`; `prompt_modules/` trỏ `07-prompts.md`; màn hình duyệt trỏ quy tắc theo độ nhạy | 11 |
+| `07-prompts.md` → 0.3 | P2 `value` nhận mảng chuỗi khi slot `LIST`, mỗi phần tử có trong `evidence_quote`; P4/P5 `maxLength` điền lúc gọi; ghi chú ID `P1`–`P5` không phải mức ưu tiên | 14, 22 |
+| `09-security.md` → 0.5 | Dòng A-082 ở mục Mô hình mối đe doạ; `audit.read_all` ở mục Row-level theo phòng ban; `bo19_migrator` đã chọn CI; 48 → 50; owner A-031 | 24, 11, 22 |
+| `10-eval.md` → 0.5 | "Bốn việc"; chỗ quan sát ADR-009 khi `V > 1` — không phải tiêu chí PASS mới; nơi lưu bản ghi eval trỏ `11-ops.md` | 22, 12, 24 |
+| `11-ops.md` → 0.12 | Mục 6.3: hai dòng ADR-008, ADR-015 vế công cụ. Mục 15 mới — runbook đối chiếu object mồ côi (chỉ báo, không tự xoá). Mục 16 mới — nơi lưu bản ghi eval: mỗi lần chạy là artefact CI, baseline commit vào repo. Câu "chưa áp" của mục 1, 3, 13, 10.4, Open Questions; mục 12: cả bảy phát hiện đã giải | 12, 24, 11 |
+| `12-roadmap.md` → 0.9 | Cổng 1.12 (A-081), 1.13 (A-082); owner cổng 1.10, 1.11 theo câu 7; migration `0001`–`0008`; `0005` đã áp; A-068 đã chốt | 13, 11 |
+| `GLOSSARY.md` → 0.24 | Ba con trỏ cũ | 11 |
+| `ASSUMPTIONS.md` → 0.34 | Câu 7: A-022, A-025, A-031, A-045, A-048, A-057, A-061, A-063, A-065 → Product Owner; A-013, A-014, A-010 có owner; A-079, A-080 → "Pháp chế (chưa chỉ định)". Hạn: A-013, A-014, A-024, A-041, A-062 → cổng; A-022 hạn và trạng thái (`46.500` đang hiệu lực); A-002, A-030 "chưa có mốc". A-045 ghi `langgraph-checkpoint` 4.2.0 đã chạy trong bộ kiểm. **A-081, A-082 mới** | 13 |
+| `contracts/openapi.yaml` → 0.2.6 | Ngữ nghĩa `x-bo19-permission` ở phần mô tả extension; `x-bo19-permission-also` trên `/review-queue`, `/takeover-queue`; permission theo `status` của `/review-queue` ghi vào `description` | 27 |
+| `contracts/README.md` | Mục mới: extension `x-bo19-*` về quyền — định nghĩa, hai ví dụ, cái nằm ngoài phạm vi | 27 |
+| `decisions/ADR-001`, `003`, `009`, `011`, `013`, `023` | Ghi chú cập nhật — không đổi quyết định nào | 11 |
+| `13-audit.md` → 0.9 | Mục 7.4; câu 7 sang Đã quyết; mục Chờ PO chốt còn ba việc; sắp lại đoạn `CLAUDE.md`; phụ lục A.10 | — |
+
+**Quyết định của trợ lý trong đợt, cần PO đọc:**
+
+- **Owner ghi "Product Owner", không ghi tên người.** Câu 7 nói "[tên PO]"; tài liệu không có tên PO, và tên tài khoản git không phải căn cứ. PO cho tên thì thay một lượt.
+- **A-013, A-014, A-010 — owner để trống — nhận Product Owner.** Câu 7 chỉ nói dòng có owner là phase; ba dòng này là mục (c) của AUD-13, khuyến nghị cũ ghi Product Owner. A-010 chưa có hạn.
+- **A-002, A-030:** hạn cũ trỏ phase đã qua và không có cổng sprint nào tương ứng — ghi "chưa có mốc" kèm lý do, không bịa mốc.
+- **Rubric ADR-009:** mục Human eval rubric của `10-eval.md` tự nói không tạo tiêu chí mới, nên chỗ quan sát cho ADR-009 là một nhận xét có/không, không đổi PASS/FAIL.
+- **Object mồ côi chỉ báo, không tự xoá:** object mà DB không biết có thể là bằng chứng của ca ghi đè ở mục Ba ca của L2 của `04-data.md`.
+
+### Đã chạy
+
+- `openapi-spec-validator`: 0.2.6 hợp lệ. `audit_api_trace.py`: 56 dòng ở `05-api.md` = 52 operation + 4 `[NGOÀI-OPENAPI]`; 37 = 37 mã lỗi.
+- Lượt quét từ khoá của phụ lục A.7, chạy lại: 213 → 152 dòng.
+- `check_refs.py` trên các dòng thêm mới: 84 con trỏ "mục … của `file`", không con trỏ nào sai tên mục.
+- Không đổi DDL, không đổi sơ đồ Mermaid — không chạy lại `check_grants.py`, `mmdc`.

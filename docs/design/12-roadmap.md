@@ -1,6 +1,6 @@
 # Roadmap — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.8 · **Trạng thái:** Đã duyệt (PO, 2026-09-25) · **v0.2:** vòng duyệt Phase 12 — đối chiếu đủ `07-prompts.md`, `09-security.md` và mọi endpoint của `openapi.yaml`; tiêu chí loại yêu cầu thứ ba; owner nợ Phase 8 về Product Owner — mục ngày 2026-09-25 (vòng duyệt Phase 12) của `CHANGELOG.md` · **v0.3:** thứ tự cắt của Sprint 1 và phần an ninh không được cắt (R1-2), cổng 2.8, Open Questions sau khi PO trả lời — mục ngày 2026-09-25 (duyệt Phase 12) của `CHANGELOG.md` · **v0.4:** đợt sửa A-068, A-073, A-075 — cổng 2.3 và 3.6 đạt, AC của F6 thêm biện pháp bù của A-076, tiêu chí T6 bỏ — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.5:** ma trận truy vết dùng ID `AC-Fx.y` (AUD-19); lập hộ Sprint đầu chỉ qua `request.create_on_behalf` (AUD-15) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.6:** tiếp quản sau `halt_for_human` vào Sprint 2 — deliverable, AC-2.11, hai endpoint; A-044 đề xuất đóng, A-077 mới (AUD-02) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.7:** A-044 `Đã chốt`; A-078 vào cổng 2.2; ca kiểm cơ chế K3, K4 — mục ngày 2026-09-26 (quyết định PO sau đợt 3) · **v0.8:** A-079 vào cổng 4.4 — mục ngày 2026-09-26 (đợt sửa 3b)
+**Phiên bản:** 0.9 · **Trạng thái:** Đã duyệt (PO, 2026-09-25) · **v0.2:** vòng duyệt Phase 12 — đối chiếu đủ `07-prompts.md`, `09-security.md` và mọi endpoint của `openapi.yaml`; tiêu chí loại yêu cầu thứ ba; owner nợ Phase 8 về Product Owner — mục ngày 2026-09-25 (vòng duyệt Phase 12) của `CHANGELOG.md` · **v0.3:** thứ tự cắt của Sprint 1 và phần an ninh không được cắt (R1-2), cổng 2.8, Open Questions sau khi PO trả lời — mục ngày 2026-09-25 (duyệt Phase 12) của `CHANGELOG.md` · **v0.4:** đợt sửa A-068, A-073, A-075 — cổng 2.3 và 3.6 đạt, AC của F6 thêm biện pháp bù của A-076, tiêu chí T6 bỏ — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.5:** ma trận truy vết dùng ID `AC-Fx.y` (AUD-19); lập hộ Sprint đầu chỉ qua `request.create_on_behalf` (AUD-15) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.6:** tiếp quản sau `halt_for_human` vào Sprint 2 — deliverable, AC-2.11, hai endpoint; A-044 đề xuất đóng, A-077 mới (AUD-02) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.7:** A-044 `Đã chốt`; A-078 vào cổng 2.2; ca kiểm cơ chế K3, K4 — mục ngày 2026-09-26 (quyết định PO sau đợt 3) · **v0.8:** A-079 vào cổng 4.4 — mục ngày 2026-09-26 (đợt sửa 3b) · **v0.9:** đợt sửa 4 sau Phase 13 — cổng 1.12, 1.13 (A-081, A-082); owner cổng 1.10, 1.11 theo câu 7; nội dung cũ (AUD-11)
 
 > File này xếp phạm vi Must của PRD thành các sprint có thứ tự, mỗi sprint có Objective, Deliverable, Dependency, Acceptance Criteria và rủi ro chính, kèm các cổng phải qua trước từng sprint. File này **không** khai lại mức MoSCoW (nguồn duy nhất: mục Scope & priority của `01-prd.md`), **không** đặt ngày hay ước lượng khối lượng (A-071), **không** thiết kế lại bất cứ thứ gì đã chốt, và **không** giải hộ các giả định của phase khác — chỉ đặt chúng vào đúng cổng.
 
@@ -77,8 +77,10 @@ flowchart LR
 | 1.7 | Giá trị định dạng số và ký hiệu cho sổ, kể cả dải `TRIAL` | A-009 — hạn gốc "trước lần cấp số đầu tiên, kể cả số dải `TRIAL`" | Product Owner | AC — cấp số ở AC-1.2 |
 | 1.8 | Giá trị `contract_type` và các cột CSV hồ sơ nhân viên | A-013 | Product Owner | AC — `contract_type` là slot bắt buộc của `WORK_CONFIRMATION` |
 | 1.9 | Múi giờ của tổ chức | A-041 | Product Owner | AC — bước kiểm khởi động #13 chặn khi thiếu |
-| 1.10 | Giá trị làm việc cho tham số vận hành chưa định cỡ — số lần retry, hạn chót lượt, ba lớp timeout, ngưỡng và độ dài cửa sổ rate limit đăng nhập. Được mang nhãn "chưa hiệu chỉnh", không được vắng | A-031; bước kiểm khởi động #5, #11; mục Rate limit của `09-security.md` | Người triển khai | AC |
-| 1.11 | Giá trị làm việc cho tham số `argon2id` và thời hạn token phiên, nhãn "chưa hiệu chỉnh" | A-048, ADR-021 | Người triển khai | AC — đăng nhập ở AC-1.1 |
+| 1.10 | Giá trị làm việc cho tham số vận hành chưa định cỡ — số lần retry, hạn chót lượt, ba lớp timeout, ngưỡng và độ dài cửa sổ rate limit đăng nhập. Được mang nhãn "chưa hiệu chỉnh", không được vắng | A-031; bước kiểm khởi động #5, #11; mục Rate limit của `09-security.md` | Product Owner — người triển khai đề xuất giá trị làm việc (câu 7) | AC |
+| 1.11 | Giá trị làm việc cho tham số `argon2id` và thời hạn token phiên, nhãn "chưa hiệu chỉnh" | A-048, ADR-021 | Product Owner — người triển khai đề xuất giá trị làm việc (câu 7) | AC — đăng nhập ở AC-1.1 |
+| 1.12 | Lockfile ghim cả phụ thuộc bắc cầu, gồm `langgraph-checkpoint` đúng bản đã kiểm | A-081 | Người triển khai | Khởi động — image và CI cài từ lockfile |
+| 1.13 | Hành vi mặc định của `langsmith` đã xác minh; bước kiểm khởi động từ chối chạy khi biến bật tracing được đặt | A-082 | Người triển khai | Khởi động — trước lần đầu hệ thống gọi provider thật |
 
 Trần token và trần số vòng **không** nằm ở đây — đã có giá trị khởi tạo ở mục Định cỡ A-022 của `11-ops.md`.
 
@@ -92,7 +94,7 @@ Trần token và trần số vòng **không** nằm ở đây — đã có giá 
 
 | Tầng | Deliverable | Ghi chú phạm vi |
 |---|---|---|
-| Dữ liệu | `migrate_main` chạy đủ bốn bước của mục Migration và checkpointer của `06-structure.md` trên PostgreSQL local, gồm `0001`–`0004`; data migration `0001_permission_catalog.sql`; data migration nạp cấu hình `WORK_CONFIRMATION`, một `document_register` và một phiên bản template `ACTIVE` | Cấu hình nạp bằng data migration — màn hình F6 ở Sprint 3. Danh mục biến của template nạp sẵn vẫn phải qua đúng phép kiểm lúc tải lên (mục Template của `04-data.md`) |
+| Dữ liệu | `migrate_main` chạy đủ bốn bước của mục Migration và checkpointer của `06-structure.md` trên PostgreSQL local, gồm mọi file ở `backend/migrations/schema/` — hiện `0001`–`0008`; data migration `0001_permission_catalog.sql`; data migration nạp cấu hình `WORK_CONFIRMATION`, một `document_register` và một phiên bản template `ACTIVE` | Cấu hình nạp bằng data migration — màn hình F6 ở Sprint 3. Danh mục biến của template nạp sẵn vẫn phải qua đúng phép kiểm lúc tải lên (mục Template của `04-data.md`) |
 | Kiểm contract | Chạy `tools/contract-checks/check_grants.py --app-dsn` trên DB local đã migrate bằng `migrate_main` | Nhóm quyền của `employee_credential` và `rate_limit_window` đã bổ sung vào `check_grants.py` ở vòng duyệt Phase 12 |
 | Vận hành seed | Nạp `employee` giả qua data migration; seed `employee_role`, `employee_credential` và một dòng `employee_permission_grant` cấp `document.sign` cho một `ADMIN_OFFICER` — bằng thao tác vận hành chạy `bo19_migrator` (mục AuthZ của `09-security.md`) | **Không** cấp `operating_mode.change` cho ai — lớp 1 của ADR-023 |
 | Khởi động | `bo19.startup` với mọi bước ở mục Bước kiểm khởi động của `06-structure.md` áp cho `api` và `worker`, gồm #16–17 — lớp 2 của ADR-023 | `BO19_ENVIRONMENT = dev` |
@@ -384,7 +386,7 @@ Phase 8 giữ ☑ (quyết định PO, 2026-09-25). Các giả định dưới �
 | A-077 | Tiếp quản chưa có lối soạn tay, chưa có lối ra cho `CONTENT_HASH_MISMATCH` | Product Owner | Trước Sprint 4 | Hạn gốc "trước UAT"; Sprint 4 là sprint sẵn sàng UAT |
 | ~~A-078~~ | Người mang permission duy nhất khác người thụ hưởng vắng dài ngày — **`Đã chốt` 2026-09-26**: cấp permission tạm (mục Runbook — cấp và thu hồi permission tạm của `11-ops.md`) | — | — | — |
 | A-053 | Huỷ ở `NEEDS_INFO`, `SUBMITTED`, `IN_REVIEW` | Product Owner | Trước Sprint 2 | Sprint 2 dựng `request_cancel` |
-| A-068 | Reset `clarification_count` | Product Owner — đợt sửa `03-agents.md` riêng, gộp cùng A-073 hướng (a) | Trước Sprint 2 | Hạn gốc "trước UAT"; kéo sớm lên vì Sprint 2 dựng EC-CV-01 (AC-2.8) |
+| ~~A-068~~ | Reset `clarification_count` — **`Đã chốt` 2026-09-25**, đợt sửa `03-agents.md` gộp cùng A-073 hướng (a) | — | — | Hạn gốc "trước UAT"; kéo sớm lên vì Sprint 2 dựng EC-CV-01 (AC-2.8) |
 | A-056 | Lượt chat chết giữa chừng không có điểm dừng có tên | Product Owner | Trước Sprint 3 | Phải có trước UAT; nếu quyết thêm một thao tác thì cần một sprint để dựng |
 | A-052 | Nhập hộ ở cả hai loại; D-006 đang sai theo hai chiều | Product Owner | Trước Sprint 3 | Hạn đổi ở vòng duyệt Phase 12 — thay hạn cũ "Phase 8 không được duyệt khi A-052 chưa giải" |
 | A-054 | Không thao tác nào đưa `document` sang `SUPERSEDED` | Product Owner | Sau UAT, cùng F5 | Không chạm hạng mục nào của Sprint đầu |
@@ -448,7 +450,7 @@ Không có AC nào của F1, F2, F3, F4, F6 hay NFR-01 → NFR-08 không có spr
 Mọi mục có owner và hạn ở `ASSUMPTIONS.md`. Mục này gom những gì Phase 12 và vòng duyệt của nó phát hiện.
 
 1. **A-075 — đã chốt** bằng ADR-025 ở đợt sửa ngày 2026-09-25, gộp cùng A-068 và A-073. Hệ quả còn mở: A-076 — thay đổi catalog qua F6 không đi qua regression gate; biện pháp bù ở AC-3.2 và AC-4.4.
-2. **`rate_limit_window` — PO chốt quyền theo cột của `04-data.md` là chuẩn.** Đề xuất migration `0005` cùng phần sửa `check_grants.py` ở `docs/design/proposals/migration-0005-rate-limit-window-column-grant.md`, **chưa áp**.
+2. **`rate_limit_window` — PO chốt quyền theo cột của `04-data.md` là chuẩn.** Đề xuất migration `0005` cùng phần sửa `check_grants.py` ở `docs/design/proposals/migration-0005-rate-limit-window-column-grant.md` — **đã áp** 2026-09-25.
 3. **Ký tự lạ trong `07-prompts.md` — đã sửa** thành "sinh lại" theo phép của PO (2026-09-25).
 4. **Owner và hạn của nợ Phase 8 trong `ASSUMPTIONS.md` — PO chấp nhận** (2026-09-25): owner là Product Owner, hạn là cổng sprint ở mục 10.
 5. **A-071, A-072 — vẫn mở, cổng trước Sprint 1.**

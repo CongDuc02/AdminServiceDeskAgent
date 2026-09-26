@@ -1,6 +1,6 @@
 # Evaluation Framework — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.4 · **Trạng thái:** Draft chờ duyệt · **v0.2:** đợt sửa A-068, A-073, A-075 — ca kiểm cơ chế K1, K2; enum `request_type` của `EvalCase` không còn viết cứng; `catalog_fingerprint` trong bản ghi kết quả; giới hạn của regression gate với thay đổi catalog (A-076) — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.3:** `reason_code` theo bảng mã của `08-hitl.md` — `VALIDATION_FAILED` đổi thành `FREE_CONTENT_INVALID` (AUD-20) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.4:** ca kiểm cơ chế K3, K4 — lối ra tiếp quản không mở đường tự duyệt — mục ngày 2026-09-26 (quyết định PO sau đợt 3)
+**Phiên bản:** 0.5 · **Trạng thái:** Draft chờ duyệt · **v0.2:** đợt sửa A-068, A-073, A-075 — ca kiểm cơ chế K1, K2; enum `request_type` của `EvalCase` không còn viết cứng; `catalog_fingerprint` trong bản ghi kết quả; giới hạn của regression gate với thay đổi catalog (A-076) — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.3:** `reason_code` theo bảng mã của `08-hitl.md` — `VALIDATION_FAILED` đổi thành `FREE_CONTENT_INVALID` (AUD-20) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.4:** ca kiểm cơ chế K3, K4 — lối ra tiếp quản không mở đường tự duyệt — mục ngày 2026-09-26 (quyết định PO sau đợt 3) · **v0.5:** đợt sửa 4 sau Phase 13 — "bốn việc" (AUD-22); chỗ quan sát ADR-009 khi `V > 1` (AUD-12); nơi lưu bản ghi eval (AUD-24)
 
 > File này chốt: bộ dữ liệu vàng (golden dataset) dùng để đo, metric cho từng chặng xử lý, cách chạy offline/online, rubric người chấm, phân loại lỗi (failure mode) và điều kiện được phép đổi prompt hoặc model. File này **không** định nghĩa lại nội dung hay phân bố 37 ca của bộ eval — nguồn duy nhất là mục Bộ eval chuẩn của `01-prd.md` (NFR-07). File này **không** thiết kế dashboard SLA hay ngưỡng cảnh báo vận hành (Phase 11), **không** chọn provider/model cụ thể (A-026, A-028, A-065), **không** viết prompt (Phase 7 đã chốt), **không** thiết kế bảng mã lý do dừng (Phase 8).
 
@@ -18,14 +18,14 @@ Tên entity, trạng thái, permission, agent, node, tool dùng đúng `GLOSSARY
 
 ### 1.2 Phạm vi ngoài 37 ca
 
-Ba việc PRD không phủ, vì lý do khác nhau, thuộc về Phase 10:
+Bốn việc PRD không phủ, vì lý do khác nhau, thuộc về Phase 10:
 
 1. **Canary suite** — kiểm hạ tầng (checkpoint không chứa PII), không kiểm hành vi nghiệp vụ. Giao cho Phase 10 ở mục Checkpointer và PII của `03-agents.md`.
 2. **Phương pháp recall@k** — NFR-07 dùng kho quy trình *giả lập* cho nhóm J vì kho thật chưa tồn tại (A-027); đó là 5 ca hội thoại, không phải một bộ đo retrieval. A-028 giao Phase 10 tiêu chí chọn embedding model bằng recall@k trên "bộ eval của chính dự án" — cần một bộ đo riêng, tách khỏi 37 ca.
 3. **Phương pháp so tier rẻ/mạnh** — `04-data.md` mục 3.8 (định nghĩa `llm_usage`) để ngỏ câu "có hạ tier được không là câu hỏi của Phase 10", và mục Agent Registry của `03-agents.md` nhắc lại đúng câu đó cho `drafting_agent`.
 4. **Ca kiểm cơ chế graph** *(thêm ở v0.2)* — kiểm một cơ chế của `intake_graph` mà 37 ca không phủ vì chúng chấm hành vi trên ngôn ngữ thật, không chấm bộ đếm hay luật rẽ. Mục 2.4.
 
-Cả ba việc trên đều dừng ở **phương pháp**, không ra **kết quả** — xem lý do ở mục 9.
+Cả bốn việc trên đều dừng ở **phương pháp**, không ra **kết quả** — xem lý do ở mục 9.
 
 ### 1.3 Nguyên tắc kế thừa
 
@@ -147,7 +147,7 @@ Canary suite (mục 2.2) và ca kiểm cơ chế (mục 2.4) chạy **riêng**, 
 
 ### 4.2 Bản ghi kết quả và baseline
 
-Mỗi lần chạy gắn với: phiên bản `prompt_module_version` của mọi prompt module liên quan (`07-prompts.md` mục 7), **`catalog_fingerprint` của `request_type_catalog` đã dùng** (ADR-025 — cùng phiên bản P1 mà catalog khác là một lần chạy khác), tier/provider model nếu đã chọn (A-026), phiên bản template dùng để render (nhóm H), commit mã nguồn. Đây là artefact vận hành của việc build/CI, **không** là bảng nghiệp vụ trong `contracts/schema.sql` — nơi lưu và định dạng file cụ thể thuộc Phase 11/người triển khai.
+Mỗi lần chạy gắn với: phiên bản `prompt_module_version` của mọi prompt module liên quan (`07-prompts.md` mục 7), **`catalog_fingerprint` của `request_type_catalog` đã dùng** (ADR-025 — cùng phiên bản P1 mà catalog khác là một lần chạy khác), tier/provider model nếu đã chọn (A-026), phiên bản template dùng để render (nhóm H), commit mã nguồn. Đây là artefact vận hành của việc build/CI, **không** là bảng nghiệp vụ trong `contracts/schema.sql` — nơi lưu: mục Nơi lưu bản ghi kết quả eval của `11-ops.md` (đợt sửa 4 sau Phase 13); định dạng file cụ thể thuộc người triển khai.
 
 **Baseline là kết quả chạy gần nhất được coi là "đúng như mong đợi".** Kỹ thuật (Phase 11/người triển khai) tự chốt baseline mới sau một thay đổi cải thiện có chủ đích, **miễn đáp án chuẩn không đổi** — đáp án chuẩn (nội dung 37 ca, mục 2.1) chỉ Trưởng phòng Hành chính đổi được (A-023). Hai việc này phải tách: đổi baseline (kỹ thuật tự làm) khác đổi đáp án chuẩn (cần duyệt lại theo nghiệp vụ) — lẫn hai việc là tự cho phép sửa đáp án qua đường kỹ thuật.
 
@@ -179,6 +179,8 @@ Người chấm duy nhất cho nội dung nghiệp vụ: **Trưởng phòng Hàn
 | H | `document` không vào `PENDING_APPROVAL` khi còn trượt điều kiện | "Văn bản đủ điều kiện trình duyệt" (F2) | Không rơi vào bất kỳ ca "Bị coi là KHÔNG đủ điều kiện trình duyệt" |
 | I | Agent khôi phục hoặc báo đúng trạng thái sau gián đoạn | AC "Quay lại sau gián đoạn" của F1 | Không âm thầm dùng dữ liệu đã hết hạn |
 | J | Câu trả lời đủ căn cứ hoặc nói rõ không có căn cứ | "Hướng xử lý thủ công đủ căn cứ" (F1) | Không rơi vào bất kỳ ca "Bị coi là KHÔNG đủ căn cứ" |
+
+**Khi có template nhiều biến nội dung tự do (V > 1) — chỗ quan sát cho ADR-009, không phải tiêu chí PASS mới** *(đợt sửa 4 sau Phase 13, AUD-12)*: điều kiện đảo ngược của ADR-009 đo ở human eval — "văn bản lệch ý giữa các biến sinh ở vòng khác nhau". Khi một template có hơn một biến nội dung tự do được kích hoạt, người chấm ghi thêm một nhận xét có/không cho mỗi văn bản nhóm H đã qua ít nhất một vòng sửa: các biến sinh ở vòng khác nhau có còn cùng một ý không. Nhận xét này không đổi PASS/FAIL của ca. Sprint đầu `V = 1` (mục Định cỡ A-022 của `11-ops.md`) nên chưa kích hoạt.
 
 **Với văn phong nội dung tự do (biến `purpose_statement`, `work_content_statement`):** `review_readiness_check` chỉ kiểm **cấu trúc** (có giá trị, không placeholder, không tràn khung) — không kiểm văn phong có hợp lý hay không. Với nhóm A, B, H, người chấm còn phải đọc `body` được sinh ra và đánh giá **có thể dùng để trình cán bộ hành chính** hay không (không phải "hoàn hảo", mà "không phải sửa lại hoàn toàn"). Đây là chỗ Phase 10 trả lời được ở mức tiêu chí, còn con số ngưỡng chấp nhận là bao nhiêu phần trăm câu tốt thì chưa có căn cứ (A-002) — không đặt số.
 

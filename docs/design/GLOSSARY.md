@@ -1,6 +1,6 @@
 # GLOSSARY — BO-19 Admin Service Desk Agent
 
-**Phiên bản:** 0.23 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5, vòng duyệt Phase 5, Phase 6, Phase 9, Phase 12, đợt sửa A-068, A-073, A-075, đợt sửa 2 và đợt sửa 3 sau Phase 13
+**Phiên bản:** 0.24 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5, vòng duyệt Phase 5, Phase 6, Phase 9, Phase 12, đợt sửa A-068, A-073, A-075, đợt sửa 2 và đợt sửa 3 sau Phase 13 · **v0.24:** đợt sửa 4 sau Phase 13 — ba con trỏ cũ (AUD-11)
 
 > Đây là danh sách tên chuẩn. Từ Phase 1 trở đi, mọi tài liệu, diagram, DDL, endpoint và prompt phải dùng **đúng** các định danh trong file này. Muốn đổi tên thì sửa file này trước, rồi ghi vào [`CHANGELOG.md`](./CHANGELOG.md).
 
@@ -260,7 +260,7 @@ Theo phép thử ở mục Nguyên tắc dữ liệu của `04-data.md`: enum xu
 
 Trong sơ đồ `erDiagram` ở mục Quan hệ giữa các entity của `00-domain.md`, tên entity viết HOA theo thông lệ Mermaid: `REQUEST` là `request`, `SEAL_ACTION` là `seal_action`, và tương tự cho các entity còn lại. Chỉ là khác biệt hiển thị, không phải tên khác.
 
-Tên **agent**, **node LangGraph** và **tool** chốt ở mục 12, từ Phase 3. Tên **bảng** và **cột** cụ thể thuộc Phase 4; các định danh entity ở mục 1 là tên logic, Phase 4 có thể ánh xạ sang tên bảng khác nhưng phải ghi rõ ánh xạ đó. Ánh xạ đã ghi ở mục Nguyên tắc dữ liệu của `04-data.md`.
+Tên **agent**, **node LangGraph** và **tool** chốt ở mục 12, từ Phase 3. Tên **bảng** và **cột** cụ thể ở `04-data.md`; các định danh entity ở mục 1 là tên logic, Phase 4 có thể ánh xạ sang tên bảng khác nhưng phải ghi rõ ánh xạ đó. Ánh xạ đã ghi ở mục Nguyên tắc dữ liệu của `04-data.md`.
 
 ---
 
@@ -281,7 +281,7 @@ Tên chuẩn của các thành phần trong `02-architecture.md`. Từ Phase 3 t
 | `queue_worker` | Job nền: render sau `SUBMITTED`, quét hạn, thông báo | Bảng job trong `postgresql` (ADR-004) |
 | `observability` | Log kỹ thuật, trace, metric | **Khác** `audit_event` — log cho kỹ sư vận hành, không phải nhật ký nghiệp vụ |
 
-Tên **agent**, **node LangGraph** cụ thể bên trong `orchestrator`, và **tool** cụ thể bên trong `tool_layer`, vẫn thuộc Phase 3 — mục này chỉ chốt tên các thành phần hạ tầng bao quanh chúng.
+Tên **agent**, **node LangGraph** cụ thể bên trong `orchestrator`, và **tool** cụ thể bên trong `tool_layer`, ở mục 12 — mục này chỉ chốt tên các thành phần hạ tầng bao quanh chúng.
 
 ---
 
@@ -372,7 +372,7 @@ Node `open_request` gọi tool `request_open`; hai tên khác nhau có chủ đ�
 | **`approved_content_hash`** | Hash ghi lúc duyệt nội dung, kiểm lại ở `finalize_issue` để thực thi INV-01 |
 | **Danh sách nạp** | Danh sách input tự khai của prompt module, dùng để nạp dữ liệu và kiểm prompt. Quên khai thì mất chức năng, không rò dữ liệu |
 | **`catalog_fingerprint`** · dấu vân tay catalog | sha256 của bản tuần tự hoá chuẩn của `request_type_catalog` đã nạp cho một lời gọi `classify_intent`. Enum output của lời gọi đó sinh từ chính catalog này (ADR-025), nên `prompt_module_version` một mình không tái tạo được lời gọi. Ghi vào log kỹ thuật và bản ghi eval, không vào `llm_usage`. Thêm ở đợt sửa A-075 |
-| **Khoảng hoàn tất phát hành** · cờ `issue_in_progress` | Từ lúc `document_issue` ghi lệnh phát hành tới lúc `finalize_issue` commit `ISSUED` hoặc bỏ cuộc. Document đứng yên ở `SIGNED`/`SEALED`; phần đầu chưa có `document_number`. Là **cờ dẫn xuất** như `sla_breached`, **không** phải trạng thái. Hiển thị thuộc Phase 8 |
+| **Khoảng hoàn tất phát hành** · cờ `issue_in_progress` | Từ lúc `document_issue` ghi lệnh phát hành tới lúc `finalize_issue` commit `ISSUED` hoặc bỏ cuộc. Document đứng yên ở `SIGNED`/`SEALED`; phần đầu chưa có `document_number`. Là **cờ dẫn xuất** như `sla_breached`, **không** phải trạng thái. Hiển thị: mục Duyệt dấu và khoảng hoàn tất phát hành của `08-hitl.md` |
 | **Cờ `job_failed`** | Cờ dẫn xuất trên `DocumentSummary` như `issue_in_progress` và `sla_breached`, **không** phải trạng thái: dòng `job` mới nhất loại `resume_document_graph` hoặc `finalize_issue` của `document` đó đang `FAILED` vĩnh viễn. Không phủ `render_document`. Định nghĩa ở mục Background worker & Cron của `11-ops.md`. Thêm ở đợt sửa 2 sau Phase 13 |
 | **`signer_user_id`** | Tên **biến template** cho người ký; cột DB là `document.signer_employee_id`. Từ `user` lệch từ vựng — entity là `employee` — nhưng tên biến được giữ: chú thích trong `contracts/schema.sql` dùng tên này, và file đó giữ nguyên byte (`contracts/README.md`). AUD-20 của `13-audit.md` |
 

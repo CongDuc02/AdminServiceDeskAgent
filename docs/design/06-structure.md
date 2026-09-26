@@ -1,6 +1,6 @@
 # Project Structure — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.9 · **Trạng thái:** Đã duyệt ở vòng duyệt Phase 6 · **v0.2:** Open Questions sau các phép B1 → B4; mục 9.4 về bộ kiểm trong repo; `tools/` trong cây gốc — mục ngày 2026-09-13 (lần 9) của `CHANGELOG.md` · **v0.3:** Open Questions sau phép bổ sung — mục ngày 2026-09-14 · **v0.4:** thêm bước kiểm khởi động #16–17 (ADR-023, Phase 11) — quyết định của PO khi duyệt đề xuất diff riêng, không phải một hệ quả của luật 5 (đổi tên cho nhất quán) trong `CLAUDE.md`; mục ngày 2026-09-16 của `CHANGELOG.md` · **v0.5:** làm rõ #15/#17 dùng chung một lần đọc `operating_mode`, #17 chỉ áp dụng ngoài `prod` và tự vệ khi thiếu `BO19_ENVIRONMENT`, nhắc mô hình chạy hết-rồi-gom — cùng mục ngày 2026-09-16 · **v0.6:** đợt sửa 2 sau Phase 13 — cron và `ops/` thêm năm thao tác vận hành mới (AUD-08); `endpoint_ops/` không đếm số; tuyến `/config/request-types` hết "từ chối mọi người" (AUD-05); không có tuyến cho đổi `operating_mode` là có chủ đích (câu 6b); skeleton khớp cây ở mục 3 (AUD-16); số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.7:** tuyến `/takeover` và phần tiếp quản của `DocumentReviewPage` (AUD-02 (d)) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.8:** thư viện token phiên và log — ADR-028, ADR-029 — mục ngày 2026-09-26 (quyết định PO sau đợt 3) · **v0.9:** Open Questions 7 đã giải — mục ngày 2026-09-26 (đợt sửa 3b)
+**Phiên bản:** 0.10 · **Trạng thái:** Đã duyệt ở vòng duyệt Phase 6 · **v0.2:** Open Questions sau các phép B1 → B4; mục 9.4 về bộ kiểm trong repo; `tools/` trong cây gốc — mục ngày 2026-09-13 (lần 9) của `CHANGELOG.md` · **v0.3:** Open Questions sau phép bổ sung — mục ngày 2026-09-14 · **v0.4:** thêm bước kiểm khởi động #16–17 (ADR-023, Phase 11) — quyết định của PO khi duyệt đề xuất diff riêng, không phải một hệ quả của luật 5 (đổi tên cho nhất quán) trong `CLAUDE.md`; mục ngày 2026-09-16 của `CHANGELOG.md` · **v0.5:** làm rõ #15/#17 dùng chung một lần đọc `operating_mode`, #17 chỉ áp dụng ngoài `prod` và tự vệ khi thiếu `BO19_ENVIRONMENT`, nhắc mô hình chạy hết-rồi-gom — cùng mục ngày 2026-09-16 · **v0.6:** đợt sửa 2 sau Phase 13 — cron và `ops/` thêm năm thao tác vận hành mới (AUD-08); `endpoint_ops/` không đếm số; tuyến `/config/request-types` hết "từ chối mọi người" (AUD-05); không có tuyến cho đổi `operating_mode` là có chủ đích (câu 6b); skeleton khớp cây ở mục 3 (AUD-16); số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.7:** tuyến `/takeover` và phần tiếp quản của `DocumentReviewPage` (AUD-02 (d)) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.8:** thư viện token phiên và log — ADR-028, ADR-029 — mục ngày 2026-09-26 (quyết định PO sau đợt 3) · **v0.9:** Open Questions 7 đã giải — mục ngày 2026-09-26 (đợt sửa 3b) · **v0.10:** đợt sửa 4 sau Phase 13 — ba chế độ của `check_grants.py`, con trỏ cũ (AUD-11)
 
 > File này chốt cây thư mục của backend và frontend, luật "được import gì, cấm import gì" kèm **thứ gì chặn vi phạm**, entrypoint và cách chạy trên Render, bước kiểm khởi động, trình tự migration so với checkpointer, và kết quả xác minh contract DDL. File này **không** chứa implementation (DESIGN MODE — mục Chế độ làm việc hiện tại của `CLAUDE.md`). Hai khối `.importlinter` và `Dockerfile` bên dưới là **đặc tả**, không phải file. File này cũng **không** thiết kế màn hình tiếp quản hay quy tắc hiển thị theo độ nhạy (Phase 8), AuthZ chi tiết và quản lý secret (Phase 9), và **không** định cỡ tham số vận hành (Phase 11).
 
@@ -114,7 +114,7 @@ backend/
     ├── ai_gateway/
     │   ├── gateway.py        # LỐI VÀO DUY NHẤT: call(module, inputs, budget_owner) → kiểm allowlist → kiểm budget → provider → ép JSON → ghi sổ
     │   ├── allowlist/        # so tập khoá input bằng đúng tập đã khai — thừa hay thiếu đều từ chối (ADR-008)
-    │   ├── prompt_modules/   # khai báo từng prompt module: input đích danh, output schema, tier — nội dung thuộc Phase 7
+    │   ├── prompt_modules/   # khai báo từng prompt module: input đích danh, output schema, tier — nội dung ở 07-prompts.md
     │   ├── routing/          # tier → model; provider chưa chọn (A-026)
     │   ├── json_contract/    # ép JSON Schema, sửa lỗi parse đúng một lần
     │   ├── budget/           # ADR-019: MODULE DUY NHẤT đọc và ghi llm_usage
@@ -435,7 +435,7 @@ Chạy trước khi tiến trình phục vụ request hay giành job đầu tiê
 
 **Mô hình chạy — nhắc lại cho rõ, không phải quy tắc mới:** câu mở đầu mục này đã nói *"ghi **danh sách** mã trượt vào log rồi thoát"* — số nhiều, tức mọi bước kiểm chạy tới hết rồi mới gom kết quả, **không** dừng ở bước trượt đầu tiên. Vì vậy #17 luôn chạy dù #16 đã trượt, và phải tự vệ theo đúng mô tả ở dòng #17.
 
-Bước #16–17 (ADR-023, Phase 11) là lớp thứ hai trong ba lớp khoá `operating_mode` theo môi trường — không thay thế bước #15 (D-009, chỉ ghi log), và không thay thế chính sách cấp quyền hay chặn tại endpoint (`POST /operating-mode/transitions`, mục Endpoint của `05-api.md` sau khi diff riêng cho file đó được duyệt).
+Bước #16–17 (ADR-023, Phase 11) là lớp thứ hai trong ba lớp khoá `operating_mode` theo môi trường — không thay thế bước #15 (D-009, chỉ ghi log), và không thay thế chính sách cấp quyền hay chặn tại endpoint (`POST /operating-mode/transitions`, mục Endpoint của `05-api.md` — diff đã áp 2026-09-25).
 
 ---
 
@@ -515,7 +515,7 @@ Mọi phép thử quyền dùng `WHERE false` hoặc giao dịch rollback: Postg
 
 Bộ kiểm có chỗ trong repo từ vòng duyệt Phase 6: `tools/contract-checks/check_grants.py`, `requirements.txt` ghim đúng các phiên bản đã dùng, và `README.md` ghi khi nào và cách chạy lại. Nó **không phải mã ứng dụng**: nằm ngoài `backend/`, nên `Dockerfile` ở mục 6.2 không chép nó vào image.
 
-- **Hai chế độ.** `--local` dựng PostgreSQL tạm, áp `schema.sql`, chạy `setup()` của checkpointer rồi kiểm. `--app-dsn` **chỉ kiểm** trên một cơ sở dữ liệu đã migrate — chế độ dành cho Render. Mọi phép thử dùng `WHERE false` hoặc giao dịch rollback; `TRUNCATE` chỉ kiểm bằng `has_table_privilege`.
+- **Ba chế độ.** `--local` dựng PostgreSQL tạm, áp `schema.sql`, chạy `setup()` của checkpointer rồi kiểm. `--local-migrated` như `--local` nhưng áp lần lượt mọi file ở `backend/migrations/schema/` thay cho `schema.sql` (thêm ở vòng duyệt Phase 12). `--app-dsn` **chỉ kiểm** trên một cơ sở dữ liệu đã migrate — chế độ dành cho Render. Mọi phép thử dùng `WHERE false` hoặc giao dịch rollback; `TRUNCATE` chỉ kiểm bằng `has_table_privilege`.
 - **Thêm so với script đầu:** kiểm độ phủ — mọi bảng trong `public` phải thuộc đúng một nhóm quyền, nên một bảng mới chưa được xếp nhóm sẽ bị tính là lệch.
 - **Lần chạy từ repo ở vòng duyệt Phase 6**, chế độ `--local`, cùng `schema.sql` sha256 `0ce8dd…`: 49 bảng — 45 của `schema.sql` cộng 4 của thư viện; **169** từ chối đúng; **63** cho phép đúng; **0** lệch; sáu kiểm thêm đạt; mã thoát `0`. Hai con số chính trùng khít lần chạy ở mục 9.2.
 - **Phải chạy lại** sau mỗi lần `schema.sql` đổi, sau mỗi lần nâng thư viện checkpointer, và trên Render ngay khi có môi trường đầu tiên — cùng lượt A-040, A-047.
@@ -718,7 +718,8 @@ flowchart LR
 - Mọi lệnh gửi `expected_row_version` của bản đang nhìn. `STATE_CONFLICT` thì hiện `message` của server và tải lại — không tự gửi lại.
 - **Tiếp quản** khi `latest_halt.open`: banner mang `reason_code` và `at_node`; một nút cho mỗi lối ra trong `latest_halt.allowed_resolutions` mà `Me.permissions` cho phép; `REJECT_REQUEST` mở hộp nhập `rejection_reason` bắt buộc, và hộp `self_approval_reason` khi server trả `SELF_APPROVAL_REASON_REQUIRED`. Gọi `POST …/actions/resolve-halt` (mục Dừng có kiểm soát và tiếp quản của `08-hitl.md`).
 - **`TakeoverQueuePage` — `/takeover`:** `GET /takeover-queue`, mở lâu nhất trước, cùng khoá gốc `['review-queue']`.
-- **Không có ở đây:** quy tắc che hay hiện giá trị theo độ nhạy (Phase 8, Phase 9 — hôm nay chỉ có chỗ nhận `sensitivity`); từ chối dùng dấu (A-034).
+- **Theo độ nhạy:** che hay hiện giá trị theo mục Hiển thị trên màn hình duyệt của `09-security.md`.
+- **Không có ở đây:** từ chối dùng dấu (A-034).
 
 ---
 
@@ -766,7 +767,7 @@ Mọi mục có owner và hạn ở `ASSUMPTIONS.md`. Mục này gom những gì
 **Phát hiện, đã ghi vào `ASSUMPTIONS.md`**
 
 5. **Giành, gia hạn lease và kết thúc job là ghi `postgresql`** mà không phải thao tác nghiệp vụ nào. Đặt ở `tool_layer.jobs` để không mở rộng danh sách ngoại lệ đóng; tạm **không** sinh `audit_event` — một lệch có tên khỏi chữ của luật. Trường hợp thứ ba của A-055.
-6. **`llm_usage` còn hai cột `text` không có `CHECK` hình dạng** — `prompt_module_version`, `trace_id` (ADR-019). Thêm `CHECK` cần định dạng của `trace_id`, chưa phase nào chốt.
+6. **`llm_usage` còn hai cột `text` không có `CHECK` hình dạng** — `prompt_module_version`, `trace_id` (ADR-019). Thêm `CHECK` cần định dạng của `trace_id`, chưa phase nào chốt. **Giải một nửa:** `trace_id` có `CHECK` UUID v4 (ADR-024, migration `0004`); `prompt_module_version` vẫn chưa có.
 7. ~~**Chưa có thao tác nào có tên đóng `chat_session` vì nhàn rỗi** (`close_reason = IDLE_TIMEOUT`), dù `04-data.md` và `03-agents.md` đều nói phiên đóng khi nhàn rỗi. Không đặt tên ở đây — cùng cụm A-010, A-038, owner Phase 8.~~ **Giải:** tên `chat_session_idle_close` (đợt sửa 2), thiết kế ở mục Đóng phiên nhàn rỗi của `08-hitl.md` (đợt sửa 3b). Thời hạn vẫn chờ A-010; quan hệ với `request` đang `NEEDS_INFO` vẫn chờ A-038.
 8. **Hàm kiểm đủ điều kiện xử lý** có một lối nạp dữ liệu duy nhất ở `tool_layer.checks`, dùng chung cho `check_completeness`, `request_submit`, `request_slot_confirm` và `RequestDetail`. Lối nạp đó không có tên tool ở mục Tool Registry của `03-agents.md` — nó chỉ đọc, như `review_readiness_check`. Ghi lại để Phase 13 không coi là thiếu.
 

@@ -1,6 +1,6 @@
 # Prompt Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.2 · **Trạng thái:** Draft chờ duyệt · **v0.2:** đợt sửa A-075 — enum của output contract sinh từ cấu hình lúc gọi (ADR-025), `secondary_intent`, luật phiên bản khi catalog đổi — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md`
+**Phiên bản:** 0.3 · **Trạng thái:** Draft chờ duyệt · **v0.2:** đợt sửa A-075 — enum của output contract sinh từ cấu hình lúc gọi (ADR-025), `secondary_intent`, luật phiên bản khi catalog đổi — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.3:** đợt sửa 4 sau Phase 13 — slot `LIST` và `maxLength` điền lúc gọi (AUD-14); ghi chú ID `P1`–`P5` (AUD-22)
 
 > File này chốt prompt nào tồn tại, mỗi prompt được đọc gì, trả về dạng gì và bị chặn thế nào. File này **không** mô tả khung thể thức (nằm trong `template .docx` — ADR-001, D-007), **không** chọn provider/model cụ thể (A-026), **không** thiết kế màn hình duyệt hay cơ chế dừng khi chạm trần (Phase 8).
 
@@ -44,6 +44,8 @@ Mọi prompt module có 6 khối: `system` / `role` / `task` / `context` / `outp
 | P5 | `revise_free_content` | `drafting_agent` | Mạnh | Như P4 + `previous_statement` + `change_reason` (chỉ khi biến trong `change_targets`) | `DraftContentResult` |
 | E1 | `embed_query` | — | — | `retrieval_query` | vector |
 | E2 | `embed_corpus_chunk` | — | — | `procedure_chunk_text` | vector |
+
+`P1`–`P5` là **ID** của prompt module, không phải mức ưu tiên. Dự án xếp ưu tiên bằng MoSCoW ở mục Scope & priority của `01-prd.md`, không dùng nhãn P0/P1/P2 *(ghi chú thêm ở đợt sửa 4 sau Phase 13, AUD-22)*.
 
 Chi tiết input đích danh ở mục 4 của `03-agents.md`. Không dòng nào khai gộp. Với `P4`/`P5`, danh sách input của từng biến nằm trong `template_variable_input` của `template_version` (`04-data.md:321`), kiểm lúc tải template: chỉ slot `USER_INPUT` của đúng `request_type` mới khai được — `national_id` không bao giờ vào prompt qua đường cấu hình.
 
@@ -98,7 +100,7 @@ Hình dạng — `<…>` là chỗ `ai_gateway` điền lúc gọi, không phả
         "additionalProperties": false,
         "properties": {
           "slot_name": { "type": "string" },
-          "value": { "type": ["string", "number", "boolean", "null"] },
+          "value": { "type": ["string", "number", "boolean", "null", "array"], "items": { "type": "string", "minLength": 1 } },
           "evidence_span": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 },
           "evidence_quote": { "type": "string", "maxLength": 300 }
         },
@@ -110,7 +112,7 @@ Hình dạng — `<…>` là chỗ `ai_gateway` điền lúc gọi, không phả
 }
 ```
 
-Ràng buộc ngoài schema (node kiểm): `slot_name` ∈ slot `USER_INPUT` của `request_type` đang mở; `evidence_quote` phải là substring nguyên văn của `current_turn_text` tại `evidence_span` — không có thì loại, coi như thiếu (`03-agents.md:67` `EVIDENCE_MISMATCH`).
+Ràng buộc ngoài schema (node kiểm): `slot_name` ∈ slot `USER_INPUT` của `request_type` đang mở; `value` là mảng **khi và chỉ khi** `data_type` của slot là `LIST`, và khi đó mỗi phần tử phải xuất hiện nguyên văn trong `evidence_quote` *(đợt sửa 4 sau Phase 13, AUD-14 — trước đó slot `LIST` như `accompanying_persons` không trích được)*; `evidence_quote` phải là substring nguyên văn của `current_turn_text` tại `evidence_span` — không có thì loại, coi như thiếu (`03-agents.md:67` `EVIDENCE_MISMATCH`).
 
 ### 3.3 P3 `select_procedure_passages` — `SelectPassagesResult`
 
@@ -137,13 +139,13 @@ Một biến một lời gọi. Schema theo biến:
   "additionalProperties": false,
   "properties": {
     "variable_name": { "type": "string", "const": "<biến được yêu cầu ở lời gọi này>" },
-    "body": { "type": "string", "minLength": 10, "maxLength": 2000 }
+    "body": { "type": "string", "minLength": 10, "maxLength": "<template_variable.max_length của biến này>" }
   },
   "required": ["variable_name", "body"]
 }
 ```
 
-**`variable_name` sinh lúc gọi (ADR-025):** đúng một giá trị — biến nội dung tự do mà lời gọi này sinh, lấy từ `template_variable` loại `FREE_CONTENT` của phiên bản template đã ghim cho `document`. Một biến một lời gọi (ADR-009) nên enum có đúng một phần tử. Bản trước liệt kê cứng `purpose_statement`, `work_content_statement`, nên một loại thêm qua F6 có biến nội dung tự do mới không sinh được (A-075). `maxLength` lấy từ `template_variable.max_length`. Node `validate_free_content` kiểm thêm: không rỗng, không placeholder (`N/A`, `...`), không chứa câu khung (`Kính gửi`, `Số:`).
+**`variable_name` sinh lúc gọi (ADR-025):** đúng một giá trị — biến nội dung tự do mà lời gọi này sinh, lấy từ `template_variable` loại `FREE_CONTENT` của phiên bản template đã ghim cho `document`. Một biến một lời gọi (ADR-009) nên enum có đúng một phần tử. Bản trước liệt kê cứng `purpose_statement`, `work_content_statement`, nên một loại thêm qua F6 có biến nội dung tự do mới không sinh được (A-075). `maxLength` lấy từ `template_variable.max_length` — `ai_gateway` điền lúc gọi, cùng khuôn `<…>` với `variable_name`; bản trước viết cứng `2000` trong schema, lệch câu này (AUD-14). Node `validate_free_content` kiểm thêm: không rỗng, không placeholder (`N/A`, `...`), không chứa câu khung (`Kính gửi`, `Số:`).
 
 ---
 

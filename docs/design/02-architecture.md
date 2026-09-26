@@ -1,6 +1,6 @@
 # System Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.13 · **Trạng thái:** Draft để xác thực với người dùng · **v0.3–0.5:** sửa ở Phase 3 và các vòng sửa Phase 3 theo phép — xem các mục ngày 2026-09-12 (lần 4, lần 5, lần 6) của `CHANGELOG.md` · **v0.6:** sửa ở Phase 4 theo phép K1 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.7:** trỏ tới danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1) · **v0.8:** dòng `DRAFT` của bảng chủ sở hữu chuyển đổi `request` — vòng duyệt Phase 5 (A2), mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md` · **v0.9:** cạnh `ai_gateway → postgresql` chỉ cho `llm_usage` (ADR-019) — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.10:** nơi gọi `orchestrator` cho lượt chat theo ADR-016 — mục ngày 2026-09-14 · **v0.11:** `vector_store` — kênh lexical là full-text lõi, chưa phải BM25 (ADR-026, AUD-09); số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 1) của `CHANGELOG.md` · **v0.12:** `request` vào `APPROVED` ở `document_sign` (AUD-01) — mục ngày 2026-09-26 (đợt sửa 2) · **v0.13:** cạnh mới của hai máy trạng thái qua thao tác tiếp quản; sequence diagram (e) có đường thoát tự duyệt cho thu hồi (AUD-23 (f)) — mục ngày 2026-09-26 (đợt sửa 3)
+**Phiên bản:** 0.14 · **Trạng thái:** Draft để xác thực với người dùng · **v0.3–0.5:** sửa ở Phase 3 và các vòng sửa Phase 3 theo phép — xem các mục ngày 2026-09-12 (lần 4, lần 5, lần 6) của `CHANGELOG.md` · **v0.6:** sửa ở Phase 4 theo phép K1 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.7:** trỏ tới danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1) · **v0.8:** dòng `DRAFT` của bảng chủ sở hữu chuyển đổi `request` — vòng duyệt Phase 5 (A2), mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md` · **v0.9:** cạnh `ai_gateway → postgresql` chỉ cho `llm_usage` (ADR-019) — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.10:** nơi gọi `orchestrator` cho lượt chat theo ADR-016 — mục ngày 2026-09-14 · **v0.11:** `vector_store` — kênh lexical là full-text lõi, chưa phải BM25 (ADR-026, AUD-09); số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 1) của `CHANGELOG.md` · **v0.12:** `request` vào `APPROVED` ở `document_sign` (AUD-01) — mục ngày 2026-09-26 (đợt sửa 2) · **v0.13:** cạnh mới của hai máy trạng thái qua thao tác tiếp quản; sequence diagram (e) có đường thoát tự duyệt cho thu hồi (AUD-23 (f)) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.14:** đợt sửa 4 sau Phase 13 — hai con trỏ cũ (AUD-11)
 
 > File này chốt kiến trúc mức component: thành phần nào tồn tại, chạy ở đâu trên Render, phụ thuộc gì, và luồng dữ liệu đi qua chúng thế nào. File này **không** đổi state machine hay entity đã chốt ở `00-domain.md`, không chọn agent/tool cụ thể (Phase 3), không thiết kế bảng/cột (Phase 4).
 
@@ -44,7 +44,7 @@ Mười thành phần theo yêu cầu của `_PLAN.md`. Bốn trong số đó (`
 
 ### 1.5 `tool_layer`
 
-- **Trách nhiệm:** mọi thao tác có side effect qua permission check — employee lookup, policy/template retrieval, docx render, document numbering (nguyên tử), PDF export, notification, `[Should]` calendar/room booking. Danh mục tool cụ thể thuộc Phase 3.
+- **Trách nhiệm:** mọi thao tác có side effect qua permission check — employee lookup, policy/template retrieval, docx render, document numbering (nguyên tử), PDF export, notification, `[Should]` calendar/room booking. Danh mục tool cụ thể ở mục Tool Registry của `03-agents.md`.
 - **Công nghệ:** thư viện Python dùng chung bởi `api`, `orchestrator`, `queue_worker`.
 - **Lý do:** một nơi duy nhất enforce permission và sinh `audit_event` cho mọi ghi dữ liệu — tránh `api` hay `orchestrator` tự ý ghi tắt qua đường khác.
 - **Không thuộc:** không quyết định *khi nào* được gọi (`api`/`orchestrator` quyết định); không soạn prompt; không quyết định model nào được dùng.
@@ -80,7 +80,7 @@ Mười thành phần theo yêu cầu của `_PLAN.md`. Bốn trong số đó (`
 ### 1.10 `observability`
 
 - **Trách nhiệm:** log kỹ thuật có `trace_id` xuyên suốt `api` → `orchestrator` → `tool_layer` → `queue_worker`; metric (latency, token usage, độ dài hàng đợi job).
-- **Công nghệ:** log JSON có cấu trúc ra stdout, thu bởi log viewer của Render. Lựa chọn công cụ APM/metric cụ thể để Phase 11 quyết khi có số liệu tải (A-002).
+- **Công nghệ:** log JSON có cấu trúc ra stdout, thu bởi log viewer của Render. Lựa chọn công cụ APM/metric cụ thể là A-069 (mục Metric taxonomy của `11-ops.md`) — không chờ A-002.
 - **Lý do:** tối thiểu hoá phụ thuộc ngoài trước khi có số liệu tải thật để biện minh cho một công cụ trả phí.
 - **Không thuộc:** **không phải** `audit_event`. `audit_event` là nhật ký nghiệp vụ bất biến, cho người dùng và kiểm toán, sống trong `postgresql`, không bao giờ bị xoá/sửa. `observability` là log vận hành cho kỹ sư, có thể xoay vòng/hết hạn theo chính sách retention kỹ thuật. Nhầm hai khái niệm này là lỗi cần tránh — chúng phục vụ hai đối tượng đọc khác nhau với hai yêu cầu bất biến khác nhau.
 

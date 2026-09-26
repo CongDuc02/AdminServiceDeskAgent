@@ -51,7 +51,7 @@ Chưa biết: tổ chức dùng một sổ chung cho mọi loại văn bản hay
 - Mọi lệnh phát hành trên cùng (sổ, dải, kỳ) được tuần tự hoá tại một dòng. Chấp nhận được vì giao dịch ngắn, và nhịp phát hành gắn với thao tác của người thật (A-002).
 - `VOIDED` làm dãy số có lỗ. Đây là hệ quả chủ đích của việc ưu tiên giải trình hơn liên tục.
 
-**Điều kiện đảo ngược** — tín hiệu vận hành, đo ở `observability`: thời gian chờ khoá trên dòng `document_register_counter`. Chỗ quan sát này **chưa có** trong bảng chỗ quan sát của Phase 11 ở `_PLAN.md` — đã ghi ở Open Questions của `04-data.md`.
+**Điều kiện đảo ngược** — tín hiệu vận hành, đo ở `observability`: thời gian chờ khoá trên dòng `document_register_counter`. Chỗ quan sát này **chưa có** trong bảng chỗ quan sát của Phase 11 ở `_PLAN.md` *(cập nhật, đợt sửa 4 sau Phase 13: nay đã có ở `_PLAN.md` và ở mục Chỗ quan sát cho điều kiện đảo ngược của `11-ops.md`)* — đã ghi ở Open Questions của `04-data.md`.
 
 ## Rejected alternatives
 
