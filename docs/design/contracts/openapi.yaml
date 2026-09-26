@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: BO-19 Admin Service Desk Agent API
-  version: 0.2.3
+  version: 0.2.4
   description: |
     Contract máy đọc được của `docs/design/05-api.md` (Phase 5). Diễn giải, lý do và
     giới hạn nằm ở file đó; file này không lặp lại lập luận.
@@ -599,6 +599,9 @@ paths:
       tags: [documents]
       operationId: signDocument
       summary: Ghi nhận ký
+      description: |
+        PENDING_SIGNATURE → SIGNED, rồi SIGNED → PENDING_SEAL nếu requires_seal. Cùng giao dịch,
+        request IN_REVIEW → APPROVED — APPROVED nghĩa là đã ký (AUD-01 của 13-audit.md).
       x-bo19-operation: document_sign
       x-bo19-permission: [document.sign]
       x-bo19-execution: SYNC_ENQUEUE

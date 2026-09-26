@@ -1993,3 +1993,47 @@ Việc (f) của AUD-23 — đường thoát tự duyệt cho thu hồi — dờ
 
 `backend/pyproject.toml` và `backend/requirements.txt` ghim `passlib[bcrypt]` (trái ADR-021), `alembic`/`SQLAlchemy` (trái ADR-017), `langgraph==0.3.27` (lệch bản đã xác minh ở A-045), `langchain-openai`/`openai`/`tiktoken` (chọn ngầm provider khi A-026 còn mở). Chờ PO duyệt hướng sửa.
 
+---
+
+## 2026-09-26 (đợt sửa 2) — Tên, thao tác, ID; áp AUD-01 (A) và cắt phạm vi `delegation`
+
+Đợt 2 của mục Thứ tự sửa đề xuất trong `13-audit.md`, cộng các quyết định câu 5, câu 6 của PO.
+
+### File sửa
+
+| File | Thay đổi | AUD |
+|---|---|---|
+| `GLOSSARY.md` → 0.22 | `APPROVED` của `request` → "Đã ký", kèm đoạn định nghĩa và điều kiện A-034 | AUD-01 |
+| | `WARNING` thành danh sách đóng ba ca: D-006, ADR-020 (đổi chế độ thành công), ADR-023 (bị chặn). Ca ADR-020 không có trong câu định nghĩa mà ADR-023 đề xuất; giữ lại vì ADR-023 không nói thu hồi nó | AUD-10 |
+| | Thuật ngữ `job_failed`, `BO19_ENVIRONMENT`; tên `operating_mode_transition_reject` | AUD-10, AUD-08 |
+| | Năm thao tác vận hành mới: `rate_limit_window_sweep`, `chat_session_idle_close`, `needs_info_reminder`, `document_retention_archive`, `draft_render_sweep` | AUD-08 |
+| | Gạch đoạn "Cố ý vắng mặt: `request_type.manage`" | AUD-05 |
+| | `delegation`: hai cách dùng; vế lập hộ cắt khỏi Sprint đầu | AUD-15 |
+| | `signer_user_id`: giữ tên biến, ghi ánh xạ sang `signer_employee_id` và lý do | AUD-20 |
+| `00-domain.md` → 0.12 | Bảng và sơ đồ `request`: `APPROVED` = đã ký, do `document.sign`; EC-IL-01 và rule của `bearer_employee_code`: Sprint đầu chỉ qua `request.create_on_behalf`; `beneficiary_employee_id` kiểu uuid, là id chứ không phải mã | AUD-01, AUD-15, AUD-20 |
+| `01-prd.md` → 0.11 | ID `AC-F1.1` → `AC-F6.5` (30 AC), kèm quy ước ID; điều 4 của F1 bỏ vế `delegation` — cắt phạm vi, không xoá thiết kế; dòng Should ở mục Scope & priority ghi vế đó | AUD-19, AUD-15 |
+| `02-architecture.md` → 0.12 | Sơ đồ và bảng chủ sở hữu `request`: `APPROVED` do `document.sign` | AUD-01 |
+| `03-agents.md` → 0.14 | `document_sign` đưa `request` sang `APPROVED`; `document_approve_content` giữ `IN_REVIEW`; bản kê thêm `object_claim_reconcile` và năm thao tác vận hành mới; `operating_mode_transition_reject`, `slot_sensitivity_change` vào bản kê thao tác do endpoint gọi (14 → 16); vế `delegation` của `employee_lookup` là `[Should]` | AUD-01, AUD-08, AUD-15 |
+| `04-data.md` → 0.12 | Đoạn `delegation`; hai câu permission "chưa có" (A-042, A-043) ở ba mục | AUD-15, AUD-05, AUD-11 |
+| `05-api.md` → 0.12 | Ghi chú của `sign` | AUD-01 |
+| `contracts/openapi.yaml` → 0.2.4 | Mô tả của `signDocument` | AUD-01 |
+| `06-structure.md` → 0.6 | Cron và `ops/` thêm năm thao tác; `endpoint_ops/` không đếm số; tuyến `/config/request-types`; không có tuyến đổi `operating_mode` là có chủ đích; số phiên bản đầu dòng từ 0.4 lên 0.6 | AUD-08, AUD-05, câu 6b, AUD-18 |
+| `12-roadmap.md` → 0.5 | Ma trận truy vết dùng `AC-Fx.y`; Sprint 3 ghi lập hộ chỉ qua `request.create_on_behalf` | AUD-19, AUD-15 |
+| `ASSUMPTIONS.md` → 0.30 | A-034: điều kiện mở lại AUD-01. A-052: cắt vế `delegation`, đáp án chuẩn EC-IL-01 theo nghĩa mới | AUD-01, AUD-15 |
+| `backend/src/` | Xoá `bo19/api/app/` (trùng tên với `app.py`), `bo19/api/routers/health.py` (câu 6a), `src/__init__.py`; `bo19/ai_gateway/gateway/` → `gateway.py` như cây ở `06-structure.md`; docstring `startup` "15 bước" → "17 bước" | AUD-16, AUD-11 |
+
+**Lệch so với đề xuất của audit — AUD-20:** không đổi tên `signer_user_id` thành `signer_employee_id`. Chú thích trong `contracts/schema.sql` và `0001_initial.sql` dùng tên cũ, mà hai file đó giữ nguyên byte (`contracts/README.md`). Đổi tên sẽ để lại một chú thích sai vĩnh viễn trong contract. Thay vào đó, `GLOSSARY.md` ghi ánh xạ và lý do.
+
+### Đã chạy
+
+- `mermaid-cli`: hai sơ đồ `request` vừa sửa (ở `00-domain.md` và `02-architecture.md`) render được.
+- `openapi-spec-validator`: hợp lệ. Script đối chiếu: 50/50 method–path; 35 = 35 mã lỗi; mọi operation có `x-bo19-feature`.
+- Tám tên thao tác của AUD-08 đều có ở cả `GLOSSARY.md` lẫn `03-agents.md`.
+- Không có thay đổi DDL, nên không chạy lại `check_grants.py`.
+
+### Chưa làm — lý do
+
+- **AUD-07 (`SUBMITTED → REJECTED`):** cần PO chọn: xoá cạnh, hay gắn vào thao tác tiếp quản của việc (d), AUD-02. Vế EC-CV-02 vào A-053 ở đợt 3.
+- **Phần của AUD-01, AUD-05 nằm ở `08-hitl.md`:** chờ lượt sửa có phép ở đợt 3.
+- **Đổi tên `reason_code` `VALIDATION_FAILED` (AUD-20):** cùng bảng mã của việc (a), AUD-02, ở đợt 3.
+- **AUD-25:** chờ PO.

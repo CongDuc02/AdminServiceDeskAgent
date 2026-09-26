@@ -1,6 +1,6 @@
 # PRD — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.10 · **Trạng thái:** Draft để xác thực với người dùng · **Primary persona:** Cán bộ hành chính · **v0.10:** thêm `RISK-08` và cột "Người chấp nhận" vào mục Risk register — Phase 11, mục ngày 2026-09-15 của `CHANGELOG.md`
+**Phiên bản:** 0.11 · **Trạng thái:** Draft để xác thực với người dùng · **Primary persona:** Cán bộ hành chính · **v0.10:** thêm `RISK-08` và cột "Người chấp nhận" vào mục Risk register — Phase 11, mục ngày 2026-09-15 của `CHANGELOG.md` · **v0.11:** ID `AC-Fx.y` cho mọi AC cấp feature (AUD-19); vế `delegation` của điều 4 ở F1 cắt khỏi Sprint đầu (AUD-15) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md`
 
 > Sản phẩm tiếp nhận yêu cầu hành chính bằng hội thoại, soạn sẵn văn bản từ mẫu đã duyệt và đưa vào hàng đợi duyệt của phòng hành chính. Sản phẩm **không** tự phát hành, **không** tự đóng dấu, và **không** thẩm định thể thức văn bản.
 
@@ -86,7 +86,7 @@ Metric chia **hai loại**, và chỉ loại thứ nhất là cổng nghiệm th
 | **Must** | F6 — Quản lý mẫu, danh mục loại yêu cầu và hồ sơ nhân viên | Thêm loại yêu cầu mới không cần lập trình viên |
 | **Should** | F5 — Thu hồi văn bản đã phát hành | Xử lý văn bản phát hành nhầm; xem lý do xếp Should ở mục 6 |
 | **Should** | `ROOM_BOOKING` — đặt phòng họp | Loại yêu cầu không sinh văn bản, cần máy trạng thái `room_booking` riêng |
-| **Should** | Định tuyến ký nhiều cấp, vai trò `SIGNER`, uỷ quyền khi vắng mặt | Cần khi tổ chức có cấp ký trên phòng hành chính |
+| **Should** | Định tuyến ký nhiều cấp, vai trò `SIGNER`, uỷ quyền khi vắng mặt; uỷ quyền lập hộ qua `delegation` — vế thứ hai của điều 4 ở F1, cắt khỏi Sprint đầu (AUD-15) | Cần khi tổ chức có cấp ký trên phòng hành chính |
 | **Should** | Dashboard SLA, cảnh báo tồn đọng | Cần dữ liệu vận hành thật mới định cỡ được ngưỡng (A-002) |
 | **Could** | `SEAL_REQUEST` cho văn bản ngoài, kèm upload file | Phụ thuộc tính năng upload; là bề mặt prompt injection lớn nhất (RISK-02) |
 | **Could** | `INCOME_CONFIRMATION`, `BUSINESS_TRIP_ORDER` | Hai loại `[ĐỀ XUẤT]` chưa xác nhận là có thật (A-015) |
@@ -98,6 +98,8 @@ Metric chia **hai loại**, và chỉ loại thứ nhất là cổng nghiệm th
 | **Won't** | Agent tự thẩm định thể thức văn bản | Khung thể thức nằm trong template, không do model sinh và không do model kiểm (ADR-001). Đây là loại trừ có chủ đích, không phải thiếu sót |
 
 ## 6. Features & acceptance criteria
+
+> **ID của AC:** mỗi AC cấp feature có ID ổn định `AC-Fx.y` — `x` là số feature, `y` là thứ tự trong feature (thêm ở đợt sửa 2 sau Phase 13, luật 8 của `CLAUDE.md`). AC mới thêm vào cuối feature; AC bị bỏ giữ ID và gạch đi. Đừng nhầm với `AC-n.m` của `12-roadmap.md` — đó là AC của sprint.
 
 > **Quy ước:** Feature và AC ở cấp feature là phạm vi cam kết của PRD. Các user stories bên dưới chỉ là gợi ý phân rã, **không bắt buộc và chưa được chốt**; team sẽ refinement, bổ sung và chốt AC cấp story trong buổi grooming trước từng sprint.
 
@@ -116,12 +118,12 @@ Yêu cầu xuyên suốt — HITL, tách biệt trách nhiệm, chế độ phi 
 
 **AC**
 
-- Agent phân loại yêu cầu về đúng `request_type` hoặc hỏi lại khi mô tả nhập nhằng. Khi không chắc, agent **hỏi**, không đoán.
-- Yêu cầu ngoài hai loại đang hỗ trợ được báo rõ là chưa hỗ trợ, kèm **hướng xử lý thủ công đủ căn cứ** theo định nghĩa ở cuối feature này. Agent không cố ép vào một loại gần giống. AC này phải đúng **trong cả hai trạng thái** của kho quy trình hành chính: có đoạn nguồn thì trả hướng xử lý có trích nguồn; kho rỗng hoặc không đoạn nào đủ căn cứ thì trả hướng dẫn chung và **nói rõ là không có căn cứ trong kho**. Kho hiện chưa tồn tại (A-027) — kho rỗng không làm AC này trượt.
-- Agent thu thập slot theo schema ở mục Slot schema của `00-domain.md`, và chỉ chuyển yêu cầu sang `SUBMITTED` khi **đủ điều kiện xử lý** theo định nghĩa dưới đây.
-- **Nhiều nhu cầu trong một lượt** (EC-CV-01): một `request` mang đúng một `request_type`, nên hai nhu cầu phải thành hai `request`. Agent nhận ra và nêu rõ cả hai, xử lý **tuần tự**, không bao giờ im lặng bỏ qua nhu cầu thứ hai và không gộp hai nhu cầu vào một văn bản.
-- **Đổi loại giữa chừng** (EC-CV-02): slot đã thu của loại cũ **không được mang sang** loại mới, kể cả khi trùng tên. Agent xác nhận việc đổi loại và nêu rõ thông tin nào phải hỏi lại.
-- **Quay lại sau gián đoạn** (EC-CV-04): trong hạn thì khôi phục đúng trạng thái đã thu và nhắc lại còn thiếu gì; sau khi `EXPIRED` thì nói rõ yêu cầu đã hết hạn trước khi bắt đầu lại, **không** âm thầm dùng tiếp dữ liệu cũ. Đây là ca mà persona nhân viên ở mục 3 gần như chắc chắn rơi vào.
+- **AC-F1.1** — Agent phân loại yêu cầu về đúng `request_type` hoặc hỏi lại khi mô tả nhập nhằng. Khi không chắc, agent **hỏi**, không đoán.
+- **AC-F1.2** — Yêu cầu ngoài hai loại đang hỗ trợ được báo rõ là chưa hỗ trợ, kèm **hướng xử lý thủ công đủ căn cứ** theo định nghĩa ở cuối feature này. Agent không cố ép vào một loại gần giống. AC này phải đúng **trong cả hai trạng thái** của kho quy trình hành chính: có đoạn nguồn thì trả hướng xử lý có trích nguồn; kho rỗng hoặc không đoạn nào đủ căn cứ thì trả hướng dẫn chung và **nói rõ là không có căn cứ trong kho**. Kho hiện chưa tồn tại (A-027) — kho rỗng không làm AC này trượt.
+- **AC-F1.3** — Agent thu thập slot theo schema ở mục Slot schema của `00-domain.md`, và chỉ chuyển yêu cầu sang `SUBMITTED` khi **đủ điều kiện xử lý** theo định nghĩa dưới đây.
+- **AC-F1.4** — **Nhiều nhu cầu trong một lượt** (EC-CV-01): một `request` mang đúng một `request_type`, nên hai nhu cầu phải thành hai `request`. Agent nhận ra và nêu rõ cả hai, xử lý **tuần tự**, không bao giờ im lặng bỏ qua nhu cầu thứ hai và không gộp hai nhu cầu vào một văn bản.
+- **AC-F1.5** — **Đổi loại giữa chừng** (EC-CV-02): slot đã thu của loại cũ **không được mang sang** loại mới, kể cả khi trùng tên. Agent xác nhận việc đổi loại và nêu rõ thông tin nào phải hỏi lại.
+- **AC-F1.6** — **Quay lại sau gián đoạn** (EC-CV-04): trong hạn thì khôi phục đúng trạng thái đã thu và nhắc lại còn thiếu gì; sau khi `EXPIRED` thì nói rõ yêu cầu đã hết hạn trước khi bắt đầu lại, **không** âm thầm dùng tiếp dữ liệu cũ. Đây là ca mà persona nhân viên ở mục 3 gần như chắc chắn rơi vào.
 
 **Định nghĩa "Yêu cầu đủ điều kiện xử lý"**
 
@@ -130,7 +132,7 @@ Một `request` chỉ được rời `DRAFT` sang `SUBMITTED` khi đồng thời
 1. Mọi slot nguồn `USER_INPUT` được đánh dấu bắt buộc của `request_type` đó đều có giá trị **do người dùng cung cấp trong hội thoại**, **hoặc** do agent **đề xuất lại** từ `request` `EXPIRED` gần nhất có cùng `beneficiary_employee_id` và cùng `request_type`, rồi được nhân viên **xác nhận tường minh từng giá trị** — không giá trị nào được hiển thị ở dạng đã xác nhận sẵn. Đề xuất rồi để nhân viên xác nhận là cơ chế đã chấp nhận cho `HR_PROFILE` (D-002), không phải suy diễn. Dùng lại giá trị từ `request` đã `FULFILLED` là memory yêu cầu định kỳ, ở mức **Could**, không thuộc điều kiện này.
 2. Mọi slot nguồn `HR_PROFILE` đã được agent **đề xuất** và **nhân viên xác nhận từng giá trị** (D-002 ràng buộc 1 và 2).
 3. Mọi rule kiểm tra ở bảng slot tương ứng đều pass.
-4. `beneficiary_employee_id` đã xác định, và nếu khác người tạo thì có `delegation` còn hiệu lực hoặc người tạo có permission `request.create_on_behalf`.
+4. `beneficiary_employee_id` đã xác định, và nếu khác người tạo thì người tạo có permission `request.create_on_behalf`. *Vế "hoặc có `delegation` còn hiệu lực" **cắt khỏi Sprint đầu** — quyết định PO 2026-09-26, AUD-15 của `13-audit.md`. Đây là cắt phạm vi, không xoá thiết kế `delegation`; vế này kích hoạt cùng dòng Should về uỷ quyền ở mục 5.*
 
 **Bị coi là KHÔNG đủ điều kiện** — mỗi ca dưới đây chặn `SUBMITTED`, agent phải hỏi lại hoặc từ chối, tuyệt đối không tự lấp. Danh sách này chỉ nói về **điều kiện của một yêu cầu đã biết loại**; ca phân loại sai hay nhập nhằng thuộc `EC-CV-xx` và đã xử lý ở phần AC trên, không lặp lại ở đây:
 
@@ -164,11 +166,11 @@ Hướng xử lý cho một yêu cầu ngoài phạm vi là **đủ căn cứ** 
 
 **AC**
 
-- `document` được render **tại thời điểm `request` chuyển sang `SUBMITTED`** (D-010) — không sớm hơn, và không hoãn tới khi có người mở hàng đợi. Cán bộ hành chính mở hàng đợi là thấy bản nháp sẵn, đúng user story 1 ở trên. Không có bản nháp nào tồn tại trước mốc đó, nên yêu cầu `EXPIRED` không để lại file nào. Cho nhân viên xem trước văn bản, nếu sau này cần, là một feature riêng ở mức `[Could]`, không phải hệ quả của việc render sớm.
-- Agent render `document` từ `template` bằng cách **điền biến**. Agent không tạo biến mới, không sửa nội dung ngoài vùng biến, không đổi bố cục (ADR-001).
-- Prompt LLM chỉ sinh phần **nội dung tự do** — lý do, mục đích, nội dung công việc. Khung thể thức đến từ file `.docx`.
-- Màn hình duyệt hiển thị `source` và `synced_at` cho mọi giá trị nguồn `HR_PROFILE` có trong văn bản (D-002 ràng buộc 3).
-- `document` chỉ vào `PENDING_APPROVAL` khi **đủ điều kiện trình duyệt** theo định nghĩa dưới đây.
+- **AC-F2.1** — `document` được render **tại thời điểm `request` chuyển sang `SUBMITTED`** (D-010) — không sớm hơn, và không hoãn tới khi có người mở hàng đợi. Cán bộ hành chính mở hàng đợi là thấy bản nháp sẵn, đúng user story 1 ở trên. Không có bản nháp nào tồn tại trước mốc đó, nên yêu cầu `EXPIRED` không để lại file nào. Cho nhân viên xem trước văn bản, nếu sau này cần, là một feature riêng ở mức `[Could]`, không phải hệ quả của việc render sớm.
+- **AC-F2.2** — Agent render `document` từ `template` bằng cách **điền biến**. Agent không tạo biến mới, không sửa nội dung ngoài vùng biến, không đổi bố cục (ADR-001).
+- **AC-F2.3** — Prompt LLM chỉ sinh phần **nội dung tự do** — lý do, mục đích, nội dung công việc. Khung thể thức đến từ file `.docx`.
+- **AC-F2.4** — Màn hình duyệt hiển thị `source` và `synced_at` cho mọi giá trị nguồn `HR_PROFILE` có trong văn bản (D-002 ràng buộc 3).
+- **AC-F2.5** — `document` chỉ vào `PENDING_APPROVAL` khi **đủ điều kiện trình duyệt** theo định nghĩa dưới đây.
 
 **Định nghĩa "Văn bản đủ điều kiện trình duyệt"**
 
@@ -201,14 +203,14 @@ Một `document` chỉ được rời `DRAFT` sang `PENDING_APPROVAL` khi đồn
 
 **AC**
 
-- Hai cổng duyệt là **hai quyết định riêng biệt**: duyệt nội dung tại `PENDING_APPROVAL` và duyệt dấu tại `PENDING_SEAL`. Không có thao tác nào gộp hai cổng, kể cả khi cùng một người thực hiện.
-- Từ chối và yêu cầu sửa đều bắt buộc có lý do dạng văn bản tự do, không rỗng. Yêu cầu sửa đưa `document` về `DRAFT` để agent soạn lại.
-- `document_number` được cấp **đúng một lần**, tại thời điểm chuyển sang `ISSUED`, nguyên tử trên `document_register`. Hai yêu cầu phát hành đồng thời không bao giờ nhận cùng một số.
-- Cấp số thất bại sau khi đã lấy số thì số đó được đánh dấu `VOIDED` kèm lý do và **không tái sử dụng**.
-- Mỗi lần duyệt, ký, đóng dấu, cấp số, phát hành đều sinh một `audit_event` riêng, không gộp.
-- **Bản render tại thời điểm phát hành là bất biến.** Nối hai ràng buộc đã có — văn bản đã render phải ghi lại phiên bản template đã dùng (F6), và nội dung từ `APPROVED` trở đi là bất biến — thành một ranh giới rõ: **bản render gắn với `document` ở `SEALED` và `ISSUED` không bao giờ được mất hay bị đè.** Các bản render trung gian sinh ra trong vòng `CHANGES_REQUESTED → DRAFT` thì **không** chịu ràng buộc này; đè nhau hay tích luỹ là quyết định kỹ thuật của Phase 4 (A-021).
-- **Không tồn tại đường xoá cứng một `document` đã `ISSUED`.** Không có endpoint, không có thao tác quản trị, không có script vận hành nào xoá được. Văn bản chỉ mất hiệu lực bằng cách chuyển trạng thái.
-- Mô hình dữ liệu hỗ trợ `REVOKED` và `SUPERSEDED` ngay từ Sprint đầu, kể cả khi màn hình thu hồi chưa có (F5 là Should). Số văn bản của một văn bản đã `ISSUED` **không bao giờ** được trả lại dải số để tái sử dụng, bất kể văn bản đó về sau ở trạng thái nào.
+- **AC-F3.1** — Hai cổng duyệt là **hai quyết định riêng biệt**: duyệt nội dung tại `PENDING_APPROVAL` và duyệt dấu tại `PENDING_SEAL`. Không có thao tác nào gộp hai cổng, kể cả khi cùng một người thực hiện.
+- **AC-F3.2** — Từ chối và yêu cầu sửa đều bắt buộc có lý do dạng văn bản tự do, không rỗng. Yêu cầu sửa đưa `document` về `DRAFT` để agent soạn lại.
+- **AC-F3.3** — `document_number` được cấp **đúng một lần**, tại thời điểm chuyển sang `ISSUED`, nguyên tử trên `document_register`. Hai yêu cầu phát hành đồng thời không bao giờ nhận cùng một số.
+- **AC-F3.4** — Cấp số thất bại sau khi đã lấy số thì số đó được đánh dấu `VOIDED` kèm lý do và **không tái sử dụng**.
+- **AC-F3.5** — Mỗi lần duyệt, ký, đóng dấu, cấp số, phát hành đều sinh một `audit_event` riêng, không gộp.
+- **AC-F3.6** — **Bản render tại thời điểm phát hành là bất biến.** Nối hai ràng buộc đã có — văn bản đã render phải ghi lại phiên bản template đã dùng (F6), và nội dung từ `APPROVED` trở đi là bất biến — thành một ranh giới rõ: **bản render gắn với `document` ở `SEALED` và `ISSUED` không bao giờ được mất hay bị đè.** Các bản render trung gian sinh ra trong vòng `CHANGES_REQUESTED → DRAFT` thì **không** chịu ràng buộc này; đè nhau hay tích luỹ là quyết định kỹ thuật của Phase 4 (A-021).
+- **AC-F3.7** — **Không tồn tại đường xoá cứng một `document` đã `ISSUED`.** Không có endpoint, không có thao tác quản trị, không có script vận hành nào xoá được. Văn bản chỉ mất hiệu lực bằng cách chuyển trạng thái.
+- **AC-F3.8** — Mô hình dữ liệu hỗ trợ `REVOKED` và `SUPERSEDED` ngay từ Sprint đầu, kể cả khi màn hình thu hồi chưa có (F5 là Should). Số văn bản của một văn bản đã `ISSUED` **không bao giờ** được trả lại dải số để tái sử dụng, bất kể văn bản đó về sau ở trạng thái nào.
 
 ### F4 — Theo dõi trạng thái (Must)
 
@@ -223,10 +225,10 @@ Một `document` chỉ được rời `DRAFT` sang `PENDING_APPROVAL` khi đồn
 
 **AC**
 
-- Nhân viên xem được trạng thái `request` của mình theo đúng tên ở `GLOSSARY.md`, kèm diễn giải tiếng Việt, không hiển thị mã trạng thái trần.
-- Khi `request` ở `NEEDS_INFO` hoặc `CHANGES_REQUESTED`, màn hình nêu rõ **thiếu gì hoặc cần sửa gì**, không chỉ nêu tên trạng thái.
-- Cán bộ hành chính xem được hàng đợi mọi yêu cầu, sắp xếp được theo thời gian chờ.
-- Trạng thái `request` và trạng thái artifact hiển thị riêng: `request` đã `FULFILLED` không có nghĩa artifact đã kết thúc đời của nó.
+- **AC-F4.1** — Nhân viên xem được trạng thái `request` của mình theo đúng tên ở `GLOSSARY.md`, kèm diễn giải tiếng Việt, không hiển thị mã trạng thái trần.
+- **AC-F4.2** — Khi `request` ở `NEEDS_INFO` hoặc `CHANGES_REQUESTED`, màn hình nêu rõ **thiếu gì hoặc cần sửa gì**, không chỉ nêu tên trạng thái.
+- **AC-F4.3** — Cán bộ hành chính xem được hàng đợi mọi yêu cầu, sắp xếp được theo thời gian chờ.
+- **AC-F4.4** — Trạng thái `request` và trạng thái artifact hiển thị riêng: `request` đã `FULFILLED` không có nghĩa artifact đã kết thúc đời của nó.
 
 ### F5 — Thu hồi văn bản đã phát hành (Should)
 
@@ -239,8 +241,8 @@ Nghĩa vụ phải giữ ở Sprint đầu **không nằm ở đây mà nằm tr
 
 **AC**
 
-- `document.revoke_initiate` và `document.revoke_confirm` là hai permission tách rời, phải do hai người khác nhau thực hiện, hoặc rơi vào đường thoát tự duyệt ở NFR-02.
-- Thu hồi bắt buộc có `revocation_reason`. Văn bản `REVOKED` vẫn truy xuất được — thu hồi là đánh dấu mất hiệu lực, không phải xoá.
+- **AC-F5.1** — `document.revoke_initiate` và `document.revoke_confirm` là hai permission tách rời, phải do hai người khác nhau thực hiện, hoặc rơi vào đường thoát tự duyệt ở NFR-02.
+- **AC-F5.2** — Thu hồi bắt buộc có `revocation_reason`. Văn bản `REVOKED` vẫn truy xuất được — thu hồi là đánh dấu mất hiệu lực, không phải xoá.
 
 ### F6 — Quản lý mẫu, danh mục loại yêu cầu và hồ sơ nhân viên (Must)
 
@@ -255,11 +257,11 @@ Nghĩa vụ phải giữ ở Sprint đầu **không nằm ở đây mà nằm tr
 
 **AC**
 
-- **Thêm một `request_type` thứ ba chỉ cần: một bản ghi cấu hình (slot schema, người duyệt, `requires_seal`, SLA) và một file template `.docx`. Không sửa code, không deploy lại.** Đây là AC cứng, được kiểm bằng cách thực sự thêm một loại thứ ba trong UAT.
-- Template có phiên bản. Văn bản đã render ghi lại phiên bản template đã dùng. Bản gốc của mỗi phiên bản là bất biến.
-- Tải template lên mà thiếu biến bắt buộc theo cấu hình loại yêu cầu thì bị từ chối, nêu rõ thiếu biến nào.
-- Import CSV ghi `source` và `synced_at` cho từng bản ghi, và sinh `audit_event` cho đợt import.
-- Hệ thống **không** kiểm tra thể thức của template. Trách nhiệm thể thức thuộc người soạn template (ADR-001); hệ thống chỉ kiểm sự có mặt của biến.
+- **AC-F6.1** — **Thêm một `request_type` thứ ba chỉ cần: một bản ghi cấu hình (slot schema, người duyệt, `requires_seal`, SLA) và một file template `.docx`. Không sửa code, không deploy lại.** Đây là AC cứng, được kiểm bằng cách thực sự thêm một loại thứ ba trong UAT.
+- **AC-F6.2** — Template có phiên bản. Văn bản đã render ghi lại phiên bản template đã dùng. Bản gốc của mỗi phiên bản là bất biến.
+- **AC-F6.3** — Tải template lên mà thiếu biến bắt buộc theo cấu hình loại yêu cầu thì bị từ chối, nêu rõ thiếu biến nào.
+- **AC-F6.4** — Import CSV ghi `source` và `synced_at` cho từng bản ghi, và sinh `audit_event` cho đợt import.
+- **AC-F6.5** — Hệ thống **không** kiểm tra thể thức của template. Trách nhiệm thể thức thuộc người soạn template (ADR-001); hệ thống chỉ kiểm sự có mặt của biến.
 
 ## 7. Non-functional requirements
 

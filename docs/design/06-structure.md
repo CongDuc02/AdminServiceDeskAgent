@@ -1,6 +1,6 @@
 # Project Structure — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.4 · **Trạng thái:** Đã duyệt ở vòng duyệt Phase 6 · **v0.2:** Open Questions sau các phép B1 → B4; mục 9.4 về bộ kiểm trong repo; `tools/` trong cây gốc — mục ngày 2026-09-13 (lần 9) của `CHANGELOG.md` · **v0.3:** Open Questions sau phép bổ sung — mục ngày 2026-09-14 · **v0.4:** thêm bước kiểm khởi động #16–17 (ADR-023, Phase 11) — quyết định của PO khi duyệt đề xuất diff riêng, không phải một hệ quả của luật 5 (đổi tên cho nhất quán) trong `CLAUDE.md`; mục ngày 2026-09-16 của `CHANGELOG.md` · **v0.5:** làm rõ #15/#17 dùng chung một lần đọc `operating_mode`, #17 chỉ áp dụng ngoài `prod` và tự vệ khi thiếu `BO19_ENVIRONMENT`, nhắc mô hình chạy hết-rồi-gom — cùng mục ngày 2026-09-16
+**Phiên bản:** 0.6 · **Trạng thái:** Đã duyệt ở vòng duyệt Phase 6 · **v0.2:** Open Questions sau các phép B1 → B4; mục 9.4 về bộ kiểm trong repo; `tools/` trong cây gốc — mục ngày 2026-09-13 (lần 9) của `CHANGELOG.md` · **v0.3:** Open Questions sau phép bổ sung — mục ngày 2026-09-14 · **v0.4:** thêm bước kiểm khởi động #16–17 (ADR-023, Phase 11) — quyết định của PO khi duyệt đề xuất diff riêng, không phải một hệ quả của luật 5 (đổi tên cho nhất quán) trong `CLAUDE.md`; mục ngày 2026-09-16 của `CHANGELOG.md` · **v0.5:** làm rõ #15/#17 dùng chung một lần đọc `operating_mode`, #17 chỉ áp dụng ngoài `prod` và tự vệ khi thiếu `BO19_ENVIRONMENT`, nhắc mô hình chạy hết-rồi-gom — cùng mục ngày 2026-09-16 · **v0.6:** đợt sửa 2 sau Phase 13 — cron và `ops/` thêm năm thao tác vận hành mới (AUD-08); `endpoint_ops/` không đếm số; tuyến `/config/request-types` hết "từ chối mọi người" (AUD-05); không có tuyến cho đổi `operating_mode` là có chủ đích (câu 6b); skeleton khớp cây ở mục 3 (AUD-16); số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md`
 
 > File này chốt cây thư mục của backend và frontend, luật "được import gì, cấm import gì" kèm **thứ gì chặn vi phạm**, entrypoint và cách chạy trên Render, bước kiểm khởi động, trình tự migration so với checkpointer, và kết quả xác minh contract DDL. File này **không** chứa implementation (DESIGN MODE — mục Chế độ làm việc hiện tại của `CLAUDE.md`). Hai khối `.importlinter` và `Dockerfile` bên dưới là **đặc tả**, không phải file. File này cũng **không** thiết kế màn hình tiếp quản hay quy tắc hiển thị theo độ nhạy (Phase 8), AuthZ chi tiết và quản lý secret (Phase 9), và **không** định cỡ tham số vận hành (Phase 11).
 
@@ -107,9 +107,10 @@ backend/
     │   ├── tools/            # một module cho mỗi tool ở mục Tool Registry của 03-agents.md
     │   ├── gate_ops/         # thao tác cổng: request_submit … booking_confirm
     │   ├── employee_ops/     # request_slot_confirm
-    │   ├── endpoint_ops/     # mười ba thao tác do endpoint gọi — mục Endpoint của 05-api.md
+    │   ├── endpoint_ops/     # thao tác do endpoint gọi — bản kê ở mục Tool Registry của 03-agents.md
     │   ├── config_ops/       # slot_sensitivity_change
-    │   └── ops/              # expire_request, object_claim_reconcile; phần ghi của procedure_ingest
+    │   └── ops/              # thao tác vận hành: expire_request, object_claim_reconcile, rate_limit_window_sweep, chat_session_idle_close,
+    │                         #   needs_info_reminder, document_retention_archive, draft_render_sweep; phần ghi của procedure_ingest
     ├── ai_gateway/
     │   ├── gateway.py        # LỐI VÀO DUY NHẤT: call(module, inputs, budget_owner) → kiểm allowlist → kiểm budget → provider → ép JSON → ghi sổ
     │   ├── allowlist/        # so tập khoá input bằng đúng tập đã khai — thừa hay thiếu đều từ chối (ADR-008)
@@ -132,7 +133,7 @@ backend/
     ├── queue_worker/
     │   ├── dispatcher.py     # vòng poll SKIP LOCKED qua tool_layer.jobs; drain khi SIGTERM
     │   ├── handlers/         # job_type → runner của orchestrator, thao tác của tool_layer, hoặc ai_gateway (embedding của procedure_ingest)
-    │   └── cron/             # expire_request, object_claim_reconcile; [Should] quét SLA, nhả HELD, hoàn tất room_booking
+    │   └── cron/             # một lệnh cho mỗi thao tác vận hành chạy theo lịch (mục 6.1); [Should] quét SLA, nhả HELD, hoàn tất room_booking
     ├── api/
     │   ├── app.py            # app factory: mount /api/v1, phục vụ bản build client, luật 404 (mục 10.4)
     │   ├── routers/          # một router cho mỗi nhóm endpoint ở mục Endpoint của 05-api.md
@@ -355,7 +356,7 @@ Chiều phụ thuộc trùng component diagram của `02-architecture.md`, cộn
 |---|---|---|
 | `python -m bo19.entrypoints.api_main` | Web Service — `CMD` mặc định của image | REST, hai stream SSE, phục vụ bản build client, bộ giám sát lượt |
 | `python -m bo19.entrypoints.worker_main` | Background Worker — Docker Command | Vòng poll job: `render_document`, `resume_document_graph`, `finalize_issue`, `checkpoint_purge`, `procedure_ingest`, `notification_send` |
-| `python -m bo19.entrypoints.cron_main <thao tác>` | Một Cron Job cho mỗi thao tác — Docker Command | `expire_request`, `object_claim_reconcile`; `[Should]` quét SLA, nhả `HELD`, hoàn tất `room_booking` |
+| `python -m bo19.entrypoints.cron_main <thao tác>` | Một Cron Job cho mỗi thao tác — Docker Command | `expire_request`, `object_claim_reconcile`, `rate_limit_window_sweep`, `chat_session_idle_close`, `needs_info_reminder`, `document_retention_archive`, `draft_render_sweep` — hai tên cuối chưa chạy được khi A-010 còn mở; `[Should]` quét SLA, nhả `HELD`, hoàn tất `room_booking` |
 | `python -m bo19.entrypoints.migrate_main` | **Không phải service runtime** — chạy trong ngữ cảnh chỉ giữ credential `bo19_migrator` (ADR-017, A-060) | Mục 8 |
 
 Theo nguồn đã ghim của Render: cron job dựa trên Docker chạy lệnh khởi động của image, ghi đè được bằng Docker Command; một bản build mới "does not affect in-progress runs (only future runs)" (`docs/reference/render-deploys-docker.md`).
@@ -611,10 +612,10 @@ export default [
 | `/config/templates` · `/config/templates/:templateId` | Template, phiên bản, tải lên | `template.manage` |
 | `/config/employee-imports` | Import hồ sơ | `employee.import` |
 | `/config/procedures` | Kho quy trình | `procedure.manage` |
-| `/config/request-types` | Loại yêu cầu và slot | `request_type.manage` — hôm nay từ chối mọi người (A-042) |
+| `/config/request-types` | Loại yêu cầu và slot | `request_type.manage` — cấp lẻ (mục AuthZ của `09-security.md`), có hiệu lực sau data migration `0001_permission_catalog.sql` |
 | `/audit` · `/audit/self-approvals` | Nhật ký · mục tự duyệt | `audit.read_all` |
 
-Không có tuyến cho: màn hình tiếp quản (Phase 8), dashboard SLA (Phase 11), đổi `operating_mode` (Phase 9), `ROOM_BOOKING` (`[NGOÀI-OPENAPI]`).
+Không có tuyến cho: màn hình tiếp quản (Phase 8), dashboard SLA (Phase 11), `ROOM_BOOKING` (`[NGOÀI-OPENAPI]`), và đổi `operating_mode`. Tuyến cuối **vắng có chủ đích**: đổi chế độ chỉ qua `POST /operating-mode/transitions` — hành động hiếm, một người, đã có ba lớp khoá của ADR-023; một màn hình thêm bề mặt mà không thêm giá trị (quyết định PO 2026-09-26, câu 6b của `13-audit.md`).
 
 ### 10.4 Phục vụ tĩnh và luật 404 — phía `api`
 

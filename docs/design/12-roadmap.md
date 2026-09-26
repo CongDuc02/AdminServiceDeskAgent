@@ -1,6 +1,6 @@
 # Roadmap — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.4 · **Trạng thái:** Đã duyệt (PO, 2026-09-25) · **v0.2:** vòng duyệt Phase 12 — đối chiếu đủ `07-prompts.md`, `09-security.md` và mọi endpoint của `openapi.yaml`; tiêu chí loại yêu cầu thứ ba; owner nợ Phase 8 về Product Owner — mục ngày 2026-09-25 (vòng duyệt Phase 12) của `CHANGELOG.md` · **v0.3:** thứ tự cắt của Sprint 1 và phần an ninh không được cắt (R1-2), cổng 2.8, Open Questions sau khi PO trả lời — mục ngày 2026-09-25 (duyệt Phase 12) của `CHANGELOG.md` · **v0.4:** đợt sửa A-068, A-073, A-075 — cổng 2.3 và 3.6 đạt, AC của F6 thêm biện pháp bù của A-076, tiêu chí T6 bỏ — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md`
+**Phiên bản:** 0.5 · **Trạng thái:** Đã duyệt (PO, 2026-09-25) · **v0.2:** vòng duyệt Phase 12 — đối chiếu đủ `07-prompts.md`, `09-security.md` và mọi endpoint của `openapi.yaml`; tiêu chí loại yêu cầu thứ ba; owner nợ Phase 8 về Product Owner — mục ngày 2026-09-25 (vòng duyệt Phase 12) của `CHANGELOG.md` · **v0.3:** thứ tự cắt của Sprint 1 và phần an ninh không được cắt (R1-2), cổng 2.8, Open Questions sau khi PO trả lời — mục ngày 2026-09-25 (duyệt Phase 12) của `CHANGELOG.md` · **v0.4:** đợt sửa A-068, A-073, A-075 — cổng 2.3 và 3.6 đạt, AC của F6 thêm biện pháp bù của A-076, tiêu chí T6 bỏ — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.5:** ma trận truy vết dùng ID `AC-Fx.y` (AUD-19); lập hộ Sprint đầu chỉ qua `request.create_on_behalf` (AUD-15) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md`
 
 > File này xếp phạm vi Must của PRD thành các sprint có thứ tự, mỗi sprint có Objective, Deliverable, Dependency, Acceptance Criteria và rủi ro chính, kèm các cổng phải qua trước từng sprint. File này **không** khai lại mức MoSCoW (nguồn duy nhất: mục Scope & priority của `01-prd.md`), **không** đặt ngày hay ước lượng khối lượng (A-071), **không** thiết kế lại bất cứ thứ gì đã chốt, và **không** giải hộ các giả định của phase khác — chỉ đặt chúng vào đúng cổng.
 
@@ -241,7 +241,7 @@ Bảng bước, giả định cần đóng và luật riêng ở `.claude/comman
 ### 6.2 Deliverable
 
 - **`INTRODUCTION_LETTER`:** P4 cho `work_content_statement`; EC-IL-01 → EC-IL-03, gồm `requires_seal` và `bearer_national_id` theo `recipient_org`.
-- **Nhập hộ và tách biệt trách nhiệm:** theo quyết định A-052 ở cả hai loại; đường thoát tự duyệt đủ bốn điều kiện; `GET /self-approvals`, `GET /audit-events`; `/audit`, `/audit/self-approvals`.
+- **Nhập hộ và tách biệt trách nhiệm:** theo quyết định A-052 ở cả hai loại. Lập hộ trong Sprint đầu chỉ qua `request.create_on_behalf` — vế `delegation` của điều 4 ở F1 cắt khỏi Sprint đầu, thiết kế giữ nguyên (AUD-15 của `13-audit.md`); đường thoát tự duyệt đủ bốn điều kiện; `GET /self-approvals`, `GET /audit-events`; `/audit`, `/audit/self-approvals`.
 - **F6 — template:** `template_create`, `template_version_upload` với các phép kiểm lúc tải lên — đủ biến bắt buộc, input của biến nội dung tự do chỉ là slot `USER_INPUT` của đúng `request_type`, font có trong image — và `audit_event` khi danh sách input đổi (mục Phiên bản và thay đổi của `07-prompts.md`); `template_version_activate`; tải bản gốc chỉ cho `template.manage`.
 - **F6 — hồ sơ và cấu hình:** `employee_import`; `request_type_upsert` — **từ chối đặt `SUPPORTED` khi `example_phrases` rỗng** (A-076), `slot_definition_upsert`, xem trước và thực hiện `slot_sensitivity_change`; seed `employee_permission_grant` cho `request_type.manage`, `procedure.manage`, `procedure.read_all` bằng thao tác vận hành.
 - **F6 — kho quy trình:** `procedure_version_upload`, job `procedure_ingest` với E2 `embed_corpus_chunk`, `procedure_version_deactivate`; `procedure_retrieval` với bộ lọc quyền trong SQL theo `department_scope` và `procedure.read_all` (mục AuthZ của `09-security.md`); nhánh có kho: E1 `embed_query` → P3 `select_procedure_passages` chỉ chọn id, hiển thị nguyên văn có trích nguồn (mục Prompt injection của `09-security.md`).
@@ -404,26 +404,26 @@ Chưa đánh số sprint: độ dài sprint chưa có (A-071), và thứ tự d�
 
 ## 12. Ma trận truy vết
 
-Mỗi dòng là một AC hay NFR của `01-prd.md`, và sprint mà nó **đạt lần đầu**. Sprint sau chỉ giữ cho nó không vỡ.
+Mỗi dòng là một AC hay NFR của `01-prd.md`, và sprint mà nó **đạt lần đầu**. Cột PRD dùng ID `AC-Fx.y` của `01-prd.md` (đợt sửa 2 sau Phase 13). F5 là `[Should]`, không có dòng. Sprint sau chỉ giữ cho nó không vỡ.
 
 | PRD | Nội dung, rút gọn | Sprint |
 |---|---|---|
-| F1 | Phân loại hoặc hỏi lại khi nhập nhằng | 1 (đường chính), 2 (EC-CV-03) |
-| F1 | Ngoài phạm vi có hướng xử lý thủ công, đúng cả khi kho rỗng | 2 (kho rỗng), 3 (có kho) |
-| F1 | Thu slot, chỉ `SUBMITTED` khi đủ điều kiện xử lý | 1 |
-| F1 | Nhiều nhu cầu một lượt; đổi loại giữa chừng; quay lại sau gián đoạn | 2 |
-| F2 | Render tại thời điểm `SUBMITTED` | 1 |
-| F2 | Chỉ điền biến; LLM chỉ sinh nội dung tự do | 1 |
-| F2 | Provenance `HR_PROFILE` trên màn hình duyệt | 1 |
-| F2 | Chỉ vào `PENDING_APPROVAL` khi đủ điều kiện trình duyệt | 1 (kiểm), 2 (nhánh trượt → `halt_for_human`) |
-| F3 | Hai cổng là hai quyết định | 1 |
-| F3 | Từ chối, yêu cầu sửa có lý do | 2 |
-| F3 | Cấp số đúng một lần, nguyên tử, không trùng khi đồng thời; `VOIDED` không tái sử dụng | 1 (cấp số), 2 (đồng thời, `VOIDED`) |
-| F3 | Mỗi quyết định một `audit_event` | 1 |
-| F3 | Bản render ở `SEALED`/`ISSUED` bất biến; không xoá cứng `ISSUED`; mô hình có `REVOKED`/`SUPERSEDED` | 1 (ứng dụng, local), 2 (tầng lưu trữ, Render) |
-| F4 | Trạng thái có diễn giải tiếng Việt; thiếu gì, sửa gì; hàng đợi chờ lâu nhất trước; `request` và artifact hiển thị riêng | 1 (hàng đợi), 3 (đủ) |
-| F6 | Thêm loại thứ ba không sửa code | 3 (diễn tập), 4 (UAT) |
-| F6 | Template có phiên bản, bản gốc bất biến; kiểm biến khi tải lên; import CSV có provenance; không kiểm thể thức | 3 |
+| AC-F1.1 | Phân loại hoặc hỏi lại khi nhập nhằng | 1 (đường chính), 2 (EC-CV-03) |
+| AC-F1.2 | Ngoài phạm vi có hướng xử lý thủ công, đúng cả khi kho rỗng | 2 (kho rỗng), 3 (có kho) |
+| AC-F1.3 | Thu slot, chỉ `SUBMITTED` khi đủ điều kiện xử lý | 1 |
+| AC-F1.4 · AC-F1.5 · AC-F1.6 | Nhiều nhu cầu một lượt; đổi loại giữa chừng; quay lại sau gián đoạn | 2 |
+| AC-F2.1 | Render tại thời điểm `SUBMITTED` | 1 |
+| AC-F2.2 · AC-F2.3 | Chỉ điền biến; LLM chỉ sinh nội dung tự do | 1 |
+| AC-F2.4 | Provenance `HR_PROFILE` trên màn hình duyệt | 1 |
+| AC-F2.5 | Chỉ vào `PENDING_APPROVAL` khi đủ điều kiện trình duyệt | 1 (kiểm), 2 (nhánh trượt → `halt_for_human`) |
+| AC-F3.1 | Hai cổng là hai quyết định | 1 |
+| AC-F3.2 | Từ chối, yêu cầu sửa có lý do | 2 |
+| AC-F3.3 · AC-F3.4 | Cấp số đúng một lần, nguyên tử, không trùng khi đồng thời; `VOIDED` không tái sử dụng | 1 (cấp số), 2 (đồng thời, `VOIDED`) |
+| AC-F3.5 | Mỗi quyết định một `audit_event` | 1 |
+| AC-F3.6 · AC-F3.7 · AC-F3.8 | Bản render ở `SEALED`/`ISSUED` bất biến; không xoá cứng `ISSUED`; mô hình có `REVOKED`/`SUPERSEDED` | 1 (ứng dụng, local), 2 (tầng lưu trữ, Render) |
+| AC-F4.1 → AC-F4.4 | Trạng thái có diễn giải tiếng Việt; thiếu gì, sửa gì; hàng đợi chờ lâu nhất trước; `request` và artifact hiển thị riêng | 1 (hàng đợi), 3 (đủ) |
+| AC-F6.1 | Thêm loại thứ ba không sửa code | 3 (diễn tập), 4 (UAT) |
+| AC-F6.2 → AC-F6.5 | Template có phiên bản, bản gốc bất biến; kiểm biến khi tải lên; import CSV có provenance; không kiểm thể thức | 3 |
 | NFR-01 | HITL hai cổng | 1 |
 | NFR-02 | Tách biệt trách nhiệm theo người thụ hưởng, đường thoát tự duyệt | 1 (chặn), 3 (nhập hộ, đường thoát) |
 | NFR-03 | Chế độ phi sản xuất: watermark, dải `TRIAL`, dấu thử nghiệm; đổi chế độ là hành động được ghi nhận | 1 (ba ràng buộc, lớp 1–2 của ADR-023), 4 (endpoint đổi chế độ, lớp 3) |

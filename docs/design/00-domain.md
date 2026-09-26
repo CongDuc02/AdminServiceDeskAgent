@@ -1,6 +1,6 @@
 # Phase 0 — Domain Discovery
 
-**Dự án:** BO-19 — Admin Service Desk Agent · **Phiên bản:** 0.11 · **Trạng thái:** Draft chờ duyệt
+**Dự án:** BO-19 — Admin Service Desk Agent · **Phiên bản:** 0.12 · **Trạng thái:** Draft chờ duyệt · **v0.12:** đợt sửa 2 sau Phase 13 — `APPROVED` của `request` nghĩa là đã ký (AUD-01); vế `delegation` của lập hộ cắt khỏi Sprint đầu (AUD-15); kiểu của `beneficiary_employee_id` (AUD-20) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md`
 
 > File này chốt **từ vựng nghiệp vụ**: có những loại yêu cầu nào, mỗi loại cần dữ liệu gì, văn bản đi qua những trạng thái nào, ai được làm gì. Từ Phase 1 trở đi mọi tài liệu phải dùng đúng tên ở đây và ở [`GLOSSARY.md`](./GLOSSARY.md). File này **không** chọn công nghệ, **không** thiết kế API, **không** định nghĩa agent hay tool.
 
@@ -112,7 +112,7 @@ Trách nhiệm khi văn bản sai vì dữ liệu nhân sự sai thuộc về ng
 | Slot | Kiểu | Nguồn | Nhạy cảm | Bắt buộc | Rule kiểm tra |
 |---|---|---|---|---|---|
 | `requester_employee_code` | string | `SYSTEM` | `INT` | ✔ | Lấy từ phiên đăng nhập, không cho sửa |
-| `beneficiary_employee_id` | string | `SYSTEM` | `INT` | ✔ | Người thụ hưởng văn bản. Mặc định bằng `requester_employee_code`; người có `request.create_on_behalf` được đặt khác. Là căn cứ của quy tắc tách biệt trách nhiệm ở mục 7.3 |
+| `beneficiary_employee_id` | uuid | `SYSTEM` | `INT` | ✔ | Người thụ hưởng văn bản — **id** của `employee`, không phải mã nhân viên. Mặc định là người tạo; người có `request.create_on_behalf` được đặt khác. Là căn cứ của quy tắc tách biệt trách nhiệm ở mục 7.3 |
 | `full_name` | string | `HR_PROFILE` | `PER` | ✔ | Chỉ đọc. Lệch so với lời nhân viên khai thì chặn và báo phòng HC |
 | `department_name` | string | `HR_PROFILE` | `INT` | ✔ | Chỉ đọc |
 | `job_title` | string | `HR_PROFILE` | `INT` | ✔ | Chỉ đọc |
@@ -136,7 +136,7 @@ Mọi slot nguồn `HR_PROFILE` ở bảng này chịu ba ràng buộc provenanc
 | Slot | Kiểu | Nguồn | Nhạy cảm | Bắt buộc | Rule kiểm tra |
 |---|---|---|---|---|---|
 | `requester_employee_code` | string | `SYSTEM` | `INT` | ✔ | Từ phiên đăng nhập |
-| `bearer_employee_code` | string | `USER_INPUT` | `INT` | ✔ | Người mang giấy, đồng thời là `beneficiary_employee_id`. Mặc định bằng requester. Nếu khác → bắt buộc có `delegation` hoặc permission `request.create_on_behalf`, xem EC-IL-01 |
+| `bearer_employee_code` | string | `USER_INPUT` | `INT` | ✔ | Người mang giấy, đồng thời là `beneficiary_employee_id`. Mặc định bằng requester. Nếu khác → người lập bắt buộc có permission `request.create_on_behalf`, xem EC-IL-01. Vế `delegation` là `[Should]`, cắt khỏi Sprint đầu (AUD-15) |
 | `bearer_full_name`, `bearer_job_title` | string | `HR_PROFILE` | `PER` | ✔ | Chỉ đọc, tra theo `bearer_employee_code` |
 | `bearer_national_id` | string | `HR_PROFILE` | `RES` | ○ | PII mức cao. Bắt buộc khi `recipient_org` là cơ quan nhà nước (A-013) |
 | `recipient_org` | string | `USER_INPUT` | `PER` | ✔ | Không rỗng |
@@ -223,7 +223,7 @@ stateDiagram-v2
     CHANGES_REQUESTED --> SUBMITTED: soan lai va gui lai
     CHANGES_REQUESTED --> CANCELLED: nhan vien huy
     IN_REVIEW --> REJECTED: tu choi kem ly do
-    IN_REVIEW --> APPROVED: duyet
+    IN_REVIEW --> APPROVED: da ky
     APPROVED --> FULFILLED: artifact da den trang thai cuoi
     FULFILLED --> [*]
     REJECTED --> [*]
@@ -243,7 +243,7 @@ stateDiagram-v2
 | `SUBMITTED` | Nhân viên đã xác nhận gửi, chưa ai nhận xử lý | `EMPLOYEE` |
 | `IN_REVIEW` | Đã vào hàng đợi duyệt của phòng HC | Hệ thống |
 | `CHANGES_REQUESTED` | Người duyệt trả lại kèm yêu cầu sửa cụ thể | Người có `document.request_changes` |
-| `APPROVED` | Đã duyệt, đang thực thi artifact | Người có `document.approve_content` |
+| `APPROVED` | **Đã ký** — `document` đã rời `PENDING_SIGNATURE`; đang hoàn tất artifact: đóng dấu, phát hành. Duyệt nội dung **không** đưa `request` tới đây (AUD-01) | Người có `document.sign`, trong thao tác `document_sign` |
 | `FULFILLED` | Artifact đã tới trạng thái cuối — `document` `ISSUED`, hoặc `room_booking` `CONFIRMED` | Hệ thống |
 | `REJECTED` | Từ chối, bắt buộc có `rejection_reason` | Người có `document.reject` |
 | `CANCELLED` | Nhân viên tự huỷ khi chưa `APPROVED` | `EMPLOYEE` |
@@ -492,7 +492,7 @@ Mỗi loại yêu cầu có tối thiểu 2 ca ở chiều thứ hai. Toàn bộ
 
 | ID | Tình huống | Hành vi đúng |
 |---|---|---|
-| EC-IL-01 | Trợ lý xin giấy giới thiệu **hộ người khác** | `bearer_employee_code` khác `requester_employee_code` → bắt buộc có `delegation` còn hiệu lực. Chưa có thì `NEEDS_INFO`. Agent **không** được tra hồ sơ người thứ ba trước khi uỷ quyền được xác nhận |
+| EC-IL-01 | Trợ lý xin giấy giới thiệu **hộ người khác** | `bearer_employee_code` khác `requester_employee_code` → **Sprint đầu:** người lập bắt buộc có `request.create_on_behalf`; không có thì `NEEDS_INFO`. `[Should]`: thêm đường qua `delegation` còn hiệu lực do người mang giấy trao — cắt khỏi Sprint đầu, thiết kế giữ nguyên (AUD-15). Agent **không** được tra hồ sơ người thứ ba trước khi uỷ quyền được xác nhận |
 | EC-IL-02 | Xin hiệu lực **6 tháng** cho một chuyến làm việc một ngày | Chặn nếu vượt trần `valid_to - valid_from` (TBD, A-011); dưới trần nhưng lệch bất thường so với `work_content` thì cảnh báo cho người duyệt, không tự cắt ngắn |
 | EC-IL-03 | Giới thiệu tới **cơ quan nhà nước** | Đặt `requires_seal = true` với `seal_type = ORGANIZATION_ROUND` và bắt buộc có `bearer_national_id`. Thiếu thì không được vào hàng đợi duyệt |
 
