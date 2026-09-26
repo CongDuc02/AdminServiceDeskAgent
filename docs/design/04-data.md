@@ -1,6 +1,6 @@
 # Data Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.3 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 4 (S–V) — mục ngày 2026-09-13 (lần 2) của `CHANGELOG.md` · **v0.3:** `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.4:** ai ghi `llm_usage` và mã `BUDGET_UNAVAILABLE` (ADR-019), `template_version.required_fonts` (ADR-015), kết quả xác minh A-045 và A-047 — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.5:** dòng `schema_migration` ở mục 1.1 — vòng duyệt Phase 6 (B1), mục ngày 2026-09-13 (lần 9) · **v0.6:** `employee_credential`, `rate_limit_window` — Phase 9, mục ngày 2026-09-14 (lần 2) của `CHANGELOG.md` · **v0.7:** hai bảng trên chuyển sang `backend/migrations/schema/0002_phase9_security.sql`, `contracts/schema.sql` trả về nguyên trạng đóng Phase 6 — mục ngày 2026-09-14 (lần 3) của `CHANGELOG.md` · **v0.8:** mục 5.1/5.3 — object metadata (`x-bo19-pin-reason`, `x-bo19-document-number`) trên bản ghim `ISSUED`, phục vụ đối soát sau khôi phục — quyết định của PO duyệt đề xuất từ Phase 11, không đổi `contracts/schema.sql`; mục ngày 2026-09-25 của `CHANGELOG.md` · **v0.9:** mục 3.8 — `ix_job_latest_by_document`, bảng của `backend/migrations/schema/0003_job_failed_index.sql`, không của `contracts/schema.sql`; cùng mục ngày · **v0.10:** dòng `llm_usage` — định dạng `trace_id` (ADR-024), `CHECK` ở `backend/migrations/schema/0004_observability_trace_id.sql`, không ở `contracts/schema.sql`; mục ngày 2026-09-25 của `CHANGELOG.md`
+**Phiên bản:** 0.11 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 4 (S–V) — mục ngày 2026-09-13 (lần 2) của `CHANGELOG.md` · **v0.3:** `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.4:** ai ghi `llm_usage` và mã `BUDGET_UNAVAILABLE` (ADR-019), `template_version.required_fonts` (ADR-015), kết quả xác minh A-045 và A-047 — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.5:** dòng `schema_migration` ở mục 1.1 — vòng duyệt Phase 6 (B1), mục ngày 2026-09-13 (lần 9) · **v0.6:** `employee_credential`, `rate_limit_window` — Phase 9, mục ngày 2026-09-14 (lần 2) của `CHANGELOG.md` · **v0.7:** hai bảng trên chuyển sang `backend/migrations/schema/0002_phase9_security.sql`, `contracts/schema.sql` trả về nguyên trạng đóng Phase 6 — mục ngày 2026-09-14 (lần 3) của `CHANGELOG.md` · **v0.8:** mục 5.1/5.3 — object metadata (`x-bo19-pin-reason`, `x-bo19-document-number`) trên bản ghim `ISSUED`, phục vụ đối soát sau khôi phục — quyết định của PO duyệt đề xuất từ Phase 11, không đổi `contracts/schema.sql`; mục ngày 2026-09-25 của `CHANGELOG.md` · **v0.9:** mục 3.8 — `ix_job_latest_by_document`, bảng của `backend/migrations/schema/0003_job_failed_index.sql`, không của `contracts/schema.sql`; cùng mục ngày · **v0.10:** dòng `llm_usage` — định dạng `trace_id` (ADR-024), `CHECK` ở `backend/migrations/schema/0004_observability_trace_id.sql`, không ở `contracts/schema.sql`; mục ngày 2026-09-25 của `CHANGELOG.md` · **v0.11:** hai index của `0006` (`ix_request_waiting`, `ix_document_awaiting_issue`); dòng trỏ tới `contracts/README.md` ở mục 1.1; số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 1) của `CHANGELOG.md`
 
 > File này chốt mô hình dữ liệu vật lý: bảng, cột, ràng buộc, index, quyền trên cơ sở dữ liệu, lưu trữ file, vector collection và chính sách xoá dữ liệu cá nhân. Contract DDL nằm ở [`contracts/schema.sql`](./contracts/schema.sql). File này **không** thiết kế API (Phase 5), màn hình duyệt hay bảng mã lý do (Phase 8), AuthZ chi tiết (Phase 9), và **không** định cỡ thời hạn hay tham số vận hành (Phase 11).
 
@@ -50,6 +50,8 @@ Tên entity, trạng thái, enum, agent, tool dùng đúng `GLOSSARY.md`. Ánh x
 | Checkpoint của `orchestrator` | Bảng của LangGraph | **Không** nằm trong `schema.sql` (mục 8.6) |
 
 **Độ phủ (V3):** bảng trên phủ đủ **47 bảng** của toàn bộ schema — **45 bảng của `contracts/schema.sql`** (đóng nguyên vẹn ở Phase 6, không đổi), cộng **2 bảng của `backend/migrations/schema/0002_phase9_security.sql`** (`employee_credential`, `rate_limit_window`, Phase 9 — mục Migration bổ sung của Phase 9 trong `09-security.md`). `schema.sql` tự nó vẫn 45 bảng; con số 47 là của hệ schema sau migration, không phải của một file. Mỗi bảng hoặc là entity của chính nó, hoặc thuộc một dòng có lý do tách ở cột ghi chú; không bảng nào đứng ngoài ánh xạ.
+
+**Schema sau migration ở đâu:** `contracts/README.md` liệt mọi migration sau `schema.sql` và nói rõ `schema.sql` dừng ở trạng thái đóng Phase 6 (AUD-03 của `13-audit.md`).
 
 **Không có** bảng `department`. **Không** version cấu hình `request_type`. Lý do và hệ quả ở mục 3.2 và mục 6.3.
 
@@ -405,6 +407,7 @@ Slot chưa có dòng nào là slot còn thiếu. **Bằng chứng lưu dạng v�
 | `ix_request_created_by` | F4: nhân viên xem yêu cầu của mình, mới nhất trước |
 | `ix_request_chat_session` — partial | `load_turn` đọc `request` gắn với phiên hiện tại |
 | `ix_request_open_due` — partial, bốn trạng thái mở sau `SUBMITTED` | Quét SLA và escalation (Phase 8) |
+| `ix_request_waiting (status_changed_at, id)` — partial, bốn trạng thái mở sau `SUBMITTED` | `GET /requests?scope=ALL` — chờ lâu nhất trước (F4). **Bảng của `backend/migrations/schema/0006_waiting_order_indexes.sql`, không của `contracts/schema.sql`** |
 
 ### 3.5 Văn bản
 
@@ -447,6 +450,7 @@ Giá trị hiện hành của một biến là dòng `PASSED` có (`revision_rou
 |---|---|
 | `ix_document_request` | Tra `document` của một `request` (F4, `load_turn`) |
 | `ix_document_review_queue` — partial, ba trạng thái chờ người | Hàng đợi duyệt sắp theo thời gian chờ (F4) |
+| `ix_document_awaiting_issue (status_changed_at, id)` — partial, `SIGNED`/`SEALED` | `GET /issue-queue` — chờ lâu nhất trước. **Bảng của `backend/migrations/schema/0006_waiting_order_indexes.sql`** |
 | `uq_free_content_attempt` | Idempotency; cũng phục vụ tra giá trị hiện hành theo thứ tự giảm dần |
 
 #### 3.5.1 Khi `request` bị huỷ lúc `document` đang `CHANGES_REQUESTED` — A-035

@@ -23,7 +23,7 @@
 **Chọn B.**
 
 - `vector_store` không phải một thành phần triển khai riêng — nó là extension `pgvector` trong cùng instance PostgreSQL managed trên Render.
-- Hybrid search chạy được trong **một câu truy vấn SQL** kết hợp `tsvector` (kênh lexical) và `pgvector` (kênh vector), không cần join chéo hệ thống. Kênh lexical dùng xếp hạng full-text lõi của PostgreSQL, **chưa phải BM25** — ADR-026 (`Proposed`). *Bản trước viết "BM25 + vector"; `04-data.md` chưa từng chọn BM25.*
+- Hybrid search chạy được trong **một câu truy vấn SQL** kết hợp `tsvector` (kênh lexical) và `pgvector` (kênh vector), không cần join chéo hệ thống. Kênh lexical dùng xếp hạng full-text lõi của PostgreSQL, **chưa phải BM25** — ADR-026. *Bản trước viết "BM25 + vector"; `04-data.md` chưa từng chọn BM25.*
 - Phiên bản đang hiệu lực của `procedure_document` và embedding của nó nằm trong cùng một cơ sở dữ liệu: điều kiện "chỉ phiên bản đang hiệu lực" là một mệnh đề trong cùng câu truy vấn, và việc kích hoạt phiên bản mới cùng tắt phiên bản cũ nằm trong một giao dịch.
 
 ## Consequences

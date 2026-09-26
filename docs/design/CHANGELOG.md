@@ -1954,3 +1954,42 @@ Việc (f) của AUD-23 — đường thoát tự duyệt cho thu hồi — dờ
 - `x-bo19-feature` cho ba endpoint `/delegations`: chờ câu 5 (AUD-15) — nghĩa của `delegation` quyết định nó thuộc feature nào.
 - Việc (f) của AUD-23 (đường thoát tự duyệt cho thu hồi): dời sang đợt 3.
 - `CLAUDE.md` mục Ràng buộc domain (BM25): PO xử lý, theo ADR-026.
+
+---
+
+## 2026-09-26 (đợt sửa 1, hoàn tất) — AUD-03, migration `0006`, `/delegations`; ADR-026 `Accepted`
+
+### Quyết định của PO
+
+| # | Quyết định |
+|---|---|
+| 1 | Câu 3 (AUD-03): thêm `contracts/README.md`, giữ nguyên byte `schema.sql` |
+| 2 | Nhận hai index ở mục Việc được giao cho Phase 13 của `13-audit.md`; thêm bằng migration `0006` |
+| 3 | Câu 5 (AUD-15): bỏ vế `delegation` khỏi điều 4 của F1 trong Sprint đầu — **cắt phạm vi** ở PRD và roadmap, **không xoá** thiết kế `delegation`. Áp ở đợt 2 |
+| 4 | Câu 6: xoá router `health` khỏi skeleton; không có tuyến `client` cho đổi `operating_mode`, có chủ đích. Áp ở đợt 2 |
+| 5 | AUD-24: UAT dùng dữ liệu giả; hạn trước cổng Sprint 4, hoặc trước khi nạp dữ liệu cá nhân thật đầu tiên — tuỳ cái nào sớm hơn |
+| 6 | ADR-026 → `Accepted`. PO tự sửa `CLAUDE.md` trỏ về ADR-026 |
+| 7 | Câu 7 (owner là người cho các giả định của AUD-13): hoãn, PO trả lời trước đợt 4 |
+
+### File sửa
+
+| File | Thay đổi | AUD |
+|---|---|---|
+| `contracts/README.md` | **Mới.** `schema.sql` dừng ở trạng thái đóng Phase 6, trùng byte với `0001`; bảng migration `0002`–`0006`; luật: không sửa `schema.sql`, thêm migration thì cập nhật bảng | AUD-03 |
+| `backend/migrations/schema/0006_waiting_order_indexes.sql` | **Mới.** `ix_request_waiting`, `ix_document_awaiting_issue` — chỉ index, không đổi quyền | Mục 5 của `13-audit.md` |
+| `04-data.md` → 0.11 | Hai dòng index; mục 1.1 trỏ tới `contracts/README.md`; số phiên bản đầu dòng từ 0.3 lên 0.11 | AUD-03, AUD-18 |
+| `05-api.md` | Mục Phân trang: hai thứ tự có index `0006`; mục Open Questions: đề xuất index đã giải | Mục 5 |
+| `contracts/openapi.yaml` (vẫn 0.2.3) | `x-bo19-feature` cho ba endpoint `/delegations`: `'Scope — định tuyến ký nhiều cấp, SIGNER, uỷ quyền'`; mô tả extension thêm dạng `Scope — …` cho hạng mục `[Should]` không có ID ở PRD | AUD-19 |
+| `decisions/ADR-026` | `Proposed` → `Accepted` | AUD-09 |
+| ADR-002, `03-agents.md` | Bỏ chữ `Proposed` khi trỏ tới ADR-026 | AUD-09 |
+| `13-audit.md` → 0.4 | Ghi các quyết định trên; **AUD-25 mới** | — |
+
+### Đã chạy
+
+- `check_grants.py --local-migrated`: áp `0001` → `0006`; **176 / 68 / Lệch 0**, mã thoát 0. `0006` chỉ thêm index nên số phép kiểm quyền không đổi.
+- `openapi-spec-validator`: hợp lệ. Script đối chiếu: mọi operation có `x-bo19-feature`; 35 = 35 mã lỗi.
+
+### Phát hiện mới — AUD-25, không tự sửa
+
+`backend/pyproject.toml` và `backend/requirements.txt` ghim `passlib[bcrypt]` (trái ADR-021), `alembic`/`SQLAlchemy` (trái ADR-017), `langgraph==0.3.27` (lệch bản đã xác minh ở A-045), `langchain-openai`/`openai`/`tiktoken` (chọn ngầm provider khi A-026 còn mở). Chờ PO duyệt hướng sửa.
+

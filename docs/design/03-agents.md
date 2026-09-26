@@ -789,7 +789,7 @@ Phase 2 từng nối retrieval vào bước soạn thảo; đã sửa ở sequen
 
 ### 8.5 Hybrid search
 
-- **Hai kênh trong một câu SQL** (ADR-002): kênh lexical trên văn bản đã chuẩn hoá và kênh vector trên `pgvector`. Kênh lexical dùng hàm xếp hạng full-text lõi của PostgreSQL, **chưa phải BM25** (ADR-026, `Proposed`). BM25 là hướng đảo ngược khi A-030 xác minh được một extension khả dụng trên Render.
+- **Hai kênh trong một câu SQL** (ADR-002): kênh lexical trên văn bản đã chuẩn hoá và kênh vector trên `pgvector`. Kênh lexical dùng hàm xếp hạng full-text lõi của PostgreSQL, **chưa phải BM25** (ADR-026). BM25 là hướng đảo ngược khi A-030 xác minh được một extension khả dụng trên Render.
 - **Gộp kết quả theo thứ hạng** (reciprocal rank fusion), không cộng điểm thô của hai kênh — điểm của hai kênh không cùng thang. Tham số và `top_k`: `TBD` (A-031).
 - **Không có ngưỡng điểm tương đồng quyết định "liên quan".** Điểm tương đồng không phải xác suất đã hiệu chỉnh. Việc đoạn nào liên quan do `select_procedure_passages` quyết định, và nó chỉ được chọn trong tập đã truy hồi.
 

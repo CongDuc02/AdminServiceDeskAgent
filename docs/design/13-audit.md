@@ -1,6 +1,6 @@
 # Consistency Audit — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.3 · **Trạng thái:** Draft chờ duyệt · **Ngày chạy:** 2026-09-26 · **v0.2:** theo chỉ đạo của PO khi nhận kết quả — tách AUD-02 thành AUD-02 (Chặn) và AUD-23 (Cao); quét lại AUD-11 bằng `grep`, thêm vị trí còn sót và AUD-24 phát hiện trong lượt quét; bảng so sánh hai phương án của AUD-01; ghi ba quyết định của PO và bảng quyết định cho năm câu còn lại ở Open Questions. ID các AUD cũ giữ nguyên · **v0.3:** ghi quyết định của PO vòng ba — AUD-01 chọn (A) kèm hai điều kiện; nhận AUD-24 kèm hạn; xác nhận lượt sửa `08-hitl.md` ở đợt 3; ADR-026 đã viết (`Proposed`); việc (f) của AUD-23 dời từ đợt 1 sang đợt 3 vì phụ thuộc việc (e)
+**Phiên bản:** 0.4 · **Trạng thái:** Draft chờ duyệt · **Ngày chạy:** 2026-09-26 · **v0.2:** theo chỉ đạo của PO khi nhận kết quả — tách AUD-02 thành AUD-02 (Chặn) và AUD-23 (Cao); quét lại AUD-11 bằng `grep`, thêm vị trí còn sót và AUD-24 phát hiện trong lượt quét; bảng so sánh hai phương án của AUD-01; ghi ba quyết định của PO và bảng quyết định cho năm câu còn lại ở Open Questions. ID các AUD cũ giữ nguyên · **v0.3:** ghi quyết định của PO vòng ba — AUD-01 chọn (A) kèm hai điều kiện; nhận AUD-24 kèm hạn; xác nhận lượt sửa `08-hitl.md` ở đợt 3; ADR-026 đã viết (`Proposed`); việc (f) của AUD-23 dời từ đợt 1 sang đợt 3 vì phụ thuộc việc (e) · **v0.4:** ghi quyết định của PO vòng bốn — câu 3, câu 5, câu 6, hai index, hạn AUD-24, ADR-026 `Accepted`; câu 7 hoãn tới trước đợt 4; thêm **AUD-25** (phụ thuộc Python của skeleton trái ADR), tìm thấy khi làm migration `0006`
 
 > File này đối chiếu toàn bộ `docs/design/` với nhau và với phần repo mà tài liệu dựa vào (`backend/migrations/`, cây thư mục backend, `tools/contract-checks/`). Kết quả là bảng lỗi `AUD-xx` kèm thứ tự sửa đề xuất. File này **chỉ báo cáo**: không sửa file nào khác, ngoài một mục mới trong `CHANGELOG.md`. Nó **không** quyết thay PO những chỗ cần quyết định, **không** thêm giả định, ADR hay tên mới, và **không** mở lại quyết định đã chốt.
 
@@ -85,7 +85,7 @@
 | AUD-06 | Cao | Nội dung sai | `08-hitl.md` mô tả sai luồng yêu cầu sửa và vẽ thiếu cạnh của máy trạng thái `document` — trong khi Sprint 2 dựng đúng theo mục đó | Không |
 | AUD-07 | Cao | Máy trạng thái ↔ thao tác | Cạnh không có thao tác nào đi qua (ngoài AUD-01), và thao tác đòi một cạnh không có (EC-CV-02 ở `NEEDS_INFO`) | Có |
 | AUD-08 | Cao | Tool / thao tác | Thao tác được mô tả mà chưa có tên; có tên mà vắng khỏi `GLOSSARY.md` hoặc khỏi bản kê của Tool Registry | Không |
-| AUD-09 | Cao | ADR ↔ tài liệu, tech stack | BM25: `CLAUDE.md` bắt buộc, ADR-002 và `02-architecture.md` khẳng định có, `04-data.md` chốt là không phải BM25 — mà không có ADR | Đã quyết — ADR `Proposed` |
+| AUD-09 | Cao | ADR ↔ tài liệu, tech stack | BM25: `CLAUDE.md` bắt buộc, ADR-002 và `02-architecture.md` khẳng định có, `04-data.md` chốt là không phải BM25 — mà không có ADR | Đã quyết — ADR-026 `Accepted` |
 | AUD-10 | Cao | Tên | Lượt sửa `GLOSSARY.md`/contract ở mục Phát hiện, không tự sửa của `11-ops.md` chưa chạy | Không |
 | AUD-11 | Cao | Nội dung cũ | Câu "chưa có / TBD / chờ Phase N / chưa áp" đã được phase sau giải nhưng không sửa ngược — 42 dòng vị trí sau lượt quét lại bằng `grep` | Không |
 | AUD-12 | Cao | ADR ↔ observability | Điều kiện đảo ngược của ADR-008 và một vế của ADR-015 không có chỗ quan sát | Không |
@@ -94,7 +94,8 @@
 | AUD-15 | Cao | Tên, phạm vi | `delegation` mang hai nghĩa; điều kiện 4 của F1 và EC-IL-01 (Must, chấm bằng M6) dựa vào uỷ quyền `[Should]` không có đường tạo trong Sprint đầu | Có |
 | AUD-16 | Cao | Cấu trúc | Skeleton backend lệch `06-structure.md`: `api/app.py` trùng tên package `api/app/`; router `health` ngoài contract | Có — `/health` |
 | AUD-23 | Cao | Nợ thiết kế chưa giao | Phần còn lại của nợ Phase 8, không chặn Sprint 2: phép xác định "chỉ còn một người đủ quyền", đường thoát tự duyệt cho thu hồi (trái D-006), hiển thị `issue_in_progress`, thao tác đóng phiên nhàn rỗi, hai giao diện được giao | Đã quyết một phần |
-| AUD-24 | Cao | Nợ thiết kế chưa giao | Việc giao cho Phase 9 và Phase 11 mà hai phase đó không nhận — nặng nhất là quyền của chủ thể dữ liệu theo Nghị định 13/2023/NĐ-CP | Không |
+| AUD-24 | Cao | Nợ thiết kế chưa giao | Việc giao cho Phase 9 và Phase 11 mà hai phase đó không nhận — nặng nhất là quyền của chủ thể dữ liệu theo Nghị định 13/2023/NĐ-CP | Đã quyết — hạn |
+| AUD-25 | Cao | Cấu trúc, ADR | `backend/pyproject.toml` và `backend/requirements.txt` ghim phụ thuộc trái ADR-017, ADR-021, A-045, A-026 | Có |
 | AUD-17 | Thấp | Luật 12 | Tham chiếu chéo theo số dòng (47 chỗ trong tài liệu, 30 trong skeleton) và theo số mục (36 chỗ); có tham chiếu trỏ vào mục không tồn tại | Không |
 | AUD-18 | Thấp | Trình bày | Số phiên bản đầu file lệch ghi chú phiên bản ở ba file | Không |
 | AUD-19 | Thấp | Truy vết | 8 operation không có `x-bo19-feature`; PRD không có feature đăng nhập; không có ID `FR-xx`/`US-xx` (luật 8) | Đã quyết — `AC-Fx.y` |
@@ -511,9 +512,27 @@ Ngữ nghĩa uỷ quyền cho người duyệt — cũng được giao cho Phase
 | Phát hiện object mồ côi ở `object_storage` ("rò dung lượng") | `04-data.md` mục Lưu trữ file và bất biến bản render — Dọn bản trung gian ("đối chiếu danh sách object với DB (Phase 11)") | `11-ops.md` chỉ có đối soát **sau khôi phục**, không có đối chiếu định kỳ | Thấp |
 | Nơi lưu bản ghi kết quả eval | `10-eval.md` mục Offline eval ("thuộc Phase 11/người triển khai") | `11-ops.md` không có | Thấp |
 
-**Quyết định của PO (2026-09-26):** nhận AUD-24, mức Cao. **Hạn: trước sprint đầu tiên lưu dữ liệu cá nhân thật.** Theo `12-roadmap.md`, Sprint 1–3 chỉ dùng dữ liệu `employee` giả; dữ liệu thật đầu tiên xuất hiện ở buổi UAT trên `staging` (Sprint 4) — **nếu** UAT dùng hồ sơ thật. Chưa nơi nào ghi UAT dùng dữ liệu thật hay giả, nên hạn cụ thể là "trước cổng Sprint 4" chừng nào PO chưa nói khác.
+**Quyết định của PO (2026-09-26):** nhận AUD-24, mức Cao. **Hạn: trước sprint đầu tiên lưu dữ liệu cá nhân thật.** PO xác nhận UAT dùng dữ liệu giả. **Hạn chốt: trước cổng Sprint 4, hoặc trước khi nạp dữ liệu cá nhân thật đầu tiên — tuỳ cái nào sớm hơn.**
 
 **Sửa đề xuất.** Quyền của chủ thể: một lượt sửa `09-security.md` có phép — hoặc mở một dòng `A-xxx`, owner PO, hạn như trên. Ba việc còn lại gom vào đợt quét nội dung cũ.
+
+---
+
+#### AUD-25 — Phụ thuộc Python của skeleton trái ADR · **Cao**
+
+**Bổ sung ở v0.4**, tìm thấy khi đọc `backend/` để viết migration `0006`. Bản 0.1 đối chiếu cây thư mục backend nhưng không đọc danh sách phụ thuộc.
+
+| Phụ thuộc ghim ở `backend/pyproject.toml` và `backend/requirements.txt` | Trái với |
+|---|---|
+| `passlib[bcrypt]` | ADR-021 chọn `argon2id`, **loại `bcrypt`** vì không có tham số bộ nhớ độc lập |
+| `alembic`, `SQLAlchemy` | ADR-017 chọn SQL-first, **loại** cả phương án ORM kèm Alembic autogenerate lẫn phương án Alembic với migration viết tay |
+| `langgraph==0.3.27` | A-045 xác minh checkpointer với `langgraph` 1.2.11 cùng `langgraph-checkpoint-postgres` 3.1.2 (`docs/reference/langgraph-checkpoint-postgres.md`). Chuỗi bước kiểm khởi động #3 dựa vào đúng phiên bản thư viện đã ghim |
+| `langchain-openai`, `openai`, `tiktoken` | A-026: provider **chưa chọn**. Ghim SDK của một provider là chọn ngầm một provider — việc cần ADR theo luật về tech stack của `CLAUDE.md`. `06-structure.md` mục Luật import: tên SDK provider "điền khi A-026 chốt" |
+| `python-jose[cryptography]` | Không trái ADR nào, nhưng là một lựa chọn thư viện chưa có ở tài liệu nào — ADR-013 chỉ chốt "token ký bằng secret phía server" |
+
+Chú thích đầu `backend/requirements.txt` ghi "phiên bản còn lại ghim theo docs". Các dòng trên không theo docs nào.
+
+**Nguồn đúng:** ADR-017, ADR-021, A-045, A-026. **Sửa đề xuất — cần PO duyệt:** bỏ `passlib[bcrypt]`, `alembic`, `SQLAlchemy`; bỏ `langchain-openai`, `openai`, `tiktoken` tới khi A-026 chốt; đặt `langgraph` về đúng phiên bản đã xác minh ở A-045. Không ghi tên hay phiên bản thư viện `argon2id` từ trí nhớ — ADR-021 đã để `[CẦN XÁC MINH]`. `python-jose`: giữ, kèm một dòng lý do ở `06-structure.md`, hoặc bỏ tới BUILD MODE.
 
 ---
 
@@ -652,7 +671,7 @@ Gom theo file, để mỗi lượt chạm ít file và mỗi file chỉ mở m�
 
 ## Open Questions
 
-Không có giả định mới ở phase này. ADR mới duy nhất là ADR-026 (kênh lexical, `Proposed`), viết theo quyết định của PO sau khi phase chốt kết quả.
+Không có giả định mới ở phase này. ADR mới duy nhất là ADR-026 (kênh lexical), viết theo quyết định của PO sau khi phase chốt kết quả, `Accepted` ngày 2026-09-26.
 
 ### Đã quyết (PO, 2026-09-26)
 
@@ -660,20 +679,24 @@ Không có giả định mới ở phase này. ADR mới duy nhất là ADR-026 
 |---|---|---|
 | 1 — AUD-01 | (A) — `request → APPROVED` trong `document_sign`; `GLOSSARY.md` định nghĩa lại `APPROVED` = "đã ký"; A-034 ghi điều kiện mở lại AUD-01 | AUD-01 |
 | 2 — đường thoát tự duyệt cho thu hồi | Giữ D-006; sửa contract thu hồi cho có đường thoát. Một lượt sửa `08-hitl.md` có phép ở đợt 3 | AUD-23 |
-| 4 — kênh lexical | Viết ADR ngay, trạng thái `Proposed`, không đợi A-030; ghi rõ lệch `CLAUDE.md` — **đã viết: ADR-026** | AUD-09 |
-| AUD-24 | Nhận, mức Cao; hạn trước sprint đầu tiên lưu dữ liệu cá nhân thật | AUD-24 |
+| 4 — kênh lexical | Viết ADR ngay, không đợi A-030; ghi rõ lệch `CLAUDE.md` — **ADR-026, `Accepted` ngày 2026-09-26**; PO tự sửa `CLAUDE.md` trỏ về ADR-026 | AUD-09 |
+| AUD-24 | Nhận, mức Cao; UAT dùng dữ liệu giả; hạn trước cổng Sprint 4, hoặc trước khi nạp dữ liệu cá nhân thật đầu tiên — tuỳ cái nào sớm hơn | AUD-24 |
+| 3 — AUD-03 | (ii) — thêm `contracts/README.md`, giữ nguyên byte `schema.sql` | AUD-03 |
+| Mục 5 — hai index | Nhận cả hai, thêm bằng migration `0006` | Mục 5 |
+| 5 — AUD-15 | (c) — bỏ vế `delegation` khỏi điều 4 của F1 trong Sprint đầu. Đây là **cắt phạm vi** ở PRD và roadmap, **không xoá** thiết kế `delegation` | AUD-15 |
+| 6a — AUD-16 | Xoá router `health` khỏi skeleton | AUD-16 |
+| 6b — AUD-11 | Không có tuyến `client` cho đổi `operating_mode` — có chủ đích, chỉ qua API | AUD-11 |
+| 7 — owner là người | **Hoãn** — PO trả lời trước đợt 4 | AUD-13 |
 | 8 — ID cho AC của PRD | Có, dạng `AC-Fx.y` | AUD-19 |
 
 ### Chờ PO chốt
 
+Còn một câu — câu 7, hoãn tới trước đợt 4 — và AUD-25 mới.
+
 | Câu | Phương án | Khuyến nghị | File bị chạm |
 |---|---|---|---|
-| 3 — AUD-03: biểu diễn schema sau migration | (i) chú thích trong `schema.sql` — đổi sha256, mất trùng byte với `0001` · (ii) `contracts/README.md`, giữ `schema.sql` nguyên byte · (iii) bản chụp gộp sau `0005` | **(ii)** — rẻ nhất, không đụng tới sự trùng byte | (ii): `contracts/README.md` (mới); `04-data.md` mục Ánh xạ entity → bảng thêm một dòng trỏ tới nó. `CLAUDE.md` mục Cấu trúc output — PO tự xử lý |
-| 5 — AUD-15: hai nghĩa của `delegation` | (a) Tách: `delegation` chỉ còn nghĩa uỷ quyền cho người duyệt `[Should]`, thêm một khái niệm riêng cho uỷ quyền lập hộ · (b) Định nghĩa lại một `delegation` bao cả hai · (c) Bỏ vế `delegation` khỏi điều 4 của F1 và EC-IL-01 cho Sprint đầu — lập hộ chỉ qua `request.create_on_behalf` (A-052); `delegation` chỉ còn nghĩa phía người duyệt | **(c)** — không thêm khái niệm hay endpoint vào Sprint đầu; EC-IL-01 vẫn chấm được (không có quyền thì `NEEDS_INFO`). Đáp án chuẩn của ca đó (A-023) phải viết theo nghĩa mới | `00-domain.md` mục Slot schema, mục Edge case nghiệp vụ; `01-prd.md` F1; `03-agents.md` dòng `employee_lookup`; `04-data.md` đoạn `delegation`; `GLOSSARY.md` mục Entity; quyết cùng lượt A-052 |
-| 6a — AUD-16: `GET /health` | Thêm vào contract (`05-api.md`, `openapi.yaml`) · Xoá router khỏi skeleton | **Xoá router.** Không nguồn nào trong `docs/reference/` mô tả health check của Render. Nếu Spike 1 cho thấy cần, thêm bằng một lượt sửa contract có nguồn | `backend/src/bo19/api/routers/health.py`; hoặc `05-api.md`, `openapi.yaml`, `12-roadmap.md` mục Endpoint → sprint |
-| 6b — AUD-11: tuyến đổi `operating_mode` trên `client` | Không có tuyến, có chủ đích — đổi chế độ chỉ qua API · Thêm tuyến | **Không có tuyến, ghi là có chủ đích.** Hành động hiếm, một người, ba lớp khoá (ADR-023); một màn hình thêm bề mặt mà không thêm giá trị | `06-structure.md` mục Cây frontend — Tuyến: sửa câu "(Phase 9)" thành lý do có chủ đích |
 | 7 — AUD-13: owner là người | Gán từng dòng | **Người triển khai:** A-022 (hiệu chỉnh), A-025, A-031, A-045 (vế còn lại — canary C2), A-048 (tham số), A-057, A-063, A-065. **Product Owner:** A-061, A-013, A-014, A-010. Đổi hạn A-002, A-024, A-030, A-041 sang cổng của `12-roadmap.md` | `ASSUMPTIONS.md`; kiểm lại `12-roadmap.md` mục Cổng trước Sprint 1 cho khớp |
-| Mục 5 — hai index `ix_request_waiting`, `ix_document_awaiting_issue` | Nhận, thêm bằng migration `0006` · Hoãn | **Nhận** — xem mục 5 | `backend/migrations/schema/0006_…sql` (mới), `04-data.md` mục Bảng chi tiết, `05-api.md` mục Phân trang và mục Open Questions, `tools/contract-checks/` nếu nhóm quyền đổi (không đổi — chỉ index) |
+| AUD-25 — phụ thuộc Python trái ADR | Sửa theo ADR như đề xuất ở AUD-25 · Giữ và viết ADR thay thế cho từng phụ thuộc | **Sửa theo ADR** — không phụ thuộc nào trong danh sách có lý do ở tài liệu | `backend/pyproject.toml`, `backend/requirements.txt`; `06-structure.md` nếu giữ `python-jose` |
 
 ---
 

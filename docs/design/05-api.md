@@ -1,6 +1,6 @@
 # API Spec — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.11 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 5 — mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md` · **v0.3:** vòng duyệt Phase 5 lần 2 — mục ngày 2026-09-13 (lần 6) · **v0.4:** đóng Phase 5 — mục ngày 2026-09-13 (lần 7) · **v0.5:** `manifest.required_fonts` và mã lỗi `TEMPLATE_FONTS_INVALID` (ADR-015) — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.6:** mục SSE và dòng `SYNC_GRAPH` theo ADR-016 — bỏ cận dưới của hạn chót lượt — vòng duyệt Phase 6 (A), mục ngày 2026-09-13 (lần 9) · **v0.7:** `FONT_MISSING` ở bảng mã lỗi của tool — mục ngày 2026-09-14 của `CHANGELOG.md` · **v0.8:** endpoint `operating_mode_transition` (mục 2.2b), ADR-020 — Phase 9, mục ngày 2026-09-14 (lần 2) của `CHANGELOG.md`. Endpoint có contract: 48 → 49 · **v0.9:** `GET /operating-mode/transitions` chỉ còn permission `audit.read_all` — mục ngày 2026-09-14 (lần 3) của `CHANGELOG.md` · **v0.10:** mã lỗi `ENVIRONMENT_NOT_ALLOWED` (Lớp 3, ADR-023), câu `document.job_failed` ở mục 1.10 — Phase 11, PO duyệt, mục ngày 2026-09-25 của `CHANGELOG.md`. **Sửa số phiên bản đầu dòng** — lệch với các ghi chú v0.5–v0.9 đã có từ trước, không thuộc thay đổi lần này, sửa cho khớp · **v0.11:** đợt sửa 1 sau Phase 13 — `request_type.manage` đã có trong danh mục (AUD-05), `RATE_LIMITED` dùng `retry_after_seconds` (AUD-04), `trace_id` là UUID v4 và ba câu trỏ về Phase 9/ngoại lệ đóng đã cũ (AUD-11) — mục ngày 2026-09-26 (đợt sửa 1) của `CHANGELOG.md`
+**Phiên bản:** 0.11 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 5 — mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md` · **v0.3:** vòng duyệt Phase 5 lần 2 — mục ngày 2026-09-13 (lần 6) · **v0.4:** đóng Phase 5 — mục ngày 2026-09-13 (lần 7) · **v0.5:** `manifest.required_fonts` và mã lỗi `TEMPLATE_FONTS_INVALID` (ADR-015) — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.6:** mục SSE và dòng `SYNC_GRAPH` theo ADR-016 — bỏ cận dưới của hạn chót lượt — vòng duyệt Phase 6 (A), mục ngày 2026-09-13 (lần 9) · **v0.7:** `FONT_MISSING` ở bảng mã lỗi của tool — mục ngày 2026-09-14 của `CHANGELOG.md` · **v0.8:** endpoint `operating_mode_transition` (mục 2.2b), ADR-020 — Phase 9, mục ngày 2026-09-14 (lần 2) của `CHANGELOG.md`. Endpoint có contract: 48 → 49 · **v0.9:** `GET /operating-mode/transitions` chỉ còn permission `audit.read_all` — mục ngày 2026-09-14 (lần 3) của `CHANGELOG.md` · **v0.10:** mã lỗi `ENVIRONMENT_NOT_ALLOWED` (Lớp 3, ADR-023), câu `document.job_failed` ở mục 1.10 — Phase 11, PO duyệt, mục ngày 2026-09-25 của `CHANGELOG.md`. **Sửa số phiên bản đầu dòng** — lệch với các ghi chú v0.5–v0.9 đã có từ trước, không thuộc thay đổi lần này, sửa cho khớp · **v0.11:** đợt sửa 1 sau Phase 13 — `request_type.manage` đã có trong danh mục (AUD-05), `RATE_LIMITED` dùng `retry_after_seconds` (AUD-04), `trace_id` là UUID v4 và ba câu trỏ về Phase 9/ngoại lệ đóng đã cũ (AUD-11) — mục ngày 2026-09-26 (đợt sửa 1) của `CHANGELOG.md`; hai thứ tự của mục Phân trang có index `0006`
 
 > File này chốt contract giữa `client` và `api`: endpoint REST, hai stream SSE, xác thực, lỗi chuẩn hoá, phân trang, idempotency và cách xử lý hai người thao tác cùng lúc. Contract máy đọc được nằm ở [`contracts/openapi.yaml`](./contracts/openapi.yaml). File này **không** thiết kế cấu trúc code (Phase 6), màn hình duyệt, bảng mã lý do hay cơ chế tiếp quản (Phase 8), chi tiết AuthZ, rate limit và vòng đời credential (Phase 9), và **không** định cỡ tham số vận hành (Phase 11).
 
@@ -104,9 +104,9 @@ Lỗi xảy ra **sau khi** stream lượt chat đã bắt đầu thì không đ�
 |---|---|---|---|
 | `GET /requests?scope=OWN` | `created_at` giảm dần, `id` giảm dần | `ix_request_created_by` | `id` không có trong index. Các dòng trùng `created_at` được sắp thêm ngay trong nhóm trùng — đúng, chỉ tốn thêm ở chỗ trùng |
 | `GET /requests?scope=ASSIGNED` | `approval_step.opened_at` tăng dần | `ix_approval_step_assignee` | — |
-| `GET /requests?scope=ALL` | `status_changed_at` tăng dần — chờ lâu nhất trước | **Không có** | Open Questions: `ix_request_waiting` |
+| `GET /requests?scope=ALL` | `status_changed_at` tăng dần — chờ lâu nhất trước, `id` | `ix_request_waiting` | Migration `0006` |
 | `GET /review-queue?status=…` | `status_changed_at` tăng dần, `id` | `ix_document_review_queue` | `status` **bắt buộc, một giá trị**, vì cột đầu của index là `status` |
-| `GET /issue-queue` | `status_changed_at` tăng dần, `id` | **Không có** | Open Questions: `ix_document_awaiting_issue` |
+| `GET /issue-queue` | `status_changed_at` tăng dần, `id` | `ix_document_awaiting_issue` | Migration `0006` |
 | `GET /chat-sessions/{id}/messages` | `seq` giảm dần | `uq_chat_message_seq` | — |
 | `GET /notifications` | `created_at` giảm dần, `id` | `ix_notification_inbox` | — |
 | `GET /audit-events?request_id=` · `?document_id=` · `?severity=WARNING` · không lọc | `occurred_at` | `ix_audit_event_request` · `ix_audit_event_document` · `ix_audit_event_warning` · `ix_audit_event_occurred` | Lọc thêm `action` là lọc trên đường quét đã có index, không phải một thứ tự mới |
@@ -609,7 +609,7 @@ Mọi mục có owner và hạn ở `ASSUMPTIONS.md`. Mục này chỉ gom lại
 
 Owner Phase 8; hai phương án đề xuất ở A-052.
 
-**Thứ tự chưa có index — đề xuất, chưa thêm.** `schema.sql` đã chốt; Phase 13 duyệt các đề xuất này.
+**Thứ tự chưa có index — đã giải.** Hai đề xuất dưới đây được nhận ở Phase 13 và đã thêm bằng `backend/migrations/schema/0006_waiting_order_indexes.sql`. Bảng giữ lại làm lịch sử lý do hình dạng.
 
 | Endpoint | Đề xuất | Lý do hình dạng |
 |---|---|---|

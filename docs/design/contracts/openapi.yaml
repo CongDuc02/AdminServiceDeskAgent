@@ -16,7 +16,8 @@ info:
       x-bo19-execution          SYNC | SYNC_ENQUEUE | SYNC_OBJECT_STORAGE | SYNC_GRAPH | STREAM
       x-bo19-enqueues           loại job enqueue trong cùng giao dịch
       x-bo19-idempotency-key    dòng chính mà Idempotency-Key phải bằng id của nó; "none" nếu không cần
-      x-bo19-feature            feature (F1–F6) hoặc NFR (NFR-xx) ở PRD mà endpoint phục vụ
+      x-bo19-feature            feature (F1–F6) hoặc NFR (NFR-xx) ở PRD mà endpoint phục vụ; hạng mục
+                                [Should] không có ID ở PRD thì ghi "Scope — <tên dòng ở mục Scope & priority>"
       x-bo19-scope              Should — hạng mục bị cắt khỏi Sprint đầu
       x-bo19-sse-events         tên sự kiện SSE -> schema của trường data
 
@@ -1397,6 +1398,7 @@ paths:
       operationId: listDelegations
       summary: Uỷ quyền — chỉ hình dạng
       x-bo19-permission: [delegation.manage]
+      x-bo19-feature: 'Scope — định tuyến ký nhiều cấp, SIGNER, uỷ quyền'
       x-bo19-scope: Should
       parameters:
         - name: as
@@ -1423,6 +1425,7 @@ paths:
       summary: Lập uỷ quyền — chỉ hình dạng
       x-bo19-operation: delegation_create
       x-bo19-permission: [delegation.manage]
+      x-bo19-feature: 'Scope — định tuyến ký nhiều cấp, SIGNER, uỷ quyền'
       x-bo19-execution: SYNC
       x-bo19-idempotency-key: audit_event (delegation.create) — ngoại lệ tường minh
       x-bo19-scope: Should
@@ -1458,6 +1461,7 @@ paths:
       summary: Thu hồi uỷ quyền — chỉ hình dạng
       x-bo19-operation: delegation_revoke
       x-bo19-permission: [delegation.manage]
+      x-bo19-feature: 'Scope — định tuyến ký nhiều cấp, SIGNER, uỷ quyền'
       x-bo19-execution: SYNC
       x-bo19-idempotency-key: none
       x-bo19-scope: Should
