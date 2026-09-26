@@ -1,6 +1,6 @@
 # Consistency Audit — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.4 · **Trạng thái:** Draft chờ duyệt · **Ngày chạy:** 2026-09-26 · **v0.2:** theo chỉ đạo của PO khi nhận kết quả — tách AUD-02 thành AUD-02 (Chặn) và AUD-23 (Cao); quét lại AUD-11 bằng `grep`, thêm vị trí còn sót và AUD-24 phát hiện trong lượt quét; bảng so sánh hai phương án của AUD-01; ghi ba quyết định của PO và bảng quyết định cho năm câu còn lại ở Open Questions. ID các AUD cũ giữ nguyên · **v0.3:** ghi quyết định của PO vòng ba — AUD-01 chọn (A) kèm hai điều kiện; nhận AUD-24 kèm hạn; xác nhận lượt sửa `08-hitl.md` ở đợt 3; ADR-026 đã viết (`Proposed`); việc (f) của AUD-23 dời từ đợt 1 sang đợt 3 vì phụ thuộc việc (e) · **v0.4:** ghi quyết định của PO vòng bốn — câu 3, câu 5, câu 6, hai index, hạn AUD-24, ADR-026 `Accepted`; câu 7 hoãn tới trước đợt 4; thêm **AUD-25** (phụ thuộc Python của skeleton trái ADR), tìm thấy khi làm migration `0006`
+**Phiên bản:** 0.5 · **Trạng thái:** Draft chờ duyệt · **Ngày chạy:** 2026-09-26 · **v0.2:** theo chỉ đạo của PO khi nhận kết quả — tách AUD-02 thành AUD-02 (Chặn) và AUD-23 (Cao); quét lại AUD-11 bằng `grep`, thêm vị trí còn sót và AUD-24 phát hiện trong lượt quét; bảng so sánh hai phương án của AUD-01; ghi ba quyết định của PO và bảng quyết định cho năm câu còn lại ở Open Questions. ID các AUD cũ giữ nguyên · **v0.3:** ghi quyết định của PO vòng ba — AUD-01 chọn (A) kèm hai điều kiện; nhận AUD-24 kèm hạn; xác nhận lượt sửa `08-hitl.md` ở đợt 3; ADR-026 đã viết (`Proposed`); việc (f) của AUD-23 dời từ đợt 1 sang đợt 3 vì phụ thuộc việc (e) · **v0.4:** ghi quyết định của PO vòng bốn — câu 3, câu 5, câu 6, hai index, hạn AUD-24, ADR-026 `Accepted`; câu 7 hoãn tới trước đợt 4; thêm **AUD-25** (phụ thuộc Python của skeleton trái ADR), tìm thấy khi làm migration `0006` · **v0.5:** quyết định của PO vòng năm — AUD-07 gắn `SUBMITTED → REJECTED` vào thao tác tiếp quản (đợt 3); AUD-25 sửa theo ADR thành đợt 2b; xác nhận xoá router `health` khớp câu 6a
 
 > File này đối chiếu toàn bộ `docs/design/` với nhau và với phần repo mà tài liệu dựa vào (`backend/migrations/`, cây thư mục backend, `tools/contract-checks/`). Kết quả là bảng lỗi `AUD-xx` kèm thứ tự sửa đề xuất. File này **chỉ báo cáo**: không sửa file nào khác, ngoài một mục mới trong `CHANGELOG.md`. Nó **không** quyết thay PO những chỗ cần quyết định, **không** thêm giả định, ADR hay tên mới, và **không** mở lại quyết định đã chốt.
 
@@ -257,7 +257,7 @@ Phase 9 đã thêm permission này vào danh mục và vào data migration (A-04
 
 - EC-CV-02 (`00-domain.md` mục Edge case nghiệp vụ): "yêu cầu cũ chưa `SUBMITTED` thì chuyển `CANCELLED`" — tức cả ở `NEEDS_INFO`. Nhưng `request_open` và cạnh `route_intent → open_request` của `03-agents.md` chỉ huỷ `request` cũ khi còn `DRAFT`, và trả `REPLACED_NOT_DRAFT` với trạng thái khác. Máy trạng thái không có `NEEDS_INFO → CANCELLED`. **A-053 chỉ ghi vế "nhân viên tự huỷ"; vế đổi loại giữa chừng ở `NEEDS_INFO` chưa có ở đâu.** Nhóm G của bộ eval có ca EC-CV-02, chấm bằng M8 — metric Bất biến.
 
-**Sửa đề xuất.** Thêm vế EC-CV-02 vào A-053 (cùng cổng Sprint 2). PO quyết `SUBMITTED → REJECTED`: xoá cạnh, hoặc gắn nó vào thao tác tiếp quản của AUD-02 (d). Đặt tên thao tác lưu trữ theo thời hạn cùng lúc với A-010.
+**Sửa đề xuất.** Thêm vế EC-CV-02 vào A-053 (cùng cổng Sprint 2). **Quyết định của PO (2026-09-26):** không xoá `SUBMITTED → REJECTED`; gắn nó vào thao tác tiếp quản của AUD-02 (d), làm ở đợt 3. Đặt tên thao tác lưu trữ theo thời hạn cùng lúc với A-010.
 
 ---
 
@@ -687,16 +687,17 @@ Không có giả định mới ở phase này. ADR mới duy nhất là ADR-026 
 | 6a — AUD-16 | Xoá router `health` khỏi skeleton | AUD-16 |
 | 6b — AUD-11 | Không có tuyến `client` cho đổi `operating_mode` — có chủ đích, chỉ qua API | AUD-11 |
 | 7 — owner là người | **Hoãn** — PO trả lời trước đợt 4 | AUD-13 |
+| AUD-07 — cạnh `SUBMITTED → REJECTED` | **Không xoá cạnh.** Gắn vào thao tác tiếp quản — việc (d) của AUD-02 — làm cùng đợt 3 | AUD-07 |
+| AUD-25 — phụ thuộc Python | Sửa theo ADR thành **đợt 2b**, commit riêng: bỏ `passlib` (ADR-021), bỏ `alembic`/`SQLAlchemy` (ADR-017), `langgraph` ghim đúng bản đã xác minh ở A-045, gỡ SDK OpenAI tới khi A-026 chốt — không ghim tạm; `pyproject.toml` là nguồn sự thật duy nhất, `requirements.txt` sinh ra từ nó hoặc bỏ | AUD-25 |
 | 8 — ID cho AC của PRD | Có, dạng `AC-Fx.y` | AUD-19 |
 
 ### Chờ PO chốt
 
-Còn một câu — câu 7, hoãn tới trước đợt 4 — và AUD-25 mới.
+Còn một câu — câu 7, hoãn tới trước đợt 4.
 
 | Câu | Phương án | Khuyến nghị | File bị chạm |
 |---|---|---|---|
 | 7 — AUD-13: owner là người | Gán từng dòng | **Người triển khai:** A-022 (hiệu chỉnh), A-025, A-031, A-045 (vế còn lại — canary C2), A-048 (tham số), A-057, A-063, A-065. **Product Owner:** A-061, A-013, A-014, A-010. Đổi hạn A-002, A-024, A-030, A-041 sang cổng của `12-roadmap.md` | `ASSUMPTIONS.md`; kiểm lại `12-roadmap.md` mục Cổng trước Sprint 1 cho khớp |
-| AUD-25 — phụ thuộc Python trái ADR | Sửa theo ADR như đề xuất ở AUD-25 · Giữ và viết ADR thay thế cho từng phụ thuộc | **Sửa theo ADR** — không phụ thuộc nào trong danh sách có lý do ở tài liệu | `backend/pyproject.toml`, `backend/requirements.txt`; `06-structure.md` nếu giữ `python-jose` |
 
 ---
 

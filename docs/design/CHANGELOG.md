@@ -2037,3 +2037,26 @@ Việc (f) của AUD-23 — đường thoát tự duyệt cho thu hồi — dờ
 - **Phần của AUD-01, AUD-05 nằm ở `08-hitl.md`:** chờ lượt sửa có phép ở đợt 3.
 - **Đổi tên `reason_code` `VALIDATION_FAILED` (AUD-20):** cùng bảng mã của việc (a), AUD-02, ở đợt 3.
 - **AUD-25:** chờ PO.
+
+---
+
+## 2026-09-26 (đợt sửa 2b) — Phụ thuộc Python theo ADR (AUD-25)
+
+Quyết định của PO: nhận AUD-25, sửa ngay thành đợt riêng trước đợt 3. Cùng lượt PO quyết AUD-07 — gắn `SUBMITTED → REJECTED` vào thao tác tiếp quản ở đợt 3 — và xác nhận việc xoá router `health` ở đợt 2 khớp câu 6a.
+
+### File sửa
+
+| File | Thay đổi |
+|---|---|
+| `backend/pyproject.toml` | **Nguồn sự thật duy nhất** cho phụ thuộc Python. Bỏ `passlib[bcrypt]` (ADR-021), `alembic`, `SQLAlchemy` (ADR-017). `langgraph` 0.3.27 → **1.2.11**, bản đã chạy thật khi xác minh A-045. Gỡ `openai`, `langchain-openai`, `tiktoken` — SDK và tokenizer của một provider — tới khi A-026 chốt, không ghim tạm. Gỡ `langchain`, `langchain-core` — xem dưới. Chú thích đầu mảng ghi lý do của từng thứ cố ý vắng mặt. 25 → 17 phụ thuộc |
+| `requirements.txt`, `backend/requirements.txt` | **Xoá.** Chọn "bỏ" thay vì "sinh ra từ `pyproject.toml`": sinh ra cần một công cụ khoá phiên bản, việc thuộc BUILD MODE. `06-structure.md` mục Đặc tả `Dockerfile` đã dựa vào `pyproject.toml` cộng lockfile, nên không tài liệu nào phải sửa. `tools/contract-checks/requirements.txt` là của công cụ riêng, giữ nguyên |
+| `13-audit.md` → 0.5 | Ghi hai quyết định trên |
+
+**Quyết định của trợ lý trong đợt, cần PO đọc:** gỡ cả `langchain` và `langchain-core`, dù PO không nêu. Lý do: không tài liệu thiết kế nào chọn `langchain`. Còn `langchain-core` 0.3.59 ghim cạnh `langgraph` 1.2.11 có thể xung đột phiên bản — điều đó không kiểm được mà không có nguồn, và `langgraph` tự kéo `langchain-core` theo như phụ thuộc bắc cầu.
+
+**Còn lại, không thuộc chỉ đạo của PO:** `python-jose` (dòng cuối của bảng AUD-25 — giữ kèm lý do, hoặc bỏ tới BUILD MODE) và `structlog` (không có ở tài liệu nào; `06-structure.md` chỉ nói handler JSON của `observability`). Hai phụ thuộc này không trái ADR nào, nên giữ nguyên chờ PO.
+
+### Đã chạy
+
+- `pyproject.toml` đọc được bằng `tomllib`: 17 phụ thuộc.
+- Không cài thử — DESIGN MODE, chưa có lockfile.
