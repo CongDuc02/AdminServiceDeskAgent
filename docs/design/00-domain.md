@@ -1,6 +1,6 @@
 # Phase 0 — Domain Discovery
 
-**Dự án:** BO-19 — Admin Service Desk Agent · **Phiên bản:** 0.12 · **Trạng thái:** Draft chờ duyệt · **v0.12:** đợt sửa 2 sau Phase 13 — `APPROVED` của `request` nghĩa là đã ký (AUD-01); vế `delegation` của lập hộ cắt khỏi Sprint đầu (AUD-15); kiểu của `beneficiary_employee_id` (AUD-20) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md`
+**Dự án:** BO-19 — Admin Service Desk Agent · **Phiên bản:** 0.13 · **Trạng thái:** Draft chờ duyệt · **v0.12:** đợt sửa 2 sau Phase 13 — `APPROVED` của `request` nghĩa là đã ký (AUD-01); vế `delegation` của lập hộ cắt khỏi Sprint đầu (AUD-15); kiểu của `beneficiary_employee_id` (AUD-20) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.13:** đợt sửa 3 — cạnh `SUBMITTED → REJECTED` có thao tác đi qua, thêm `request CHANGES_REQUESTED → REJECTED`, `document DRAFT → ARCHIVED`, `APPROVED → ARCHIVED` qua thao tác tiếp quản (AUD-07, AUD-02 (d)); phần Phase 8 của D-006 đã làm (AUD-23 (e))
 
 > File này chốt **từ vựng nghiệp vụ**: có những loại yêu cầu nào, mỗi loại cần dữ liệu gì, văn bản đi qua những trạng thái nào, ai được làm gì. Từ Phase 1 trở đi mọi tài liệu phải dùng đúng tên ở đây và ở [`GLOSSARY.md`](./GLOSSARY.md). File này **không** chọn công nghệ, **không** thiết kế API, **không** định nghĩa agent hay tool.
 
@@ -223,6 +223,7 @@ stateDiagram-v2
     CHANGES_REQUESTED --> SUBMITTED: soan lai va gui lai
     CHANGES_REQUESTED --> CANCELLED: nhan vien huy
     IN_REVIEW --> REJECTED: tu choi kem ly do
+    CHANGES_REQUESTED --> REJECTED: tiep quan tu choi
     IN_REVIEW --> APPROVED: da ky
     APPROVED --> FULFILLED: artifact da den trang thai cuoi
     FULFILLED --> [*]
@@ -245,7 +246,7 @@ stateDiagram-v2
 | `CHANGES_REQUESTED` | Người duyệt trả lại kèm yêu cầu sửa cụ thể | Người có `document.request_changes` |
 | `APPROVED` | **Đã ký** — `document` đã rời `PENDING_SIGNATURE`; đang hoàn tất artifact: đóng dấu, phát hành. Duyệt nội dung **không** đưa `request` tới đây (AUD-01) | Người có `document.sign`, trong thao tác `document_sign` |
 | `FULFILLED` | Artifact đã tới trạng thái cuối — `document` `ISSUED`, hoặc `room_booking` `CONFIRMED` | Hệ thống |
-| `REJECTED` | Từ chối, bắt buộc có `rejection_reason` | Người có `document.reject` |
+| `REJECTED` | Từ chối, bắt buộc có `rejection_reason` | Người có `document.reject` — qua `document_reject` ở cổng 1, hoặc qua lối ra `REJECT_REQUEST` của `document_takeover_resolve` khi `document_graph` đã dừng: từ `SUBMITTED` ("không đủ điều kiện theo quy chế"), `IN_REVIEW` hoặc `CHANGES_REQUESTED` (mục Dừng có kiểm soát và tiếp quản của `08-hitl.md`) |
 | `CANCELLED` | Nhân viên tự huỷ khi chưa `APPROVED` | `EMPLOYEE` |
 | `EXPIRED` | Hết hạn chờ nhân viên bổ sung thông tin (A-014) | Hệ thống |
 
@@ -276,7 +277,9 @@ stateDiagram-v2
     REVOKED --> ARCHIVED
     SUPERSEDED --> ARCHIVED
     REJECTED --> ARCHIVED
-    CHANGES_REQUESTED --> ARCHIVED: request bi huy
+    CHANGES_REQUESTED --> ARCHIVED: ban nhap bi bo
+    DRAFT --> ARCHIVED: tiep quan tu choi
+    APPROVED --> ARCHIVED: tiep quan tu choi
     ARCHIVED --> [*]
 ```
 
@@ -294,7 +297,7 @@ stateDiagram-v2
 | `ISSUED` | Đã cấp số và phát hành cho nhân viên | Permission `document.issue` · thời điểm **duy nhất** cấp `document_number` |
 | `REVOKED` | Thu hồi hoặc huỷ hiệu lực | Bắt buộc có `revocation_reason` và người quyết định |
 | `SUPERSEDED` | Bị một văn bản mới thay thế | Trỏ tới `document` thay thế |
-| `ARCHIVED` | Kết thúc vòng đời hoạt động, chỉ còn giá trị lưu vết. **Hai đường vào khác loại:** (1) văn bản đã đi hết vòng đời — từ `ISSUED` khi hết thời hạn hiệu lực, hoặc từ `REVOKED`, `SUPERSEDED`, `REJECTED`; (2) **bản nháp bị bỏ** vì `request` bị huỷ trong lúc `document` đang ở `CHANGES_REQUESTED` — chưa từng có hiệu lực, nên không "hết" hiệu lực | Đường vào thứ hai **bắt buộc** có `archive_reason` (A-035). Thời hạn lưu TBD (A-010). Bảng mã `archive_reason`: Phase 8 |
+| `ARCHIVED` | Kết thúc vòng đời hoạt động, chỉ còn giá trị lưu vết. **Hai đường vào khác loại:** (1) văn bản đã đi hết vòng đời — từ `ISSUED` khi hết thời hạn hiệu lực, hoặc từ `REVOKED`, `SUPERSEDED`, `REJECTED`; (2) **bản nháp bị bỏ** — chưa từng ký, chưa từng có hiệu lực, nên không "hết" hiệu lực: `request` bị huỷ khi `document` đang ở `CHANGES_REQUESTED`, hoặc người tiếp quản từ chối yêu cầu khi `document` đang dừng ở `DRAFT`, `CHANGES_REQUESTED` hay `APPROVED` | Đường vào thứ hai **bắt buộc** có `archive_reason` (A-035). Thời hạn lưu TBD (A-010). Bảng mã `archive_reason`: mục Bảng mã của `08-hitl.md` |
 
 **Ba bất biến của vòng đời này:**
 
@@ -453,6 +456,8 @@ Thiết kế **không giả định** tổ chức có từ hai người duyệt 
 #### Việc còn lại cho phase sau
 
 Ràng buộc này phải trở thành một **NFR ở Phase 1** và một rule kiểm tra ở **Phase 9**. **Phase 8** thiết kế chi tiết: cách hệ thống xác định "chỉ còn một người đủ quyền", màn hình nhập lý do, mục tự duyệt trên dashboard, và quan hệ giữa đường thoát này với cơ chế uỷ quyền khi vắng mặt.
+
+**Đã làm ở đợt sửa 3 sau Phase 13:** phép xác định "chỉ còn một người đủ quyền", bước mang cờ `self_approved` của từng thao tác, và đường thoát cho ràng buộc hai người ở bước thu hồi — mục Tách biệt trách nhiệm — D-006 và mục Thu hồi văn bản của `08-hitl.md`, ADR-027. Quan hệ với uỷ quyền chốt khi uỷ quyền `[Should]` được kích hoạt (AUD-15).
 
 ---
 

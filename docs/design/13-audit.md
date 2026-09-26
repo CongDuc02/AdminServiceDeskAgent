@@ -1,6 +1,6 @@
 # Consistency Audit — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.5 · **Trạng thái:** Draft chờ duyệt · **Ngày chạy:** 2026-09-26 · **v0.2:** theo chỉ đạo của PO khi nhận kết quả — tách AUD-02 thành AUD-02 (Chặn) và AUD-23 (Cao); quét lại AUD-11 bằng `grep`, thêm vị trí còn sót và AUD-24 phát hiện trong lượt quét; bảng so sánh hai phương án của AUD-01; ghi ba quyết định của PO và bảng quyết định cho năm câu còn lại ở Open Questions. ID các AUD cũ giữ nguyên · **v0.3:** ghi quyết định của PO vòng ba — AUD-01 chọn (A) kèm hai điều kiện; nhận AUD-24 kèm hạn; xác nhận lượt sửa `08-hitl.md` ở đợt 3; ADR-026 đã viết (`Proposed`); việc (f) của AUD-23 dời từ đợt 1 sang đợt 3 vì phụ thuộc việc (e) · **v0.4:** ghi quyết định của PO vòng bốn — câu 3, câu 5, câu 6, hai index, hạn AUD-24, ADR-026 `Accepted`; câu 7 hoãn tới trước đợt 4; thêm **AUD-25** (phụ thuộc Python của skeleton trái ADR), tìm thấy khi làm migration `0006` · **v0.5:** quyết định của PO vòng năm — AUD-07 gắn `SUBMITTED → REJECTED` vào thao tác tiếp quản (đợt 3); AUD-25 sửa theo ADR thành đợt 2b; xác nhận xoá router `health` khớp câu 6a
+**Phiên bản:** 0.6 · **Trạng thái:** Draft chờ duyệt · **Ngày chạy:** 2026-09-26 · **v0.2:** theo chỉ đạo của PO khi nhận kết quả — tách AUD-02 thành AUD-02 (Chặn) và AUD-23 (Cao); quét lại AUD-11 bằng `grep`, thêm vị trí còn sót và AUD-24 phát hiện trong lượt quét; bảng so sánh hai phương án của AUD-01; ghi ba quyết định của PO và bảng quyết định cho năm câu còn lại ở Open Questions. ID các AUD cũ giữ nguyên · **v0.3:** ghi quyết định của PO vòng ba — AUD-01 chọn (A) kèm hai điều kiện; nhận AUD-24 kèm hạn; xác nhận lượt sửa `08-hitl.md` ở đợt 3; ADR-026 đã viết (`Proposed`); việc (f) của AUD-23 dời từ đợt 1 sang đợt 3 vì phụ thuộc việc (e) · **v0.4:** ghi quyết định của PO vòng bốn — câu 3, câu 5, câu 6, hai index, hạn AUD-24, ADR-026 `Accepted`; câu 7 hoãn tới trước đợt 4; thêm **AUD-25** (phụ thuộc Python của skeleton trái ADR), tìm thấy khi làm migration `0006` · **v0.5:** quyết định của PO vòng năm — AUD-07 gắn `SUBMITTED → REJECTED` vào thao tác tiếp quản (đợt 3); AUD-25 sửa theo ADR thành đợt 2b; xác nhận xoá router `health` khớp câu 6a · **v0.6:** ghi tiến độ đợt sửa 3 — mục 7.1; ba việc PO cần duyệt từ đợt 3 ở mục Chờ PO chốt
 
 > File này đối chiếu toàn bộ `docs/design/` với nhau và với phần repo mà tài liệu dựa vào (`backend/migrations/`, cây thư mục backend, `tools/contract-checks/`). Kết quả là bảng lỗi `AUD-xx` kèm thứ tự sửa đề xuất. File này **chỉ báo cáo**: không sửa file nào khác, ngoài một mục mới trong `CHANGELOG.md`. Nó **không** quyết thay PO những chỗ cần quyết định, **không** thêm giả định, ADR hay tên mới, và **không** mở lại quyết định đã chốt.
 
@@ -665,6 +665,27 @@ Gom theo file, để mỗi lượt chạm ít file và mỗi file chỉ mở m�
 | 4 — Quét nội dung cũ | Từng file theo bảng AUD-11; hạn và owner ở `ASSUMPTIONS.md`; hai dòng chỗ quan sát; schema P2; ba việc Thấp của AUD-24 | 11, 12, 13, 14, 22, 24 | Mọi file phase, `_PLAN.md` (PO), `ASSUMPTIONS.md`, `07-prompts.md` | Sprint 1 — rẻ, và đợt 2 đã mở phần lớn các file này |
 | 5 — Cơ học | Tham chiếu theo tên mục; số phiên bản; trích dẫn | 17, 18, 21 | Mọi file có trong bảng | Bất kỳ lúc nào; gộp được với đợt 4 |
 
+### 7.1 Tiến độ — đợt sửa 3
+
+Đợt 1, 2, 2b: mục ngày 2026-09-26 tương ứng của `CHANGELOG.md`. Đợt 3 — lượt sửa `08-hitl.md` có phép, `08-hitl.md` lên v0.3:
+
+| AUD | Kết quả ở đợt 3 | Còn lại |
+|---|---|---|
+| AUD-02 | **Đóng** (a) bảng `reason_code` 17 mã; (b) bảng `archive_reason`; (c) bảng `event_code`; (d) thao tác `document_takeover_resolve`, endpoint `resolve-halt`, `GET /takeover-queue`, node `route_takeover`. Ba bảng mã thành `CHECK` ở migration `0007`. Hai hành động trái thiết kế trong mục Tiếp quản cũ đã bỏ | Lối soạn tay và lối ra cho `CONTENT_HASH_MISMATCH` — A-077 mới, hạn trước Sprint 4 |
+| AUD-06 | **Đóng** — sơ đồ luồng sửa, sơ đồ trạng thái, câu về trạng thái lúc dừng, dòng `chat_message` | — |
+| AUD-07 | Cạnh `SUBMITTED → REJECTED` **có thao tác đi qua**: lối ra `REJECT_REQUEST`. Thêm hai cạnh `document` (`DRAFT`, `APPROVED` → `ARCHIVED`) và một cạnh `request` (`CHANGES_REQUESTED → REJECTED`) cho cùng lối ra. Vế EC-CV-02 đã vào A-053 | A-053 chờ PO — cổng 2.2 |
+| AUD-23 | **Đóng (e), (f).** Phép xác định "chỉ còn một người đủ quyền" ở mục Tách biệt trách nhiệm — D-006 của `08-hitl.md`; đường thoát cho thu hồi qua bước `REVOKE_INITIATE`, `REVOKE_CONFIRM` (ADR-027) | (g)–(j) — đợt 3b |
+| AUD-20 | Vế `VALIDATION_FAILED` của `reason_code` đổi thành `FREE_CONTENT_INVALID` ở `08-hitl.md`, `10-eval.md` | — |
+| AUD-01, AUD-05, AUD-08, AUD-11, AUD-17 | Phần nằm trong `08-hitl.md` đã sửa khi viết lại file: cột `request` của `document_sign`; câu `request_type.manage`; nhắc hạn là `needs_info_reminder`; trần trỏ về `11-ops.md`, dashboard SLA, `bo19_migrator` trỏ về ADR-022; bỏ tham chiếu theo số dòng | Phần ở file khác — đợt 4, 5 |
+
+**Phát hiện mới khi sửa, gộp vào AUD đã có vì cùng nguyên nhân gốc:**
+
+- **Vào AUD-23 (f):** `document_issue` nhận `self_approval_reason` từ Phase 5 nhưng `ISSUE_ORDERED` không gắn bước nào — cờ `self_approved` không có chỗ lưu, như thu hồi. Sửa cùng cơ chế: bước `ISSUE_ORDER` sinh ra đã `DECIDED`.
+- **Vào AUD-02 (d):** mục Ba ca của L2 của `04-data.md` hẹn cách tiếp quản "render lại từ đúng giá trị đã duyệt rồi ghim bản mới". Không làm được: cùng input, trùng khoá, rơi vào ca (a) và nhận lại chính object hỏng. Đã sửa câu đó.
+- **Vào AUD-02 (a):** sơ đồ `document_graph` của `03-agents.md` thiếu cạnh `render_draft → halt_for_human`, dù cột Error case của `docx_render` và `pdf_export` đã dẫn tới `halt_for_human` từ Phase 3. Đã vẽ.
+
+**Kiểm lại:** `check_grants.py --local-migrated` áp `0001` → `0007`: 176 / 68 / **Lệch 0**. `openapi.yaml` 0.2.5 qua `openapi-spec-validator`; 47 path, 37 mã lỗi, không enum mới nào trùng giá trị với enum khác. 21 sơ đồ Mermaid của `00-domain.md`, `02-architecture.md`, `03-agents.md`, `08-hitl.md` render được bằng `mmdc` 12.0.0; tập cạnh máy trạng thái `document` trùng nhau ở ba file, `request` trùng nhau ở hai file — lệnh ở phụ lục A.8.
+
 **Việc chạm `CLAUDE.md` — chỉ báo cáo, PO tự xử lý (luật 11):** mục Ràng buộc domain (BM25 — ADR kênh lexical sẽ ghi rõ độ lệch, AUD-09) và mục Cấu trúc output (`backend/migrations/` là nơi chứa DDL sau Phase 6, AUD-03).
 
 ---
@@ -693,11 +714,14 @@ Không có giả định mới ở phase này. ADR mới duy nhất là ADR-026 
 
 ### Chờ PO chốt
 
-Còn một câu — câu 7, hoãn tới trước đợt 4.
+Câu 7, hoãn tới trước đợt 4; và ba việc từ đợt 3.
 
 | Câu | Phương án | Khuyến nghị | File bị chạm |
 |---|---|---|---|
 | 7 — AUD-13: owner là người | Gán từng dòng | **Người triển khai:** A-022 (hiệu chỉnh), A-025, A-031, A-045 (vế còn lại — canary C2), A-048 (tham số), A-057, A-063, A-065. **Product Owner:** A-061, A-013, A-014, A-010. Đổi hạn A-002, A-024, A-030, A-041 sang cổng của `12-roadmap.md` | `ASSUMPTIONS.md`; kiểm lại `12-roadmap.md` mục Cổng trước Sprint 1 cho khớp |
+| Đợt 3 — ADR-027 | `Proposed` → `Accepted`: cờ tự duyệt và việc tiếp quản nằm trên `approval_step`, gồm bước sinh ra đã `DECIDED` | Duyệt — giữ nguyên chữ của D-006 điều kiện 2 | `decisions/ADR-027-…`; kéo theo A-044 sang `Đã chốt` ở `ASSUMPTIONS.md`, `12-roadmap.md` |
+| Đợt 3 — A-044 | Khoá idempotency theo bước `TAKEOVER` đang mở (đã áp ở migration `0007`), thay vì thêm số lần tiếp quản vào khoá | Duyệt cùng ADR-027 | `ASSUMPTIONS.md` |
+| Đợt 3 — trần số vòng | (i) Giữ: `route_review` dừng khi chạm trần — đã áp, cần cạnh `request CHANGES_REQUESTED → REJECTED` và mã `DOCUMENT_AWAITING_TAKEOVER` cho `submit` ca `SLOT_DATA`. (ii) Kiểm trần ngay ở `document_request_changes`: người duyệt nhận lỗi và chỉ còn duyệt hay từ chối — bỏ được lần dừng ở `route_review`, cạnh mới của `request` và ca `SLOT_DATA` đang dừng | (i) cho Sprint đầu — đã áp, đúng thiết kế đã chốt của `03-agents.md`. (ii) gọn hơn nhưng sửa một quyết định đã chốt, nên chỉ nêu | (ii): `03-agents.md`, `05-api.md`, `openapi.yaml`, `08-hitl.md`, `00-domain.md`, `02-architecture.md` |
 
 ---
 
@@ -835,3 +859,19 @@ cut -d: -f1 stale_hits.txt | sort | uniq -c
 
 **Giới hạn:** câu cũ không chứa từ khoá nào trong danh sách — ví dụ "hai mục", "mười ba thao tác", một con số đã đổi — **không** bị bắt. Những câu như vậy ở AUD-11 là do bản 0.1 đọc tay tìm ra.
 
+### A.8 Kiểm lại ở đợt sửa 3
+
+```bash
+# quyền và DDL, 0001 -> 0007
+cd tools/contract-checks && .venv/Scripts/python check_grants.py --local-migrated
+
+# openapi: hợp lệ, và enum nào trùng giá trị với enum khác
+python -c "import yaml,itertools; from openapi_spec_validator import validate; d=yaml.safe_load(open('openapi.yaml',encoding='utf-8')); validate(d); sc=d['components']['schemas']; en={k:set(v['enum']) for k,v in sc.items() if isinstance(v,dict) and 'enum' in v}; [print(a,b,en[a]&en[b]) for a,b in itertools.combinations(en,2) if en[a]&en[b]]"
+
+# Mermaid: tách mọi khối mermaid của bốn file ra scratchpad/mmd3, render từng khối
+for f in *.mmd; do npx -y -p @mermaid-js/mermaid-cli@12.0.0 mmdc -q -i "$f" -o "svg/${f%.mmd}.svg" || echo "FAIL $f"; done
+
+# So tập cạnh stateDiagram: regex '^\s*(\S+)\s*-->\s*([A-Z_\[\]\*]+)' trên từng khối, so hiệu đối xứng
+```
+
+Kết quả ở mục 7.1. Script tách khối và so cạnh chạy ngoài repo, trong scratchpad; không thêm tệp hay phụ thuộc nào vào repo.

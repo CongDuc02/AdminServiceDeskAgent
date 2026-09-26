@@ -2060,3 +2060,50 @@ Quyết định của PO: nhận AUD-25, sửa ngay thành đợt riêng trướ
 
 - `pyproject.toml` đọc được bằng `tomllib`: 17 phụ thuộc.
 - Không cài thử — DESIGN MODE, chưa có lockfile.
+
+---
+
+## 2026-09-26 (đợt sửa 3) — Phase 8: tiếp quản, bảng mã, D-006 (AUD-02, AUD-06, AUD-07, AUD-23 (e)(f))
+
+Đợt 3 của mục Thứ tự sửa đề xuất trong `13-audit.md`: một lượt sửa `08-hitl.md` có phép của PO. Kèm quyết định AUD-07 của PO: gắn `SUBMITTED → REJECTED` vào thao tác tiếp quản, không xoá cạnh.
+
+### File sửa
+
+| File | Thay đổi | AUD |
+|---|---|---|
+| `08-hitl.md` → 0.3 | Viết lại. Ba bảng mã: `reason_code` (17 mã, `VALIDATION_FAILED` → `FREE_CONTENT_INVALID`), `archive_reason` (3 mã), `event_code` (5 mã). Thao tác tiếp quản `document_takeover_resolve` với ba lối ra `RETRY`, `REJECT_REQUEST`, `RETURN_TO_ISSUE_QUEUE`; hàng đợi tiếp quản. Phép xác định "chỉ còn một người đủ quyền" và bảng kết quả D-006. Đường thoát tự duyệt cho thu hồi. Sửa sơ đồ luồng sửa và sơ đồ trạng thái, câu về trạng thái lúc dừng, dòng `chat_message` của audit. Phần của AUD-01, 05, 08, 11, 17 nằm trong file | AUD-02, 06, 07, 23 (e)(f), 20; một phần 01, 05, 08, 11, 17 |
+| `decisions/ADR-027-co-tu-duyet-va-tiep-quan-tren-approval-step.md` | **Mới, `Proposed`.** Cờ tự duyệt và việc tiếp quản nằm trên `approval_step`; bước sinh ra đã `DECIDED` cho lệnh phát hành và khởi tạo thu hồi; khoá idempotency của `document_halt` theo bước `TAKEOVER` đang mở. Loại: cờ trên `decision_record`, bảng `self_approval`, đếm số lần tiếp quản trong khoá | AUD-02 (d), AUD-23 (f), A-044 |
+| `backend/migrations/schema/0007_takeover_and_self_approval.sql` | **Mới.** Bốn `step_kind`; `ix_approval_step_open_by_kind`; `decision_record.takeover_resolution`; `ck_decision_record_step_kinds` đòi bước với `ISSUE_ORDERED`, `TAKEOVER_RESOLVED`, `REVOKE_*`; bỏ `uq_document_halt_once`, thêm `document_halt.takeover_step_id`; ba bảng mã thành `CHECK`; `ARCHIVED` từ `DRAFT`, `APPROVED`; `ck_document_seal_determined` nới cho `ARCHIVED` từ `DRAFT`. Không `GRANT` mới | AUD-02, AUD-07, AUD-23 (f) |
+| `contracts/README.md` | Dòng `0007` | — |
+| `contracts/openapi.yaml` → 0.2.5 | `GET /takeover-queue`, `POST …/resolve-halt`; enum `TakeoverResolution`, `HaltReasonCode`, `NotificationEventCode`; `ApprovalStepKind` thêm bốn giá trị; `HaltView` thêm `document_halt_id`, `at_node`, `open`, `allowed_resolutions`; `ResolveHaltBody`; `self_approval_reason` trên hai body thu hồi; `ErrorCode` thêm `DOCUMENT_AWAITING_TAKEOVER`, `TAKEOVER_RESOLUTION_NOT_ALLOWED` (37 mã); `details.allowed_resolutions` | AUD-02 (d), AUD-23 (f) |
+| `05-api.md` → 0.13 | Phân quyền, Phân trang, loại trừ số 2 (đã giải), Hàng đợi, Thao tác cổng, Thu hồi, Stream tín hiệu, Mã lỗi, Ma trận thao tác; mã `reason_code` giữ nguyên tên của tool | AUD-02, AUD-23 (f) |
+| `03-agents.md` → 0.15 | Node `route_takeover` và sơ đồ Phần 3; cạnh `render_draft → halt_for_human` vẽ vào sơ đồ; `document_halt_record` với khoá mới; `await_human_takeover` ai đánh thức; thao tác cổng `document_takeover_resolve`; `request_submit`, `document_issue` trả `DOCUMENT_AWAITING_TAKEOVER` khi đang dừng; `request_cancel` đóng bước `TAKEOVER`; bước mang cờ của `document_issue` và thu hồi | AUD-02, AUD-23 (f), A-044 |
+| `00-domain.md` → 0.13 | Cạnh `request CHANGES_REQUESTED → REJECTED`; `document DRAFT → ARCHIVED`, `APPROVED → ARCHIVED`; nghĩa của `REJECTED`, `ARCHIVED`; D-006 — phần Phase 8 đã làm | AUD-07, AUD-23 (e) |
+| `02-architecture.md` → 0.13 | Cùng các cạnh; bảng chủ sở hữu `REJECTED`, `ARCHIVED`; sequence diagram (e) có đường thoát tự duyệt | AUD-07, AUD-23 (f) |
+| `04-data.md` → 0.13 | `approval_step.step_kind`, `archive_reason`, `decision_record`, `document_halt`, enum xuyên phase; câu hẹn tiếp quản "render lại rồi ghim bản mới" ở mục Ba ca của L2 — không làm được, sửa | AUD-02, A-044 |
+| `GLOSSARY.md` → 0.23 | Bảng mã `archive_reason`, `halt_reason_code`, `notification_event_code`, `takeover_resolution`; `approval_step_kind`; node `route_takeover`; thao tác `document_takeover_resolve`; gạch dòng "Chờ Phase 8" | AUD-02 |
+| `ASSUMPTIONS.md` → 0.31 | A-044: hướng đóng theo ADR-027, còn `Mở` tới khi PO duyệt ADR. A-053: vế EC-CV-02. **A-077 mới:** tiếp quản chưa có lối soạn tay, chưa có lối ra cho `CONTENT_HASH_MISMATCH` | AUD-07, AUD-02 |
+| `06-structure.md` → 0.7 | Tuyến `/takeover`; `TakeoverQueuePage`; phần tiếp quản của `DocumentReviewPage` | AUD-02 (d) |
+| `10-eval.md` → 0.3 | `reason_code` theo bảng mã mới | AUD-20 |
+| `12-roadmap.md` → 0.6 | Sprint 2: deliverable tiếp quản, AC-2.11, hai endpoint; nợ Phase 8: A-044, A-077 | AUD-02 |
+| `13-audit.md` → 0.6 | Mục 7.1 Tiến độ — đợt sửa 3; ba việc chờ PO; phụ lục A.8 | — |
+
+**Quyết định của trợ lý trong đợt, cần PO đọc:**
+
+- **Tên mã lỗi `DOCUMENT_AWAITING_TAKEOVER`**, không phải `DOCUMENT_HALTED`: `DOCUMENT_HALTED` đã là một `event_code`. Một tên cho hai danh mục là đúng loại lỗi AUD-20 vừa sửa.
+- **`RETRY` và `RETURN_TO_ISSUE_QUEUE` không kiểm D-006:** hai lối ra này không quyết định gì về văn bản, mọi cổng phía sau vẫn kiểm. Chỉ `REJECT_REQUEST` kiểm.
+- **Sau `VOIDED`, phát hành lại cần lệnh mới:** mỗi lệnh phát hành tiêu tối đa một số.
+- **Vắng mặt không làm ai rời khỏi tập người thay thế** của phép xác định D-006 — lối cho người vắng mặt là uỷ quyền `[Should]`.
+
+### Đã chạy
+
+- `check_grants.py --local-migrated`, áp `0001` → `0007` trên PostgreSQL 16.2 local: **176 / 68 / Lệch 0**, mã thoát 0. `0007` không đổi quyền nên số không đổi.
+- `openapi-spec-validator`: hợp lệ; 47 path, 37 mã lỗi; không enum mới nào trùng giá trị với enum khác.
+- `mmdc` 12.0.0: 21/21 sơ đồ của `00-domain.md`, `02-architecture.md`, `03-agents.md`, `08-hitl.md` render được. Tập cạnh máy trạng thái `document`: `00-domain.md` = `02-architecture.md` = `08-hitl.md` (23 cạnh); `request`: `00-domain.md` = `02-architecture.md` (19 cạnh).
+
+### Chưa làm — lý do
+
+- **AUD-23 (g)–(j):** đợt 3b.
+- **A-053** (huỷ ở `NEEDS_INFO` và vế EC-CV-02): chỉ ghi, chờ PO — cổng 2.2.
+- **ADR-027, A-044, lựa chọn trần số vòng:** chờ PO — mục Chờ PO chốt của `13-audit.md`.
+- Các câu "thuộc Phase 8" còn lại ở file khác không nằm trong phạm vi đợt 3: đợt 4.

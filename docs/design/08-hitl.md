@@ -1,269 +1,405 @@
 # HITL & Approval Workflow — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.2 · **Trạng thái:** Draft chờ duyệt
+**Phiên bản:** 0.3 · **Trạng thái:** Draft chờ duyệt · **v0.3:** đợt sửa 3 sau Phase 13, lượt sửa có phép của PO — viết lại phần sai (AUD-06), giao bốn việc thiếu (AUD-02: ba bảng mã, thao tác tiếp quản), cạnh `SUBMITTED → REJECTED` gắn vào tiếp quản (AUD-07), phép xác định "chỉ còn một người đủ quyền" và đường thoát tự duyệt cho thu hồi (AUD-23 (e)(f)); sửa theo AUD-01, AUD-05, AUD-08, AUD-11, AUD-17 phần nằm trong file này. Chi tiết ở mục ngày 2026-09-26 (đợt sửa 3) của `CHANGELOG.md`
 
-> File này chốt luồng người duyệt: hàng đợi, thứ tự, SLA, từ chối/yêu cầu sửa, định tuyến ký, uỷ quyền vắng mặt, duyệt dấu, thu hồi, và cơ chế dừng khi chạm trần. File này **không** thiết kế AuthZ chi tiết hay rate limit (Phase 9), không định cỡ trần số vòng/token (Phase 11), không viết prompt (Phase 7).
+> File này chốt luồng người duyệt: hàng đợi, thứ tự, tách biệt trách nhiệm, yêu cầu sửa, định tuyến ký, duyệt dấu, thu hồi, dừng có kiểm soát và tiếp quản, bảng mã. File này **không** thiết kế AuthZ chi tiết hay rate limit (`09-security.md`), không định cỡ trần (`11-ops.md`), không viết prompt (`07-prompts.md`).
 
 Tên entity, trạng thái, permission, agent, node, tool dùng đúng `GLOSSARY.md`. Quyết định `D-xxx`/`A-xxx` tham chiếu `00-domain.md` và `ASSUMPTIONS.md`.
 
-**Đã đối chiếu:** `CLAUDE.md`, `_PLAN.md`, `GLOSSARY.md`, `ASSUMPTIONS.md`, `00-domain.md`, `01-prd.md`, `02-architecture.md`, `03-agents.md`, `04-data.md`, `05-api.md`, `06-structure.md`, `07-prompts.md`, `decisions/ADR-001` → `ADR-019`.
+**Đã đối chiếu (v0.3):** `CLAUDE.md`, `_PLAN.md`, `GLOSSARY.md`, `ASSUMPTIONS.md`, `00-domain.md`, `01-prd.md`, `02-architecture.md`, `03-agents.md`, `04-data.md`, `05-api.md`, `06-structure.md`, `11-ops.md`, `12-roadmap.md`, `13-audit.md`, `contracts/schema.sql` cùng migration `0002`→`0006`, `contracts/openapi.yaml`, `decisions/ADR-001` → `ADR-026`.
+
+**Việc còn lại của Phase 8, chưa làm ở đây:** hiển thị khoảng hoàn tất phát hành, thao tác đóng phiên nhàn rỗi, giao diện ca `HR_PROFILE` sai, giao diện nhãn phá huỷ — việc (g)–(j) của AUD-23, đợt sửa 3b.
 
 ---
 
 ## 1. Hai cổng HITL — bất biến
 
-`NFR-01` của `01-prd.md` và `00-domain.md:301`: không có đường từ `DRAFT` tới `ISSUED` mà không qua `PENDING_APPROVAL`, và khi `requires_seal = true` thì không tới `ISSUED` mà không qua `PENDING_SEAL`. Hai cổng là **hai quyết định riêng**, hai permission (`document.approve_content` / `document.apply_seal`), hai `audit_event`, kể cả cùng một người. Không có nhánh auto-approve, không ngưỡng confidence nào bỏ qua được. `INV-01` (`03-agents.md:19`) bảo đảm sau `PENDING_APPROVAL` không có LLM nào sửa document trừ khi quay về `DRAFT`.
+Bất biến thứ nhất ở mục Vòng đời `document` của `00-domain.md`, và NFR-01: không có đường từ `DRAFT` tới `ISSUED` mà không qua `PENDING_APPROVAL`; khi `requires_seal = true` thì không tới `ISSUED` mà không qua `PENDING_SEAL`. Hai cổng là **hai quyết định riêng**, hai permission (`document.approve_content` / `document.apply_seal`), hai `audit_event`, kể cả cùng một người. Không có nhánh auto-approve, không ngưỡng confidence nào bỏ qua được. INV-01 (mục Ba bất biến nền của `03-agents.md`) bảo đảm sau `PENDING_APPROVAL` không LLM nào sửa `document` trừ khi quay về `DRAFT`.
+
+Thao tác tiếp quản (mục 9.3) **không** mở đường nào vòng qua hai cổng: nó chỉ cho graph chạy lại một node đã dừng, trả văn bản về hàng đợi phát hành, hoặc kết thúc yêu cầu.
 
 ---
 
-## 2. Hàng đợi duyệt
+## 2. Hàng đợi
 
-### 2.1 Ba hàng đợi + một hàng đợi phát hành
+### 2.1 Bốn hàng đợi duyệt và một hàng đợi tiếp quản
 
-| Queue | Trạng thái `document` | Permission xem | Endpoint |
+| Hàng đợi | Điều kiện | Permission xem | Endpoint |
 |---|---|---|---|
-| Duyệt nội dung | `PENDING_APPROVAL` | `document.approve_content` | `GET /review-queue?status=PENDING_APPROVAL` |
+| Duyệt nội dung | `document` ở `PENDING_APPROVAL` | `document.approve_content` | `GET /review-queue?status=PENDING_APPROVAL` |
 | Chờ ký | `PENDING_SIGNATURE` | `document.sign` | `GET /review-queue?status=PENDING_SIGNATURE` |
 | Chờ đóng dấu | `PENDING_SEAL` | `document.apply_seal` | `GET /review-queue?status=PENDING_SEAL` |
-| Chờ phát hành | `SIGNED`/`SEALED` chưa có `ISSUE_ORDERED` | `document.issue` | `GET /issue-queue` |
+| Chờ phát hành | `SIGNED` không cần dấu hoặc `SEALED`, không có lệnh phát hành đang chạy, không đang dừng | `document.issue` | `GET /issue-queue` |
+| Chờ tiếp quản | Có `approval_step` loại `TAKEOVER` đang `OPEN` | `document.approve_content`, `document.reject` hoặc `document.issue`, cộng `request.read_all` — bước `TAKEOVER` không giao cho ai | `GET /takeover-queue` |
 
-Mỗi tab là **một** trạng thái, vì cột đầu của `ix_document_review_queue` là `status` (`05-api.md:108`). Không có hàng đợi gộp ở Sprint đầu.
+Mỗi hàng đợi duyệt là **một** trạng thái, vì cột đầu của `ix_document_review_queue` là `status` (mục Phân trang của `05-api.md`). Hàng đợi tiếp quản không theo trạng thái `document` — văn bản dừng ở `DRAFT` không nằm trong hàng đợi duyệt nào — mà theo bước `TAKEOVER` đang mở (ADR-027).
 
 ### 2.2 Sắp xếp và phân trang
 
-* **Sắp xếp:** `document.status_changed_at` tăng dần — chờ lâu nhất trước. Dùng `document.status_changed_at`, không phải `request.status_changed_at` hay `due_at` (chưa có SLA `TBD` — A-002), vì ở ca `FREE_CONTENT` `request` đứng yên `IN_REVIEW` trong khi `document` đi vòng mới (`05-api.md:117`).
-* **Phân trang:** keyset `{status_changed_at, id}`, `limit` `TBD` (A-031), `next_cursor` mờ. Không trả tổng số dòng.
-* **Tín hiệu làm mới:** `signal` `REVIEW_QUEUE` (`05-api.md:297`) invalidate `['review-queue']` trong `06-structure.md:700`.
+- **Hàng đợi duyệt và phát hành:** `document.status_changed_at` tăng dần — chờ lâu nhất trước. Không dùng `request.status_changed_at`: ở ca `FREE_CONTENT` `request` đứng yên `IN_REVIEW` trong khi `document` đi vòng mới. Không dùng `due_at`: SLA còn `TBD` (A-002).
+- **Hàng đợi tiếp quản:** `approval_step.opened_at` tăng dần, qua `ix_approval_step_open_by_kind` (migration `0007`).
+- **Phân trang:** keyset, `limit` `TBD` (A-031), `next_cursor` mờ, không trả tổng số dòng.
+- **Tín hiệu làm mới:** chủ đề `REVIEW_QUEUE` của stream tín hiệu (mục Stream tín hiệu của `05-api.md`) phủ cả hàng đợi tiếp quản.
 
-### 2.3 Thứ tự hiển thị trên dòng
+### 2.3 Trên mỗi dòng
 
-Mỗi dòng: `request_type` + `status_label` do server trả + thời gian chờ từ `status_changed_at` + cờ `halted` (đang `halt_for_human`) + cờ `issue_in_progress` (đã `ISSUE_ORDERED` chưa `ISSUED`). Hai cờ này là chỗ cho Phase 11 quan sát, giao diện chi tiết thuộc Phase 8 nhưng không phải bảng này.
+`request_type` + `status_label` do server trả + thời gian chờ + cờ `halted` + cờ `issue_in_progress` + cờ `job_failed`. Ba cờ là cờ dẫn xuất (mục Agent, graph, node, tool của `GLOSSARY.md`). `halted` = có bước `TAKEOVER` `OPEN`. Cách hiển thị `issue_in_progress` — việc (g) của AUD-23.
 
 ---
 
-## 3. Ma trận duyệt và tách biệt trách nhiệm
+## 3. Thao tác của người duyệt và tách biệt trách nhiệm
 
-### 3.1 Sáu thao tác cổng (đi vào từ `api`, người thật là tác nhân — `03-agents.md:192`)
+### 3.1 Thao tác cổng trên văn bản
 
-| Thao tác | Permission | Chuyển đổi `document` | `request` | `decision_record.kind` |
-|---|---|---|---|---|
-| `document_approve_content` | `document.approve_content` | `PENDING_APPROVAL → APPROVED` + `approved_content_hash` | — | `APPROVED` |
-| `document_request_changes` | `document.request_changes` | `PENDING_APPROVAL`/`PENDING_SIGNATURE` → `CHANGES_REQUESTED` | `SLOT_DATA` → `CHANGES_REQUESTED` | `CHANGES_REQUESTED` |
-| `document_reject` | `document.reject` | `PENDING_APPROVAL → REJECTED` | `→ REJECTED` | `REJECTED` |
-| `document_sign` | `document.sign` | `PENDING_SIGNATURE → SIGNED` | — | `SIGNED` |
-| `document_apply_seal` | `document.apply_seal` | `PENDING_SEAL → SEALED` + `seal_action` | — | `SEALED` |
-| `document_issue` | `document.issue` | Ghi `decision_record` `ISSUE_ORDERED`, không cấp số | — | `ISSUE_ORDERED` |
+Đi vào từ `api`, người thật là tác nhân (mục Thao tác cổng — không node nào của graph được gọi của `03-agents.md`). Mỗi thao tác kiểm permission, kiểm D-006, chuyển trạng thái, ghi `decision_record` và `audit_event`, enqueue job — **trong cùng một giao dịch** (ADR-010).
 
-Mỗi thao tác kiểm permission, chuyển trạng thái, ghi `audit_event` và enqueue job resume **trong cùng một giao dịch** (ADR-010). `ISSUED` chỉ do `finalize_issue` trong `queue_worker` (`03-agents.md:210`).
+| Thao tác | Permission | `document` | `request` | `decision_record.kind` | Bước mang cờ D-006 |
+|---|---|---|---|---|---|
+| `document_approve_content` | `document.approve_content` | `PENDING_APPROVAL → APPROVED` + `approved_content_hash` | ở nguyên `IN_REVIEW` | `APPROVED` | `CONTENT_REVIEW` |
+| `document_request_changes` | `document.request_changes` | `PENDING_APPROVAL`/`PENDING_SIGNATURE` → `CHANGES_REQUESTED` | `SLOT_DATA`: `IN_REVIEW → CHANGES_REQUESTED`; `FREE_CONTENT`: ở nguyên | `CHANGES_REQUESTED` | `CONTENT_REVIEW` hoặc `SIGNATURE` |
+| `document_reject` | `document.reject` | `PENDING_APPROVAL → REJECTED` | `IN_REVIEW → REJECTED` | `REJECTED` | `CONTENT_REVIEW` |
+| `document_sign` | `document.sign` | `PENDING_SIGNATURE → SIGNED`, rồi `→ PENDING_SEAL` nếu `requires_seal` | `IN_REVIEW → APPROVED` — `APPROVED` nghĩa là đã ký (AUD-01) | `SIGNED` | `SIGNATURE` |
+| `document_apply_seal` | `document.apply_seal` | `PENDING_SEAL → SEALED` + `seal_action` | — | `SEALED` | `SEAL` |
+| `document_issue` | `document.issue` | Không đổi; ghi lệnh phát hành, không cấp số | — | `ISSUE_ORDERED` | `ISSUE_ORDER`, sinh ra đã `DECIDED` |
+| `document_takeover_resolve` | Theo lối ra — mục 9.3 | Theo lối ra | Theo lối ra | `TAKEOVER_RESOLVED` | `TAKEOVER` |
+| `document_revoke_initiate` `[Should]` | `document.revoke_initiate` | Không đổi | — | `REVOKE_INITIATED` | `REVOKE_INITIATE`, sinh ra đã `DECIDED` |
+| `document_revoke_confirm` `[Should]` | `document.revoke_confirm` | `ISSUED → REVOKED` | — | `REVOKE_CONFIRMED` | `REVOKE_CONFIRM` |
+
+`ISSUED` chỉ do `finalize_issue` trong `queue_worker` (mục Thao tác cổng — không node nào của graph được gọi của `03-agents.md`).
+
+**`DOCUMENT_AWAITING_TAKEOVER`.** Thao tác nào đánh thức `document_graph` — `request_submit` ở ca `SLOT_DATA`, `document_issue` — trả `DOCUMENT_AWAITING_TAKEOVER` khi `document` đang có bước `TAKEOVER` `OPEN`: thread đang chờ ở `await_human_takeover`, không ở `interrupt` mà thao tác đó nhắm tới. `request_cancel` là ngoại lệ — mục 9.3.
 
 ### 3.2 Tách biệt trách nhiệm — D-006
 
-Căn cứ chặn là `beneficiary_employee_id == approver_employee_id` (`00-domain.md:429`), không phải người tạo — nhập hộ rồi duyệt là **hợp lệ**. Khi chỉ còn một người đủ quyền, cho phép tự duyệt nhưng **đủ 4 điều kiện** mới được:
+**Căn cứ chặn** là `request.beneficiary_employee_id == actor` (mục Tách biệt trách nhiệm — quyết định D-006 của `00-domain.md`), không phải người tạo — nhập hộ rồi duyệt là hợp lệ. Ràng buộc thứ hai, riêng cho thu hồi: người xác nhận khác người khởi tạo (mục 7).
 
-1. `self_approval_reason` không rỗng
-2. `approval_step.self_approved = true`
-3. `audit_event` mức `WARNING`
-4. Hiện riêng ở `GET /self-approvals` (`05-api.md:359`) và `frontend/src/features/audit` (`06-structure.md:545`)
+**"Chỉ còn một người đủ quyền" — phép xác định (AUD-23 (e)).** Với thao tác dùng permission P trên văn bản d, tập **người thay thế** E(P, d) là mọi nhân viên thoả cả bốn điều:
 
-Cấm mọi phương án tự động bỏ qua (cấu hình tắt, whitelist, im lặng cho qua). `request_type.manage` chưa có trong danh mục — `GLOSSARY.md:373` — nên luồng cấu hình từ chối mọi người cho tới Phase 9 (A-042).
+1. `employee.is_active = true`;
+2. mang P — qua vai trò (`employee_role` → `role_permission`) hoặc cấp lẻ (`employee_permission_grant`);
+3. không phải người thụ hưởng của `request` của d;
+4. riêng P = `document.revoke_confirm`: không phải người khởi tạo lần thu hồi đang chờ xác nhận.
+
+Người đang thao tác **bị chặn** khi họ là người thụ hưởng, hoặc — với `document.revoke_confirm` — là người khởi tạo. **Đường thoát áp dụng khi và chỉ khi người đó bị chặn và E(P, d) rỗng.**
+
+- Tính **tại lúc thao tác, trong chính giao dịch của nó**, từ bảng quyền. Không cache, không cờ cấu hình, không danh sách trắng. Client không gửi cờ nào; client chỉ gửi `self_approval_reason`.
+- **Vắng mặt không làm ai rời khỏi E.** Người khác mang P mà đang nghỉ vẫn nằm trong E, nên không có đường thoát. Lối cho người vắng mặt là uỷ quyền `[Should]`; Sprint đầu không có (A-052). Quan hệ giữa E và uỷ quyền chốt khi uỷ quyền được kích hoạt.
+- `approval_step.self_approval_expected` chỉ là **gợi ý** cho giao diện, tính lúc mở bước (ví dụ `signing_route`). Nó có thể cũ. Phép xác định lúc thao tác mới là quyết định.
+
+**Kết quả:**
+
+| Bị chặn? | E(P, d) | `self_approval_reason` | Kết quả |
+|---|---|---|---|
+| Không | — | Bỏ qua, không lưu | Thao tác chạy thường |
+| Có — là người thụ hưởng | Khác rỗng | — | `SELF_APPROVAL_BLOCKED` |
+| Có — chỉ là người khởi tạo thu hồi | Khác rỗng | — | `SEPARATION_OF_DUTIES_VIOLATION` |
+| Có | Rỗng | Thiếu hoặc rỗng | `SELF_APPROVAL_REASON_REQUIRED` |
+| Có | Rỗng | Có | Chạy, đủ bốn điều kiện của D-006 bên dưới |
+
+Đủ **bốn điều kiện** của D-006:
+
+1. `self_approval_reason` không rỗng, không có giá trị mặc định;
+2. `approval_step.self_approved = true` trên bước ở cột cuối của bảng mục 3.1 (ADR-027);
+3. `audit_event` mức `WARNING` — ca D-006 trong danh sách đóng của mục Enum khác của `GLOSSARY.md`;
+4. hiện ở `GET /self-approvals`, mục tự duyệt riêng.
+
+Cấm mọi phương án tự động bỏ qua: cấu hình tắt ràng buộc, whitelist, im lặng cho qua.
+
+**Không bị D-006 chặn:** lối ra `RETRY` và `RETURN_TO_ISSUE_QUEUE` của thao tác tiếp quản. Chúng không quyết định gì về văn bản — mọi cổng phía sau vẫn còn nguyên và vẫn kiểm D-006.
+
+**Luồng cấu hình `request_type`** dùng permission `request_type.manage` — đã có trong danh mục từ Phase 9 (A-042 `Đã chốt`, mục AuthZ của `09-security.md`).
 
 ---
 
 ## 4. Luồng yêu cầu sửa và agent làm lại
 
+Nguồn: mục Thao tác cổng và mục `document_graph` của `03-agents.md`.
+
 ```mermaid
 sequenceDiagram
     actor CB as Can bo duyet
+    actor NV as Nhan vien
     participant API as api
     participant DB as postgresql
     participant W as queue_worker
     participant DG as document_graph
 
-    CB->>API: POST /documents/{id}/actions/request-changes<br/>change_scope, change_reason, change_targets?
-    API->>DB: Kiem permission + ghi decision_record<br/>CHANGES_REQUESTED + audit_event<br/>enqueue resume_document_graph (cung giao dich)
-    W->>DG: Resume tai await_content_review / await_signature
+    CB->>API: POST request-changes voi change_scope, change_reason, change_targets
+    API->>DB: document_request_changes - document sang CHANGES_REQUESTED, ca SLOT_DATA request sang CHANGES_REQUESTED, decision_record, audit_event, job - cung giao dich
+    W->>DG: Resume tai await_content_review hoac await_signature
+    DG->>DG: route_review doc quyet dinh tu DB
     alt FREE_CONTENT
-        DG->>DG: reopen_draft → compute_targets<br/>chi bien trong change_targets
-        DG->>DG: draft_free_content (1 bien 1 goi) → validate → render_draft
+        DG->>DB: reopen_draft - document ve DRAFT, tang revision_round
+        DG->>DG: compute_targets roi revise_free_content, validate_free_content, render_draft
     else SLOT_DATA
-        DG->>DB: document CHANGES_REQUESTED → DRAFT<br/>request IN_REVIEW → CHANGES_REQUESTED
-        Note over DG: Cho nhan vien bo sung via<br/>request_slot_confirm + submit
+        Note over DG: Cho o await_resubmission, document van CHANGES_REQUESTED
+        NV->>API: Bo sung qua hoi thoai hoac confirm-slots, roi submit
+        API->>DB: request_submit - request sang SUBMITTED, job resume
+        W->>DG: Resume tai await_resubmission
+        DG->>DB: reopen_draft - document ve DRAFT
+        DG->>DG: compute_targets, revise_free_content neu can, render_draft
     end
-    DG->>DB: check_review_readiness → DRAFT → PENDING_APPROVAL
+    DG->>DB: check_review_readiness roi submit_for_review - DRAFT sang PENDING_APPROVAL
 ```
 
-* **Bắt buộc:** `change_scope` ∈ `{FREE_CONTENT, SLOT_DATA}` + `change_reason` không rỗng. `change_targets` tuỳ chọn — nếu rỗng thì sinh lại mọi biến nội dung tự do.
-* **FREE_CONTENT:** `request` ở nguyên `IN_REVIEW`; chỉ biến trong `change_targets` được sinh lại (ADR-009). `compute_targets` tính tập biến cần sinh từ `change_targets` cộng biến có input đổi.
-* **SLOT_DATA:** `request` về `CHANGES_REQUESTED`; nhân viên bổ sung qua `request_slot_confirm` (`05-api.md:224`) rồi `submit` → `resume_document_graph` tại `await_resubmission`.
-* **Từ chối:** `document_reject` kèm `REJECTION_REASON` không rỗng → `REJECTED`, `request` → `REJECTED`.
+- **Bắt buộc:** `change_scope` ∈ {`FREE_CONTENT`, `SLOT_DATA`} và `change_reason` không rỗng. `change_targets` tuỳ chọn — rỗng thì mọi biến nội dung tự do được sinh lại.
+- **`FREE_CONTENT`:** `request` ở nguyên `IN_REVIEW`; chỉ biến trong `change_targets` cộng biến có input đổi được sinh lại (ADR-009).
+- **`SLOT_DATA`:** thao tác cổng đưa `request` về `CHANGES_REQUESTED` trong giao dịch của nó; `document` đứng ở `CHANGES_REQUESTED`, thread chờ ở `await_resubmission`. Nhân viên bổ sung qua chính hội thoại (`request_slots_write` nhận `CHANGES_REQUESTED` ca `SLOT_DATA`) hoặc `request_slot_confirm`, rồi `request_submit`. Chỉ **sau** đó `reopen_draft` mới đưa `document` về `DRAFT`.
+- **Chạm trần số vòng:** `route_review` vào `halt_for_human` thay vì mở vòng mới — mục 9.
+- **Từ chối:** `document_reject` kèm `REJECTION_REASON` không rỗng.
 
 ---
 
 ## 5. Định tuyến ký và uỷ quyền vắng mặt
 
-* **Sprint đầu:** một cấp ký. `signing_route` xác định `signer_user_id`, chuyển `APPROVED → PENDING_SIGNATURE` (`03-agents.md:175`). `render_integrity_check` chạy ngay trước `signing_route` (`03-agents.md:188`).
-* **Nhiều cấp `[Should]`:** `approval_step.level` + `SIGNER` role. Chưa có trong Sprint đầu.
-* **Uỷ quyền `[Should]`:** `delegation` (`00-domain.md:396`) — `delegation.manage` tạo/thu hồi. Khi vắng mặt, `assignee_employee_id` được thay bằng `delegate_employee_id` còn hiệu lực. Giao diện Phase 8 hiện `delegation_id` trên `approval_step`.
-* **Tự duyệt ở bước ký:** nếu người đủ quyền duy nhất là người thụ hưởng, `signing_route` chỉ đánh dấu `self_approval_expected = true`; người đó phải nhập `self_approval_reason` khi `document_sign` (`03-agents.md:175`).
+- **Sprint đầu: một cấp ký.** `route_signing` gọi `render_integrity_check` trên bản đã duyệt, rồi `signing_route` xác định người ký, ghi `signer_user_id`, chuyển `APPROVED → PENDING_SIGNATURE`. Không có người ký hợp lệ → `halt_for_human` với `NO_ELIGIBLE_SIGNER` (mục 10.1).
+- **Tự duyệt ở bước ký:** khi E(`document.sign`, d) rỗng và người mang `document.sign` là người thụ hưởng, `signing_route` chỉ đặt `self_approval_expected = true` — không tự chọn đường thoát. Người đó nhập `self_approval_reason` khi `document_sign` (mục 3.2).
+- **Nhiều cấp `[Should]`:** `approval_step.level` + vai trò `SIGNER`.
+- **Uỷ quyền `[Should]`:** `delegation`, `delegation.manage`. Sprint đầu cắt phạm vi, giữ thiết kế (AUD-15). Ngữ nghĩa cho người duyệt chốt khi kích hoạt.
 
 ---
 
 ## 6. Duyệt dấu và khoảng hoàn tất phát hành
 
-`document_apply_seal` chỉ nhận `PENDING_SEAL` → `SEALED`, ghi `seal_action` (một loại dấu một dòng, `copies_count ≥ 1`, `page_count ≥ 2` nếu `EDGE_STAMP`). Ở `NON_PRODUCTION` ghi là dấu thử nghiệm (`00-domain.md:362` D-009). Không có lối từ chối dùng dấu ở `PENDING_SEAL` (A-034) — Sprint đầu chỉ có đồng ý.
+`document_apply_seal` chỉ nhận `PENDING_SEAL → SEALED`, ghi `seal_action`: một loại dấu một dòng, `copies_count ≥ 1`, `page_count ≥ 2` nếu `EDGE_STAMP`. Ở `NON_PRODUCTION` ghi là dấu thử nghiệm (mục Chế độ phi sản xuất — quyết định D-009 của `00-domain.md`). Không có lối từ chối dùng dấu ở `PENDING_SEAL` — A-034, còn mở.
+
+Máy trạng thái `document` — chép đúng mục Vòng đời `document` của `00-domain.md`:
 
 ```mermaid
 stateDiagram-v2
     [*] --> DRAFT
     DRAFT --> PENDING_APPROVAL
-    PENDING_APPROVAL --> APPROVED
     PENDING_APPROVAL --> CHANGES_REQUESTED
+    CHANGES_REQUESTED --> DRAFT
     PENDING_APPROVAL --> REJECTED
+    PENDING_APPROVAL --> APPROVED
     APPROVED --> PENDING_SIGNATURE
     PENDING_SIGNATURE --> CHANGES_REQUESTED
     PENDING_SIGNATURE --> SIGNED
-    CHANGES_REQUESTED --> DRAFT
-    CHANGES_REQUESTED --> ARCHIVED
     SIGNED --> PENDING_SEAL
-    SIGNED --> ISSUED
     PENDING_SEAL --> SEALED
+    SIGNED --> ISSUED
     SEALED --> ISSUED
     ISSUED --> REVOKED
     ISSUED --> SUPERSEDED
     ISSUED --> ARCHIVED
     REVOKED --> ARCHIVED
     SUPERSEDED --> ARCHIVED
-    note right of ISSUED
-        ISSUED chỉ do finalize_issue
-        sau ISSUE_ORDERED (A-010)
-    end note
+    REJECTED --> ARCHIVED
+    CHANGES_REQUESTED --> ARCHIVED
+    DRAFT --> ARCHIVED
+    APPROVED --> ARCHIVED
+    ARCHIVED --> [*]
 ```
 
-**Khoảng hoàn tất phát hành** (`03-agents.md:226`): từ `ISSUE_ORDERED` tới `ISSUED`/`VOIDED`. Document đứng yên `SIGNED`/`SEALED`, đã có thể có `document_number` (đoạn 2) nhưng chưa phát hành. Cờ dẫn xuất `issue_in_progress`, hiển thị do Phase 8 quyết. `document_number_assign` chỉ trong `finalize_issue`, idempotent theo `document_id`; `docx_render` khoá theo input, ghi một lần (`04-data.md:705`).
+Ba cạnh vào `ARCHIVED` từ `CHANGES_REQUESTED`, `DRAFT`, `APPROVED` là **bản nháp bị bỏ** — văn bản chưa từng ký, chưa từng có hiệu lực — và bắt buộc `archive_reason` (mục 10.2).
+
+**Khoảng hoàn tất phát hành** — từ lệnh phát hành tới `ISSUED` hoặc số `VOIDED`. `document` đứng yên `SIGNED`/`SEALED`; có thể đã có số mà chưa phát hành. Dữ liệu ở mục Khoảng hoàn tất phát hành trong dữ liệu của `04-data.md`. Hiển thị — việc (g) của AUD-23.
 
 ---
 
-## 7. Thu hồi văn bản — F5 `[Should]` nhưng trạng thái bắt buộc
+## 7. Thu hồi văn bản — F5 `[Should]`, trạng thái bắt buộc
 
-Trạng thái `REVOKED`/`SUPERSEDED`/`ARCHIVED` tồn tại từ Sprint đầu (`01-prd.md:211` AC F3), dù màn hình thu hồi là `[Should]`.
+Trạng thái `REVOKED`/`SUPERSEDED`/`ARCHIVED` tồn tại từ Sprint đầu; màn hình thu hồi là `[Should]`.
 
-| Bước | Permission | Ghi |
+| Bước | Permission | Ghi, trong một giao dịch |
 |---|---|---|
-| `revoke_initiate` | `document.revoke_initiate` | `REVOCATION_REASON` không rỗng |
-| `revoke_confirm` | `document.revoke_confirm` — **khác người** khởi tạo | `SEPARATION_OF_DUTIES_VIOLATION` nếu trùng người |
+| `document_revoke_initiate` | `document.revoke_initiate` | Bước `REVOKE_INITIATE` sinh ra đã `DECIDED`; `decision_record` `REVOKE_INITIATED`; `REVOCATION_REASON` không rỗng; **mở** bước `REVOKE_CONFIRM` (`assignee_employee_id` `NULL`). `document` ở nguyên `ISSUED` |
+| `document_revoke_confirm` | `document.revoke_confirm` | Đóng bước `REVOKE_CONFIRM` `DECIDED`; `decision_record` `REVOKE_CONFIRMED`; `ISSUED → REVOKED` |
 
-`document` ở `ISSUED` giữa hai bước; `REVOKED` vẫn truy xuất được. `SUPERSEDED` chưa có endpoint (A-054). Số đã cấp không tái sử dụng.
+**Đường thoát cho tổ chức một người (AUD-23 (f)).** Giữ D-006 — "cùng cơ chế áp dụng cho ràng buộc hai người ở bước thu hồi". Người xác nhận trùng người khởi tạo thì chạy phép xác định ở mục 3.2 với P = `document.revoke_confirm`: E rỗng → nhập `self_approval_reason`, bước `REVOKE_CONFIRM` mang `self_approved = true`, `audit_event` `WARNING`; E khác rỗng → `SEPARATION_OF_DUTIES_VIOLATION`. Người thụ hưởng khởi tạo hay xác nhận thu hồi văn bản của chính mình thì theo đúng bảng Kết quả ở mục 3.2.
+
+`uq_approval_step_one_open` chặn hai lần khởi tạo cùng chờ trên một văn bản. Huỷ một lần khởi tạo đang chờ — chưa thiết kế; F5 là `[Should]`, sau UAT. `REVOKED` vẫn truy xuất được; số đã cấp không tái sử dụng. `SUPERSEDED` chưa có thao tác (A-054).
 
 ---
 
 ## 8. SLA, escalation và nhắc hạn
 
-* **Quá hạn SLA không đổi trạng thái** — là cờ `sla_breached` tính từ `due_at` (`00-domain.md:254`). Hệ thống bật `sla_breached` và escalate theo Phase 8, không tự chuyển trạng thái.
-* **Nhắc `NEEDS_INFO`:** cron `expire_request` quét `expires_at`, nhắc ở ngày thứ 3, `EXPIRED` sau `TBD` (A-014, mặc định 7 ngày làm việc).
-* **Escalation trong Sprint đầu:** chỉ **cảnh báo** (ghi `audit_event`, gửi `notification`), không tự duyệt hay tự chuyển người duyệt. Dashboard SLA thuộc Phase 11.
+- **Quá hạn SLA không đổi trạng thái** — là cờ `sla_breached` tính từ `due_at` (mục Vòng đời `request` của `00-domain.md`). SLA `TBD` (A-002).
+- **Nhắc `NEEDS_INFO`:** Cron Job `needs_info_reminder` (mục Thao tác vận hành của `03-agents.md`) gửi `NEEDS_INFO_REMINDER` cho người tạo. `expire_request` chỉ làm việc hết hạn. Mốc nhắc và thời hạn `EXPIRED`: A-014.
+- **Escalation trong Sprint đầu:** chỉ cảnh báo — không tự duyệt, không tự đổi người duyệt. Dashboard SLA và tồn đọng: mục Dashboard SLA & tồn đọng của `11-ops.md`.
 
 ---
 
-## 9. Cơ chế dừng khi chạm trần — A-022
+## 9. Dừng có kiểm soát và tiếp quản — NFR-06
 
 ### 9.1 Hai trần độc lập
 
-| Trần | Đơn vị | Giá trị | Chặn gì |
-|---|---|---|---|
-| Số vòng `CHANGES_REQUESTED` | vòng | `TBD` (A-022) | Vòng qua lại người—hệ thống bất kể token |
-| Token budget mỗi `request` | lời gọi LLM sinh một biến | `TBD` (A-022, A-031) | Chi phí/ request |
+| Trần | Đơn vị | Chặn gì |
+|---|---|---|
+| Số vòng `CHANGES_REQUESTED` mỗi `document` — `R` | vòng | Vòng qua lại người—hệ thống, bất kể token |
+| Token budget mỗi `request` | token | Chi phí mỗi `request` |
 
-Nguyên tử chi phí: **một biến một lời gọi** (ADR-009). Cận trên một `document`: `(1 + R) × V × 2 × 2` với `R` vòng, `V` biến, hệ số 2 sinh lại sau trượt kiểm + hệ số 2 sửa parse (`ASSUMPTIONS.md:38`).
+Nguyên tử chi phí: **một lời gọi LLM sinh một biến** (ADR-009). Giá trị hai trần và cận trên số lời gọi: mục Định cỡ A-022 của `11-ops.md` — không chép lại ở đây.
 
 ### 9.2 Đường vào `halt_for_human`
 
-Mọi nhánh lỗi/ trần đi qua **một** node `halt_for_human` (`03-agents.md:288`):
+Mọi nhánh lỗi và mọi trần của `document_graph` đi qua **một** node `halt_for_human` (mục `document_graph` của `03-agents.md`). Node này **không đổi trạng thái `document`**. Không đường nào dừng ở `PENDING_APPROVAL`, `PENDING_SIGNATURE` hay `PENDING_SEAL` — graph chỉ dừng ở node chạy máy, không ở cổng:
 
-* `validate_free_content` trượt lần 2
-* JSON hỏng lần 2
-* `FONT_MISSING` / `RENDER_CHECKSUM_MISMATCH` / `TEMPLATE_NOT_ACTIVE`
-* Chạm trần vòng hoặc token (`BUDGET_EXCEEDED`)
-* Lỗi provider hết retry (A-031)
+| `at_node` | `document` khi dừng | `request` khi dừng |
+|---|---|---|
+| `draft_free_content`, `revise_free_content`, `validate_free_content`, `render_draft`, `check_review_readiness` | `DRAFT` | `SUBMITTED` ở vòng soạn đầu và vòng sau khi gửi lại ca `SLOT_DATA`; `IN_REVIEW` ở vòng `FREE_CONTENT` |
+| `route_review` | `CHANGES_REQUESTED` | `IN_REVIEW` ca `FREE_CONTENT`; `CHANGES_REQUESTED` ca `SLOT_DATA` |
+| `route_signing` | `APPROVED` | `IN_REVIEW` |
+| `finalize_issue` | `SIGNED` hoặc `SEALED`; số của lần này đã `VOIDED` nếu đã cấp | `APPROVED` |
 
-Node này **không đổi trạng thái `document`** — document giữ nguyên `PENDING_APPROVAL`/`PENDING_SIGNATURE`/… tại thời điểm dừng, và:
+`halt_for_human`, theo thứ tự:
 
-1. Ghi `document_halt` (`reason_code`, `at_node`, `revision_round`, `trace_id`) qua `document_halt_record` (idempotent theo `(document_id, at_node, revision_round)`)
-2. Ghi `audit_event`
-3. Dừng graph tại `await_human_takeover` (interrupt thứ 6)
+1. `document_halt_record` — trong **một** giao dịch: mở bước `TAKEOVER`, ghi `document_halt` (`reason_code`, `at_node`, `revision_round`, `trace_id`, `takeover_step_id`), ghi `audit_event`. **Idempotency (A-044):** `document` đã có bước `TAKEOVER` `OPEN` thì trả lại lần dừng của bước đó, không ghi gì mới; `uq_approval_step_one_open` là lớp chặn ở DB. Lần dừng sau một lần `RETRY`, dù cùng node cùng vòng, là một bước và một lần dừng mới (ADR-027).
+2. `notification_send` — `DOCUMENT_HALTED` (mục 10.3).
+3. `interrupt` tại `await_human_takeover`.
 
-### 9.3 Tiếp quản
+**Lỗi trước khi có `document` không vào đây.** `template_fetch` trả `NO_ACTIVE_TEMPLATE` ở `prepare_draft` thì chưa có `document` để gắn `document_halt`; job `render_document` đi đường job lỗi vĩnh viễn của mục Background worker & Cron của `11-ops.md` và `RENDER_JOB_FAILED`.
 
-Người có permission tương ứng xem `DocumentReviewView.halted = true` + `latest_halt.reason_code` (từ `05-api.md:161`), quyết định:
+### 9.3 Tiếp quản — `document_takeover_resolve` (AUD-02 (d))
 
-| Mã `reason_code` | Hành động tiếp quản |
+**Thao tác cổng** `document_takeover_resolve`, endpoint `POST /documents/{document_id}/actions/resolve-halt`, `SYNC_ENQUEUE`, khoá idempotency = id của `decision_record` `TAKEOVER_RESOLVED`. Body: `expected_row_version`, `document_halt_id`, `resolution`, `rejection_reason` (bắt buộc khi và chỉ khi `REJECT_REQUEST`), `self_approval_reason`.
+
+**Ba lối ra** — `decision_record.takeover_resolution`:
+
+| Lối ra | Permission | D-006 | Được dùng khi | Chuyển trạng thái | Graph đi tiếp |
+|---|---|---|---|---|---|
+| `RETRY` | `document.approve_content` | Không kiểm | `at_node` ≠ `finalize_issue` và `reason_code` có cột `RETRY` ở mục 10.1. Người tiếp quản đã sửa nguyên nhân **ngoài** hệ thống: cài font, cấp quyền ký, khôi phục object, chờ provider | Không | `route_takeover` → chính `at_node` |
+| `REJECT_REQUEST` | `document.reject` | **Có** — như `document_reject` | `at_node` ≠ `finalize_issue` | `request` `SUBMITTED`/`IN_REVIEW`/`CHANGES_REQUESTED` → `REJECTED`; `document` `DRAFT`/`CHANGES_REQUESTED`/`APPROVED` → `ARCHIVED`, `archive_reason = TAKEOVER_REJECTED`; `decision_record_text` `REJECTION_REASON` | `route_takeover` → `END` |
+| `RETURN_TO_ISSUE_QUEUE` | `document.issue` | Không kiểm | `at_node` = `finalize_issue` và `reason_code` ≠ `CONTENT_HASH_MISMATCH` | Không. Lệnh phát hành cũ đã bỏ cuộc; văn bản trở lại hàng đợi phát hành, phát hành lại cần một **lệnh mới** — mỗi lệnh tiêu tối đa một số | `route_takeover` → `await_issue` |
+
+Mọi lối ra, cùng một giao dịch (ADR-010): đóng bước `TAKEOVER` `DECIDED`; ghi `decision_record` `TAKEOVER_RESOLVED` trỏ `document_halt_id` và `approval_step_id`; `audit_event`; enqueue `resume_document_graph`. Node `route_takeover` đọc quyết định từ DB — payload resume chỉ mang `decision_record_id`, như `route_review`.
+
+**`REJECT_REQUEST` là đường của cạnh `SUBMITTED → REJECTED`** ("không đủ điều kiện theo quy chế", AUD-07) — cạnh đã có trong máy trạng thái `request` mà trước đây không thao tác nào đi qua. Nó thêm hai cạnh cho `request` và `document` — `CHANGES_REQUESTED → REJECTED` của `request`; `DRAFT → ARCHIVED`, `APPROVED → ARCHIVED` của `document` — ghi ở mục Vòng đời của `00-domain.md`.
+
+**Lỗi:**
+
+| Tình huống | Mã |
 |---|---|
-| `VALIDATION_FAILED` / `PARSE_FAILED` | Sửa `variable_guidance`/`template_variable` rồi resume |
-| `BUDGET_EXCEEDED` / `MAX_ROUNDS_EXCEEDED` | Người thật soạn tay phần còn lại, không gọi LLM |
-| `RENDER_CHECKSUM_MISMATCH` | Render lại — khoá object đã có thì không ghi đè |
-| `FONT_MISSING` | Cài font vào image rồi resume |
+| Lần dừng không phải lần đang mở, hoặc đã được giải | `STATE_CONFLICT` |
+| Lối ra không được dùng cho `at_node` và `reason_code` này | `TAKEOVER_RESOLUTION_NOT_ALLOWED`, `details.allowed_resolutions` |
+| Thiếu `rejection_reason` với `REJECT_REQUEST`, hoặc có nó với lối ra khác | `VALIDATION_FAILED` |
+| D-006 ở `REJECT_REQUEST` | Bảng Kết quả ở mục 3.2 |
 
-Tiếp quản ghi `decision_record` loại `TAKEOVER_RESOLVED` trỏ `document_halt_id`. Không bao giờ để `document` dở dang với biến rỗng (`01-prd.md:313` NFR-06).
+**`request_cancel` trong lúc đang dừng.** Chỉ xảy ra được ở ca `SLOT_DATA` dừng tại `route_review` — lúc đó `request` đã ở `CHANGES_REQUESTED`. `request_cancel` chạy như thường (mục Khi `request` bị huỷ lúc `document` đang `CHANGES_REQUESTED` của `04-data.md`), cộng: đóng bước `TAKEOVER` `CANCELLED`, và resume tại `await_human_takeover` thay vì `await_resubmission`. `route_takeover` đọc DB, thấy `request` `CANCELLED`, tới `END`.
+
+**Mỗi vòng lặp đi qua một người.** `RETRY` có thể dừng lại lần nữa; mỗi lần là một bước `TAKEOVER` mới và một hành động của người thật, và token budget của `request` vẫn đếm (dòng Điều kiện thoát vòng lặp ở mục `drafting_agent` của `03-agents.md` giữ nguyên).
+
+**Không có trong Sprint đầu** — A-077: người tiếp quản tự viết biến nội dung tự do thay LLM; lối ra cho `CONTENT_HASH_MISMATCH`. Sửa `variable_guidance` hay `template_variable` **không** phải lối tiếp quản: phiên bản template bất biến, `template_variable` chỉ thêm (mục Bảng chi tiết của `04-data.md`); sửa template là tải phiên bản mới, và văn bản đã ghim phiên bản cũ.
 
 ### 9.4 Hiển thị
 
-`DocumentReviewPage` hiện banner `halted` với mã lý do và nút tiếp quản (theo permission). Banner này khác banner `issue_in_progress`. Quyết định ghi `TODO` thành giao diện Phase 8, không phải logic Phase 7.
+- `DocumentReviewView.latest_halt` mang `document_halt_id`, `reason_code`, `at_node`, `created_at` và `allowed_resolutions` — server tính từ bảng mục 10.1, **không** theo permission của người xem. Giao diện đối chiếu permission trong `GET /me` để bật nút.
+- Banner `halted` khác banner `issue_in_progress` và cờ `job_failed`: `halted` là graph đã dừng có tên và chờ người; `job_failed` là hạ tầng không chạy được job, graph chưa tới node nào (mục Background worker & Cron của `11-ops.md`).
+- Nhân viên không thấy `reason_code`. `RequestDetail` giữ nguyên trạng thái; `request_submit` trong lúc dừng trả `DOCUMENT_AWAITING_TAKEOVER`, `message` bảo chờ phòng hành chính.
 
 ---
 
-## 10. Audit log
+## 10. Bảng mã
 
-### 10.1 Ghi gì
+Ba bảng dưới đây là bảng mã mà `04-data.md`, `05-api.md` và `GLOSSARY.md` giao cho Phase 8. Migration `0007` biến chúng thành `CHECK`; thêm mã là thêm một migration và một dòng ở đây.
 
-Mọi thao tác ghi trong `tool_layer` sinh `audit_event` trong **cùng giao dịch** (ADR-010). Bảng `audit_event` chỉ thêm, không `UPDATE`/`DELETE` (`04-data.md:76` nhóm chỉ thêm).
+### 10.1 `document_halt.reason_code` (AUD-02 (a))
+
+Mã của người tiếp quản, không phải nguyên văn mã lỗi của tool (mục Mã lỗi của tool và thao tác của `05-api.md`). Mã con của tool ghi trong `audit_event` của lần dừng và trong `observability`.
+
+| `reason_code` | `at_node` | Từ đâu | `RETRY`? |
+|---|---|---|---|
+| `FREE_CONTENT_INVALID` | `validate_free_content` | Biến trượt kiểm lần hai trong cùng vòng | Không |
+| `PARSE_FAILED` | `draft_free_content`, `revise_free_content` | JSON hỏng sau lần sửa parse duy nhất | Không |
+| `PROVIDER_UNAVAILABLE` | như trên | Lỗi gọi model hết lượt retry (A-031) | Có |
+| `BUDGET_EXCEEDED` | như trên | `ai_gateway` chặn: chạm trần token budget (ADR-019) | Không |
+| `BUDGET_UNAVAILABLE` | như trên | `ai_gateway` không đọc được sổ budget, chặn fail-closed (ADR-019) | Có |
+| `SYSTEM_DEFECT` | như trên | Lỗi lập trình: `SLOT_NOT_DECLARED`, `ALLOWLIST_REJECTED` | Có — sau khi bản sửa đã deploy |
+| `TEMPLATE_NOT_ACTIVE` | `render_draft`, `check_review_readiness` | `docx_render` `TEMPLATE_NOT_ACTIVE`; `review_readiness_check` `TEMPLATE_NOT_ACTIVE_AT_RENDER` | Không — văn bản đã ghim phiên bản |
+| `RENDER_INPUT_INVALID` | `render_draft` | `docx_render` `MISSING_VARIABLE`, `UNKNOWN_VARIABLE` | Không |
+| `RENDER_CONVERSION_FAILED` | `render_draft`, `finalize_issue` | `pdf_export` `CONVERSION_FAILED`, `TIMEOUT` | Có |
+| `FONT_MISSING` | `render_draft`, `finalize_issue` | `pdf_export` `FONT_MISSING` (ADR-015) | Có — sau khi image có font |
+| `REVIEW_NOT_READY` | `check_review_readiness` | `VARIABLE_MISSING`, `PLACEHOLDER_VALUE`, `WRONG_SOURCE`, `FRAME_TEXT_IN_VARIABLE`, `SEAL_UNDETERMINED` | Không |
+| `MAX_ROUNDS_EXCEEDED` | `route_review` | Chạm trần `R` | Không |
+| `NO_ELIGIBLE_SIGNER` | `route_signing` | `signing_route` | Có — sau khi cấp `document.sign` |
+| `RENDER_CHECKSUM_MISMATCH` | `route_signing`, `finalize_issue` | `render_integrity_check` | Có ở `route_signing` — sau khi khôi phục byte |
+| `RENDER_OBJECT_MISSING` | `route_signing`, `finalize_issue` | `render_integrity_check` | Như trên |
+| `CONTENT_HASH_MISMATCH` | `finalize_issue` | Kiểm `approved_content_hash` trượt — INV-01 | Không lối ra nào (A-077) |
+| `ISSUE_RETRIES_EXHAUSTED` | `finalize_issue` | Hết lượt retry trong `finalize_issue` sau khi đã có số | — |
+
+Ở `finalize_issue` không có `RETRY`: lối ra duy nhất là `RETURN_TO_ISSUE_QUEUE`, trừ `CONTENT_HASH_MISMATCH`. Mọi `at_node` khác đều nhận `REJECT_REQUEST`.
+
+`FREE_CONTENT_INVALID` thay tên cũ `VALIDATION_FAILED` — tên cũ trùng một `error_code` của `05-api.md` (AUD-20).
+
+**Khôi phục byte của object** — cho `RETRY` ở `RENDER_CHECKSUM_MISMATCH`, `RENDER_OBJECT_MISSING` — phụ thuộc năng lực của nhà cung cấp object storage (A-024), `[CẦN XÁC MINH]`. Không khôi phục được thì `REJECT_REQUEST`: khoá render theo input nên render lại cùng input trùng khoá và không ghi đè (mục Khoá object theo input và ràng buộc ghi một lần của `03-agents.md`).
+
+### 10.2 `document.archive_reason` (AUD-02 (b))
+
+| `archive_reason` | Từ `archived_from_status` | Thao tác |
+|---|---|---|
+| `REQUEST_CANCELLED` | `CHANGES_REQUESTED` | `request_cancel` ca `SLOT_DATA` (A-035) |
+| `TAKEOVER_REJECTED` | `DRAFT`, `CHANGES_REQUESTED`, `APPROVED` | `document_takeover_resolve` lối ra `REJECT_REQUEST` |
+| `RETENTION_DUE` | `ISSUED`, `REVOKED`, `SUPERSEDED`, `REJECTED` | `document_retention_archive` — chưa chạy được tới khi A-010 đóng |
+
+Bắt buộc ở ba đường vào của bản nháp bị bỏ; tuỳ chọn ở đường hết hạn lưu. `ck_document_archive_reason_value` ép mỗi mã đi với đúng đường vào của nó. Server gán, người dùng không chọn.
+
+### 10.3 `notification.event_code` (AUD-02 (c))
+
+| `event_code` | Ai gửi | Người nhận | `dedupe_key` |
+|---|---|---|---|
+| `DOCUMENT_ISSUED` | `notify_issued` | Người tạo `request` | `document_id` |
+| `DOCUMENT_HALTED` | `halt_for_human` | Người mang permission của các lối ra được dùng: trước `finalize_issue` — `document.approve_content` hoặc `document.reject`; ở `finalize_issue` — `document.issue` | `document_halt_id` |
+| `NEEDS_INFO_REMINDER` | `needs_info_reminder` | Người tạo `request` | `request_id` cộng mốc nhắc |
+| `DOCUMENT_JOB_FAILED` | Job `resume_document_graph` hoặc `finalize_issue` lỗi vĩnh viễn (mục Background worker & Cron của `11-ops.md`) | Người mang `document.approve_content` | id của job |
+| `RENDER_JOB_FAILED` | Job `render_document` lỗi vĩnh viễn — chưa có `document` | Người mang `document.approve_content` | id của job |
+
+Thông báo chỉ mang mã và tham chiếu (`request_id`, `document_id`), không mang giá trị slot. Câu hiển thị là khuôn theo `event_code` ở `client`. Thao tác cổng **không** gửi thông báo cho nhân viên — nhân viên thấy trạng thái đổi qua chủ đề `MY_REQUESTS` của stream tín hiệu.
+
+---
+
+## 11. Audit log
+
+### 11.1 Ghi gì
+
+Mọi thao tác ghi của `tool_layer` sinh `audit_event` trong **cùng giao dịch** (ADR-010). `audit_event` chỉ thêm, không mang văn bản tự do — chỉ mã và tham chiếu (mục Audit log bất biến của `04-data.md`).
 
 | Nhóm | Sự kiện | `severity` |
 |---|---|---|
-| Hội thoại | `chat_message` (RES, đã mask), `request_open` | `INFO` |
-| Slot | `request_slots_write`, `request_slot_confirm` (từng slot `CONFIRMED`) | `INFO` |
-| Duyệt | `APPROVED`, `CHANGES_REQUESTED` + `CHANGE_REASON`, `REJECTED` + `REJECTION_REASON` | `INFO`; `WARNING` nếu `self_approved` |
-| Ký/dấu/phát hành | `SIGNED`, `SEALED`, `ISSUE_ORDERED` → `ISSUED`/`VOIDED`, `REVOKE_*` | `INFO`/`WARNING` |
-| Cấu hình | `template_version_upload`, `slot_sensitivity_change` (phá huỷ) | `INFO` |
-| Dừng | `document_halt` | `INFO` |
+| Hội thoại | `request_open`. Có ghi cho từng tin nhắn chat hay không — A-055 | `INFO` |
+| Slot | `request_slots_write`, `request_slot_confirm` | `INFO` |
+| Duyệt | `APPROVED`, `CHANGES_REQUESTED`, `REJECTED` — mã lý do ở `decision_record_text`, không ở `audit_event` | `INFO`; `WARNING` nếu tự duyệt |
+| Ký, dấu, phát hành | `SIGNED`, `SEALED`, `ISSUE_ORDERED` → `ISSUED` hoặc `VOIDED`, `REVOKE_INITIATED`, `REVOKE_CONFIRMED` | `INFO`; `WARNING` nếu tự duyệt |
+| Dừng và tiếp quản | `document_halt_record` kèm mã con của tool; `TAKEOVER_RESOLVED` kèm lối ra | `INFO`; `WARNING` nếu tự duyệt |
+| Cấu hình | `template_version_upload`, `slot_sensitivity_change` | `INFO` |
 
-`decision_record_text.body` (RES) tách riêng, xoá được khi hết hạn lưu (A-010), không sửa được.
+`decision_record_text.body` (`RES`) tách riêng, xoá được khi hết hạn lưu (A-010), không sửa được.
 
-### 10.2 Ai xem được
+### 11.2 Ai xem được
 
-* `audit.read_own` — bắt buộc lọc `request_id` do mình tạo
-* `audit.read_all` — mọi `request`
-* `GET /self-approvals` — mục riêng tự duyệt (D-006 điều kiện 4)
-* `GET /audit-events?request_id=&document_id=&severity=&action=` (`05-api.md:358`)
+- `audit.read_own` — chỉ sự kiện của `request` do mình tạo.
+- `audit.read_all` — mọi `request`; kèm `GET /self-approvals`, mục tự duyệt riêng.
+- `GET /audit-events?request_id=&document_id=&severity=&action=` (mục Nhật ký và tự duyệt của `05-api.md`).
 
-### 10.3 Chứng minh bất biến
+### 11.3 Chứng minh bất biến
 
-Thực thi bằng `GRANT`/`REVOKE` (`04-data.md:65` J4): `bo19_app` **không** có `UPDATE`/`DELETE` trên `audit_event`, `decision_record`, `document_render_pin`, `document_register_format`. Kiểm phủ định 169 trường hợp đã chạy ở Phase 6 (`06-structure.md:486`). Credential `bo19_migrator` là ranh giới tin cậy — thuộc Phase 9/11.
+Thi hành bằng `GRANT`/`REVOKE`: `bo19_app` **không** có `UPDATE`/`DELETE` trên `audit_event`, `decision_record`, `document_render_pin`, `document_register_format`, `document_halt` (mục Nguyên tắc dữ liệu của `04-data.md`). Bộ kiểm `tools/contract-checks/check_grants.py` (mục Xác minh contract của `06-structure.md`); lần chạy ở đợt sửa 3, `0001` → `0007`: 176 từ chối đúng, 68 cho phép đúng, lệch 0. Credential `bo19_migrator` chỉ có ở CI (ADR-022).
 
 ---
 
-## 11. Quy tắc cứng — không bao giờ tự động hoá
+## 12. Quy tắc cứng — không bao giờ tự động hoá
 
 | # | Hành động | Vì sao không tự động |
 |---|---|---|
 | 1 | Duyệt nội dung `PENDING_APPROVAL` | NFR-01, RISK-01 — văn bản sai thể thức vô hiệu |
 | 2 | Duyệt dấu `PENDING_SEAL` | D-009, EC-SR-05 — hai cổng tách rời, không gộp |
-| 3 | Cấp số `document_number` | ADR-011 — sổ số là nguồn sự thật pháp lý, phải do người ra lệnh `ISSUE_ORDERED` |
-| 4 | Thu hồi `REVOKED` | Hai người khác nhau, `SEPARATION_OF_DUTIES` |
-| 5 | Đổi `operating_mode` `NON_PRODUCTION` → `PRODUCTION` | D-009 — quyết định có người ký, không phải cờ cấu hình |
-| 6 | Tự duyệt khi `beneficiary == approver` | D-006 — phải có `self_approval_reason` + `WARNING` |
-| 7 | Sửa `change_targets`/`change_scope` | ADR-009 — LLM không tự quyết phạm vi sửa |
-| 8 | Gỡ `halt_for_human` | Phải do người tiếp quản `TAKEOVER_RESOLVED` |
+| 3 | Cấp số `document_number` | ADR-011 — chỉ sau lệnh phát hành của người mang `document.issue`; mỗi lệnh tiêu tối đa một số |
+| 4 | Thu hồi `REVOKED` | Hai người khác nhau; một người chỉ qua đường thoát D-006, ghi `WARNING` |
+| 5 | Đổi `operating_mode` `NON_PRODUCTION` → `PRODUCTION` | D-009, ADR-020, ADR-023 |
+| 6 | Tự duyệt khi người thụ hưởng là người thao tác | D-006 — phép xác định ở mục 3.2, đủ bốn điều kiện |
+| 7 | Chọn `change_targets`/`change_scope` | ADR-009 — LLM không tự quyết phạm vi sửa |
+| 8 | Gỡ một lần dừng | Chỉ `document_takeover_resolve`; không cron, không job nào tự gỡ |
 
-Tự động các hành động trên là vi phạm cổng nghiệm thu `01-prd.md:369` M4.
+Tự động hoá bất kỳ hành động nào ở trên là vi phạm M4 — metric loại Bất biến ở mục Goals & metrics của `01-prd.md`.
 
 ---
 
 ## Open Questions
 
-Không có câu hỏi mở chỉ tồn tại trong file này. Các giả định liên quan: `A-022` (trần vòng/token), `A-029` (đường sang `EXPIRED` cho `CHANGES_REQUESTED`), `A-034` (lối ra `PENDING_SEAL`), `A-044` (khoá idempotency `document_halt`), `A-052` (nhập hộ) — xem `ASSUMPTIONS.md`.
+Không có câu hỏi mở chỉ tồn tại trong file này. Giả định liên quan: A-022 (trần), A-029 (`CHANGES_REQUESTED` ca `SLOT_DATA` sang `EXPIRED`), A-034 (lối ra ở `PENDING_SEAL`), A-044 (đề xuất đóng theo ADR-027 ở v0.3 — chờ PO duyệt ADR), A-052 (nhập hộ, uỷ quyền), A-053 (huỷ ở `NEEDS_INFO` và vế EC-CV-02), A-077 (lối tiếp quản chưa có trong Sprint đầu).
 
 ---
 
 ## Quyết định kiến trúc
 
-Không có ADR mới. Thiết kế dựa trên ADR-009, ADR-010, ADR-011, D-006, D-009 đã chốt.
-
+ADR-027 (mới ở v0.3, `Proposed`) — cờ tự duyệt và việc tiếp quản nằm trên `approval_step`. Phần còn lại dựa trên ADR-009, ADR-010, ADR-011, ADR-019, ADR-022, D-006, D-009 đã chốt.

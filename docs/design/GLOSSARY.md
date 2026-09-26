@@ -1,6 +1,6 @@
 # GLOSSARY — BO-19 Admin Service Desk Agent
 
-**Phiên bản:** 0.22 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5, vòng duyệt Phase 5, Phase 6, Phase 9, Phase 12, đợt sửa A-068, A-073, A-075 và đợt sửa 2 sau Phase 13
+**Phiên bản:** 0.23 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5, vòng duyệt Phase 5, Phase 6, Phase 9, Phase 12, đợt sửa A-068, A-073, A-075, đợt sửa 2 và đợt sửa 3 sau Phase 13
 
 > Đây là danh sách tên chuẩn. Từ Phase 1 trở đi, mọi tài liệu, diagram, DDL, endpoint và prompt phải dùng **đúng** các định danh trong file này. Muốn đổi tên thì sửa file này trước, rồi ghi vào [`CHANGELOG.md`](./CHANGELOG.md).
 
@@ -105,7 +105,7 @@ Quá hạn SLA **không** phải trạng thái. Đó là điều kiện dẫn xu
 | `ISSUED` | Đã phát hành | `document.issue` · thời điểm duy nhất cấp `document_number` |
 | `REVOKED` | Đã thu hồi | Mất hiệu lực, vẫn truy xuất được |
 | `SUPERSEDED` | Bị thay thế | Trỏ tới văn bản thay thế |
-| `ARCHIVED` | Đã lưu trữ | Hai đường vào khác loại: văn bản đã đi hết vòng đời, hoặc bản nháp bị bỏ vì `request` bị huỷ khi `document` đang `CHANGES_REQUESTED`. Đường thứ hai bắt buộc `archive_reason` (mục Vòng đời `document` của `00-domain.md`) |
+| `ARCHIVED` | Đã lưu trữ | Hai đường vào khác loại: văn bản đã đi hết vòng đời, hoặc bản nháp bị bỏ — `request` bị huỷ khi `document` đang `CHANGES_REQUESTED`, hay người tiếp quản từ chối khi `document` đang dừng ở `DRAFT`, `CHANGES_REQUESTED`, `APPROVED`. Đường thứ hai bắt buộc `archive_reason` (mục Vòng đời `document` của `00-domain.md`) |
 
 ---
 
@@ -188,9 +188,21 @@ Thêm ca mới vào danh sách này là một quyết định có ADR, không ph
 
 `SUBMITTED` · `RESUBMITTED` · `REQUEST_CANCELLED` · `APPROVED` · `CHANGES_REQUESTED` · `REJECTED` · `SIGNED` · `SEALED` · `ISSUE_ORDERED` · `REVOKE_INITIATED` · `REVOKE_CONFIRMED` · `TAKEOVER_RESOLVED` · `BOOKING_CONFIRMED` `[Should]`. `ReviewSignal.kind` ở `03-agents.md` là tập con — những loại đánh thức `document_graph`
 
-**`archive_reason` — mã lý do khi `document` vào `ARCHIVED`** *(thêm ở Phase 4)*
+**`archive_reason` — mã lý do khi `document` vào `ARCHIVED`** *(thêm ở Phase 4; bảng mã ở đợt sửa 3 sau Phase 13)*
 
-Bắt buộc ở đường vào từ `CHANGES_REQUESTED`. Bảng mã thuộc Phase 8
+`REQUEST_CANCELLED` · `TAKEOVER_REJECTED` · `RETENTION_DUE`. Bắt buộc ở ba đường vào của bản nháp bị bỏ — từ `CHANGES_REQUESTED`, `DRAFT`, `APPROVED`. Mỗi mã đi với đường vào nào: mục Bảng mã của `08-hitl.md`
+
+**`halt_reason_code` — `document_halt.reason_code`** *(đợt sửa 3 sau Phase 13)*
+
+`FREE_CONTENT_INVALID` · `PARSE_FAILED` · `PROVIDER_UNAVAILABLE` · `BUDGET_EXCEEDED` · `BUDGET_UNAVAILABLE` · `SYSTEM_DEFECT` · `TEMPLATE_NOT_ACTIVE` · `RENDER_INPUT_INVALID` · `RENDER_CONVERSION_FAILED` · `FONT_MISSING` · `REVIEW_NOT_READY` · `MAX_ROUNDS_EXCEEDED` · `NO_ELIGIBLE_SIGNER` · `RENDER_CHECKSUM_MISMATCH` · `RENDER_OBJECT_MISSING` · `CONTENT_HASH_MISMATCH` · `ISSUE_RETRIES_EXHAUSTED`. Node dừng và lối ra được dùng của từng mã: mục Bảng mã của `08-hitl.md`. `FREE_CONTENT_INVALID` thay tên cũ `VALIDATION_FAILED`, vốn trùng một `error_code`
+
+**`takeover_resolution` — lối ra của thao tác tiếp quản, `decision_record.takeover_resolution`** *(đợt sửa 3 sau Phase 13)*
+
+`RETRY` (chạy lại node đã dừng) · `REJECT_REQUEST` (từ chối yêu cầu, bỏ bản nháp) · `RETURN_TO_ISSUE_QUEUE` (trả văn bản về hàng đợi phát hành sau khi `finalize_issue` bỏ cuộc)
+
+**`notification_event_code` — `notification.event_code`** *(đợt sửa 3 sau Phase 13)*
+
+`DOCUMENT_ISSUED` · `DOCUMENT_HALTED` · `NEEDS_INFO_REMINDER` · `DOCUMENT_JOB_FAILED` · `RENDER_JOB_FAILED`. Người gửi, người nhận, khoá chống trùng: mục Bảng mã của `08-hitl.md`
 
 **Enum nâng từ `04-data.md`** *(thêm ở Phase 5)*
 
@@ -199,7 +211,7 @@ Theo phép thử ở mục Nguyên tắc dữ liệu của `04-data.md`: enum xu
 | Định danh | Cột | Giá trị |
 |---|---|---|
 | `slot_value_status` | `request_slot.value_status` | `PROVIDED` · `PROPOSED` · `CONFIRMED` · `SYSTEM_SET` · `ERASED` |
-| `approval_step_kind` | `approval_step.step_kind` | `CONTENT_REVIEW` · `SIGNATURE` · `SEAL` · `BOOKING_CONFIRM` `[Should]` |
+| `approval_step_kind` | `approval_step.step_kind` | `CONTENT_REVIEW` · `SIGNATURE` · `SEAL` · `BOOKING_CONFIRM` `[Should]` · `TAKEOVER` · `ISSUE_ORDER` · `REVOKE_INITIATE` · `REVOKE_CONFIRM` — bốn giá trị cuối thêm ở đợt sửa 3 sau Phase 13 (ADR-027); `ISSUE_ORDER`, `REVOKE_INITIATE` sinh ra đã `DECIDED`, không bao giờ `OPEN` |
 | `approval_step_status` | `approval_step.status` | `OPEN` · `DECIDED` · `CANCELLED` |
 | `chat_session_status` | `chat_session.status` | `OPEN` · `CLOSED` — *thêm ngoài danh sách* |
 | `chat_session_close_reason` | `chat_session.close_reason` | `IDLE_TIMEOUT` · `REQUEST_EXPIRED` |
@@ -215,7 +227,7 @@ Theo phép thử ở mục Nguyên tắc dữ liệu của `04-data.md`: enum xu
 | `register_reset_policy` | `document_register.reset_policy` | `YEARLY` · `NEVER` |
 | `audit_actor_kind` | `audit_event.actor_kind` | `EMPLOYEE` · `SYSTEM` |
 
-**Chờ Phase 8 — chưa nâng được, không bịa giá trị:** `notification.event_code` và `document_halt.reason_code`. Hai cột đã có trong DDL; DB chỉ kiểm hình dạng mã; bảng mã thuộc Phase 8.
+~~**Chờ Phase 8 — chưa nâng được, không bịa giá trị:** `notification.event_code` và `document_halt.reason_code`.~~ **Đã nâng ở đợt sửa 3 sau Phase 13:** `halt_reason_code`, `notification_event_code` ở trên. Migration `0007` biến cả hai, cùng `archive_reason`, thành `CHECK` theo bảng mã.
 
 ---
 
@@ -298,7 +310,7 @@ Tên **agent**, **node LangGraph** cụ thể bên trong `orchestrator`, và **t
 
 **Node `interrupt`** — `await_content_review` (cổng HITL số 1) · `await_signature` · `await_seal` (cổng HITL số 2) · `await_issue` · `await_resubmission` · `await_human_takeover`
 
-**Node tất định** — `intake_graph`: `load_turn` · `route_intent` · `resume_context` · `ask_clarification` · `open_request` · `propose_values` · `check_completeness` · `ask_missing` · `offer_submit` · `render_reply`. `document_graph`: `prepare_draft` · `validate_free_content` · `render_draft` · `check_review_readiness` · `submit_for_review` · `route_review` · `reopen_draft` · `compute_targets` · `halt_for_human` · `route_signing` · `route_after_signature` · `finalize_issue` · `notify_issued`
+**Node tất định** — `intake_graph`: `load_turn` · `route_intent` · `resume_context` · `ask_clarification` · `open_request` · `propose_values` · `check_completeness` · `ask_missing` · `offer_submit` · `render_reply`. `document_graph`: `prepare_draft` · `validate_free_content` · `render_draft` · `check_review_readiness` · `submit_for_review` · `route_review` · `reopen_draft` · `compute_targets` · `halt_for_human` · `route_takeover` *(đợt sửa 3 sau Phase 13 — node đầu sau `await_human_takeover`, đọc lối ra từ DB)* · `route_signing` · `route_after_signature` · `finalize_issue` · `notify_issued`
 
 **Tool của `tool_layer`, theo nhóm được gọi** — bảng đầy đủ, kèm vị trí so với cổng HITL, ở mục Tool Registry của `03-agents.md`:
 
@@ -309,7 +321,7 @@ Tên **agent**, **node LangGraph** cụ thể bên trong `orchestrator`, và **t
 
 Node `open_request` gọi tool `request_open`; hai tên khác nhau có chủ đích — một là bước của graph, một là thao tác của `tool_layer`.
 
-**Thao tác cổng** — chỉ đi vào từ `api` với người thật làm tác nhân: `request_submit` · `request_cancel` *(thêm ở Phase 4)* · `document_approve_content` · `document_request_changes` · `document_reject` · `document_sign` · `document_apply_seal` · `document_issue` · `document_revoke_initiate` · `document_revoke_confirm` · `booking_confirm` `[Should]`
+**Thao tác cổng** — chỉ đi vào từ `api` với người thật làm tác nhân: `request_submit` · `request_cancel` *(thêm ở Phase 4)* · `document_approve_content` · `document_request_changes` · `document_reject` · `document_sign` · `document_apply_seal` · `document_issue` · `document_takeover_resolve` *(đợt sửa 3 sau Phase 13 — tiếp quản một lần dừng của `document_graph`; mục Dừng có kiểm soát và tiếp quản của `08-hitl.md`)* · `document_revoke_initiate` · `document_revoke_confirm` · `booking_confirm` `[Should]`
 
 **Thao tác vận hành** — `expire_request` · `checkpoint_purge` · `procedure_ingest` · `object_claim_reconcile` *(thêm ở Phase 4)* · `rate_limit_window_sweep` · `chat_session_idle_close` · `needs_info_reminder` · `document_retention_archive` · `draft_render_sweep` *(năm tên cuối đặt ở đợt sửa 2 sau Phase 13, AUD-08 — định nghĩa ở mục Tool Registry của `03-agents.md`)*
 

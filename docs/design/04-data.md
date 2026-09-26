@@ -1,6 +1,6 @@
 # Data Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.12 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 4 (S–V) — mục ngày 2026-09-13 (lần 2) của `CHANGELOG.md` · **v0.3:** `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.4:** ai ghi `llm_usage` và mã `BUDGET_UNAVAILABLE` (ADR-019), `template_version.required_fonts` (ADR-015), kết quả xác minh A-045 và A-047 — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.5:** dòng `schema_migration` ở mục 1.1 — vòng duyệt Phase 6 (B1), mục ngày 2026-09-13 (lần 9) · **v0.6:** `employee_credential`, `rate_limit_window` — Phase 9, mục ngày 2026-09-14 (lần 2) của `CHANGELOG.md` · **v0.7:** hai bảng trên chuyển sang `backend/migrations/schema/0002_phase9_security.sql`, `contracts/schema.sql` trả về nguyên trạng đóng Phase 6 — mục ngày 2026-09-14 (lần 3) của `CHANGELOG.md` · **v0.8:** mục 5.1/5.3 — object metadata (`x-bo19-pin-reason`, `x-bo19-document-number`) trên bản ghim `ISSUED`, phục vụ đối soát sau khôi phục — quyết định của PO duyệt đề xuất từ Phase 11, không đổi `contracts/schema.sql`; mục ngày 2026-09-25 của `CHANGELOG.md` · **v0.9:** mục 3.8 — `ix_job_latest_by_document`, bảng của `backend/migrations/schema/0003_job_failed_index.sql`, không của `contracts/schema.sql`; cùng mục ngày · **v0.10:** dòng `llm_usage` — định dạng `trace_id` (ADR-024), `CHECK` ở `backend/migrations/schema/0004_observability_trace_id.sql`, không ở `contracts/schema.sql`; mục ngày 2026-09-25 của `CHANGELOG.md` · **v0.11:** hai index của `0006` (`ix_request_waiting`, `ix_document_awaiting_issue`); dòng trỏ tới `contracts/README.md` ở mục 1.1; số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 1) của `CHANGELOG.md` · **v0.12:** đoạn `delegation` — vế lập hộ cắt khỏi Sprint đầu (AUD-15); hai câu permission còn ghi "chưa có" ở mục Lọc quyền và so khớp phòng ban, mục Lưu trữ và xoá dữ liệu cá nhân và mục Open Questions (AUD-05, AUD-11) — mục ngày 2026-09-26 (đợt sửa 2)
+**Phiên bản:** 0.13 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 4 (S–V) — mục ngày 2026-09-13 (lần 2) của `CHANGELOG.md` · **v0.3:** `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.4:** ai ghi `llm_usage` và mã `BUDGET_UNAVAILABLE` (ADR-019), `template_version.required_fonts` (ADR-015), kết quả xác minh A-045 và A-047 — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.5:** dòng `schema_migration` ở mục 1.1 — vòng duyệt Phase 6 (B1), mục ngày 2026-09-13 (lần 9) · **v0.6:** `employee_credential`, `rate_limit_window` — Phase 9, mục ngày 2026-09-14 (lần 2) của `CHANGELOG.md` · **v0.7:** hai bảng trên chuyển sang `backend/migrations/schema/0002_phase9_security.sql`, `contracts/schema.sql` trả về nguyên trạng đóng Phase 6 — mục ngày 2026-09-14 (lần 3) của `CHANGELOG.md` · **v0.8:** mục 5.1/5.3 — object metadata (`x-bo19-pin-reason`, `x-bo19-document-number`) trên bản ghim `ISSUED`, phục vụ đối soát sau khôi phục — quyết định của PO duyệt đề xuất từ Phase 11, không đổi `contracts/schema.sql`; mục ngày 2026-09-25 của `CHANGELOG.md` · **v0.9:** mục 3.8 — `ix_job_latest_by_document`, bảng của `backend/migrations/schema/0003_job_failed_index.sql`, không của `contracts/schema.sql`; cùng mục ngày · **v0.10:** dòng `llm_usage` — định dạng `trace_id` (ADR-024), `CHECK` ở `backend/migrations/schema/0004_observability_trace_id.sql`, không ở `contracts/schema.sql`; mục ngày 2026-09-25 của `CHANGELOG.md` · **v0.11:** hai index của `0006` (`ix_request_waiting`, `ix_document_awaiting_issue`); dòng trỏ tới `contracts/README.md` ở mục 1.1; số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 1) của `CHANGELOG.md` · **v0.12:** đoạn `delegation` — vế lập hộ cắt khỏi Sprint đầu (AUD-15); hai câu permission còn ghi "chưa có" ở mục Lọc quyền và so khớp phòng ban, mục Lưu trữ và xoá dữ liệu cá nhân và mục Open Questions (AUD-05, AUD-11) — mục ngày 2026-09-26 (đợt sửa 2) · **v0.13:** migration `0007` — bước `TAKEOVER`, `ISSUE_ORDER`, `REVOKE_INITIATE`, `REVOKE_CONFIRM`; `decision_record.takeover_resolution`; khoá idempotency mới của `document_halt` (A-044); ba bảng mã thành `CHECK`; `ARCHIVED` từ `DRAFT`, `APPROVED` (AUD-02, AUD-07, ADR-027) — mục ngày 2026-09-26 (đợt sửa 3)
 
 > File này chốt mô hình dữ liệu vật lý: bảng, cột, ràng buộc, index, quyền trên cơ sở dữ liệu, lưu trữ file, vector collection và chính sách xoá dữ liệu cá nhân. Contract DDL nằm ở [`contracts/schema.sql`](./contracts/schema.sql). File này **không** thiết kế API (Phase 5), màn hình duyệt hay bảng mã lý do (Phase 8), AuthZ chi tiết (Phase 9), và **không** định cỡ thời hạn hay tham số vận hành (Phase 11).
 
@@ -105,7 +105,7 @@ Tên entity, trạng thái, enum, agent, tool dùng đúng `GLOSSARY.md`. Ánh x
 | `document_register`, `document_register_format` | Qua ứng dụng; bản đầu nạp bằng data migration khi Product Owner có giá trị (A-009) |
 | `template*` | Tải lên qua F6, permission `template.manage` |
 | `embedding_collection` | Dòng của một phiên bản collection đi cùng migration tạo bảng của phiên bản đó, **sau khi** model được chọn (A-028). Trước lúc đó không có collection `ACTIVE` nào, và `procedure_retrieval` trả danh sách rỗng — đúng nhánh "không có căn cứ" đã thiết kế cho kho rỗng |
-| Mã `archive_reason`, `reason_code` của `document_halt` | Bảng mã thuộc Phase 8. DB chỉ kiểm hình dạng mã |
+| Mã `archive_reason`, `reason_code` của `document_halt`, `event_code` của `notification` | Bảng mã ở mục Bảng mã của `08-hitl.md`. Migration `0007` biến cả ba thành `CHECK` theo bảng mã — thêm mã là thêm một migration |
 | `room` | Chờ A-012 |
 | `operating_mode_change` | Không nạp gì. Chưa có dòng nào nghĩa là `NON_PRODUCTION` — mặc định an toàn |
 
@@ -118,7 +118,7 @@ Tên entity, trạng thái, enum, agent, tool dùng đúng `GLOSSARY.md`. Ánh x
 | Enum (bảng.cột) | Giá trị | Vượt ranh giới? | Ở đâu |
 |---|---|---|---|
 | `request_slot.value_status` | `PROVIDED` · `PROPOSED` · `CONFIRMED` · `SYSTEM_SET` · `ERASED` | **Có** | Màn hình xác nhận của nhân viên (D-002), màn hình duyệt, API chat |
-| `approval_step.step_kind`, `approval_step.status` | `CONTENT_REVIEW` · `SIGNATURE` · `SEAL` · `BOOKING_CONFIRM`; `OPEN` · `DECIDED` · `CANCELLED` | **Có** | Hàng đợi duyệt, API |
+| `approval_step.step_kind`, `approval_step.status` | `CONTENT_REVIEW` · `SIGNATURE` · `SEAL` · `BOOKING_CONFIRM` · `TAKEOVER` · `ISSUE_ORDER` · `REVOKE_INITIATE` · `REVOKE_CONFIRM` (bốn giá trị cuối: migration `0007`); `OPEN` · `DECIDED` · `CANCELLED` | **Có** | Hàng đợi duyệt, hàng đợi tiếp quản, API |
 | `chat_session.close_reason` | `IDLE_TIMEOUT` · `REQUEST_EXPIRED` | **Có** | Câu báo khi nhân viên quay lại (EC-CV-04, A-038) |
 | `document_render.render_kind` | `DRAFT` · `FINAL` | **Có** | API tải file: bản nháp hay bản phát hành |
 | `document_render_pin.pin_reason` | `APPROVED_CONTENT` · `ISSUED` | **Có** | Payload `audit_event` của việc ghim |
@@ -128,7 +128,7 @@ Tên entity, trạng thái, enum, agent, tool dùng đúng `GLOSSARY.md`. Ánh x
 | `template_variable.kind`, `template_version.status` | Mục 3.3 | **Có** | Màn hình tải template của F6 |
 | `document_register.reset_policy` | `YEARLY` · `NEVER` | **Có** | Cấu hình sổ |
 | `audit_event.actor_kind` | `EMPLOYEE` · `SYSTEM` | **Có** | Màn hình nhật ký |
-| `notification.event_code`, `document_halt.reason_code` | Chưa có bảng mã | **Có**, khi có bảng mã (Phase 8) | Hộp thông báo, màn hình tiếp quản |
+| `notification.event_code`, `document_halt.reason_code`, `decision_record.takeover_resolution` | Mục Bảng mã và mục Dừng có kiểm soát và tiếp quản của `08-hitl.md` | **Có** — đã nâng lên `GLOSSARY.md` ở đợt sửa 3 | Hộp thông báo, màn hình tiếp quản |
 | `job.job_type`, `job.status`, `graph_thread.status`, `stored_object.purpose`, `embedding_collection.status`, `embedding_collection.distance_metric` | Mục 3.8, mục 5, mục 6 | Không | Chỉ DB và `observability` |
 | `llm_usage.model_tier`, `llm_usage.outcome` | Mục 3.8 | Không — trừ khi Phase 11 đưa chúng lên một màn hình cho người dùng | Tổng hợp chi phí |
 
@@ -429,7 +429,7 @@ Slot chưa có dòng nào là slot còn thiếu. **Bằng chứng lưu dạng v�
 | `final_render_id`, `issued_register_entry_id`, `issued_date`, `issued_at` | | ✔ | — | Bắt buộc cả bốn ở `ISSUED`, `REVOKED`, `SUPERSEDED`. `issued_register_entry_id` **chỉ** được có sau `ISSUED`: số tồn tại trong khoảng hoàn tất phát hành nhưng chưa gắn vào `document` |
 | `supersedes_document_id` | uuid | ✔ | — | FK tới `document`, `UNIQUE`: một văn bản bị thay thế bởi tối đa một văn bản |
 | `archived_from_status`, `archived_at` | text, timestamptz | ✔ | — | Có cả hai khi và chỉ khi `ARCHIVED`. `archived_from_status` ∈ {`ISSUED`, `REVOKED`, `SUPERSEDED`, `REJECTED`, `CHANGES_REQUESTED`} |
-| `archive_reason` | text | ✔ | — | **Bắt buộc khi `archived_from_status = 'CHANGES_REQUESTED'`** — đường vào thứ hai của `ARCHIVED` (mục 3.5.1). Bảng mã: Phase 8 |
+| `archive_reason` | text | ✔ | — | **Bắt buộc khi `archived_from_status` ∈ {`CHANGES_REQUESTED`, `DRAFT`, `APPROVED`}** — đường vào thứ hai của `ARCHIVED`, bản nháp bị bỏ (mục 3.5.1; `DRAFT`, `APPROVED` thêm ở migration `0007` cho lối ra `REJECT_REQUEST` của thao tác tiếp quản). `ck_document_archive_reason_value` ép mỗi mã đi với đúng đường vào của nó; bảng mã ở mục Bảng mã của `08-hitl.md`. `ck_document_seal_determined` cho phép `requires_seal` `NULL` ở `ARCHIVED` từ `DRAFT` |
 
 Năm khoá ngoại ghép với chính `id` của `document` — tới bản nháp hiện hành, bản đã duyệt, bản cuối, quyết định duyệt và dòng sổ đã cấp — bảo đảm mọi thứ `document` trỏ tới **thuộc về đúng nó**. Không có quyền `DELETE`.
 
@@ -476,7 +476,7 @@ Ràng buộc "`request` `CANCELLED` thì `document` của nó không còn ở tr
 | Cột | Kiểu | Null | Mặc định | Ràng buộc · ghi chú |
 |---|---|---|---|---|
 | `document_id`, `room_booking_id` | uuid | ✔ | — | Đúng một trong hai. `room_booking_id` chỉ đi với `BOOKING_CONFIRM` `[Should]` |
-| `step_kind` | text | — | — | `CONTENT_REVIEW` · `SIGNATURE` · `SEAL` · `BOOKING_CONFIRM` |
+| `step_kind` | text | — | — | `CONTENT_REVIEW` · `SIGNATURE` · `SEAL` · `BOOKING_CONFIRM` · `TAKEOVER` · `ISSUE_ORDER` · `REVOKE_INITIATE` · `REVOKE_CONFIRM` (migration `0007`, ADR-027). `ISSUE_ORDER` và `REVOKE_INITIATE` **sinh ra đã `DECIDED`** trong giao dịch của thao tác — chỉ là chỗ mang cờ tự duyệt, không bao giờ `OPEN`, không dựng hàng đợi trên chúng. `TAKEOVER` mở cùng giao dịch với `document_halt`; `REVOKE_CONFIRM` mở ở bước khởi tạo thu hồi |
 | `level` | smallint | — | 1 | Định tuyến nhiều cấp `[Should]` |
 | `revision_round` | integer | — | 0 | — |
 | `assignee_employee_id` | uuid | ✔ | — | `NULL`: bất kỳ ai mang permission tương ứng |
@@ -496,14 +496,14 @@ Ràng buộc "`request` `CANCELLED` thì `document` của nó không còn ở tr
 | `SIGNED` · `SEALED` | `document_sign` · `document_apply_seal` |
 | `ISSUE_ORDERED` | `document_issue` — đây chính là **lệnh phát hành**, không có bảng riêng |
 | `REVOKE_INITIATED` · `REVOKE_CONFIRMED` | `document_revoke_initiate` · `document_revoke_confirm` |
-| `TAKEOVER_RESOLVED` | Thao tác tiếp quản sau `halt_for_human` — Phase 8 |
+| `TAKEOVER_RESOLVED` | `document_takeover_resolve` — tiếp quản sau `halt_for_human` (mục Dừng có kiểm soát và tiếp quản của `08-hitl.md`) |
 | `BOOKING_CONFIRMED` | `booking_confirm` `[Should]` |
 
-Cột: `actor_employee_id` (—, luôn là người thật), `delegation_id` ✔, `request_id` (—), `document_id` ✔ (bắt buộc với các loại chạm văn bản), `approval_step_id` ✔ (bắt buộc với `APPROVED`, `CHANGES_REQUESTED`, `SIGNED`, `SEALED`, `BOOKING_CONFIRMED`), `document_halt_id` ✔ (có khi và chỉ khi `TAKEOVER_RESOLVED`), `change_scope` (có khi và chỉ khi `CHANGES_REQUESTED`), `change_targets` ✔ (chỉ với `CHANGES_REQUESTED`).
+Cột: `actor_employee_id` (—, luôn là người thật), `delegation_id` ✔, `request_id` (—), `document_id` ✔ (bắt buộc với các loại chạm văn bản), `approval_step_id` ✔ (bắt buộc với `APPROVED`, `CHANGES_REQUESTED`, `SIGNED`, `SEALED`, `BOOKING_CONFIRMED`, và — từ migration `0007` — `ISSUE_ORDERED`, `TAKEOVER_RESOLVED`, `REVOKE_INITIATED`, `REVOKE_CONFIRMED`), `document_halt_id` ✔ (có khi và chỉ khi `TAKEOVER_RESOLVED`), `takeover_resolution` ✔ (có khi và chỉ khi `TAKEOVER_RESOLVED`; `RETRY` · `REJECT_REQUEST` · `RETURN_TO_ISSUE_QUEUE`; migration `0007`), `change_scope` (có khi và chỉ khi `CHANGES_REQUESTED`), `change_targets` ✔ (chỉ với `CHANGES_REQUESTED`).
 
 **`decision_record_text`** — PK (`decision_record_id`, `text_kind`), `text_kind` ∈ {`CHANGE_REASON`, `REJECTION_REASON`, `REVOCATION_REASON`}, `body` không rỗng, `RES`. Tách khỏi `decision_record` vì hai nghĩa vụ đối nghịch: bản ghi quyết định phải **bất biến**, còn văn bản lý do — có thể mang dữ liệu cá nhân — phải **xoá được** khi hết hạn lưu (A-010). Bảng tách ra có quyền thêm và xoá, không có quyền sửa: lý do ghi một lần, xoá được, **không bao giờ bị viết lại**. Lý do bắt buộc với loại nào là kiểm của thao tác cổng, vì nó là ràng buộc giữa hai bảng.
 
-**`document_halt`** — `document_id`, `reason_code` (dạng mã viết HOA; bảng mã Phase 8), `at_node`, `revision_round`, `trace_id`. `UNIQUE (document_id, at_node, revision_round)` là idempotency của `document_halt_record` theo mục Tool Registry của `03-agents.md`. Chỉ thêm.
+**`document_halt`** — `document_id`, `reason_code` (bảng mã ở mục Bảng mã của `08-hitl.md`, `CHECK` từ migration `0007`), `at_node`, `revision_round`, `trace_id`, `takeover_step_id` (migration `0007`, `NOT NULL`, `UNIQUE`: bước `TAKEOVER` của lần dừng này). ~~`UNIQUE (document_id, at_node, revision_round)` là idempotency của `document_halt_record`~~ — **bỏ ở migration `0007` (A-044):** khoá đó gộp nhầm lần dừng thứ hai ở cùng node, cùng vòng sau một lần `RETRY`. Idempotency mới: `document` đã có bước `TAKEOVER` `OPEN` thì `document_halt_record` trả lại lần dừng của bước đó; `uq_approval_step_one_open` chặn hai bước `TAKEOVER` cùng mở (ADR-027). Chỉ thêm.
 
 **`operating_mode_change` không phải một `decision_record`.** `decision_record` luôn gắn một `request` (`request_id` `NOT NULL`), và nghĩa của nó — đánh thức thread nào, đổi trạng thái gì — xác định theo `request` và `document`. Việc tháo chế độ phi sản xuất không thuộc `request` nào.
 
@@ -754,7 +754,7 @@ Việc ghim xảy ra khi người thật bấm duyệt, thường sau nhiều gi
 
 **Hệ quả cho luồng request đồng bộ.** Chỉ một lần ghim nằm trong luồng request: ghim `APPROVED_CONTENT` trong `document_approve_content`. Việc ghim tự nó chỉ là một câu `INSERT` vào `postgresql`, cùng giao dịch với duyệt. Việc đọc object để kiểm checksum nằm ở `route_signing` và `finalize_issue`, cả hai trong `queue_worker`. Không thao tác cổng nào đọc `object_storage`, nên lo ngại A-025 cho biện pháp này **đã hết** — và hết vì phép kiểm đã về đúng chỗ, không phải vì nó được dời đi để lách giới hạn.
 
-**Sau khi trượt kiểm:** `document` đứng yên ở trạng thái lúc kiểm — `APPROVED` với bản đã duyệt, `SIGNED`/`SEALED` với bản cuối. Máy trạng thái không đổi. Cách tiếp quản — render lại từ đúng giá trị đã duyệt rồi ghim bản mới — thuộc thiết kế tiếp quản của Phase 8, cùng bảng mã lý do dừng.
+**Sau khi trượt kiểm:** `document` đứng yên ở trạng thái lúc kiểm — `APPROVED` với bản đã duyệt, `SIGNED`/`SEALED` với bản cuối. Máy trạng thái không đổi. ~~Cách tiếp quản — render lại từ đúng giá trị đã duyệt rồi ghim bản mới — thuộc thiết kế tiếp quản của Phase 8, cùng bảng mã lý do dừng.~~ **Sửa ở đợt sửa 3 sau Phase 13:** render lại từ đúng giá trị đã duyệt cho **cùng input**, nên trùng khoá và rơi vào ca (a) — nhận lại chính object đã hỏng, không ghi được bản mới. Lối tiếp quản thật: khôi phục byte ở tầng lưu trữ — versioning hay khoá đối tượng, yêu cầu T2 gửi A-024 — rồi `RETRY`; không khôi phục được thì `REJECT_REQUEST` với bản đã duyệt, hoặc `RETURN_TO_ISSUE_QUEUE` với bản cuối — lệnh phát hành mới mang số mới, tức input mới và khoá mới. Mã `RENDER_CHECKSUM_MISMATCH`, `RENDER_OBJECT_MISSING` ở mục Bảng mã của `08-hitl.md`.
 
 ### 5.5 Chuỗi bảo đảm bất biến của bản đã ghim
 
@@ -1029,11 +1029,11 @@ Giao Phase 8, cùng cụm với A-029.
 2. **A-041** — múi giờ của tổ chức, quyết định ngày cấp số và kỳ đánh số.
 3. **A-042** — ~~chưa có permission nào~~ **đã chốt ở Phase 9:** `request_type.manage`, cấp lẻ; `slot_sensitivity_change` dùng cùng permission.
 4. **A-043** — ~~chưa có permission nào~~ **đã chốt ở Phase 9:** `procedure.read_all`, cấp lẻ.
-5. **A-044** — khoá idempotency (`document_id`, `at_node`, `revision_round`) của `document_halt_record`, chốt ở Phase 3, sẽ gộp nhầm hai lần dừng nếu sau khi tiếp quản graph lại dừng ở cùng node trong cùng vòng. Cơ chế tiếp quản thuộc Phase 8.
+5. **A-044** — ~~khoá idempotency (`document_id`, `at_node`, `revision_round`) của `document_halt_record`, chốt ở Phase 3, sẽ gộp nhầm hai lần dừng nếu sau khi tiếp quản graph lại dừng ở cùng node trong cùng vòng. Cơ chế tiếp quản thuộc Phase 8.~~ **Giải ở đợt sửa 3 sau Phase 13:** khoá theo bước `TAKEOVER` đang mở (mục 3.6, ADR-027).
 6. **A-045** — hành vi của checkpointer LangGraph: bảng, migration và quyền; lịch sử theo bước; có ghi cùng giao dịch với bảng ứng dụng không (mục 3.8, mục 8.6).
 7. **A-038** — đã cập nhật theo K4 và phát hiện ở mục 8.5; owner Phase 8.
 8. **A-024 — ràng buộc mua sắm.** Nhà cung cấp `object_storage` bắt buộc có ghi có điều kiện, khoá đối tượng hoặc versioning (mục 5.4). Không nhà cung cấp nào đáp ứng thì ca ghi đè thành rủi ro chấp nhận, ghi ở mục Risk register của PRD kèm người chấp nhận.
 9. **A-046** — exclusion constraint cho `room_booking` `[Should]`: thiết kế đích, chờ xác minh (mục 3.9).
-10. **Kiểm toàn vẹn bản đã ghim** — đã làm theo phép của anh, bằng tool riêng `render_integrity_check` chứ không gộp vào `signing_route` (mục 5.4; lý do ở mục Tool Registry của `03-agents.md`). Cách tiếp quản sau khi trượt kiểm thuộc Phase 8.
+10. **Kiểm toàn vẹn bản đã ghim** — đã làm theo phép của anh, bằng tool riêng `render_integrity_check` chứ không gộp vào `signing_route` (mục 5.4; lý do ở mục Tool Registry của `03-agents.md`). Cách tiếp quản sau khi trượt kiểm: mục 5.4 và mục Dừng có kiểm soát và tiếp quản của `08-hitl.md` (đợt sửa 3 sau Phase 13).
 11. **Bảng chỗ quan sát của Phase 11 trong `_PLAN.md`** đã có hai dòng cho ADR-011 và ADR-012 (phép S3). Câu dẫn của khối đó vẫn ghi "điều kiện đảo ngược của ADR ở Phase 2"; không sửa vì phép S3 chỉ phủ cái bảng.
 

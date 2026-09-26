@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: BO-19 Admin Service Desk Agent API
-  version: 0.2.4
+  version: 0.2.5
   description: |
     Contract máy đọc được của `docs/design/05-api.md` (Phase 5). Diễn giải, lý do và
     giới hạn nằm ở file đó; file này không lặp lại lập luận.
@@ -463,9 +463,37 @@ paths:
       tags: [documents]
       operationId: listIssueQueue
       summary: Văn bản SIGNED không cần dấu hoặc SEALED, chờ lệnh phát hành
-      description: Chưa có index cho thứ tự này (Open Questions của 05-api.md).
+      description: >-
+        Thứ tự theo ix_document_awaiting_issue (migration 0006). Không gồm văn bản có
+        lệnh phát hành đang chạy, và không gồm văn bản đang dừng chờ tiếp quản
+        (mục Hàng đợi của 08-hitl.md).
       x-bo19-permission: [document.issue]
       x-bo19-feature: F3
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewQueuePage' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /takeover-queue:
+    get:
+      tags: [documents]
+      operationId: listTakeoverQueue
+      summary: Văn bản đang dừng ở halt_for_human, mở lâu nhất trước
+      description: >-
+        Theo approval_step loại TAKEOVER đang OPEN, thứ tự ix_approval_step_open_by_kind
+        (migration 0007). Cần thêm request.read_all — bước TAKEOVER không giao cho ai
+        (mục Dừng có kiểm soát và tiếp quản của 08-hitl.md).
+      x-bo19-permission: [document.approve_content, document.reject, document.issue]
+      x-bo19-feature: NFR-06
       parameters:
         - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
@@ -696,6 +724,42 @@ paths:
         '422': { $ref: '#/components/responses/Unprocessable' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  /documents/{document_id}/actions/resolve-halt:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      tags: [documents]
+      operationId: resolveHalt
+      summary: Tiếp quản một lần dừng của document_graph
+      description: >-
+        Permission theo lối ra — RETRY: document.approve_content; REJECT_REQUEST:
+        document.reject, kiểm D-006; RETURN_TO_ISSUE_QUEUE: document.issue. Lối ra được
+        dùng tuỳ at_node và reason_code (mục Bảng mã của 08-hitl.md); sai thì
+        TAKEOVER_RESOLUTION_NOT_ALLOWED kèm details.allowed_resolutions.
+      x-bo19-operation: document_takeover_resolve
+      x-bo19-permission: [document.approve_content, document.reject, document.issue]
+      x-bo19-execution: SYNC_ENQUEUE
+      x-bo19-enqueues: [resume_document_graph]
+      x-bo19-idempotency-key: decision_record (TAKEOVER_RESOLVED)
+      x-bo19-feature: NFR-06
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResolveHaltBody' }
+      responses:
+        '200': { $ref: '#/components/responses/DecisionOk' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
   /documents/{document_id}/actions/revoke-initiate:
     parameters:
       - $ref: '#/components/parameters/DocumentId'
@@ -733,7 +797,11 @@ paths:
     post:
       tags: [documents]
       operationId: confirmRevocation
-      summary: Xác nhận thu hồi — người khác người khởi tạo
+      summary: Xác nhận thu hồi — người khác người khởi tạo, trừ đường thoát D-006
+      description: >-
+        Người xác nhận trùng người khởi tạo: không còn ai khác mang
+        document.revoke_confirm thì nhận self_approval_reason (đường thoát D-006, WARNING);
+        còn người khác thì SEPARATION_OF_DUTIES_VIOLATION (mục Thu hồi văn bản của 08-hitl.md).
       x-bo19-operation: document_revoke_confirm
       x-bo19-permission: [document.revoke_confirm]
       x-bo19-execution: SYNC
@@ -1628,9 +1696,9 @@ components:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
     Conflict:
       description: |
-        IDEMPOTENCY_KEY_CONFLICT · STATE_CONFLICT · SEPARATION_OF_DUTIES_VIOLATION · REQUEST_NOT_EDITABLE ·
-        SLOT_NOT_PROPOSED · SLOT_VALUE_STALE · REQUEST_NOT_CANCELLABLE · CHAT_SESSION_CLOSED · TURN_IN_PROGRESS ·
-        TURN_NOT_FINISHED · USE_SENSITIVITY_CHANGE · DESTRUCTIVE_COUNT_CHANGED
+        IDEMPOTENCY_KEY_CONFLICT · STATE_CONFLICT · SEPARATION_OF_DUTIES_VIOLATION · DOCUMENT_AWAITING_TAKEOVER ·
+        REQUEST_NOT_EDITABLE · SLOT_NOT_PROPOSED · SLOT_VALUE_STALE · REQUEST_NOT_CANCELLABLE · CHAT_SESSION_CLOSED ·
+        TURN_IN_PROGRESS · TURN_NOT_FINISHED · USE_SENSITIVITY_CHANGE · DESTRUCTIVE_COUNT_CHANGED
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
@@ -1648,7 +1716,7 @@ components:
       description: |
         VALIDATION_FAILED · SELF_APPROVAL_REASON_REQUIRED · REQUEST_NOT_READY · CHANGE_TARGET_INVALID ·
         TEMPLATE_VARIABLES_INVALID · TEMPLATE_FONTS_INVALID · IMPORT_ROWS_INVALID · DESTRUCTIVE_CONFIRMATION_REQUIRED ·
-        OPERATING_MODE_UNCHANGED
+        OPERATING_MODE_UNCHANGED · TAKEOVER_RESOLUTION_NOT_ALLOWED
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
@@ -1721,8 +1789,9 @@ components:
       type: string
       enum: [STRING, TEXT, INT, DATE, TIMESTAMP, ENUM, LIST, BOOL, FILE]
     ApprovalStepKind:
+      description: ISSUE_ORDER và REVOKE_INITIATE sinh ra đã DECIDED, không bao giờ OPEN (ADR-027)
       type: string
-      enum: [CONTENT_REVIEW, SIGNATURE, SEAL, BOOKING_CONFIRM]
+      enum: [CONTENT_REVIEW, SIGNATURE, SEAL, BOOKING_CONFIRM, TAKEOVER, ISSUE_ORDER, REVOKE_INITIATE, REVOKE_CONFIRM]
     ApprovalStepStatus:
       type: string
       enum: [OPEN, DECIDED, CANCELLED]
@@ -1744,6 +1813,16 @@ components:
     DecisionKind:
       type: string
       enum: [SUBMITTED, RESUBMITTED, REQUEST_CANCELLED, APPROVED, CHANGES_REQUESTED, REJECTED, SIGNED, SEALED, ISSUE_ORDERED, REVOKE_INITIATED, REVOKE_CONFIRMED, TAKEOVER_RESOLVED, BOOKING_CONFIRMED]
+    TakeoverResolution:
+      type: string
+      enum: [RETRY, REJECT_REQUEST, RETURN_TO_ISSUE_QUEUE]
+    HaltReasonCode:
+      description: Bảng mã ở mục Bảng mã của 08-hitl.md — không phải nguyên văn mã lỗi của tool
+      type: string
+      enum: [FREE_CONTENT_INVALID, PARSE_FAILED, PROVIDER_UNAVAILABLE, BUDGET_EXCEEDED, BUDGET_UNAVAILABLE, SYSTEM_DEFECT, TEMPLATE_NOT_ACTIVE, RENDER_INPUT_INVALID, RENDER_CONVERSION_FAILED, FONT_MISSING, REVIEW_NOT_READY, MAX_ROUNDS_EXCEEDED, NO_ELIGIBLE_SIGNER, RENDER_CHECKSUM_MISMATCH, RENDER_OBJECT_MISSING, CONTENT_HASH_MISMATCH, ISSUE_RETRIES_EXHAUSTED]
+    NotificationEventCode:
+      type: string
+      enum: [DOCUMENT_ISSUED, DOCUMENT_HALTED, NEEDS_INFO_REMINDER, DOCUMENT_JOB_FAILED, RENDER_JOB_FAILED]
     DecisionTextKind:
       type: string
       enum: [CHANGE_REASON, REJECTION_REASON, REVOCATION_REASON]
@@ -1804,6 +1883,7 @@ components:
         - IDEMPOTENCY_KEY_CONFLICT
         - STATE_CONFLICT
         - SEPARATION_OF_DUTIES_VIOLATION
+        - DOCUMENT_AWAITING_TAKEOVER
         - REQUEST_NOT_EDITABLE
         - SLOT_NOT_PROPOSED
         - SLOT_VALUE_STALE
@@ -1825,6 +1905,7 @@ components:
         - TEMPLATE_FONTS_INVALID
         - IMPORT_ROWS_INVALID
         - DESTRUCTIVE_CONFIRMATION_REQUIRED
+        - TAKEOVER_RESOLUTION_NOT_ALLOWED
         - INTERNAL_ERROR
         - FILE_UNAVAILABLE
     FieldErrorCode:
@@ -1916,6 +1997,9 @@ components:
         turn_abandoned: { type: boolean }
         retry_after_seconds: { type: integer, minimum: 0 }
         current_mode: { $ref: '#/components/schemas/OperatingMode' }
+        allowed_resolutions:
+          type: array
+          items: { $ref: '#/components/schemas/TakeoverResolution' }
     FailedRule:
       type: object
       additionalProperties: false
@@ -2254,7 +2338,7 @@ components:
           description: Cờ dẫn xuất — khoảng hoàn tất phát hành
           type: boolean
         halted:
-          description: Có document_halt chưa được tiếp quản
+          description: Có approval_step loại TAKEOVER đang OPEN (ADR-027)
           type: boolean
         job_failed:
           description: >-
@@ -2389,12 +2473,22 @@ components:
           type: array
           items: { $ref: '#/components/schemas/DecisionTextView' }
     HaltView:
-      description: reason_code là mã của bảng mã Phase 8, không phải nguyên văn mã lỗi của tool
+      description: >-
+        Lần dừng gần nhất. allowed_resolutions do server tính từ at_node và reason_code,
+        không theo permission của người xem (mục Dừng có kiểm soát và tiếp quản của 08-hitl.md)
       type: object
-      required: [reason_code, created_at]
+      required: [document_halt_id, reason_code, at_node, created_at, open, allowed_resolutions]
       properties:
-        reason_code: { type: string }
+        document_halt_id: { $ref: '#/components/schemas/Uuid' }
+        reason_code: { $ref: '#/components/schemas/HaltReasonCode' }
+        at_node: { type: string, pattern: '^[a-z][a-z0-9_]*$' }
         created_at: { $ref: '#/components/schemas/Timestamp' }
+        open:
+          description: Bước TAKEOVER của lần dừng này còn OPEN
+          type: boolean
+        allowed_resolutions:
+          type: array
+          items: { $ref: '#/components/schemas/TakeoverResolution' }
     TemplateRef:
       type: object
       required: [template_id, template_code, template_version_id, version_no]
@@ -2495,6 +2589,19 @@ components:
       properties:
         expected_row_version: { type: integer, minimum: 1 }
         self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
+    ResolveHaltBody:
+      type: object
+      additionalProperties: false
+      required: [expected_row_version, document_halt_id, resolution]
+      properties:
+        expected_row_version: { type: integer, minimum: 1 }
+        document_halt_id: { $ref: '#/components/schemas/Uuid' }
+        resolution: { $ref: '#/components/schemas/TakeoverResolution' }
+        rejection_reason:
+          description: Bắt buộc khi và chỉ khi resolution = REJECT_REQUEST
+          type: [string, 'null']
+          minLength: 1
+        self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
     RevokeInitiateBody:
       type: object
       additionalProperties: false
@@ -2502,6 +2609,7 @@ components:
       properties:
         expected_row_version: { type: integer, minimum: 1 }
         revocation_reason: { type: string, minLength: 1 }
+        self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
     RevokeConfirmBody:
       type: object
       additionalProperties: false
@@ -2509,15 +2617,16 @@ components:
       properties:
         expected_row_version: { type: integer, minimum: 1 }
         initiation_decision_id: { $ref: '#/components/schemas/Uuid' }
+        self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
 
     # ------------------------------------------------------------------ thông báo, audit
     Notification:
-      description: Chỉ mã và tham chiếu. event_code theo bảng mã Phase 8
+      description: Chỉ mã và tham chiếu. event_code theo mục Bảng mã của 08-hitl.md
       type: object
       required: [id, event_code, request_id, document_id, created_at]
       properties:
         id: { $ref: '#/components/schemas/Uuid' }
-        event_code: { type: string, pattern: '^[A-Z][A-Z0-9_]*$' }
+        event_code: { $ref: '#/components/schemas/NotificationEventCode' }
         request_id:
           anyOf:
             - $ref: '#/components/schemas/Uuid'

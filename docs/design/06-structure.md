@@ -1,6 +1,6 @@
 # Project Structure — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.6 · **Trạng thái:** Đã duyệt ở vòng duyệt Phase 6 · **v0.2:** Open Questions sau các phép B1 → B4; mục 9.4 về bộ kiểm trong repo; `tools/` trong cây gốc — mục ngày 2026-09-13 (lần 9) của `CHANGELOG.md` · **v0.3:** Open Questions sau phép bổ sung — mục ngày 2026-09-14 · **v0.4:** thêm bước kiểm khởi động #16–17 (ADR-023, Phase 11) — quyết định của PO khi duyệt đề xuất diff riêng, không phải một hệ quả của luật 5 (đổi tên cho nhất quán) trong `CLAUDE.md`; mục ngày 2026-09-16 của `CHANGELOG.md` · **v0.5:** làm rõ #15/#17 dùng chung một lần đọc `operating_mode`, #17 chỉ áp dụng ngoài `prod` và tự vệ khi thiếu `BO19_ENVIRONMENT`, nhắc mô hình chạy hết-rồi-gom — cùng mục ngày 2026-09-16 · **v0.6:** đợt sửa 2 sau Phase 13 — cron và `ops/` thêm năm thao tác vận hành mới (AUD-08); `endpoint_ops/` không đếm số; tuyến `/config/request-types` hết "từ chối mọi người" (AUD-05); không có tuyến cho đổi `operating_mode` là có chủ đích (câu 6b); skeleton khớp cây ở mục 3 (AUD-16); số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md`
+**Phiên bản:** 0.7 · **Trạng thái:** Đã duyệt ở vòng duyệt Phase 6 · **v0.2:** Open Questions sau các phép B1 → B4; mục 9.4 về bộ kiểm trong repo; `tools/` trong cây gốc — mục ngày 2026-09-13 (lần 9) của `CHANGELOG.md` · **v0.3:** Open Questions sau phép bổ sung — mục ngày 2026-09-14 · **v0.4:** thêm bước kiểm khởi động #16–17 (ADR-023, Phase 11) — quyết định của PO khi duyệt đề xuất diff riêng, không phải một hệ quả của luật 5 (đổi tên cho nhất quán) trong `CLAUDE.md`; mục ngày 2026-09-16 của `CHANGELOG.md` · **v0.5:** làm rõ #15/#17 dùng chung một lần đọc `operating_mode`, #17 chỉ áp dụng ngoài `prod` và tự vệ khi thiếu `BO19_ENVIRONMENT`, nhắc mô hình chạy hết-rồi-gom — cùng mục ngày 2026-09-16 · **v0.6:** đợt sửa 2 sau Phase 13 — cron và `ops/` thêm năm thao tác vận hành mới (AUD-08); `endpoint_ops/` không đếm số; tuyến `/config/request-types` hết "từ chối mọi người" (AUD-05); không có tuyến cho đổi `operating_mode` là có chủ đích (câu 6b); skeleton khớp cây ở mục 3 (AUD-16); số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.7:** tuyến `/takeover` và phần tiếp quản của `DocumentReviewPage` (AUD-02 (d)) — mục ngày 2026-09-26 (đợt sửa 3)
 
 > File này chốt cây thư mục của backend và frontend, luật "được import gì, cấm import gì" kèm **thứ gì chặn vi phạm**, entrypoint và cách chạy trên Render, bước kiểm khởi động, trình tự migration so với checkpointer, và kết quả xác minh contract DDL. File này **không** chứa implementation (DESIGN MODE — mục Chế độ làm việc hiện tại của `CLAUDE.md`). Hai khối `.importlinter` và `Dockerfile` bên dưới là **đặc tả**, không phải file. File này cũng **không** thiết kế màn hình tiếp quản hay quy tắc hiển thị theo độ nhạy (Phase 8), AuthZ chi tiết và quản lý secret (Phase 9), và **không** định cỡ tham số vận hành (Phase 11).
 
@@ -545,7 +545,7 @@ frontend/
     ├── features/
     │   ├── chat/                # ChatPage, danh sách tin nhắn, ô soạn; turnStream.ts — stream lượt, ngoài TanStack Query
     │   ├── my-requests/         # MyRequestsPage, RequestDetailPage, bảng xác nhận từng slot, thanh gửi, huỷ
-    │   ├── review/              # ReviewQueuePage, IssueQueuePage, DocumentReviewPage, bảng quyết định, hộp lý do tự duyệt
+    │   ├── review/              # ReviewQueuePage, IssueQueuePage, TakeoverQueuePage, DocumentReviewPage, bảng quyết định, hộp lý do tự duyệt
     │   ├── all-requests/        # danh sách scope=ALL và ASSIGNED — chờ lâu nhất trước
     │   ├── notifications/       # chuông và danh sách thông báo
     │   ├── config/              # template và phiên bản, import hồ sơ, kho quy trình, cấu hình loại yêu cầu
@@ -607,6 +607,7 @@ export default [
 | `/my-requests` · `/my-requests/:requestId` | Yêu cầu của tôi · chi tiết | `request.read_own` |
 | `/review/:status` | Hàng đợi duyệt theo một trạng thái | Permission tương ứng `status` |
 | `/issue` | Hàng đợi phát hành | `document.issue` |
+| `/takeover` | Hàng đợi tiếp quản — văn bản đang dừng | `document.approve_content`, `document.reject` hoặc `document.issue`, cộng `request.read_all` |
 | `/documents/:documentId` | Màn hình duyệt | `request.read_all`, hoặc `request.read_assigned` |
 | `/requests` | Mọi yêu cầu, chờ lâu nhất trước | `request.read_all` hoặc `request.read_assigned` |
 | `/config/templates` · `/config/templates/:templateId` | Template, phiên bản, tải lên | `template.manage` |
@@ -615,7 +616,7 @@ export default [
 | `/config/request-types` | Loại yêu cầu và slot | `request_type.manage` — cấp lẻ (mục AuthZ của `09-security.md`), có hiệu lực sau data migration `0001_permission_catalog.sql` |
 | `/audit` · `/audit/self-approvals` | Nhật ký · mục tự duyệt | `audit.read_all` |
 
-Không có tuyến cho: màn hình tiếp quản (Phase 8), dashboard SLA (Phase 11), `ROOM_BOOKING` (`[NGOÀI-OPENAPI]`), và đổi `operating_mode`. Tuyến cuối **vắng có chủ đích**: đổi chế độ chỉ qua `POST /operating-mode/transitions` — hành động hiếm, một người, đã có ba lớp khoá của ADR-023; một màn hình thêm bề mặt mà không thêm giá trị (quyết định PO 2026-09-26, câu 6b của `13-audit.md`).
+Không có tuyến cho: dashboard SLA (Phase 11), `ROOM_BOOKING` (`[NGOÀI-OPENAPI]`), và đổi `operating_mode`. Tuyến cuối **vắng có chủ đích**: đổi chế độ chỉ qua `POST /operating-mode/transitions` — hành động hiếm, một người, đã có ba lớp khoá của ADR-023; một màn hình thêm bề mặt mà không thêm giá trị (quyết định PO 2026-09-26, câu 6b của `13-audit.md`).
 
 ### 10.4 Phục vụ tĩnh và luật 404 — phía `api`
 
@@ -703,7 +704,7 @@ flowchart LR
 
 - Mỗi tab là **một** trạng thái mà người đang đăng nhập có permission: `PENDING_APPROVAL`, `PENDING_SIGNATURE`, `PENDING_SEAL`; cộng tab hàng đợi phát hành ở `/issue`. Mỗi tab gọi `GET /review-queue?status=…` với **một giá trị**, vì cột đầu của `ix_document_review_queue` là `status` (mục Phân trang của `05-api.md`). Không hàng đợi gộp ở Sprint đầu.
 - Thứ tự do server quyết: chờ lâu nhất trước, theo `document.status_changed_at`. Phân trang keyset, nút "tải thêm"; không có tổng số dòng.
-- Mỗi dòng: tên loại yêu cầu và `status_label` do server trả; thời gian chờ tính từ `status_changed_at`; dấu **đang dừng** khi `halted`; dấu **đang hoàn tất phát hành** khi `issue_in_progress`. Hai dấu này hiện gì cụ thể thuộc Phase 8 — ở đây chỉ là chỗ cho chúng.
+- Mỗi dòng: tên loại yêu cầu và `status_label` do server trả; thời gian chờ tính từ `status_changed_at`; dấu **đang dừng** khi `halted`; dấu **đang hoàn tất phát hành** khi `issue_in_progress`. Dấu **đang hoàn tất phát hành** hiện gì cụ thể — việc (g) của AUD-23; ở đây chỉ là chỗ cho nó.
 - Dữ liệu nằm dưới khoá gốc `['review-queue']`, nên tín hiệu `REVIEW_QUEUE` làm mới cả danh sách lẫn văn bản đang mở.
 
 **`DocumentReviewPage` — `/documents/:documentId`**
@@ -713,7 +714,9 @@ flowchart LR
 - **Yêu cầu sửa:** chọn `change_scope` là bắt buộc; `change_targets` chọn nhiều từ đúng danh sách biến nội dung tự do và slot của văn bản đó; `change_reason` là bắt buộc và không rỗng.
 - `approval_step.self_approval_expected` thì mở hộp nhập `self_approval_reason` trước khi gửi (D-006).
 - Mọi lệnh gửi `expected_row_version` của bản đang nhìn. `STATE_CONFLICT` thì hiện `message` của server và tải lại — không tự gửi lại.
-- **Không có ở đây:** tiếp quản sau `halt_for_human` (Phase 8); quy tắc che hay hiện giá trị theo độ nhạy (Phase 8, Phase 9 — hôm nay chỉ có chỗ nhận `sensitivity`); từ chối dùng dấu (A-034).
+- **Tiếp quản** khi `latest_halt.open`: banner mang `reason_code` và `at_node`; một nút cho mỗi lối ra trong `latest_halt.allowed_resolutions` mà `Me.permissions` cho phép; `REJECT_REQUEST` mở hộp nhập `rejection_reason` bắt buộc, và hộp `self_approval_reason` khi server trả `SELF_APPROVAL_REASON_REQUIRED`. Gọi `POST …/actions/resolve-halt` (mục Dừng có kiểm soát và tiếp quản của `08-hitl.md`).
+- **`TakeoverQueuePage` — `/takeover`:** `GET /takeover-queue`, mở lâu nhất trước, cùng khoá gốc `['review-queue']`.
+- **Không có ở đây:** quy tắc che hay hiện giá trị theo độ nhạy (Phase 8, Phase 9 — hôm nay chỉ có chỗ nhận `sensitivity`); từ chối dùng dấu (A-034).
 
 ---
 
