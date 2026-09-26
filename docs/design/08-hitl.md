@@ -1,6 +1,6 @@
 # HITL & Approval Workflow — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.4 · **Trạng thái:** Draft chờ duyệt · **v0.3:** đợt sửa 3 sau Phase 13, lượt sửa có phép của PO — viết lại phần sai (AUD-06), giao bốn việc thiếu (AUD-02: ba bảng mã, thao tác tiếp quản), cạnh `SUBMITTED → REJECTED` gắn vào tiếp quản (AUD-07), phép xác định "chỉ còn một người đủ quyền" và đường thoát tự duyệt cho thu hồi (AUD-23 (e)(f)); sửa theo AUD-01, AUD-05, AUD-08, AUD-11, AUD-17 phần nằm trong file này. Chi tiết ở mục ngày 2026-09-26 (đợt sửa 3) của `CHANGELOG.md` · **v0.4:** quyết định PO khi nhận đợt 3 — ADR-027 `Accepted`, A-044 `Đã chốt`; ca K3, K4 ở `10-eval.md`; A-078 cho người vắng dài ngày
+**Phiên bản:** 0.5 · **Trạng thái:** Draft chờ duyệt · **v0.3:** đợt sửa 3 sau Phase 13, lượt sửa có phép của PO — viết lại phần sai (AUD-06), giao bốn việc thiếu (AUD-02: ba bảng mã, thao tác tiếp quản), cạnh `SUBMITTED → REJECTED` gắn vào tiếp quản (AUD-07), phép xác định "chỉ còn một người đủ quyền" và đường thoát tự duyệt cho thu hồi (AUD-23 (e)(f)); sửa theo AUD-01, AUD-05, AUD-08, AUD-11, AUD-17 phần nằm trong file này. Chi tiết ở mục ngày 2026-09-26 (đợt sửa 3) của `CHANGELOG.md` · **v0.4:** quyết định PO khi nhận đợt 3 — ADR-027 `Accepted`, A-044 `Đã chốt`; ca K3, K4 ở `10-eval.md`; A-078 cho người vắng dài ngày · **v0.5:** đợt sửa 3b — việc (g)–(j) của AUD-23: hiển thị khoảng hoàn tất phát hành, đóng phiên nhàn rỗi, giao diện ca `HR_PROFILE` sai, giao diện nhãn phá huỷ
 
 > File này chốt luồng người duyệt: hàng đợi, thứ tự, tách biệt trách nhiệm, yêu cầu sửa, định tuyến ký, duyệt dấu, thu hồi, dừng có kiểm soát và tiếp quản, bảng mã. File này **không** thiết kế AuthZ chi tiết hay rate limit (`09-security.md`), không định cỡ trần (`11-ops.md`), không viết prompt (`07-prompts.md`).
 
@@ -8,7 +8,7 @@ Tên entity, trạng thái, permission, agent, node, tool dùng đúng `GLOSSARY
 
 **Đã đối chiếu (v0.3):** `CLAUDE.md`, `_PLAN.md`, `GLOSSARY.md`, `ASSUMPTIONS.md`, `00-domain.md`, `01-prd.md`, `02-architecture.md`, `03-agents.md`, `04-data.md`, `05-api.md`, `06-structure.md`, `11-ops.md`, `12-roadmap.md`, `13-audit.md`, `contracts/schema.sql` cùng migration `0002`→`0006`, `contracts/openapi.yaml`, `decisions/ADR-001` → `ADR-026`.
 
-**Việc còn lại của Phase 8, chưa làm ở đây:** hiển thị khoảng hoàn tất phát hành, thao tác đóng phiên nhàn rỗi, giao diện ca `HR_PROFILE` sai, giao diện nhãn phá huỷ — việc (g)–(j) của AUD-23, đợt sửa 3b.
+**Việc Phase 8 được giao, làm ở đợt sửa 3b:** hiển thị khoảng hoàn tất phát hành (mục 6), đóng phiên nhàn rỗi (mục 13), giao diện ca `HR_PROFILE` sai và giao diện nhãn phá huỷ (mục 14) — việc (g)–(j) của AUD-23.
 
 ---
 
@@ -43,7 +43,7 @@ Mỗi hàng đợi duyệt là **một** trạng thái, vì cột đầu của `
 
 ### 2.3 Trên mỗi dòng
 
-`request_type` + `status_label` do server trả + thời gian chờ + cờ `halted` + cờ `issue_in_progress` + cờ `job_failed`. Ba cờ là cờ dẫn xuất (mục Agent, graph, node, tool của `GLOSSARY.md`). `halted` = có bước `TAKEOVER` `OPEN`. Cách hiển thị `issue_in_progress` — việc (g) của AUD-23.
+`request_type` + `status_label` do server trả + thời gian chờ + cờ `halted` + cờ `issue_in_progress` + cờ `job_failed`. Ba cờ là cờ dẫn xuất (mục Agent, graph, node, tool của `GLOSSARY.md`). `halted` = có bước `TAKEOVER` `OPEN`. Cách hiển thị `issue_in_progress`: mục 6.
 
 ---
 
@@ -194,7 +194,14 @@ stateDiagram-v2
 
 Ba cạnh vào `ARCHIVED` từ `CHANGES_REQUESTED`, `DRAFT`, `APPROVED` là **bản nháp bị bỏ** — văn bản chưa từng ký, chưa từng có hiệu lực — và bắt buộc `archive_reason` (mục 10.2).
 
-**Khoảng hoàn tất phát hành** — từ lệnh phát hành tới `ISSUED` hoặc số `VOIDED`. `document` đứng yên `SIGNED`/`SEALED`; có thể đã có số mà chưa phát hành. Dữ liệu ở mục Khoảng hoàn tất phát hành trong dữ liệu của `04-data.md`. Hiển thị — việc (g) của AUD-23.
+**Khoảng hoàn tất phát hành** — từ lệnh phát hành tới `ISSUED` hoặc số `VOIDED`. `document` đứng yên `SIGNED`/`SEALED`; có thể đã có số mà chưa phát hành. Dữ liệu ở mục Khoảng hoàn tất phát hành trong dữ liệu của `04-data.md`.
+
+**Hiển thị (AUD-23 (g)).** Hai đoạn của khoảng — chưa có số, và đã có số nhưng chưa phát hành — hiện **giống hệt nhau** với mọi người dùng:
+
+- **Không hiện số ở đoạn 2.** Số đó còn có thể chuyển `VOIDED` nếu `finalize_issue` bỏ cuộc. Hiện nó là mời người khác ghi, gọi, in một số chưa có hiệu lực. Giữ đúng mục Dữ liệu trong response của `05-api.md`: `document_number` chỉ có từ `ISSUED`.
+- **Một nhãn cho cả khoảng.** `status_label` do server tính theo cặp (`status`, `issue_in_progress`): khi cờ đúng, nhãn là nhãn "đang cấp số và phát hành" của danh mục nhãn phía server, thay nhãn của `SIGNED` hay `SEALED`. `status` vẫn là mã thật. Nhân viên thấy cùng nhãn đó trong `RequestDetail`.
+- **Không có việc gì cho người ở cả hai đoạn.** Văn bản không nằm trong hàng đợi phát hành (mục 2.1) và nút phát hành không hiện. Khoảng kết thúc theo một trong ba đường, mỗi đường một tín hiệu riêng: `ISSUED`; `halted` — bỏ cuộc sau khi có số, số `VOIDED`, chờ tiếp quản (mục 9); `job_failed` — worker không chạy được job, graph chưa tới node nào.
+- **Đoạn nào đang chạy là việc của vận hành**, không phải của giao diện: dẫn xuất được ở mục Khoảng hoàn tất phát hành trong dữ liệu của `04-data.md`. Khoảng kéo dài bao lâu thì bất thường — SLA `TBD` (A-002).
 
 ---
 
@@ -391,6 +398,70 @@ Thi hành bằng `GRANT`/`REVOKE`: `bo19_app` **không** có `UPDATE`/`DELETE` t
 | 8 | Gỡ một lần dừng | Chỉ `document_takeover_resolve`; không cron, không job nào tự gỡ |
 
 Tự động hoá bất kỳ hành động nào ở trên là vi phạm M4 — metric loại Bất biến ở mục Goals & metrics của `01-prd.md`.
+
+---
+
+## 13. Đóng phiên nhàn rỗi — `chat_session_idle_close` (AUD-23 (h))
+
+Cron Job của `queue_worker`, tên đặt ở mục Thao tác vận hành của `03-agents.md`. Lớp phòng thủ hai của ADR-008 cho thread `intake`: phiên không có `request` nào `EXPIRED` vẫn phải đóng, để thread và checkpoint của nó được purge.
+
+**Chọn phiên.** `chat_session` `OPEN` có `last_message_at` < `now()` − `T_idle`, đi theo `ix_chat_session_idle`. `T_idle` là thời hạn đóng phiên nhàn rỗi — `TBD` (A-010). Số phiên mỗi lượt quét: `TBD` (A-031).
+
+**Ràng buộc giữa hai tham số:** `T_idle` phải dài hơn hạn chót của một lượt chat (A-031). Lượt đang chạy luôn có `last_message_at` gần hơn hạn chót của nó, nên phiên có lượt đang chạy không bao giờ thoả điều kiện chọn. Kiểm ở bước kiểm khởi động cùng các trần khác (mục Bước kiểm khởi động của `06-structure.md`).
+
+**Mỗi phiên, một giao dịch:**
+
+1. `chat_session` → `CLOSED`, `close_reason = IDLE_TIMEOUT`, ghi `closed_at` — bằng `UPDATE` có điều kiện: `status = 'OPEN'` **và** `last_message_at` vẫn cũ hơn mốc cắt. Một tin nhắn tới giữa lúc chọn và lúc ghi làm câu `UPDATE` khớp 0 dòng: phiên được bỏ qua, không đóng nhầm.
+2. `graph_thread` của phiên → `ENDED`.
+3. Enqueue `checkpoint_purge`.
+4. `audit_event`, tác nhân `SYSTEM` — theo luật chung "mọi thao tác ghi sinh `audit_event`", trừ khi A-055 quyết khác.
+
+**Idempotent và không tranh với `expire_request`.** Cả hai đóng phiên bằng `UPDATE` có điều kiện `status = 'OPEN'`: ai tới trước thắng, người sau khớp 0 dòng và không làm gì. `close_reason` là của người thắng.
+
+**Không làm:**
+
+- **Không đổi trạng thái `request` nào.** `request` `DRAFT` hay `NEEDS_INFO` trong phiên vẫn sống tới `EXPIRED` (A-014). Nhân viên quay lại trong hạn thì vào một phiên mới, nơi `load_turn` không thấy `request` đang dở — đúng ca A-038 mô tả, còn chờ PO. Bước này không giải A-038 và không làm nó nặng hơn.
+- **Không xoá văn bản tin nhắn.** Thời hạn của `chat_message` khi phiên đóng mà không có `request` nào `EXPIRED`: A-010 (mục Lưu trữ và xoá dữ liệu cá nhân của `04-data.md`).
+
+Nhân viên gửi lượt vào phiên đã đóng thì nhận `CHAT_SESSION_CLOSED` kèm `close_reason`, và `client` mở phiên mới (mục Hội thoại của `05-api.md`).
+
+---
+
+## 14. Hai giao diện được giao cho Phase 8
+
+### 14.1 Ca `SLOT_DATA` do `HR_PROFILE` sai (AUD-23 (i))
+
+Người duyệt yêu cầu sửa một slot nguồn `HR_PROFILE`. Nhân viên không tự sửa được giá trị đó — nó chép từ `employee`, và chỉ `employee.import` ghi được `employee` (D-002; mục Người duyệt phân loại, LLM không phân loại của `03-agents.md`).
+
+**Phía người duyệt** — `DocumentReviewPage`, hộp yêu cầu sửa:
+
+- Mỗi slot trong danh sách chọn `change_targets` hiện nguồn của nó, và với nguồn `HR_PROFILE` thì hiện cả `provenance` (`source`, `synced_at`).
+- Chọn một slot nguồn `HR_PROFILE` thì hiện chú thích: nhân viên không tự sửa được; hồ sơ phải được nhập lại ở `/config/employee-imports`. Có `employee.import` thì chú thích kèm đường dẫn tới đó. Chú thích không chặn việc gửi.
+
+**Phía nhân viên** — `RequestDetail` và hội thoại:
+
+- Trong `changes_requested`, slot nguồn `HR_PROFILE` hiện: "lấy từ hồ sơ nhân sự, cập nhật lúc `synced_at`; phòng hành chính cập nhật hồ sơ, sau đó bạn xác nhận lại". Không có ô nhập.
+- Nút xác nhận chỉ hiện khi slot đang `PROPOSED` — tức đã có giá trị mới để xác nhận.
+
+**Đường dữ liệu — hai quy tắc, là thứ làm cho giao diện trên có nghĩa:**
+
+1. **`document_request_changes`, ca `SLOT_DATA`:** trong cùng giao dịch, slot nguồn `HR_PROFILE` nằm trong `change_targets` bị **bỏ xác nhận** (`CONFIRMED` → `PROPOSED`, giữ giá trị cũ). Nhờ vậy `request_submit` từ chối cho tới khi nhân viên xác nhận lại. Cùng khuôn với bước bỏ xác nhận `HR_PROFILE` của `expire_request` (mục Khi `request` `EXPIRED` của `04-data.md`).
+2. **`propose_values`, khi `request` ở `CHANGES_REQUESTED` ca `SLOT_DATA`:** với slot nguồn `HR_PROFILE` nằm trong `change_targets` của lần yêu cầu sửa gần nhất, nếu `employee.synced_at` **mới hơn** `request_slot.provenance_synced_at` thì đề xuất lại — giá trị và `provenance` mới, `PROPOSED`. Chưa có dữ liệu mới thì không đề xuất lại, và câu trả lời nói hồ sơ chưa được cập nhật. `route_intent` đã coi `CHANGES_REQUESTED` ca `SLOT_DATA` là loại đang mở (mục `intake_graph` của `03-agents.md`), nên một lượt chat của nhân viên là đủ để chạy quy tắc này.
+
+Không chặn được một việc: nhân viên xác nhận lại đúng giá trị cũ khi hồ sơ chưa được cập nhật. Người duyệt thấy `provenance_synced_at` không đổi và yêu cầu sửa lần nữa — vòng này tính vào trần `R` (mục 9.1).
+
+### 14.2 Nhãn phá huỷ của `slot_sensitivity_change` (AUD-23 (j))
+
+Màn hình `/config/request-types` (mục Tuyến của `06-structure.md`), dòng của từng slot, hành động "đổi độ nhạy". Contract đã có: `sensitivity-change-preview` trả `from`, `to`, `destructive`, `erase_count`; `change-sensitivity` đòi `expected_erase_count` khi phá huỷ (mục Cấu hình của `05-api.md`).
+
+1. **Chọn mức mới** → gọi preview. Hiện `from` → `to`.
+2. **Không phá huỷ** (`destructive = false`): một nút xác nhận, gửi `change-sensitivity` không kèm `expected_erase_count`.
+3. **Phá huỷ** (`destructive = true`): hộp xác nhận riêng, tách khỏi màn hình sửa slot.
+   - Nhãn phá huỷ nói ba điều: số giá trị sẽ bị xoá — đúng `erase_count`, chỉ số đếm, không một giá trị nào; xoá không hoàn tác được; xoá áp cho `request` đã `EXPIRED` (mục Lưu trữ và xoá dữ liệu cá nhân của `04-data.md`).
+   - Một ô xác nhận **không tick sẵn** — cùng lý do F1 cấm tick sẵn. Nút gửi mang chính con số: "Xoá N giá trị và đổi độ nhạy". Nút chỉ bật khi ô đã tick.
+   - Gửi `expected_erase_count = erase_count` của **lần preview đang hiện**, không tính lại ở `client`.
+4. **`DESTRUCTIVE_COUNT_CHANGED`:** hiện số mới từ `details.erase_count`, bỏ tick, quay lại bước 3. Không tự gửi lại.
+5. **Thành công:** hiện số giá trị đã xoá — `SensitivityChangeResult.erased_count`. `audit_event` của thao tác do server ghi.
 
 ---
 

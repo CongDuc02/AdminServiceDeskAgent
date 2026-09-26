@@ -2133,3 +2133,34 @@ PO nhận đợt 3 và quyết: ADR-027 `Accepted`, A-044 `Đã chốt`; giữ `
 
 - `pip index versions PyJWT`, `pip index versions structlog` (2026-09-26): `2.15.0` và `25.4.0` có trên PyPI. Không cài thử.
 - `tomllib` đọc được `pyproject.toml`: 17 phụ thuộc. Skeleton không file `.py` nào import `jose` hay `structlog`.
+
+---
+
+## 2026-09-26 (đợt sửa 3b) — Phase 8 còn lại và quyền của chủ thể dữ liệu (AUD-23 (g)–(j), AUD-24)
+
+Đợt 3b của mục Thứ tự sửa đề xuất trong `13-audit.md`. Ba việc Thấp của AUD-24 ở lại đợt 4, đúng bảng thứ tự sửa.
+
+### File sửa
+
+| File | Thay đổi | AUD |
+|---|---|---|
+| `08-hitl.md` → 0.5 | (g) mục Duyệt dấu và khoảng hoàn tất phát hành: hai đoạn hiện giống nhau, không hiện số trước `ISSUED`, `status_label` theo cặp (`status`, `issue_in_progress`), ba đường kết thúc. Mục 13 mới — (h) `chat_session_idle_close`. Mục 14 mới — (i) ca `HR_PROFILE` sai: giao diện hai phía và hai quy tắc đường dữ liệu; (j) hộp xác nhận phá huỷ của `slot_sensitivity_change` | AUD-23 (g)–(j) |
+| `09-security.md` → 0.3 | Mục 13 mới: quyền của chủ thể dữ liệu ở mức nghĩa vụ — chủ thể là ai; xem, sửa, xoá hay ẩn danh: làm được bằng gì, hở ở đâu; không thêm endpoint, thao tác hay DDL. Open Questions trỏ A-079 | AUD-24 |
+| `ASSUMPTIONS.md` | **A-079 mới** — ba chỗ hở của quyền chủ thể; owner PO; hạn trước cổng Sprint 4 hoặc trước khi nạp dữ liệu cá nhân thật đầu tiên | AUD-24 |
+| `03-agents.md` → 0.16 | Con trỏ: `chat_session_idle_close`; quy tắc bỏ xác nhận ở `document_request_changes`; mục Người duyệt phân loại; bảng Memory; Open Questions 3 đã giải | AUD-23, AUD-24 |
+| `04-data.md` → 0.14 | Dòng hồ sơ nhân viên của mục 8.1; nhãn phá huỷ trỏ về `08-hitl.md` | AUD-24, AUD-23 (j) |
+| `05-api.md` → 0.14 | Hai con trỏ: cách hiển thị khoảng hoàn tất phát hành, giao diện nhãn phá huỷ | AUD-23 (g)(j) |
+| `06-structure.md` → 0.9 | Open Questions 7 đã giải; dấu đang hoàn tất phát hành trên hàng đợi | AUD-23 (g)(h) |
+| `12-roadmap.md` → 0.8 | Cổng 4.4 — A-079 | AUD-24 |
+| `13-audit.md` | Mục 7.2 Tiến độ — đợt sửa 3b | — |
+
+**Quyết định của trợ lý trong đợt, cần PO đọc:**
+
+- **Việc (i) đổi hành vi hai chỗ của `03-agents.md`.** `document_request_changes` bỏ xác nhận slot `HR_PROFILE` nằm trong `change_targets`; `propose_values` đề xuất lại slot đó khi `employee.synced_at` mới hơn `provenance_synced_at`. Không có hai quy tắc này thì giao diện của (i) không có đường dữ liệu. Quy tắc đầy đủ nằm ở `08-hitl.md`, vì `03-agents.md` đã giao ca này cho Phase 8; `03-agents.md` chỉ có câu trỏ.
+- **Không hiện số ở đoạn 2 của khoảng hoàn tất phát hành** — số còn có thể `VOIDED`.
+- **Quyền chủ thể không thêm thao tác nào.** Ẩn danh và tổng hợp dữ liệu phụ thuộc quyết định về xung đột với nghĩa vụ lưu trữ văn bản — việc của pháp chế — nên chỉ ghi chỗ hở vào A-079.
+
+### Đã chạy
+
+- Không đổi contract, DDL hay sơ đồ Mermaid nào — không chạy lại `check_grants.py`, `openapi-spec-validator`, `mmdc`.
+- Rà tay các con trỏ mới theo luật 12: mọi tên mục được trỏ đều có trong file đích.

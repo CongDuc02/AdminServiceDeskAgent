@@ -686,6 +686,15 @@ Gom theo file, để mỗi lượt chạm ít file và mỗi file chỉ mở m�
 
 **Kiểm lại:** `check_grants.py --local-migrated` áp `0001` → `0007`: 176 / 68 / **Lệch 0**. `openapi.yaml` 0.2.5 qua `openapi-spec-validator`; 47 path, 37 mã lỗi, không enum mới nào trùng giá trị với enum khác. 21 sơ đồ Mermaid của `00-domain.md`, `02-architecture.md`, `03-agents.md`, `08-hitl.md` render được bằng `mmdc` 12.0.0; tập cạnh máy trạng thái `document` trùng nhau ở ba file, `request` trùng nhau ở hai file — lệnh ở phụ lục A.8.
 
+### 7.2 Tiến độ — đợt sửa 3b
+
+| AUD | Kết quả ở đợt 3b | Còn lại |
+|---|---|---|
+| AUD-23 | **Đóng (g)–(j)** — `08-hitl.md` v0.5. (g) hai đoạn của khoảng hoàn tất phát hành hiện giống nhau, không hiện số trước `ISSUED`, `status_label` theo cặp (`status`, `issue_in_progress`). (h) `chat_session_idle_close`: điều kiện chọn, ràng buộc `T_idle` dài hơn hạn chót lượt, một giao dịch mỗi phiên với `UPDATE` có điều kiện, không đổi `request`. (i) giao diện hai phía, cộng hai quy tắc đường dữ liệu: bỏ xác nhận slot `HR_PROFILE` ở `document_request_changes`, đề xuất lại ở `propose_values` khi `employee.synced_at` mới hơn. (j) hộp xác nhận phá huỷ tách riêng, ô không tick sẵn, nút mang con số | `T_idle` chờ A-010; quan hệ với `request` `NEEDS_INFO` chờ A-038 — cả hai đã có dòng giả định |
+| AUD-24 | **Vế Cao — quyền của chủ thể dữ liệu:** mục mới ở `09-security.md` (v0.3): ai là chủ thể; bảng xem / sửa / xoá — làm được bằng gì, hở ở đâu; không thêm endpoint hay DDL; ba chỗ hở thành A-079, hạn theo quyết định PO. | Ba việc Thấp — lọc `audit.read_all` theo phòng ban, phát hiện object mồ côi, nơi lưu bản ghi eval — ở đợt 4, đúng bảng thứ tự sửa |
+
+**Chạm `03-agents.md` ngoài con trỏ — cần PO đọc:** hai quy tắc của việc (i) đổi hành vi của `document_request_changes` và `propose_values`. `03-agents.md` chỉ thêm câu trỏ; quy tắc đầy đủ nằm ở mục Ca `SLOT_DATA` do `HR_PROFILE` sai của `08-hitl.md`, vì `03-agents.md` đã giao ca này cho Phase 8.
+
 **Việc chạm `CLAUDE.md` — chỉ báo cáo, PO tự xử lý (luật 11):** mục Ràng buộc domain (BM25 — ADR kênh lexical sẽ ghi rõ độ lệch, AUD-09) và mục Cấu trúc output (`backend/migrations/` là nơi chứa DDL sau Phase 6, AUD-03).
 
 ---

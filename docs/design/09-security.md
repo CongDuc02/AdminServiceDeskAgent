@@ -1,6 +1,6 @@
 # Security & Guardrails — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.2 · **Trạng thái:** Draft chờ duyệt
+**Phiên bản:** 0.3 · **Trạng thái:** Draft chờ duyệt · **v0.3:** đợt sửa 3b sau Phase 13 — thêm mục 13, quyền của chủ thể dữ liệu ở mức nghĩa vụ (AUD-24 của `13-audit.md`); không sửa mục nào khác
 
 > File này chốt AuthN/AuthZ, rate limit, PII masking và hiển thị theo `slot_sensitivity`, phòng thủ prompt injection, output validation trước khi render, bảo vệ template gốc, và secret management trên Render. File này **không** thiết kế màn hình (Phase 8 đã đóng phần của nó), **không** định cỡ tham số vận hành bằng số liệu tải thật (Phase 11), và **không** lặp lại lập luận đã có ở ADR-001, ADR-007, ADR-008, ADR-013.
 
@@ -276,6 +276,42 @@ Endpoint có contract: 48 → **49** (con số 48 được xác nhận ở lần
 
 ---
 
+## 13. Quyền của chủ thể dữ liệu — ở mức nghĩa vụ *(đợt sửa 3b sau Phase 13, AUD-24)*
+
+`03-agents.md` mục Memory và `04-data.md` mục Lưu trữ và xoá dữ liệu cá nhân giao việc này cho Phase 9; bản 0.2 của file này không có mục nào làm. Mục đích thu thập và thời hạn lưu đã có chỗ (NFR-05, A-010). Mục này xử lý vế thứ ba mà mục Ràng buộc domain bắt buộc phải xử lý của `CLAUDE.md` đòi: **quyền của chủ thể**.
+
+**Giới hạn — nói trước.** Nghị định 13/2023/NĐ-CP chưa có bản gốc trong `docs/reference/`. Danh mục các quyền, điều khoản, thời hạn phải đáp ứng yêu cầu và ngoại lệ: `[CẦN XÁC MINH]`. Mục này **không** phán quyết pháp lý. Nó trả lời một câu hỏi kỹ thuật: với dữ liệu hệ thống đang giữ, hệ thống **làm được** gì khi có một yêu cầu xem, sửa, hay xoá dữ liệu về một người — và chỗ nào chưa làm được. Ba nhóm việc này do chính dữ liệu của hệ thống đặt ra, không phải bản liệt kê quyền theo Nghị định.
+
+### 13.1 Chủ thể là ai
+
+- **Nhân viên có hồ sơ** trong `employee` — người tạo yêu cầu, người thụ hưởng, người duyệt. Cả dữ liệu hồ sơ lẫn dấu vết thao tác (`actor_employee_id` ở `decision_record`, `audit_event`) đều gắn với họ.
+- **Người được nhắc tới trong giá trị slot** mà không phải người dùng hệ thống — ví dụ người đi cùng trong slot `accompanying_persons`. Họ không đăng nhập được, nên không tự gửi yêu cầu qua hệ thống được.
+
+### 13.2 Làm được gì hôm nay, bằng gì
+
+| Việc | Dữ liệu | Làm được bằng | Chỗ hở |
+|---|---|---|---|
+| **Xem** | `request` và slot do mình tạo; tin nhắn trong phiên của mình | `GET /requests?scope=OWN`, `GET /requests/{request_id}`, `GET /chat-sessions/{chat_session_id}/messages` — `request.read_own`; tin nhắn: chủ phiên | Không có đường tổng hợp **mọi** dữ liệu về một người: hồ sơ `employee` đầy đủ — `GET /me` chỉ trả một phần; slot về mình trên `request` người khác tạo (nhập hộ, người thụ hưởng, người đi cùng); dấu vết thao tác trong `audit_event` |
+| **Sửa** | Hồ sơ `employee` | `employee_import` — người có `employee.import` (D-002) | — |
+| | Giá trị slot trước `SUBMITTED` | Hội thoại, `request_slot_confirm` | — |
+| | Giá trị slot sau `SUBMITTED` | Yêu cầu sửa `SLOT_DATA` của người duyệt | — |
+| | Văn bản đã `ISSUED` | Thu hồi rồi phát hành văn bản mới — không sửa tại chỗ (bất biến thứ ba ở mục Vòng đời `document` của `00-domain.md`) | Thu hồi là F5 `[Should]`, sau UAT |
+| **Xoá, ẩn danh** | Slot `RES`, văn bản tin nhắn, `retrieval_query` | Xoá theo sự kiện và theo thời hạn — `expire_request`, `slot_sensitivity_change` (mục Lưu trữ và xoá dữ liệu cá nhân của `04-data.md`) | Không có lệnh xoá **theo yêu cầu của một người**; chỉ có xoá theo luật chung. Thời hạn: A-010 |
+| | Văn bản lý do (`decision_record_text`) | Xoá dòng được (`bo19_app` có `DELETE`); `decision_record` giữ nguyên | Không có thao tác có tên |
+| | Hồ sơ `employee` | Nghỉ việc: `is_active = false`, không xoá dòng | **Ẩn danh chưa có thao tác.** Dòng không xoá được vì khoá ngoại từ `request`, `decision_record` và các bảng khác; `audit_event.actor_employee_id` không có khoá ngoại nhưng vẫn là một định danh cá nhân (cùng nhận xét ở A-070). Ẩn danh là ghi đè các cột `PER`/`RES` và giữ `id` — `bo19_app` có quyền `UPDATE` trên `employee` |
+| | Checkpoint | Purge khi thread kết thúc (ADR-008) | — |
+| | Bản render đã ghim, dòng sổ văn bản | **Ứng dụng không bao giờ xoá** (mục Chuỗi bảo đảm bất biến của bản đã ghim của `04-data.md`) | **Xung đột**: văn bản đã phát hành mang tên và dữ liệu của chủ thể; nghĩa vụ lưu trữ văn bản chính thức và quyền xoá kéo ngược nhau. Không phải thiết kế quyết — người phụ trách pháp chế quyết (A-079) |
+| | Dữ liệu đã gửi tới provider LLM hay embedding | Allowlist chỉ gửi đúng input đã khai (INV-03); không gửi giá trị `HR_PROFILE` (mục `drafting_agent` của `03-agents.md`) | Thời gian provider giữ dữ liệu: phụ thuộc provider chưa chọn (A-026, A-028), `[CẦN XÁC MINH]` |
+
+### 13.3 Quyết định ở đợt này
+
+- **Không thêm endpoint, thao tác hay DDL.** Kênh tiếp nhận yêu cầu ở Sprint đầu nằm **ngoài hệ thống**: nhân viên gửi phòng hành chính. Phần làm được thì làm bằng đường ở bảng trên.
+- **Ba chỗ hở thành A-079**, owner Product Owner, hạn theo quyết định PO về AUD-24: **trước cổng Sprint 4, hoặc trước khi nạp dữ liệu cá nhân thật đầu tiên — tuỳ cái nào sớm hơn.** (1) Tổng hợp mọi dữ liệu về một chủ thể. (2) Thao tác ẩn danh hồ sơ và giá trị slot về một chủ thể. (3) Xung đột giữa quyền xoá và nghĩa vụ lưu trữ văn bản đã phát hành.
+- **Vì sao không thiết kế luôn (1), (2).** Cả hai tuỳ vào (3) và vào thời hạn ở A-010: ẩn danh giá trị slot trên một `request` đã `FULFILLED` là sửa bằng chứng đi kèm một văn bản đã phát hành. Thiết kế thao tác trước khi biết phạm vi được phép xoá là đoán luật.
+- **Không có dữ liệu cá nhân thật nào được nạp** khi A-079 còn `Mở` — cùng điều kiện với hạn ở trên. UAT dùng dữ liệu giả (quyết định PO về AUD-24).
+
+---
+
 ## Migration bổ sung của Phase 9
 
 **`contracts/schema.sql` KHÔNG bị sửa.** Mục 3 của `06-structure.md` đã chốt từ Phase 6: *"`0001_initial.sql` = `contracts/schema.sql` ở trạng thái đóng Phase 6; về sau mỗi thay đổi một file"*. Đây không phải một cách diễn giải — là câu đã viết sẵn cho đúng tình huống này. Toàn bộ thay đổi của Phase 9 nằm ở hai file migration mới, đúng trình tự của ADR-017 (bước 1: schema migration; bước 4: data migration).
@@ -322,7 +358,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON rate_limit_window TO bo19_app;
 
 ## Open Questions
 
-Không có câu hỏi mở chỉ tồn tại trong file này. Giả định liên quan: `A-002` (số liệu tải cho ngưỡng rate limit), `A-031` (ngưỡng rate limit, thêm ở Phase 9), `A-036` (phạm vi Nghị định 30/2020/NĐ-CP, chạm chế độ phi sản xuất mà `operating_mode.change` điều khiển), `A-042` (đã chốt — danh mục + data migration), `A-048` (credential — tham số hash, thời hạn token, chu kỳ xoay vòng secret, rủi ro thứ tư), `A-055` (audit_event — trường hợp thứ tư), `A-057` (trần connection pool, liên quan tới rủi ro pool ở mục 6.2), `A-060` (ngữ cảnh chạy `migrate`), `A-061` (điều kiện kích hoạt lọc `request.read_all` theo phòng ban — Mở, không phải đề xuất chờ duyệt) — xem `ASSUMPTIONS.md`. **Thêm một `[CẦN XÁC MINH]` mới, xem mục K1 của báo cáo đóng phase:** header IP thật của client phía sau proxy Render, dùng để khoá `rate_limit_window` theo IP — cùng họ A-051.
+Không có câu hỏi mở chỉ tồn tại trong file này. Giả định liên quan: `A-079` (quyền của chủ thể dữ liệu — ba chỗ hở, thêm ở đợt sửa 3b), `A-002` (số liệu tải cho ngưỡng rate limit), `A-031` (ngưỡng rate limit, thêm ở Phase 9), `A-036` (phạm vi Nghị định 30/2020/NĐ-CP, chạm chế độ phi sản xuất mà `operating_mode.change` điều khiển), `A-042` (đã chốt — danh mục + data migration), `A-048` (credential — tham số hash, thời hạn token, chu kỳ xoay vòng secret, rủi ro thứ tư), `A-055` (audit_event — trường hợp thứ tư), `A-057` (trần connection pool, liên quan tới rủi ro pool ở mục 6.2), `A-060` (ngữ cảnh chạy `migrate`), `A-061` (điều kiện kích hoạt lọc `request.read_all` theo phòng ban — Mở, không phải đề xuất chờ duyệt) — xem `ASSUMPTIONS.md`. **Thêm một `[CẦN XÁC MINH]` mới, xem mục K1 của báo cáo đóng phase:** header IP thật của client phía sau proxy Render, dùng để khoá `rate_limit_window` theo IP — cùng họ A-051.
 
 ---
 
