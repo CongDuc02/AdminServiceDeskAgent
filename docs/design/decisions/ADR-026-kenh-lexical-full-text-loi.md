@@ -1,8 +1,8 @@
 # ADR-026 — Kênh lexical của hybrid search: full-text lõi của PostgreSQL, chưa phải BM25
 
-**Trạng thái:** Proposed · **Ngày:** 2026-09-26 · **Quyết định tại:** đợt sửa 1 sau Phase 13 (AUD-09 của `13-audit.md`) · **Liên quan:** ADR-002 (hybrid search trong một câu SQL), ADR-012 (vector collection), A-028 (embedding model), A-030 (năng lực text search tiếng Việt trên Render), mục Vector collection của `04-data.md`, mục Retrieval của `03-agents.md`, mục Ràng buộc domain bắt buộc phải xử lý của `CLAUDE.md`
+**Trạng thái:** Accepted · **Ngày:** 2026-09-26 · **Duyệt:** PO, 2026-09-26 — `Proposed` → `Accepted`; PO tự sửa `CLAUDE.md` trỏ về ADR này · **Quyết định tại:** đợt sửa 1 sau Phase 13 (AUD-09 của `13-audit.md`) · **Liên quan:** ADR-002 (hybrid search trong một câu SQL), ADR-012 (vector collection), A-028 (embedding model), A-030 (năng lực text search tiếng Việt trên Render), mục Vector collection của `04-data.md`, mục Retrieval của `03-agents.md`, mục Ràng buộc domain bắt buộc phải xử lý của `CLAUDE.md`
 
-> **ADR này lệch khỏi `CLAUDE.md`.** Mục Ràng buộc domain bắt buộc phải xử lý của `CLAUDE.md` ghi "hybrid search (BM25 + vector)". Quyết định dưới đây **không** dùng BM25 cho kênh lexical ở Sprint đầu. Theo luật 11, `CLAUDE.md` không được sửa ở đây — PO xử lý file đó.
+> **ADR này lệch khỏi `CLAUDE.md`.** Mục Ràng buộc domain bắt buộc phải xử lý của `CLAUDE.md` ghi "hybrid search (BM25 + vector)". Quyết định dưới đây **không** dùng BM25 cho kênh lexical ở Sprint đầu. Theo luật 11, `CLAUDE.md` không được sửa ở đây — PO sửa file đó để trỏ về ADR này.
 
 ---
 
@@ -31,7 +31,7 @@ Chọn một kênh lexical khác thứ `CLAUDE.md` liệt kê là một quyết 
 
 ## Decision
 
-**Đề xuất A** — trạng thái `Proposed`, chờ PO duyệt.
+**Chọn A** — PO duyệt 2026-09-26.
 
 - Kênh lexical ở Sprint đầu là full-text lõi của PostgreSQL, đúng như `04-data.md` mục Vector collection đã dựng. Không thêm cột, index hay extension nào.
 - Tài liệu gọi đúng tên nó: **"xếp hạng full-text lõi"**, không gọi là BM25. Câu Decision của ADR-002 và mục Thành phần — `vector_store` của `02-architecture.md` được sửa theo.
@@ -54,7 +54,7 @@ Chọn một kênh lexical khác thứ `CLAUDE.md` liệt kê là một quyết 
 
 **Điều kiện đảo ngược**
 
-- *Tín hiệu kiến trúc:* A-030 xác minh được một extension BM25 khả dụng trên PostgreSQL managed của Render — xét B.
+- *Tín hiệu kiến trúc:* A-030 xác minh được một extension BM25 khả dụng trên PostgreSQL managed của Render — xét B. *(Cập nhật ở đợt sửa 5 sau Phase 13: vế này nay là A-083, `Hoãn`; A-030 chỉ còn vế full-text lõi chạy được trên Render.)*
 - *Tín hiệu đo:* phương pháp `recall@k` ở mục Bộ đo retrieval của `10-eval.md`, chạy trên kho thật, cho thấy kênh lexical không đưa được đoạn đúng vào top-k ở các câu hỏi dựa vào thuật ngữ chính xác — xét B hoặc C.
 - *Tín hiệu chọn model:* model embedding được chọn ở A-028 sinh được biểu diễn thưa — xét C. C đổi luôn câu "hai kênh trong một câu SQL" của ADR-002, nên đảo sang C cần sửa cả ADR-002.
 

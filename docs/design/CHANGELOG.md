@@ -1954,3 +1954,377 @@ Việc (f) của AUD-23 — đường thoát tự duyệt cho thu hồi — dờ
 - `x-bo19-feature` cho ba endpoint `/delegations`: chờ câu 5 (AUD-15) — nghĩa của `delegation` quyết định nó thuộc feature nào.
 - Việc (f) của AUD-23 (đường thoát tự duyệt cho thu hồi): dời sang đợt 3.
 - `CLAUDE.md` mục Ràng buộc domain (BM25): PO xử lý, theo ADR-026.
+
+---
+
+## 2026-09-26 (đợt sửa 1, hoàn tất) — AUD-03, migration `0006`, `/delegations`; ADR-026 `Accepted`
+
+### Quyết định của PO
+
+| # | Quyết định |
+|---|---|
+| 1 | Câu 3 (AUD-03): thêm `contracts/README.md`, giữ nguyên byte `schema.sql` |
+| 2 | Nhận hai index ở mục Việc được giao cho Phase 13 của `13-audit.md`; thêm bằng migration `0006` |
+| 3 | Câu 5 (AUD-15): bỏ vế `delegation` khỏi điều 4 của F1 trong Sprint đầu — **cắt phạm vi** ở PRD và roadmap, **không xoá** thiết kế `delegation`. Áp ở đợt 2 |
+| 4 | Câu 6: xoá router `health` khỏi skeleton; không có tuyến `client` cho đổi `operating_mode`, có chủ đích. Áp ở đợt 2 |
+| 5 | AUD-24: UAT dùng dữ liệu giả; hạn trước cổng Sprint 4, hoặc trước khi nạp dữ liệu cá nhân thật đầu tiên — tuỳ cái nào sớm hơn |
+| 6 | ADR-026 → `Accepted`. PO tự sửa `CLAUDE.md` trỏ về ADR-026 |
+| 7 | Câu 7 (owner là người cho các giả định của AUD-13): hoãn, PO trả lời trước đợt 4 |
+
+### File sửa
+
+| File | Thay đổi | AUD |
+|---|---|---|
+| `contracts/README.md` | **Mới.** `schema.sql` dừng ở trạng thái đóng Phase 6, trùng byte với `0001`; bảng migration `0002`–`0006`; luật: không sửa `schema.sql`, thêm migration thì cập nhật bảng | AUD-03 |
+| `backend/migrations/schema/0006_waiting_order_indexes.sql` | **Mới.** `ix_request_waiting`, `ix_document_awaiting_issue` — chỉ index, không đổi quyền | Mục 5 của `13-audit.md` |
+| `04-data.md` → 0.11 | Hai dòng index; mục 1.1 trỏ tới `contracts/README.md`; số phiên bản đầu dòng từ 0.3 lên 0.11 | AUD-03, AUD-18 |
+| `05-api.md` | Mục Phân trang: hai thứ tự có index `0006`; mục Open Questions: đề xuất index đã giải | Mục 5 |
+| `contracts/openapi.yaml` (vẫn 0.2.3) | `x-bo19-feature` cho ba endpoint `/delegations`: `'Scope — định tuyến ký nhiều cấp, SIGNER, uỷ quyền'`; mô tả extension thêm dạng `Scope — …` cho hạng mục `[Should]` không có ID ở PRD | AUD-19 |
+| `decisions/ADR-026` | `Proposed` → `Accepted` | AUD-09 |
+| ADR-002, `03-agents.md` | Bỏ chữ `Proposed` khi trỏ tới ADR-026 | AUD-09 |
+| `13-audit.md` → 0.4 | Ghi các quyết định trên; **AUD-25 mới** | — |
+
+### Đã chạy
+
+- `check_grants.py --local-migrated`: áp `0001` → `0006`; **176 / 68 / Lệch 0**, mã thoát 0. `0006` chỉ thêm index nên số phép kiểm quyền không đổi.
+- `openapi-spec-validator`: hợp lệ. Script đối chiếu: mọi operation có `x-bo19-feature`; 35 = 35 mã lỗi.
+
+### Phát hiện mới — AUD-25, không tự sửa
+
+`backend/pyproject.toml` và `backend/requirements.txt` ghim `passlib[bcrypt]` (trái ADR-021), `alembic`/`SQLAlchemy` (trái ADR-017), `langgraph==0.3.27` (lệch bản đã xác minh ở A-045), `langchain-openai`/`openai`/`tiktoken` (chọn ngầm provider khi A-026 còn mở). Chờ PO duyệt hướng sửa.
+
+---
+
+## 2026-09-26 (đợt sửa 2) — Tên, thao tác, ID; áp AUD-01 (A) và cắt phạm vi `delegation`
+
+Đợt 2 của mục Thứ tự sửa đề xuất trong `13-audit.md`, cộng các quyết định câu 5, câu 6 của PO.
+
+### File sửa
+
+| File | Thay đổi | AUD |
+|---|---|---|
+| `GLOSSARY.md` → 0.22 | `APPROVED` của `request` → "Đã ký", kèm đoạn định nghĩa và điều kiện A-034 | AUD-01 |
+| | `WARNING` thành danh sách đóng ba ca: D-006, ADR-020 (đổi chế độ thành công), ADR-023 (bị chặn). Ca ADR-020 không có trong câu định nghĩa mà ADR-023 đề xuất; giữ lại vì ADR-023 không nói thu hồi nó | AUD-10 |
+| | Thuật ngữ `job_failed`, `BO19_ENVIRONMENT`; tên `operating_mode_transition_reject` | AUD-10, AUD-08 |
+| | Năm thao tác vận hành mới: `rate_limit_window_sweep`, `chat_session_idle_close`, `needs_info_reminder`, `document_retention_archive`, `draft_render_sweep` | AUD-08 |
+| | Gạch đoạn "Cố ý vắng mặt: `request_type.manage`" | AUD-05 |
+| | `delegation`: hai cách dùng; vế lập hộ cắt khỏi Sprint đầu | AUD-15 |
+| | `signer_user_id`: giữ tên biến, ghi ánh xạ sang `signer_employee_id` và lý do | AUD-20 |
+| `00-domain.md` → 0.12 | Bảng và sơ đồ `request`: `APPROVED` = đã ký, do `document.sign`; EC-IL-01 và rule của `bearer_employee_code`: Sprint đầu chỉ qua `request.create_on_behalf`; `beneficiary_employee_id` kiểu uuid, là id chứ không phải mã | AUD-01, AUD-15, AUD-20 |
+| `01-prd.md` → 0.11 | ID `AC-F1.1` → `AC-F6.5` (30 AC), kèm quy ước ID; điều 4 của F1 bỏ vế `delegation` — cắt phạm vi, không xoá thiết kế; dòng Should ở mục Scope & priority ghi vế đó | AUD-19, AUD-15 |
+| `02-architecture.md` → 0.12 | Sơ đồ và bảng chủ sở hữu `request`: `APPROVED` do `document.sign` | AUD-01 |
+| `03-agents.md` → 0.14 | `document_sign` đưa `request` sang `APPROVED`; `document_approve_content` giữ `IN_REVIEW`; bản kê thêm `object_claim_reconcile` và năm thao tác vận hành mới; `operating_mode_transition_reject`, `slot_sensitivity_change` vào bản kê thao tác do endpoint gọi (14 → 16); vế `delegation` của `employee_lookup` là `[Should]` | AUD-01, AUD-08, AUD-15 |
+| `04-data.md` → 0.12 | Đoạn `delegation`; hai câu permission "chưa có" (A-042, A-043) ở ba mục | AUD-15, AUD-05, AUD-11 |
+| `05-api.md` → 0.12 | Ghi chú của `sign` | AUD-01 |
+| `contracts/openapi.yaml` → 0.2.4 | Mô tả của `signDocument` | AUD-01 |
+| `06-structure.md` → 0.6 | Cron và `ops/` thêm năm thao tác; `endpoint_ops/` không đếm số; tuyến `/config/request-types`; không có tuyến đổi `operating_mode` là có chủ đích; số phiên bản đầu dòng từ 0.4 lên 0.6 | AUD-08, AUD-05, câu 6b, AUD-18 |
+| `12-roadmap.md` → 0.5 | Ma trận truy vết dùng `AC-Fx.y`; Sprint 3 ghi lập hộ chỉ qua `request.create_on_behalf` | AUD-19, AUD-15 |
+| `ASSUMPTIONS.md` → 0.30 | A-034: điều kiện mở lại AUD-01. A-052: cắt vế `delegation`, đáp án chuẩn EC-IL-01 theo nghĩa mới | AUD-01, AUD-15 |
+| `backend/src/` | Xoá `bo19/api/app/` (trùng tên với `app.py`), `bo19/api/routers/health.py` (câu 6a), `src/__init__.py`; `bo19/ai_gateway/gateway/` → `gateway.py` như cây ở `06-structure.md`; docstring `startup` "15 bước" → "17 bước" | AUD-16, AUD-11 |
+
+**Lệch so với đề xuất của audit — AUD-20:** không đổi tên `signer_user_id` thành `signer_employee_id`. Chú thích trong `contracts/schema.sql` và `0001_initial.sql` dùng tên cũ, mà hai file đó giữ nguyên byte (`contracts/README.md`). Đổi tên sẽ để lại một chú thích sai vĩnh viễn trong contract. Thay vào đó, `GLOSSARY.md` ghi ánh xạ và lý do.
+
+### Đã chạy
+
+- `mermaid-cli`: hai sơ đồ `request` vừa sửa (ở `00-domain.md` và `02-architecture.md`) render được.
+- `openapi-spec-validator`: hợp lệ. Script đối chiếu: 50/50 method–path; 35 = 35 mã lỗi; mọi operation có `x-bo19-feature`.
+- Tám tên thao tác của AUD-08 đều có ở cả `GLOSSARY.md` lẫn `03-agents.md`.
+- Không có thay đổi DDL, nên không chạy lại `check_grants.py`.
+
+### Chưa làm — lý do
+
+- **AUD-07 (`SUBMITTED → REJECTED`):** cần PO chọn: xoá cạnh, hay gắn vào thao tác tiếp quản của việc (d), AUD-02. Vế EC-CV-02 vào A-053 ở đợt 3.
+- **Phần của AUD-01, AUD-05 nằm ở `08-hitl.md`:** chờ lượt sửa có phép ở đợt 3.
+- **Đổi tên `reason_code` `VALIDATION_FAILED` (AUD-20):** cùng bảng mã của việc (a), AUD-02, ở đợt 3.
+- **AUD-25:** chờ PO.
+
+---
+
+## 2026-09-26 (đợt sửa 2b) — Phụ thuộc Python theo ADR (AUD-25)
+
+Quyết định của PO: nhận AUD-25, sửa ngay thành đợt riêng trước đợt 3. Cùng lượt PO quyết AUD-07 — gắn `SUBMITTED → REJECTED` vào thao tác tiếp quản ở đợt 3 — và xác nhận việc xoá router `health` ở đợt 2 khớp câu 6a.
+
+### File sửa
+
+| File | Thay đổi |
+|---|---|
+| `backend/pyproject.toml` | **Nguồn sự thật duy nhất** cho phụ thuộc Python. Bỏ `passlib[bcrypt]` (ADR-021), `alembic`, `SQLAlchemy` (ADR-017). `langgraph` 0.3.27 → **1.2.11**, bản đã chạy thật khi xác minh A-045. Gỡ `openai`, `langchain-openai`, `tiktoken` — SDK và tokenizer của một provider — tới khi A-026 chốt, không ghim tạm. Gỡ `langchain`, `langchain-core` — xem dưới. Chú thích đầu mảng ghi lý do của từng thứ cố ý vắng mặt. 25 → 17 phụ thuộc |
+| `requirements.txt`, `backend/requirements.txt` | **Xoá.** Chọn "bỏ" thay vì "sinh ra từ `pyproject.toml`": sinh ra cần một công cụ khoá phiên bản, việc thuộc BUILD MODE. `06-structure.md` mục Đặc tả `Dockerfile` đã dựa vào `pyproject.toml` cộng lockfile, nên không tài liệu nào phải sửa. `tools/contract-checks/requirements.txt` là của công cụ riêng, giữ nguyên |
+| `13-audit.md` → 0.5 | Ghi hai quyết định trên |
+
+**Quyết định của trợ lý trong đợt, cần PO đọc:** gỡ cả `langchain` và `langchain-core`, dù PO không nêu. Lý do: không tài liệu thiết kế nào chọn `langchain`. Còn `langchain-core` 0.3.59 ghim cạnh `langgraph` 1.2.11 có thể xung đột phiên bản — điều đó không kiểm được mà không có nguồn, và `langgraph` tự kéo `langchain-core` theo như phụ thuộc bắc cầu.
+
+**Còn lại, không thuộc chỉ đạo của PO:** `python-jose` (dòng cuối của bảng AUD-25 — giữ kèm lý do, hoặc bỏ tới BUILD MODE) và `structlog` (không có ở tài liệu nào; `06-structure.md` chỉ nói handler JSON của `observability`). Hai phụ thuộc này không trái ADR nào, nên giữ nguyên chờ PO.
+
+### Đã chạy
+
+- `pyproject.toml` đọc được bằng `tomllib`: 17 phụ thuộc.
+- Không cài thử — DESIGN MODE, chưa có lockfile.
+
+---
+
+## 2026-09-26 (đợt sửa 3) — Phase 8: tiếp quản, bảng mã, D-006 (AUD-02, AUD-06, AUD-07, AUD-23 (e)(f))
+
+Đợt 3 của mục Thứ tự sửa đề xuất trong `13-audit.md`: một lượt sửa `08-hitl.md` có phép của PO. Kèm quyết định AUD-07 của PO: gắn `SUBMITTED → REJECTED` vào thao tác tiếp quản, không xoá cạnh.
+
+### File sửa
+
+| File | Thay đổi | AUD |
+|---|---|---|
+| `08-hitl.md` → 0.3 | Viết lại. Ba bảng mã: `reason_code` (17 mã, `VALIDATION_FAILED` → `FREE_CONTENT_INVALID`), `archive_reason` (3 mã), `event_code` (5 mã). Thao tác tiếp quản `document_takeover_resolve` với ba lối ra `RETRY`, `REJECT_REQUEST`, `RETURN_TO_ISSUE_QUEUE`; hàng đợi tiếp quản. Phép xác định "chỉ còn một người đủ quyền" và bảng kết quả D-006. Đường thoát tự duyệt cho thu hồi. Sửa sơ đồ luồng sửa và sơ đồ trạng thái, câu về trạng thái lúc dừng, dòng `chat_message` của audit. Phần của AUD-01, 05, 08, 11, 17 nằm trong file | AUD-02, 06, 07, 23 (e)(f), 20; một phần 01, 05, 08, 11, 17 |
+| `decisions/ADR-027-co-tu-duyet-va-tiep-quan-tren-approval-step.md` | **Mới, `Proposed`.** Cờ tự duyệt và việc tiếp quản nằm trên `approval_step`; bước sinh ra đã `DECIDED` cho lệnh phát hành và khởi tạo thu hồi; khoá idempotency của `document_halt` theo bước `TAKEOVER` đang mở. Loại: cờ trên `decision_record`, bảng `self_approval`, đếm số lần tiếp quản trong khoá | AUD-02 (d), AUD-23 (f), A-044 |
+| `backend/migrations/schema/0007_takeover_and_self_approval.sql` | **Mới.** Bốn `step_kind`; `ix_approval_step_open_by_kind`; `decision_record.takeover_resolution`; `ck_decision_record_step_kinds` đòi bước với `ISSUE_ORDERED`, `TAKEOVER_RESOLVED`, `REVOKE_*`; bỏ `uq_document_halt_once`, thêm `document_halt.takeover_step_id`; ba bảng mã thành `CHECK`; `ARCHIVED` từ `DRAFT`, `APPROVED`; `ck_document_seal_determined` nới cho `ARCHIVED` từ `DRAFT`. Không `GRANT` mới | AUD-02, AUD-07, AUD-23 (f) |
+| `contracts/README.md` | Dòng `0007` | — |
+| `contracts/openapi.yaml` → 0.2.5 | `GET /takeover-queue`, `POST …/resolve-halt`; enum `TakeoverResolution`, `HaltReasonCode`, `NotificationEventCode`; `ApprovalStepKind` thêm bốn giá trị; `HaltView` thêm `document_halt_id`, `at_node`, `open`, `allowed_resolutions`; `ResolveHaltBody`; `self_approval_reason` trên hai body thu hồi; `ErrorCode` thêm `DOCUMENT_AWAITING_TAKEOVER`, `TAKEOVER_RESOLUTION_NOT_ALLOWED` (37 mã); `details.allowed_resolutions` | AUD-02 (d), AUD-23 (f) |
+| `05-api.md` → 0.13 | Phân quyền, Phân trang, loại trừ số 2 (đã giải), Hàng đợi, Thao tác cổng, Thu hồi, Stream tín hiệu, Mã lỗi, Ma trận thao tác; mã `reason_code` giữ nguyên tên của tool | AUD-02, AUD-23 (f) |
+| `03-agents.md` → 0.15 | Node `route_takeover` và sơ đồ Phần 3; cạnh `render_draft → halt_for_human` vẽ vào sơ đồ; `document_halt_record` với khoá mới; `await_human_takeover` ai đánh thức; thao tác cổng `document_takeover_resolve`; `request_submit`, `document_issue` trả `DOCUMENT_AWAITING_TAKEOVER` khi đang dừng; `request_cancel` đóng bước `TAKEOVER`; bước mang cờ của `document_issue` và thu hồi | AUD-02, AUD-23 (f), A-044 |
+| `00-domain.md` → 0.13 | Cạnh `request CHANGES_REQUESTED → REJECTED`; `document DRAFT → ARCHIVED`, `APPROVED → ARCHIVED`; nghĩa của `REJECTED`, `ARCHIVED`; D-006 — phần Phase 8 đã làm | AUD-07, AUD-23 (e) |
+| `02-architecture.md` → 0.13 | Cùng các cạnh; bảng chủ sở hữu `REJECTED`, `ARCHIVED`; sequence diagram (e) có đường thoát tự duyệt | AUD-07, AUD-23 (f) |
+| `04-data.md` → 0.13 | `approval_step.step_kind`, `archive_reason`, `decision_record`, `document_halt`, enum xuyên phase; câu hẹn tiếp quản "render lại rồi ghim bản mới" ở mục Ba ca của L2 — không làm được, sửa | AUD-02, A-044 |
+| `GLOSSARY.md` → 0.23 | Bảng mã `archive_reason`, `halt_reason_code`, `notification_event_code`, `takeover_resolution`; `approval_step_kind`; node `route_takeover`; thao tác `document_takeover_resolve`; gạch dòng "Chờ Phase 8" | AUD-02 |
+| `ASSUMPTIONS.md` → 0.31 | A-044: hướng đóng theo ADR-027, còn `Mở` tới khi PO duyệt ADR. A-053: vế EC-CV-02. **A-077 mới:** tiếp quản chưa có lối soạn tay, chưa có lối ra cho `CONTENT_HASH_MISMATCH` | AUD-07, AUD-02 |
+| `06-structure.md` → 0.7 | Tuyến `/takeover`; `TakeoverQueuePage`; phần tiếp quản của `DocumentReviewPage` | AUD-02 (d) |
+| `10-eval.md` → 0.3 | `reason_code` theo bảng mã mới | AUD-20 |
+| `12-roadmap.md` → 0.6 | Sprint 2: deliverable tiếp quản, AC-2.11, hai endpoint; nợ Phase 8: A-044, A-077 | AUD-02 |
+| `13-audit.md` → 0.6 | Mục 7.1 Tiến độ — đợt sửa 3; ba việc chờ PO; phụ lục A.8 | — |
+
+**Quyết định của trợ lý trong đợt, cần PO đọc:**
+
+- **Tên mã lỗi `DOCUMENT_AWAITING_TAKEOVER`**, không phải `DOCUMENT_HALTED`: `DOCUMENT_HALTED` đã là một `event_code`. Một tên cho hai danh mục là đúng loại lỗi AUD-20 vừa sửa.
+- **`RETRY` và `RETURN_TO_ISSUE_QUEUE` không kiểm D-006:** hai lối ra này không quyết định gì về văn bản, mọi cổng phía sau vẫn kiểm. Chỉ `REJECT_REQUEST` kiểm.
+- **Sau `VOIDED`, phát hành lại cần lệnh mới:** mỗi lệnh phát hành tiêu tối đa một số.
+- **Vắng mặt không làm ai rời khỏi tập người thay thế** của phép xác định D-006 — lối cho người vắng mặt là uỷ quyền `[Should]`.
+
+### Đã chạy
+
+- `check_grants.py --local-migrated`, áp `0001` → `0007` trên PostgreSQL 16.2 local: **176 / 68 / Lệch 0**, mã thoát 0. `0007` không đổi quyền nên số không đổi.
+- `openapi-spec-validator`: hợp lệ; 47 path, 37 mã lỗi; không enum mới nào trùng giá trị với enum khác.
+- `mmdc` 12.0.0: 21/21 sơ đồ của `00-domain.md`, `02-architecture.md`, `03-agents.md`, `08-hitl.md` render được. Tập cạnh máy trạng thái `document`: `00-domain.md` = `02-architecture.md` = `08-hitl.md` (23 cạnh); `request`: `00-domain.md` = `02-architecture.md` (19 cạnh).
+
+### Chưa làm — lý do
+
+- **AUD-23 (g)–(j):** đợt 3b.
+- **A-053** (huỷ ở `NEEDS_INFO` và vế EC-CV-02): chỉ ghi, chờ PO — cổng 2.2.
+- **ADR-027, A-044, lựa chọn trần số vòng:** chờ PO — mục Chờ PO chốt của `13-audit.md`.
+- Các câu "thuộc Phase 8" còn lại ở file khác không nằm trong phạm vi đợt 3: đợt 4.
+
+---
+
+## 2026-09-26 (quyết định PO sau đợt sửa 3) — ADR-027 Accepted, ca K3–K4, A-078, PyJWT, structlog
+
+PO nhận đợt 3 và quyết: ADR-027 `Accepted`, A-044 `Đã chốt`; giữ `route_review` dừng khi chạm trần số vòng; nhận ba chỗ trợ lý tự quyết, kèm ca kiểm chứng minh cổng sau chặn tự duyệt; giữ "người nghỉ vẫn nằm trong tập người thay thế" nhưng đòi lối ra khi người đủ quyền còn lại vắng dài ngày — chỉ đề xuất; `python-jose` → `PyJWT` trừ khi ADR-021 chỉ định khác; giữ `structlog` và ghi lại.
+
+### File sửa
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-027-…` | `Proposed` → `Accepted` |
+| `decisions/ADR-028-pyjwt-cho-token-phien.md` | **Mới, `Accepted`.** ADR-021 chỉ nói về hash mật khẩu, không chỉ định gì cho token, nên theo quyết định PO. Loại: `python-jose`, tự ký bằng `hmac` |
+| `decisions/ADR-029-structlog-cho-log-co-cau-truc.md` | **Mới, `Accepted`.** Chỉ `bo19.observability.log` import `structlog`. Loại: chỉ `logging` chuẩn, formatter JSON cho `logging` chuẩn |
+| `backend/pyproject.toml` | `python-jose[cryptography]==3.4.0` → `PyJWT==2.15.0`; chú thích trỏ ADR-028, ADR-029. Vẫn 17 phụ thuộc |
+| `ASSUMPTIONS.md` → 0.32 | A-044 `Đã chốt`. **A-078 mới:** lối ra khi mọi người khác mang permission vắng dài ngày — ba phương án, khuyến nghị (a) cấp permission tạm bằng thao tác vận hành đã có; hạn trước cổng Sprint 2 |
+| `10-eval.md` → 0.4 | Ca kiểm cơ chế K3 (`RETRY` không vòng qua cổng 1, gồm vế đường thoát khi E rỗng) và K4 (`RETURN_TO_ISSUE_QUEUE` không vòng qua lệnh phát hành; lệnh mới nhận số mới) |
+| `12-roadmap.md` → 0.7 | Cổng 2.2: A-044 đã chốt, thêm A-078; bảng nợ Phase 8; Sprint 2 chạy K1–K4 |
+| `08-hitl.md` → 0.4 | ADR-027 `Accepted`; câu vắng mặt trỏ A-078; K3, K4 |
+| `06-structure.md` → 0.8 | Mục Auth flow: token JWT qua `PyJWT` (ADR-028); `observability/log.py` là file duy nhất import `structlog` (ADR-029) |
+| `13-audit.md` → 0.7 | Mục Đã quyết thêm năm dòng; mục Chờ PO chốt còn câu 7 |
+
+### Đã chạy
+
+- `pip index versions PyJWT`, `pip index versions structlog` (2026-09-26): `2.15.0` và `25.4.0` có trên PyPI. Không cài thử.
+- `tomllib` đọc được `pyproject.toml`: 17 phụ thuộc. Skeleton không file `.py` nào import `jose` hay `structlog`.
+
+---
+
+## 2026-09-26 (đợt sửa 3b) — Phase 8 còn lại và quyền của chủ thể dữ liệu (AUD-23 (g)–(j), AUD-24)
+
+Đợt 3b của mục Thứ tự sửa đề xuất trong `13-audit.md`. Ba việc Thấp của AUD-24 ở lại đợt 4, đúng bảng thứ tự sửa.
+
+### File sửa
+
+| File | Thay đổi | AUD |
+|---|---|---|
+| `08-hitl.md` → 0.5 | (g) mục Duyệt dấu và khoảng hoàn tất phát hành: hai đoạn hiện giống nhau, không hiện số trước `ISSUED`, `status_label` theo cặp (`status`, `issue_in_progress`), ba đường kết thúc. Mục 13 mới — (h) `chat_session_idle_close`. Mục 14 mới — (i) ca `HR_PROFILE` sai: giao diện hai phía và hai quy tắc đường dữ liệu; (j) hộp xác nhận phá huỷ của `slot_sensitivity_change` | AUD-23 (g)–(j) |
+| `09-security.md` → 0.3 | Mục 13 mới: quyền của chủ thể dữ liệu ở mức nghĩa vụ — chủ thể là ai; xem, sửa, xoá hay ẩn danh: làm được bằng gì, hở ở đâu; không thêm endpoint, thao tác hay DDL. Open Questions trỏ A-079 | AUD-24 |
+| `ASSUMPTIONS.md` | **A-079 mới** — ba chỗ hở của quyền chủ thể; owner PO; hạn trước cổng Sprint 4 hoặc trước khi nạp dữ liệu cá nhân thật đầu tiên | AUD-24 |
+| `03-agents.md` → 0.16 | Con trỏ: `chat_session_idle_close`; quy tắc bỏ xác nhận ở `document_request_changes`; mục Người duyệt phân loại; bảng Memory; Open Questions 3 đã giải | AUD-23, AUD-24 |
+| `04-data.md` → 0.14 | Dòng hồ sơ nhân viên của mục 8.1; nhãn phá huỷ trỏ về `08-hitl.md` | AUD-24, AUD-23 (j) |
+| `05-api.md` → 0.14 | Hai con trỏ: cách hiển thị khoảng hoàn tất phát hành, giao diện nhãn phá huỷ | AUD-23 (g)(j) |
+| `06-structure.md` → 0.9 | Open Questions 7 đã giải; dấu đang hoàn tất phát hành trên hàng đợi | AUD-23 (g)(h) |
+| `12-roadmap.md` → 0.8 | Cổng 4.4 — A-079 | AUD-24 |
+| `13-audit.md` | Mục 7.2 Tiến độ — đợt sửa 3b | — |
+
+**Quyết định của trợ lý trong đợt, cần PO đọc:**
+
+- **Việc (i) đổi hành vi hai chỗ của `03-agents.md`.** `document_request_changes` bỏ xác nhận slot `HR_PROFILE` nằm trong `change_targets`; `propose_values` đề xuất lại slot đó khi `employee.synced_at` mới hơn `provenance_synced_at`. Không có hai quy tắc này thì giao diện của (i) không có đường dữ liệu. Quy tắc đầy đủ nằm ở `08-hitl.md`, vì `03-agents.md` đã giao ca này cho Phase 8; `03-agents.md` chỉ có câu trỏ.
+- **Không hiện số ở đoạn 2 của khoảng hoàn tất phát hành** — số còn có thể `VOIDED`.
+- **Quyền chủ thể không thêm thao tác nào.** Ẩn danh và tổng hợp dữ liệu phụ thuộc quyết định về xung đột với nghĩa vụ lưu trữ văn bản — việc của pháp chế — nên chỉ ghi chỗ hở vào A-079.
+
+### Đã chạy
+
+- Không đổi contract, DDL hay sơ đồ Mermaid nào — không chạy lại `check_grants.py`, `openapi-spec-validator`, `mmdc`.
+- Rà tay các con trỏ mới theo luật 12: mọi tên mục được trỏ đều có trong file đích.
+
+---
+
+## 2026-09-26 (quyết định PO sau đợt sửa 3b) — A-078 Đã chốt, runbook cấp permission tạm
+
+PO nhận đợt 3b: nhận hai thay đổi hành vi của việc (i) ở `03-agents.md`; A-078 chọn (a) kèm ba điều kiện; A-079 để `Mở`.
+
+### File sửa
+
+| File | Thay đổi |
+|---|---|
+| `backend/migrations/schema/0008_temporary_permission_grant.sql` | **Mới.** Ba cột `grant_reason`, `approved_by_employee_id`, `expected_revoke_on` trên `employee_permission_grant`; `CHECK`: đủ cả ba hoặc không cái nào, lý do không rỗng, người duyệt khác người được cấp. Không `GRANT` mới |
+| `contracts/README.md` | Dòng `0008` |
+| `11-ops.md` → 0.10 | Mục 14 mới — runbook cấp và thu hồi permission tạm: khi nào dùng, ai làm gì, kiểm trước (người được cấp không phải người thụ hưởng), ghi, xác minh, thu hồi, gia hạn, quá hạn, dấu vết |
+| `04-data.md` → 0.15 | Ba cột mới của `employee_permission_grant` |
+| `ASSUMPTIONS.md` | A-078 → `Đã chốt` |
+| `08-hitl.md` | Câu vắng mặt trỏ runbook |
+| `12-roadmap.md` | Cổng 2.2 và bảng nợ: A-078 đã chốt |
+| `13-audit.md` | Ba dòng Đã quyết |
+
+**Điều kiện "người được cấp không phải người thụ hưởng" đứng ở hai lớp.** Runbook kiểm trước khi cấp. Phép kiểm D-006 lúc thao tác vẫn chặn người được cấp trên chính văn bản của họ, vì người vắng vẫn nằm trong tập người thay thế. Không viết được bằng `CHECK`: cấp permission theo người, không theo văn bản.
+
+### Đã chạy
+
+- `check_grants.py --local-migrated`, áp `0001` → `0008`: **176 / 68 / Lệch 0**, mã thoát 0.
+
+---
+
+## 2026-09-26 (AUD-26) — Căn cứ bảo vệ dữ liệu cá nhân: Luật 2025 và Nghị định 356/2025/NĐ-CP
+
+PO mở AUD-26, mức Cao: theo PO, từ 01/01/2026 Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP có hiệu lực, thay Nghị định 13/2023/NĐ-CP; Điều 5 của Nghị định 356 quy định thời hạn thực hiện quyền của chủ thể dữ liệu. Không văn bản nào có bản gốc trong `docs/reference/`: số hiệu, ngày hiệu lực, điều khoản, thời hạn giữ `[CẦN XÁC MINH]`.
+
+### File sửa
+
+| File | Thay đổi |
+|---|---|
+| `ASSUMPTIONS.md` → 0.33 | Chín chỗ ở A-010, A-014, A-026, A-055, A-070, A-079 đổi căn cứ. Danh mục văn bản cần lấy bản gốc của A-010 ghi rõ văn bản mới thay văn bản cũ. A-079 thêm vế (4): thời hạn thực hiện quyền. **A-080 mới** — căn cứ pháp lý, mọi thứ `[CẦN XÁC MINH]`, cùng hạn A-079 |
+| `09-security.md` → 0.4 | Mục Mô hình mối đe doạ; mục Quyền của chủ thể dữ liệu — câu giới hạn nêu văn bản mới và Điều 5 theo PO, thêm dòng thời hạn thực hiện quyền |
+| `00-domain.md` → 0.14, `01-prd.md` → 0.12, `03-agents.md` → 0.17, `04-data.md` → 0.16, `11-ops.md` → 0.11 | Một chỗ mỗi file |
+| `decisions/ADR-015-…` | Một chỗ trong phần Rejected alternatives — đổi tên văn bản được dẫn, không đổi quyết định |
+| `13-audit.md` → 0.8 | AUD-26 (đã sửa), AUD-27 (việc 6 của PO, xếp vào đợt 4); mục 7.3; hai dòng Đã quyết; ghi chú `CLAUDE.md`; phụ lục A.9 |
+
+**Không sửa:** `CLAUDE.md` mục Ràng buộc domain bắt buộc phải xử lý vẫn ghi "tham chiếu Nghị định 13/2023/NĐ-CP" — báo PO (luật 11). Bản ghi lịch sử — các mục cũ của `CHANGELOG.md`, AUD-24 của `13-audit.md` — giữ nguyên.
+
+### Đã chạy
+
+- `grep` theo phụ lục A.9 của `13-audit.md`: trước sửa 17 chỗ ở 8 file thiết kế (cộng `CLAUDE.md`, `CHANGELOG.md`, `13-audit.md`); sau sửa chỉ còn hai câu "thay Nghị định số 13/2023/NĐ-CP" cố ý giữ để ghi quan hệ thay thế.
+
+---
+
+## 2026-09-26 (cài thử phụ thuộc) — `backend/pyproject.toml` cài và import được
+
+Việc 5 của PO sau đợt 3b. Chạy hoàn toàn trong scratchpad, ngoài repo. **Không thêm lockfile:** repo chưa có quy ước cho lockfile — mục Đặc tả `Dockerfile` của `06-structure.md` để việc đó cho BUILD MODE.
+
+### Đã chạy
+
+- Venv mới, Python 3.11.9 (`requires-python >= 3.11`). `pip install` 17 dòng `dependencies` của `pyproject.toml`: lần đầu hỏng vì mạng (`ReadTimeoutError` khi tải file), lần hai với `--timeout 180 --retries 8` thành công.
+- 17/17 phụ thuộc ghim cài đúng phiên bản ghim. `pip check`: không có yêu cầu nào hỏng.
+- Import thử 19 điểm vào — `fastapi`, `uvicorn`, `pydantic`, `pydantic_settings`, `email_validator`, `jwt`, `psycopg`, `psycopg_pool`, `pgvector.psycopg`, `langgraph.graph.StateGraph`, `langgraph.types.interrupt`, `langgraph.checkpoint.postgres.PostgresSaver`, `docx`, `docxtpl`, `lxml.etree`, `boto3`, `botocore`, `structlog`: 18 đạt. Điểm hỏng là lỗi của script kiểm: `python-multipart` 0.0.9 đặt tên module là `multipart`, không phải `python_multipart`. Kiểm lại bằng một route FastAPI nhận `UploadFile` và `Form` qua `TestClient`: 200, đọc đủ byte.
+- `PyJWT`: ký và kiểm HMAC khứ hồi đạt (ADR-028).
+
+### Ghi nhận — chưa sửa, chỉ báo
+
+- **Phụ thuộc bắc cầu không ghim** trôi theo ngày cài. Lần này: `langgraph-checkpoint` 4.2.0 (`langgraph-checkpoint-postgres` 3.1.2 đòi `>=4.1.0,<5.0.0`, theo `docs/reference/langgraph-checkpoint-postgres.md`), `langchain-core` 1.6.5, `anyio` 4.15.1. `docs/reference/` không ghi A-045 đã xác minh với `langgraph-checkpoint` bản nào. Lockfile ở BUILD MODE giải việc này.
+- **`langsmith` 0.14.1 vào bắc cầu qua `langchain-core`.** Đây là thư viện gửi trace ra ngoài. Hành vi mặc định khi không đặt biến môi trường nào: `[CẦN XÁC MINH]` theo tài liệu của phiên bản đó. Chạm luật allowlist (INV-03, ADR-008): mọi dữ liệu rời hệ thống phải đi qua `ai_gateway`. Đề xuất cho BUILD MODE: bước kiểm khởi động từ chối chạy khi có biến môi trường bật tracing của thư viện này.
+
+---
+
+## 2026-09-26 (đợt sửa 4) — Quét nội dung cũ, owner theo câu 7, schema P2, ngữ nghĩa quyền (AUD-11, 12, 13, 14, 22, 24, 27)
+
+Đợt 4 của mục Thứ tự sửa đề xuất trong `13-audit.md`, cộng quyết định PO sau lần cài thử: câu 7 (owner), A-081, A-082, bổ sung A-045. Căn cứ pháp lý (việc 3 của PO): chưa có file nào mới ở `docs/reference/` — giữ nguyên `[CẦN XÁC MINH]`.
+
+### File sửa
+
+| File | Thay đổi | AUD |
+|---|---|---|
+| `00-domain.md` → 0.15 | Hạn A-009, mẫu `.docx` → cổng 1.7, 1.6; ghi chú cập nhật cho D-008 (không viết lại quyết định); cơ chế sổ số, chế độ phi sản xuất trỏ về nơi đã làm | 11 |
+| `01-prd.md` → 0.13 | Quy tắc hiển thị theo độ nhạy, token budget, RISK-07, RISK-08 trỏ về nơi đã làm; Goals & metrics trỏ A-020; DoD điều 1 có bước ký và "duyệt dấu khi văn bản cần dấu"; M4 nói rõ cổng 2 khi `requires_seal` | 11, 22 |
+| `02-architecture.md` → 0.14 | Công cụ APM là A-069; danh mục tool ở `03-agents.md` | 11 |
+| `03-agents.md` → 0.18 | Hai dòng Token budget trỏ `11-ops.md`; bốn "owner Phase 8/9" → Product Owner hoặc đã chốt; checkpointer: A-045 đã chốt, còn một vế; năm con trỏ "thuộc Phase 4/8/11" | 11 |
+| `04-data.md` → 0.17 | Row-level: đã chốt org-wide; `bo19_migrator` → ADR-022; `operating_mode_change` → ADR-020, ADR-023; log → A-070; `audit.read_all` org-wide; object mồ côi trỏ runbook; A-038 owner | 11, 24 |
+| `05-api.md` → 0.15 | Mục Phân quyền ở tầng API: ngữ nghĩa any-of và `x-bo19-permission-also`; rate limit trỏ `09-security.md`; A-048; ghi chú 48 → 50 | 27, 11, 22 |
+| `06-structure.md` → 0.10 | Ba chế độ của `check_grants.py`; diff Lớp 3 đã áp; `trace_id` có `CHECK`; `prompt_modules/` trỏ `07-prompts.md`; màn hình duyệt trỏ quy tắc theo độ nhạy | 11 |
+| `07-prompts.md` → 0.3 | P2 `value` nhận mảng chuỗi khi slot `LIST`, mỗi phần tử có trong `evidence_quote`; P4/P5 `maxLength` điền lúc gọi; ghi chú ID `P1`–`P5` không phải mức ưu tiên | 14, 22 |
+| `09-security.md` → 0.5 | Dòng A-082 ở mục Mô hình mối đe doạ; `audit.read_all` ở mục Row-level theo phòng ban; `bo19_migrator` đã chọn CI; 48 → 50; owner A-031 | 24, 11, 22 |
+| `10-eval.md` → 0.5 | "Bốn việc"; chỗ quan sát ADR-009 khi `V > 1` — không phải tiêu chí PASS mới; nơi lưu bản ghi eval trỏ `11-ops.md` | 22, 12, 24 |
+| `11-ops.md` → 0.12 | Mục 6.3: hai dòng ADR-008, ADR-015 vế công cụ. Mục 15 mới — runbook đối chiếu object mồ côi (chỉ báo, không tự xoá). Mục 16 mới — nơi lưu bản ghi eval: mỗi lần chạy là artefact CI, baseline commit vào repo. Câu "chưa áp" của mục 1, 3, 13, 10.4, Open Questions; mục 12: cả bảy phát hiện đã giải | 12, 24, 11 |
+| `12-roadmap.md` → 0.9 | Cổng 1.12 (A-081), 1.13 (A-082); owner cổng 1.10, 1.11 theo câu 7; migration `0001`–`0008`; `0005` đã áp; A-068 đã chốt | 13, 11 |
+| `GLOSSARY.md` → 0.24 | Ba con trỏ cũ | 11 |
+| `ASSUMPTIONS.md` → 0.34 | Câu 7: A-022, A-025, A-031, A-045, A-048, A-057, A-061, A-063, A-065 → Product Owner; A-013, A-014, A-010 có owner; A-079, A-080 → "Pháp chế (chưa chỉ định)". Hạn: A-013, A-014, A-024, A-041, A-062 → cổng; A-022 hạn và trạng thái (`46.500` đang hiệu lực); A-002, A-030 "chưa có mốc". A-045 ghi `langgraph-checkpoint` 4.2.0 đã chạy trong bộ kiểm. **A-081, A-082 mới** | 13 |
+| `contracts/openapi.yaml` → 0.2.6 | Ngữ nghĩa `x-bo19-permission` ở phần mô tả extension; `x-bo19-permission-also` trên `/review-queue`, `/takeover-queue`; permission theo `status` của `/review-queue` ghi vào `description` | 27 |
+| `contracts/README.md` | Mục mới: extension `x-bo19-*` về quyền — định nghĩa, hai ví dụ, cái nằm ngoài phạm vi | 27 |
+| `decisions/ADR-001`, `003`, `009`, `011`, `013`, `023` | Ghi chú cập nhật — không đổi quyết định nào | 11 |
+| `13-audit.md` → 0.9 | Mục 7.4; câu 7 sang Đã quyết; mục Chờ PO chốt còn ba việc; sắp lại đoạn `CLAUDE.md`; phụ lục A.10 | — |
+
+**Quyết định của trợ lý trong đợt, cần PO đọc:**
+
+- **Owner ghi "Product Owner", không ghi tên người.** Câu 7 nói "[tên PO]"; tài liệu không có tên PO, và tên tài khoản git không phải căn cứ. PO cho tên thì thay một lượt.
+- **A-013, A-014, A-010 — owner để trống — nhận Product Owner.** Câu 7 chỉ nói dòng có owner là phase; ba dòng này là mục (c) của AUD-13, khuyến nghị cũ ghi Product Owner. A-010 chưa có hạn.
+- **A-002, A-030:** hạn cũ trỏ phase đã qua và không có cổng sprint nào tương ứng — ghi "chưa có mốc" kèm lý do, không bịa mốc.
+- **Rubric ADR-009:** mục Human eval rubric của `10-eval.md` tự nói không tạo tiêu chí mới, nên chỗ quan sát cho ADR-009 là một nhận xét có/không, không đổi PASS/FAIL.
+- **Object mồ côi chỉ báo, không tự xoá:** object mà DB không biết có thể là bằng chứng của ca ghi đè ở mục Ba ca của L2 của `04-data.md`.
+
+### Đã chạy
+
+- `openapi-spec-validator`: 0.2.6 hợp lệ. `audit_api_trace.py`: 56 dòng ở `05-api.md` = 52 operation + 4 `[NGOÀI-OPENAPI]`; 37 = 37 mã lỗi.
+- Lượt quét từ khoá của phụ lục A.7, chạy lại: 213 → 152 dòng.
+- `check_refs.py` trên các dòng thêm mới: 84 con trỏ "mục … của `file`", không con trỏ nào sai tên mục.
+- Không đổi DDL, không đổi sơ đồ Mermaid — không chạy lại `check_grants.py`, `mmdc`.
+
+---
+
+## 2026-09-27 (đợt sửa 5, khép audit Phase 13) — Quyết định PO sau đợt 4; AUD-17, 18, 21; trạng thái cuối
+
+### Quyết định PO sau đợt 4 — đã áp
+
+| File | Thay đổi |
+|---|---|
+| `GLOSSARY.md` → 0.25 | Định nghĩa **Product Owner** ở mục Thuật ngữ nghiệp vụ: vai trò của dự án, người duyệt cổng sprint và chốt Open Questions |
+| `ASSUMPTIONS.md` → 0.35 | Chú giải thêm trạng thái `Thu hẹp`, `Hoãn`. A-010 hạn trước cổng Sprint 2. A-002 `Hoãn` — không AC nào của Sprint 1–4 dùng; mở lại khi xếp sprint cho Dashboard SLA hoặc trước milestone sản xuất. A-030 `Thu hẹp` — ADR-026 đã giải việc chọn kênh; vế còn lại kiểm ở AC-2.1. **A-083 mới, `Hoãn`** — BM25 và tách từ tiếng Việt trên Render. A-012 thêm ngưỡng EC-RB-04 |
+| `12-roadmap.md` → 0.10 | Cổng 2.9 (A-010); A-030 ở cột Truy vết của AC-2.1 |
+| `decisions/ADR-026-…` | Điều kiện đảo ngược trỏ A-083 — không đổi quyết định |
+| `13-audit.md` | AUD-11: bảng phân loại 153 dòng còn lại, liệt kê 29 dòng "khác" theo bốn nhóm — không dòng nào là nội dung cũ |
+
+Trong lúc phân loại, sửa 10 dòng cũ thật: ngữ nghĩa uỷ quyền "thuộc Phase 8" (`04-data.md`, `05-api.md` ×3), phép kiểm D-006 "Phase 9" (`04-data.md`), `TBD` không trỏ giả định (`00-domain.md` ×3 → A-002, A-012; `02-architecture.md` ×2 → A-026, A-024).
+
+### Đợt 5
+
+| AUD | Thay đổi |
+|---|---|
+| AUD-17 | `07-prompts.md`: 16 tham chiếu `file.md:dòng` → tên mục, chọn theo nội dung. 35 tham chiếu theo số mục sang file khác ở `04-data.md`, `07-prompts.md`, `09-security.md`, `10-eval.md`, `11-ops.md`, `ASSUMPTIONS.md`, ADR-020, ADR-024 → tên mục, tra tiêu đề của file đích; hai chỗ trỏ mục không tồn tại của `ASSUMPTIONS.md` bỏ số mục. `openapi.yaml` → 0.2.7. Docstring và chú thích của skeleton: 30 chỗ ở 28 file trong `backend/`, `frontend/`. Lần khép tìm thêm bốn tên mục cũ ở `09-security.md`, `10-eval.md`, `11-ops.md` — đã sửa |
+| AUD-18 | Không còn lệch |
+| AUD-21 | `[CẦN XÁC MINH]` cho RFC 3339, ISO 8601, JSON Schema draft 2020-12, W3C Trace Context, quy đổi ký tự ra token, tính chất các hàm hash — `05-api.md`, `openapi.yaml`, `07-prompts.md`, `10-eval.md`, `11-ops.md`, `09-security.md`, ADR-021, ADR-024 |
+
+Số phiên bản nâng: `00-domain.md` 0.16, `02-architecture.md` 0.15, `04-data.md` 0.18, `05-api.md` 0.16, `07-prompts.md` 0.4, `09-security.md` 0.6, `10-eval.md` 0.6, `11-ops.md` 0.13.
+
+### Khép audit — `13-audit.md` → 0.10
+
+Mục 7.5 (tiến độ), mục 8 mới — **trạng thái cuối từng AUD: 22 Đóng, 5 Mở** (AUD-07: A-053; AUD-09: `CLAUDE.md`; AUD-12: `_PLAN.md`; AUD-24: A-079; AUD-26: bản gốc pháp lý và `CLAUDE.md`). Phụ lục A.11 chứa nguyên script kiểm.
+
+### Đã chạy
+
+- `check_grants.py --local-migrated` (`0001` → `0008`): 176 / 68 / **Lệch 0**. `--local`: 169 / 63 / **Lệch 0**. `schema.sql` trùng sha256 `0001_initial.sql`.
+- `openapi-spec-validator`: 0.2.7 hợp lệ. `05-api.md` ↔ `openapi.yaml`: 56 = 52 + 4 `[NGOÀI-OPENAPI]`; mã lỗi 37 = 37.
+- `mmdc` 12.0.0: 32/32 sơ đồ; máy trạng thái khớp giữa các file.
+- Quét phụ lục A.7: 153 dòng, đã phân loại. Luật 12: không còn tham chiếu theo số dòng hay số mục sang file khác.
+
+**Ghi chú môi trường:** thư mục tạm của phiên bị thu hồi giữa đợt 5; công cụ kiểm dựng lại ngoài repo, nội dung ở phụ lục A.11. Không file nào của công cụ kiểm vào repo.
+
+---
+
+## 2026-09-27 (khép audit — lần 2) — `_PLAN.md` hai dòng chỗ quan sát; AUD-12 Đóng
+
+| File | Thay đổi |
+|---|---|
+| `_PLAN.md` | Bảng chỗ quan sát của Phase 11 thêm hai dòng, theo lệnh của PO: **ADR-008** — số truy vấn và latency đọc `postgresql` do node gọi LLM gây ra, cạnh thời lượng lượt chat; **ADR-015, vế công cụ** — thời lượng `pdf_export` và bộ nhớ tiến trình `worker`, cạnh giới hạn của gói Render |
+| `11-ops.md` | Câu "hai dòng này chưa có ở `_PLAN.md`" → đã thêm |
+| `13-audit.md` → 0.11 | AUD-12 Đóng — **23 Đóng, 4 Mở** (AUD-07, AUD-09, AUD-24, AUD-26). Ghi kết quả kiểm `CLAUDE.md` |
+
+**`CLAUDE.md` chưa đổi.** PO báo đã sửa ba chỗ; trên đĩa và trong git file sửa lần cuối 2026-09-12, `main` và nhánh sửa đều còn "Nghị định 13/2023/NĐ-CP", "BM25 + vector", và mục Cấu trúc output chưa có `backend/migrations/`. Trợ lý không sửa file này (luật 11) — AUD-09, AUD-26 giữ Mở.
+
+### Đã chạy
+
+`check_grants.py` `--local-migrated` 176 / 68 / Lệch 0, `--local` 169 / 63 / Lệch 0; sha256 trùng; `openapi.yaml` 0.2.7 hợp lệ; `05-api.md` ↔ `openapi.yaml` 56 = 52 + 4, mã lỗi 37 = 37; `mmdc` 32/32; quét phụ lục A.7 153 dòng, phân loại không đổi; luật 12, phiên bản, ID treo — không lỗi.

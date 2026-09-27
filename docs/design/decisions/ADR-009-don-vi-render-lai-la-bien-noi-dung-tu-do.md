@@ -48,7 +48,7 @@ Yêu cầu sửa được phân loại **bắt buộc** bởi người duyệt t
 
 - **Ở Sprint đầu lợi ích về token gần như bằng không** với `FREE_CONTENT`: mỗi template hiện chỉ có một biến nội dung tự do (`purpose_statement` hoặc `work_content_statement`), nên sinh lại "từng phần" và "toàn bộ" là một. Lợi ích thật nằm ở ca `SLOT_DATA` chạm biến điền thẳng, và ở template về sau có nhiều biến.
 - Hai biến sinh ở hai vòng khác nhau có thể lệch giọng hoặc lệch ý với nhau. Chỉ xảy ra khi template có từ hai biến nội dung tự do trở lên.
-- Phải lưu lại input đã dùng cho mỗi lần sinh một biến, để tính được biến nào bị ảnh hưởng — thuộc Phase 4.
+- Phải lưu lại input đã dùng cho mỗi lần sinh một biến, để tính được biến nào bị ảnh hưởng — đã làm ở mục Bảng chi tiết của `04-data.md`.
 
 **Điều kiện đảo ngược** — tín hiệu đo ở rubric human eval của Phase 10: người duyệt đánh dấu văn bản lệch ý giữa các biến sinh ở vòng khác nhau. Khi tín hiệu xuất hiện, xét lại cho **template đó** — ví dụ gộp biến — không đảo cho mọi template.
 

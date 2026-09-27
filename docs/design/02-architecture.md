@@ -1,6 +1,6 @@
 # System Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.11 · **Trạng thái:** Draft để xác thực với người dùng · **v0.3–0.5:** sửa ở Phase 3 và các vòng sửa Phase 3 theo phép — xem các mục ngày 2026-09-12 (lần 4, lần 5, lần 6) của `CHANGELOG.md` · **v0.6:** sửa ở Phase 4 theo phép K1 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.7:** trỏ tới danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1) · **v0.8:** dòng `DRAFT` của bảng chủ sở hữu chuyển đổi `request` — vòng duyệt Phase 5 (A2), mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md` · **v0.9:** cạnh `ai_gateway → postgresql` chỉ cho `llm_usage` (ADR-019) — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.10:** nơi gọi `orchestrator` cho lượt chat theo ADR-016 — mục ngày 2026-09-14 · **v0.11:** `vector_store` — kênh lexical là full-text lõi, chưa phải BM25 (ADR-026, AUD-09); số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 1) của `CHANGELOG.md`
+**Phiên bản:** 0.15 · **Trạng thái:** Draft để xác thực với người dùng · **v0.3–0.5:** sửa ở Phase 3 và các vòng sửa Phase 3 theo phép — xem các mục ngày 2026-09-12 (lần 4, lần 5, lần 6) của `CHANGELOG.md` · **v0.6:** sửa ở Phase 4 theo phép K1 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.7:** trỏ tới danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1) · **v0.8:** dòng `DRAFT` của bảng chủ sở hữu chuyển đổi `request` — vòng duyệt Phase 5 (A2), mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md` · **v0.9:** cạnh `ai_gateway → postgresql` chỉ cho `llm_usage` (ADR-019) — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.10:** nơi gọi `orchestrator` cho lượt chat theo ADR-016 — mục ngày 2026-09-14 · **v0.11:** `vector_store` — kênh lexical là full-text lõi, chưa phải BM25 (ADR-026, AUD-09); số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 1) của `CHANGELOG.md` · **v0.12:** `request` vào `APPROVED` ở `document_sign` (AUD-01) — mục ngày 2026-09-26 (đợt sửa 2) · **v0.13:** cạnh mới của hai máy trạng thái qua thao tác tiếp quản; sequence diagram (e) có đường thoát tự duyệt cho thu hồi (AUD-23 (f)) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.14:** đợt sửa 4 sau Phase 13 — hai con trỏ cũ (AUD-11) · **v0.15:** đợt sửa 5 sau Phase 13 — nhà cung cấp LLM trỏ A-026, vendor object storage trỏ A-024
 
 > File này chốt kiến trúc mức component: thành phần nào tồn tại, chạy ở đâu trên Render, phụ thuộc gì, và luồng dữ liệu đi qua chúng thế nào. File này **không** đổi state machine hay entity đã chốt ở `00-domain.md`, không chọn agent/tool cụ thể (Phase 3), không thiết kế bảng/cột (Phase 4).
 
@@ -31,7 +31,7 @@ Mười thành phần theo yêu cầu của `_PLAN.md`. Bốn trong số đó (`
 ### 1.3 `ai_gateway`
 
 - **Trách nhiệm:** model routing rẻ/mạnh theo bước (NFR-06 của `01-prd.md`); lắp ráp prompt **chỉ với slot mà prompt module đang gọi tự khai là input** (nguyên tắc tối thiểu hoá theo nhu cầu từng bước — xem NFR-05 đã sửa của `01-prd.md`); token budget accounting mỗi request; ép output theo JSON Schema và retry khi parse lỗi; timeout/retry gọi model. **Mọi lời gọi embedding cũng đi qua đây** và chịu cùng luật khai input: embedding là lời gọi ra ngoài mang văn bản, không phải bước kỹ thuật được miễn (mục Allowlist input của `03-agents.md`).
-- **Công nghệ:** module Python, chạy trong cùng tiến trình với nơi gọi nó (`api` hoặc `queue_worker`) — không phải service riêng. Gọi LLM provider qua HTTP; nhà cung cấp cụ thể chưa chốt ở phase này (không ảnh hưởng kiến trúc, chỉ ảnh hưởng cấu hình — chi tiết chọn model thuộc Agent Registry của Phase 3).
+- **Công nghệ:** module Python, chạy trong cùng tiến trình với nơi gọi nó (`api` hoặc `queue_worker`) — không phải service riêng. Gọi LLM provider qua HTTP; nhà cung cấp cụ thể chưa chốt ở phase này — A-026 (không ảnh hưởng kiến trúc, chỉ ảnh hưởng cấu hình — chi tiết chọn model thuộc Agent Registry của Phase 3).
 - **Lý do:** tách "gọi model" khỏi "quyết định luồng nghiệp vụ" để đổi model/provider không đụng logic LangGraph của `orchestrator`.
 - **Không thuộc:** không quyết định node kế tiếp trong graph; không thực hiện side effect ghi dữ liệu nghiệp vụ; không tự ý gửi slot ngoài allowlist của prompt module đang gọi nó — đây là ranh giới cứng, vi phạm nó chính là vi phạm NFR-05. **Ngoại lệ có tên (ADR-019):** `ai_gateway` đọc và ghi đúng một bảng, `llm_usage` — sổ kế toán token, không phải dữ liệu nghiệp vụ — và không bảng nào khác; đây là mục thứ ba của danh sách ngoại lệ đóng ở mục Tool Registry của `03-agents.md`.
 
@@ -44,7 +44,7 @@ Mười thành phần theo yêu cầu của `_PLAN.md`. Bốn trong số đó (`
 
 ### 1.5 `tool_layer`
 
-- **Trách nhiệm:** mọi thao tác có side effect qua permission check — employee lookup, policy/template retrieval, docx render, document numbering (nguyên tử), PDF export, notification, `[Should]` calendar/room booking. Danh mục tool cụ thể thuộc Phase 3.
+- **Trách nhiệm:** mọi thao tác có side effect qua permission check — employee lookup, policy/template retrieval, docx render, document numbering (nguyên tử), PDF export, notification, `[Should]` calendar/room booking. Danh mục tool cụ thể ở mục Tool Registry của `03-agents.md`.
 - **Công nghệ:** thư viện Python dùng chung bởi `api`, `orchestrator`, `queue_worker`.
 - **Lý do:** một nơi duy nhất enforce permission và sinh `audit_event` cho mọi ghi dữ liệu — tránh `api` hay `orchestrator` tự ý ghi tắt qua đường khác.
 - **Không thuộc:** không quyết định *khi nào* được gọi (`api`/`orchestrator` quyết định); không soạn prompt; không quyết định model nào được dùng.
@@ -80,7 +80,7 @@ Mười thành phần theo yêu cầu của `_PLAN.md`. Bốn trong số đó (`
 ### 1.10 `observability`
 
 - **Trách nhiệm:** log kỹ thuật có `trace_id` xuyên suốt `api` → `orchestrator` → `tool_layer` → `queue_worker`; metric (latency, token usage, độ dài hàng đợi job).
-- **Công nghệ:** log JSON có cấu trúc ra stdout, thu bởi log viewer của Render. Lựa chọn công cụ APM/metric cụ thể để Phase 11 quyết khi có số liệu tải (A-002).
+- **Công nghệ:** log JSON có cấu trúc ra stdout, thu bởi log viewer của Render. Lựa chọn công cụ APM/metric cụ thể là A-069 (mục Metric taxonomy của `11-ops.md`) — không chờ A-002.
 - **Lý do:** tối thiểu hoá phụ thuộc ngoài trước khi có số liệu tải thật để biện minh cho một công cụ trả phí.
 - **Không thuộc:** **không phải** `audit_event`. `audit_event` là nhật ký nghiệp vụ bất biến, cho người dùng và kiểm toán, sống trong `postgresql`, không bao giờ bị xoá/sửa. `observability` là log vận hành cho kỹ sư, có thể xoay vòng/hết hạn theo chính sách retention kỹ thuật. Nhầm hai khái niệm này là lỗi cần tránh — chúng phục vụ hai đối tượng đọc khác nhau với hai yêu cầu bất biến khác nhau.
 
@@ -92,7 +92,7 @@ Mười thành phần theo yêu cầu của `_PLAN.md`. Bốn trong số đó (`
 | Background Worker (`queue_worker`) | `queue_worker`; cùng thư viện `orchestrator`, `tool_layer`, `ai_gateway` |
 | Cron Job | các job thuần định kỳ của `queue_worker` (quét `EXPIRED`, quét SLA, giải phóng `HELD`) |
 | PostgreSQL managed | `postgresql`, `vector_store` (`pgvector`) |
-| Dịch vụ ngoài Render | `object_storage` (S3-compatible, vendor `TBD`) |
+| Dịch vụ ngoài Render | `object_storage` (S3-compatible, vendor `TBD` — A-024) |
 
 `vector_store` và `postgresql` là **cùng một instance vật lý** — tách thành hai dòng trong bảng thành phần chỉ để nói rõ hai trách nhiệm logic khác nhau (ADR-002).
 
@@ -221,7 +221,8 @@ stateDiagram-v2
     CHANGES_REQUESTED --> SUBMITTED: soan lai va gui lai
     CHANGES_REQUESTED --> CANCELLED: nhan vien huy
     IN_REVIEW --> REJECTED: tu choi kem ly do
-    IN_REVIEW --> APPROVED: duyet
+    CHANGES_REQUESTED --> REJECTED: tiep quan tu choi
+    IN_REVIEW --> APPROVED: da ky
     APPROVED --> FULFILLED: artifact da den trang thai cuoi
     FULFILLED --> [*]
     REJECTED --> [*]
@@ -236,9 +237,9 @@ stateDiagram-v2
 | `SUBMITTED` | `api` — giao dịch chuyển trạng thái và enqueue job render là **cùng một transaction** (D-010, ADR-004) |
 | `IN_REVIEW` | `tool_layer`, kích hoạt khi `document` vào `PENDING_APPROVAL` |
 | `CHANGES_REQUESTED` | `api`/`tool_layer`, permission `document.request_changes` |
-| `APPROVED` | `api`/`tool_layer`, permission `document.approve_content` |
+| `APPROVED` | `api`/`tool_layer`, permission `document.sign`, trong thao tác `document_sign` — `APPROVED` nghĩa là đã ký (AUD-01) |
 | `FULFILLED` | `tool_layer`, khi mọi artifact của `request` tới trạng thái cuối |
-| `REJECTED` | `api`/`tool_layer`, permission `document.reject` |
+| `REJECTED` | `api`/`tool_layer`, permission `document.reject` — thao tác `document_reject`, hoặc lối ra `REJECT_REQUEST` của `document_takeover_resolve` |
 | `CANCELLED` | `api` (nhân viên) |
 | `EXPIRED` | `queue_worker` (Cron Job quét quá hạn — A-014) |
 
@@ -265,7 +266,9 @@ stateDiagram-v2
     REVOKED --> ARCHIVED
     SUPERSEDED --> ARCHIVED
     REJECTED --> ARCHIVED
-    CHANGES_REQUESTED --> ARCHIVED: request bi huy
+    CHANGES_REQUESTED --> ARCHIVED: ban nhap bi bo
+    DRAFT --> ARCHIVED: tiep quan tu choi
+    APPROVED --> ARCHIVED: tiep quan tu choi
     ARCHIVED --> [*]
 ```
 
@@ -283,7 +286,7 @@ stateDiagram-v2
 | `ISSUED` | `queue_worker` qua `tool_layer`, trong node `finalize_issue` — hoàn tất lệnh phát hành do người mang permission `document.issue` ra ở `api`. Cấp số nguyên tử trên `document_register` diễn ra trong `finalize_issue`, không trong luồng request (mục Tool Registry của `03-agents.md`) |
 | `REVOKED` | `api`/`tool_layer`, hai permission tách rời `document.revoke_initiate`/`document.revoke_confirm` |
 | `SUPERSEDED` | `api`/`tool_layer` |
-| `ARCHIVED` | `queue_worker` (Cron Job theo thời hạn lưu trữ, `TBD` — A-010); `api`/`tool_layer` qua thao tác cổng `request_cancel` khi `document` đang ở `CHANGES_REQUESTED`, bắt buộc `archive_reason` (A-035) |
+| `ARCHIVED` | `queue_worker` (Cron Job theo thời hạn lưu trữ, `TBD` — A-010); `api`/`tool_layer` qua thao tác cổng `request_cancel` khi `document` đang ở `CHANGES_REQUESTED`, hoặc qua lối ra `REJECT_REQUEST` của `document_takeover_resolve` khi `document` đang dừng ở `DRAFT`, `CHANGES_REQUESTED`, `APPROVED` — bắt buộc `archive_reason` (A-035; mục Bảng mã của `08-hitl.md`) |
 
 ### 5.3 `room_booking` `[Should]`
 
@@ -453,8 +456,10 @@ sequenceDiagram
     API->>TL: Kiem permission document.revoke_confirm
     alt A va B la hai nguoi khac nhau
         TL->>DB: document -> REVOKED
-    else A va B la cung mot nguoi
-        TL-->>API: Tu choi (duong thoat rieng cho truong hop mot nguoi thuoc Phase 8)
+    else Cung mot nguoi, con nguoi khac mang revoke_confirm
+        TL-->>API: SEPARATION_OF_DUTIES_VIOLATION
+    else Cung mot nguoi, khong con ai khac
+        TL->>DB: Bat buoc self_approval_reason, self_approved tren buoc REVOKE_CONFIRM, audit_event WARNING, document -> REVOKED
     end
 ```
 

@@ -1,6 +1,6 @@
 # API Spec — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.11 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 5 — mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md` · **v0.3:** vòng duyệt Phase 5 lần 2 — mục ngày 2026-09-13 (lần 6) · **v0.4:** đóng Phase 5 — mục ngày 2026-09-13 (lần 7) · **v0.5:** `manifest.required_fonts` và mã lỗi `TEMPLATE_FONTS_INVALID` (ADR-015) — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.6:** mục SSE và dòng `SYNC_GRAPH` theo ADR-016 — bỏ cận dưới của hạn chót lượt — vòng duyệt Phase 6 (A), mục ngày 2026-09-13 (lần 9) · **v0.7:** `FONT_MISSING` ở bảng mã lỗi của tool — mục ngày 2026-09-14 của `CHANGELOG.md` · **v0.8:** endpoint `operating_mode_transition` (mục 2.2b), ADR-020 — Phase 9, mục ngày 2026-09-14 (lần 2) của `CHANGELOG.md`. Endpoint có contract: 48 → 49 · **v0.9:** `GET /operating-mode/transitions` chỉ còn permission `audit.read_all` — mục ngày 2026-09-14 (lần 3) của `CHANGELOG.md` · **v0.10:** mã lỗi `ENVIRONMENT_NOT_ALLOWED` (Lớp 3, ADR-023), câu `document.job_failed` ở mục 1.10 — Phase 11, PO duyệt, mục ngày 2026-09-25 của `CHANGELOG.md`. **Sửa số phiên bản đầu dòng** — lệch với các ghi chú v0.5–v0.9 đã có từ trước, không thuộc thay đổi lần này, sửa cho khớp · **v0.11:** đợt sửa 1 sau Phase 13 — `request_type.manage` đã có trong danh mục (AUD-05), `RATE_LIMITED` dùng `retry_after_seconds` (AUD-04), `trace_id` là UUID v4 và ba câu trỏ về Phase 9/ngoại lệ đóng đã cũ (AUD-11) — mục ngày 2026-09-26 (đợt sửa 1) của `CHANGELOG.md`
+**Phiên bản:** 0.16 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 5 — mục ngày 2026-09-13 (lần 5) của `CHANGELOG.md` · **v0.3:** vòng duyệt Phase 5 lần 2 — mục ngày 2026-09-13 (lần 6) · **v0.4:** đóng Phase 5 — mục ngày 2026-09-13 (lần 7) · **v0.5:** `manifest.required_fonts` và mã lỗi `TEMPLATE_FONTS_INVALID` (ADR-015) — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.6:** mục SSE và dòng `SYNC_GRAPH` theo ADR-016 — bỏ cận dưới của hạn chót lượt — vòng duyệt Phase 6 (A), mục ngày 2026-09-13 (lần 9) · **v0.7:** `FONT_MISSING` ở bảng mã lỗi của tool — mục ngày 2026-09-14 của `CHANGELOG.md` · **v0.8:** endpoint `operating_mode_transition` (mục 2.2b), ADR-020 — Phase 9, mục ngày 2026-09-14 (lần 2) của `CHANGELOG.md`. Endpoint có contract: 48 → 49 *(sai — thêm hai operation nên là 48 → 50; AUD-22, sửa ở đợt 4)* · **v0.9:** `GET /operating-mode/transitions` chỉ còn permission `audit.read_all` — mục ngày 2026-09-14 (lần 3) của `CHANGELOG.md` · **v0.10:** mã lỗi `ENVIRONMENT_NOT_ALLOWED` (Lớp 3, ADR-023), câu `document.job_failed` ở mục 1.10 — Phase 11, PO duyệt, mục ngày 2026-09-25 của `CHANGELOG.md`. **Sửa số phiên bản đầu dòng** — lệch với các ghi chú v0.5–v0.9 đã có từ trước, không thuộc thay đổi lần này, sửa cho khớp · **v0.11:** đợt sửa 1 sau Phase 13 — `request_type.manage` đã có trong danh mục (AUD-05), `RATE_LIMITED` dùng `retry_after_seconds` (AUD-04), `trace_id` là UUID v4 và ba câu trỏ về Phase 9/ngoại lệ đóng đã cũ (AUD-11) — mục ngày 2026-09-26 (đợt sửa 1) của `CHANGELOG.md`; hai thứ tự của mục Phân trang có index `0006` · **v0.12:** `sign` đưa `request` sang `APPROVED` (AUD-01) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.13:** thao tác tiếp quản `document_takeover_resolve` và `GET /takeover-queue`; đường thoát tự duyệt cho thu hồi; hai mã lỗi `DOCUMENT_AWAITING_TAKEOVER`, `TAKEOVER_RESOLUTION_NOT_ALLOWED` — mục ngày 2026-09-26 (đợt sửa 3) · **v0.14:** con trỏ tới thiết kế hiển thị khoảng hoàn tất phát hành và nhãn phá huỷ — mục ngày 2026-09-26 (đợt sửa 3b) · **v0.15:** đợt sửa 4 sau Phase 13 — ngữ nghĩa `x-bo19-permission` (AUD-27); con trỏ cũ (AUD-11); đếm endpoint (AUD-22) · **v0.16:** đợt sửa 5 sau Phase 13 — ngữ nghĩa uỷ quyền (ba chỗ); RFC 3339 `[CẦN XÁC MINH]` (AUD-21)
 
 > File này chốt contract giữa `client` và `api`: endpoint REST, hai stream SSE, xác thực, lỗi chuẩn hoá, phân trang, idempotency và cách xử lý hai người thao tác cùng lúc. Contract máy đọc được nằm ở [`contracts/openapi.yaml`](./contracts/openapi.yaml). File này **không** thiết kế cấu trúc code (Phase 6), màn hình duyệt, bảng mã lý do hay cơ chế tiếp quản (Phase 8), chi tiết AuthZ, rate limit và vòng đời credential (Phase 9), và **không** định cỡ tham số vận hành (Phase 11).
 
@@ -23,7 +23,7 @@ Tên entity, trạng thái, enum, permission, agent, tool dùng đúng `GLOSSARY
 ### 1.2 Quy ước chung
 
 - Tiền tố `/api/v1`. Thân request và response là JSON UTF-8, trừ tải lên (multipart) và tải xuống (file).
-- Mọi `id` là uuid. Mọi thời điểm là RFC 3339 có độ lệch múi giờ, lưu dạng `timestamptz`. Ngày hiển thị theo múi giờ tổ chức (A-041).
+- Mọi `id` là uuid. Mọi thời điểm là RFC 3339 `[CẦN XÁC MINH]` — bản gốc chưa có trong `docs/reference/` (AUD-21) có độ lệch múi giờ, lưu dạng `timestamptz`. Ngày hiển thị theo múi giờ tổ chức (A-041).
 - Mã trạng thái và enum trả về **đúng mã** ở `GLOSSARY.md`, kèm `status_label` tiếng Việt lấy từ **một** danh mục phía server. `client` không giữ bản sao thứ hai của tên trạng thái, và không hiển thị mã trần cho nhân viên (NFR-04).
 - **Không dữ liệu cá nhân trong URL hay query string.** Path và query chỉ mang uuid, mã enum, mã nhân viên và mã loại yêu cầu. Lý do: query string đi vào log kỹ thuật (NFR-05), cùng lý do ADR-013 loại token trong query string.
 - **Chỉ `request_type_code` không phải enum đóng** trong `openapi.yaml`, mà là chuỗi theo mẫu. F6 đòi thêm loại yêu cầu mới mà không sửa code, nên một enum trong contract sẽ thành thứ phải sửa mỗi lần thêm loại.
@@ -36,7 +36,7 @@ Lập luận và phương án bị loại ở ADR-013.
 - **Phiên không lưu DB** (ADR-013). Cookie mang một token **ký bằng secret phía server**, stateless: định danh nhân viên cộng thời điểm hết hạn, không mang permission. Không bảng nào trong `schema.sql` giữ phiên, và đăng nhập không ghi gì vào `postgresql`. Mỗi request, `api` kiểm chữ ký và hạn, rồi **đọc lại từ DB** `employee.is_active` và permission hiệu lực — nên nghỉ việc hay bị thu quyền có hiệu lực ngay ở request kế tiếp. Thời hạn token `TBD` (A-048); quản lý secret ở mục Secret management trên Render của `09-security.md`.
 - **Cái phải chấp nhận, nói thẳng:** không thu hồi được **một** phiên đơn lẻ trước khi hết hạn. `DELETE /auth/session` chỉ xoá cookie ở trình duyệt đó; một token đã bị sao chép vẫn dùng được tới hạn. Cách duy nhất để vô hiệu hoá sớm là đổi secret — và nó vô hiệu hoá **mọi** phiên. Chấp nhận cho Sprint đầu, như một **rủi ro có chủ** — A-048, mục AuthN của `09-security.md`.
 - **Đăng nhập** bằng `employee_code` và mật khẩu. Credential sống ở một **bảng riêng**, không ở `employee`, do Phase 9 thêm bằng migration — nên import CSV không bao giờ chạm tới nó (A-048). Mật khẩu ban đầu do một thao tác vận hành seed và giao ngoài hệ thống.
-- **Không thuộc Sprint đầu:** buộc đổi mật khẩu lần đầu, đổi, quên, khoá sau nhiều lần sai — không endpoint nào cho chúng. Mọi ca đăng nhập sai trả `INVALID_CREDENTIALS` đồng nhất. **Không** có mã khoá tài khoản: một mã như vậy để lộ tài khoản nào tồn tại. Chống dò mật khẩu là rate limit của Phase 9.
+- **Không thuộc Sprint đầu:** buộc đổi mật khẩu lần đầu, đổi, quên, khoá sau nhiều lần sai — không endpoint nào cho chúng. Mọi ca đăng nhập sai trả `INVALID_CREDENTIALS` đồng nhất. **Không** có mã khoá tài khoản: một mã như vậy để lộ tài khoản nào tồn tại. Chống dò mật khẩu: mục Rate limit của `09-security.md`.
 - **Chống CSRF — hai lớp, cả hai bắt buộc:**
   1. `SameSite=Strict`: cookie không đi kèm request khác site.
   2. Header **`X-BO19-CSRF`** bắt buộc trên **mọi** lệnh không phải `GET` — kể cả đăng nhập, để chặn CSRF đăng nhập. Giá trị là chuỗi không rỗng bất kỳ; server chỉ kiểm sự có mặt. Lớp này không dựa vào bí mật, mà dựa vào việc một header tuỳ biến trên request khác origin buộc trình duyệt hỏi trước, và `api` không cho phép origin nào khác (A-051). Thiếu header thì trả `CSRF_HEADER_MISSING`.
@@ -46,9 +46,10 @@ Lập luận và phương án bị loại ở ADR-013.
 ### 1.4 Phân quyền ở tầng API
 
 - Mỗi endpoint khai **permission**, không khai vai trò (D-005). Cột Permission ở mục 2 là điều kiện cần. `tool_layer` kiểm lại, vì `api` không phải lớp kiểm duy nhất.
+- **Ngữ nghĩa máy đọc được** *(đợt sửa 4 sau Phase 13, AUD-27)*: `x-bo19-permission` của `openapi.yaml` là any-of — cần ít nhất một; `x-bo19-permission-also` thêm các nhóm any-of mà người gọi phải thoả tất cả. Định nghĩa và ví dụ ở mục Extension `x-bo19-*` về quyền trong `openapi.yaml` của `contracts/README.md`.
 - **Tài nguyên tồn tại nhưng người gọi không được xem thì trả `NOT_FOUND`**, không trả `PERMISSION_DENIED`. Nếu trả 403 thì người gọi dò được sự tồn tại của yêu cầu và văn bản của người khác.
 - `PERMISSION_DENIED` chỉ dùng khi người gọi đã được xem tài nguyên nhưng không có permission cho hành động — ví dụ cán bộ xem được văn bản nhưng không có `document.apply_seal`.
-- **Tách biệt trách nhiệm (D-006)** kiểm ở thao tác cổng, không kiểm ở tầng HTTP: thao tác cần dữ liệu từ `request.beneficiary_employee_id`. Cách xác định "chỉ còn một người đủ quyền" thuộc Phase 8. Contract chốt ba điều: trường `self_approval_reason` có mặt trên mọi endpoint duyệt, ký, đóng dấu, phát hành; hai mã lỗi `SELF_APPROVAL_BLOCKED` và `SELF_APPROVAL_REASON_REQUIRED`; và `approval_step.self_approval_expected` được trả về để giao diện biết khi nào phải hỏi lý do.
+- **Tách biệt trách nhiệm (D-006)** kiểm ở thao tác cổng, không kiểm ở tầng HTTP: thao tác cần dữ liệu từ `request.beneficiary_employee_id`. Phép xác định "chỉ còn một người đủ quyền" ở mục Tách biệt trách nhiệm — D-006 của `08-hitl.md`. Contract chốt ba điều: trường `self_approval_reason` có mặt trên mọi endpoint duyệt, ký, đóng dấu, phát hành, thu hồi và tiếp quản; hai mã lỗi `SELF_APPROVAL_BLOCKED` và `SELF_APPROVAL_REASON_REQUIRED`; và `approval_step.self_approval_expected` được trả về để giao diện biết khi nào phải hỏi lý do.
 - `request.read_all` giữ org-wide ở Sprint đầu; lọc theo phòng ban chỉ kích hoạt khi A-001 bị bác bỏ (A-061, mục Row-level theo phòng ban của `09-security.md`). Contract không đổi khi lọc được kích hoạt.
 
 **Permission của luồng cấu hình `request_type`.** Endpoint cấu hình `request_type` và slot schema (mục 2.10) dùng permission **`request_type.manage`**. Nó vào danh mục ở Phase 9 (A-042 `Đã chốt`), cấp lẻ, không thuộc gói vai trò nào (mục AuthZ của `09-security.md`), và vào DB qua data migration `0001_permission_catalog.sql`. Endpoint chỉ phục vụ được **sau khi** data migration đó chạy. Bài học giữ lại từ bản trước: contract khai một tên permission cụ thể thay vì `TBD`, vì `TBD` trong contract thành `null` trong code, và một phép kiểm quyền với `null` là lỗ.
@@ -104,9 +105,10 @@ Lỗi xảy ra **sau khi** stream lượt chat đã bắt đầu thì không đ�
 |---|---|---|---|
 | `GET /requests?scope=OWN` | `created_at` giảm dần, `id` giảm dần | `ix_request_created_by` | `id` không có trong index. Các dòng trùng `created_at` được sắp thêm ngay trong nhóm trùng — đúng, chỉ tốn thêm ở chỗ trùng |
 | `GET /requests?scope=ASSIGNED` | `approval_step.opened_at` tăng dần | `ix_approval_step_assignee` | — |
-| `GET /requests?scope=ALL` | `status_changed_at` tăng dần — chờ lâu nhất trước | **Không có** | Open Questions: `ix_request_waiting` |
+| `GET /requests?scope=ALL` | `status_changed_at` tăng dần — chờ lâu nhất trước, `id` | `ix_request_waiting` | Migration `0006` |
 | `GET /review-queue?status=…` | `status_changed_at` tăng dần, `id` | `ix_document_review_queue` | `status` **bắt buộc, một giá trị**, vì cột đầu của index là `status` |
-| `GET /issue-queue` | `status_changed_at` tăng dần, `id` | **Không có** | Open Questions: `ix_document_awaiting_issue` |
+| `GET /issue-queue` | `status_changed_at` tăng dần, `id` | `ix_document_awaiting_issue` | Migration `0006` |
+| `GET /takeover-queue` | `approval_step.opened_at` tăng dần, `id` | `ix_approval_step_open_by_kind` | Migration `0007`. Bước `TAKEOVER` đang `OPEN` |
 | `GET /chat-sessions/{id}/messages` | `seq` giảm dần | `uq_chat_message_seq` | — |
 | `GET /notifications` | `created_at` giảm dần, `id` | `ix_notification_inbox` | — |
 | `GET /audit-events?request_id=` · `?document_id=` · `?severity=WARNING` · không lọc | `occurred_at` | `ix_audit_event_request` · `ix_audit_event_document` · `ix_audit_event_warning` · `ix_audit_event_occurred` | Lọc thêm `action` là lọc trên đường quét đã có index, không phải một thứ tự mới |
@@ -152,13 +154,13 @@ Hệ quả cho Phase 6: **mọi** câu `UPDATE` chuyển trạng thái phải gh
 | Hạng mục | Mức trong contract | Vì sao |
 |---|---|---|
 | Thu hồi — F5 | **Đầy đủ** | `decision_kind` có `REVOKE_INITIATED`/`REVOKE_CONFIRMED`, permission đã có, ràng buộc hai người khác nhau đã chốt |
-| Uỷ quyền | **Chỉ hình dạng** | Ngữ nghĩa uỷ quyền cho người duyệt thuộc Phase 8 |
+| Uỷ quyền | **Chỉ hình dạng** | Ngữ nghĩa uỷ quyền cho người duyệt: chốt khi uỷ quyền `[Should]` được kích hoạt. Sprint đầu cắt vế lập hộ (AUD-15); người duyệt vắng mặt dùng cấp permission tạm (A-078) *(cập nhật ở đợt sửa 5 sau Phase 13 — trước đó ghi "thuộc Phase 8", Phase 8 không làm)* |
 | `ROOM_BOOKING` | **Khai tên, `[NGOÀI-OPENAPI]`** | `04-data.md` ghi rõ chống trùng lịch đang là thiết kế tạm; A-012 và A-046 còn mở |
 | Dashboard SLA | **Không có** | `_PLAN.md` giao Phase 11 |
 
 - **Ba loại trừ có chủ đích** — không phải thiếu sót, và không phase nào được coi là đã phủ chúng:
   1. **Dashboard SLA và cảnh báo tồn đọng** — Phase 11. Phần thuộc F4, là Must — hàng đợi sắp theo thời gian chờ — đã nằm ở `GET /review-queue` và `GET /requests?scope=ALL`. Mục tự duyệt riêng của D-006 **không** thuộc dashboard SLA; nó có endpoint riêng, `GET /self-approvals`.
-  2. **Màn hình tiếp quản sau `halt_for_human`**, cùng thao tác ghi `decision_record` loại `TAKEOVER_RESOLVED` — Phase 8. Contract chỉ trả `document.halted` và `latest_halt.reason_code` để người duyệt **thấy** văn bản đang dừng. Cùng khuôn, `document.job_failed` (thêm ở Phase 11, `DocumentSummary`) chỉ để **thấy** job hạ tầng (`resume_document_graph`/`finalize_issue`) đã thất bại vĩnh viễn — màn hình/thao tác enqueue lại thủ công không thuộc contract này, thuộc vận hành.
+  2. ~~**Màn hình tiếp quản sau `halt_for_human`**, cùng thao tác ghi `decision_record` loại `TAKEOVER_RESOLVED` — Phase 8. Contract chỉ trả `document.halted` và `latest_halt.reason_code` để người duyệt **thấy** văn bản đang dừng.~~ **Giải ở đợt sửa 3 sau Phase 13 (AUD-02 (d)):** thao tác `document_takeover_resolve`, endpoint ở mục 2.6, hàng đợi ở mục 2.5. Vẫn loại trừ — cùng khuôn, `document.job_failed` (thêm ở Phase 11, `DocumentSummary`) chỉ để **thấy** job hạ tầng (`resume_document_graph`/`finalize_issue`) đã thất bại vĩnh viễn — màn hình/thao tác enqueue lại thủ công không thuộc contract này, thuộc vận hành.
   3. ~~**`operating_mode_change`** — Phase 9. `GET /me` trả `operating_mode` hiện hành, chỉ đọc, để giao diện hiện dải báo chế độ thử nghiệm.~~ **Giải ở Phase 9 (ADR-020):** `GET /me` vẫn chỉ đọc như cũ; đường ghi mở ở mục 2.2b, endpoint `operating_mode_transition`, permission `operating_mode.change`.
 
 ### 1.11 Dữ liệu trong response
@@ -166,7 +168,7 @@ Hệ quả cho Phase 6: **mọi** câu `UPDATE` chuyển trạng thái phải gh
 - **Mỗi giá trị slot đi kèm `sensitivity`** của nó. ~~Quy tắc hiển thị theo độ nhạy trên màn hình duyệt chưa được đặc tả ở đâu cả — thuộc Phase 8 và Phase 9 (NFR-05).~~ **Giải ở Phase 9:** mục PII masking và hiển thị theo `slot_sensitivity` của `09-security.md`. Contract không che giá trị với người được xem; nó trả đủ thông tin để giao diện áp quy tắc khi quy tắc có.
 - **Mọi giá trị nguồn `HR_PROFILE` đi kèm `provenance`** gồm `source` và `synced_at` (D-002 ràng buộc 3).
 - Giá trị đã bị xoá theo luật: `value = null`, `erased = true`. Giao diện hiển thị "nội dung đã xoá", không hiển thị như slot còn thiếu.
-- `document_number` chỉ xuất hiện khi `document` đã `ISSUED`, hoặc ở trạng thái sau đó. Trong khoảng hoàn tất phát hành, response chỉ mang cờ `issue_in_progress`. Cách hiển thị hai đoạn của khoảng đó thuộc Phase 8.
+- `document_number` chỉ xuất hiện khi `document` đã `ISSUED`, hoặc ở trạng thái sau đó. Trong khoảng hoàn tất phát hành, response chỉ mang cờ `issue_in_progress`. Cách hiển thị: mục Duyệt dấu và khoảng hoàn tất phát hành của `08-hitl.md` — hai đoạn hiện giống nhau, không hiện số, `status_label` tính theo cặp (`status`, `issue_in_progress`).
 
 ---
 
@@ -245,14 +247,15 @@ Phiên đã `CLOSED` thì không nhận lượt mới; `client` mở phiên mớ
 - **`RequestDetail` trả `missing_slots`, `unconfirmed_slots` và `submit_ready`,** tính bằng **đúng hàm kiểm** đủ điều kiện xử lý mà `check_completeness` và `request_submit` dùng. Đó là cách F4 nêu "thiếu gì" mà không cần một nguồn thứ hai. Ở `CHANGES_REQUESTED`, `changes_requested` mang `change_scope`, `change_targets` và `change_reason` của lần yêu cầu sửa gần nhất — "cần sửa gì" của F4. Nhân viên đọc lý do sửa của chính yêu cầu mình.
 - **`confirm-slots`** nhận danh sách slot **đích danh**, mỗi slot kèm `expected_row_version` của đúng giá trị đang hiển thị. Không có chế độ "xác nhận tất cả" — đó sẽ là tick sẵn, mà F1 cấm. Lần xác nhận làm `request` đủ điều kiện khi đang `NEEDS_INFO` thì đưa nó về `DRAFT` trong cùng giao dịch, nên `client` gọi `submit` được ngay mà không cần một lượt chat. Không có endpoint **từ chối** giá trị đề xuất: bác một giá trị là khai giá trị khác, và đó là việc của hội thoại (mục Tool Registry của `03-agents.md`).
 - **`submit`** chạy lại hàm kiểm và **không tin** kết quả của graph. Không đạt thì trả `REQUEST_NOT_READY`, kèm tên slot còn thiếu, chưa xác nhận hay trượt rule — không kèm giá trị.
-- **`cancel`** nhận đúng hai trạng thái của máy trạng thái `request`: `DRAFT`, và `CHANGES_REQUESTED` ở ca `SLOT_DATA`. Trạng thái khác thì trả `REQUEST_NOT_CANCELLABLE`. `archive_reason` của `document` do server gán từ bảng mã của Phase 8; nhân viên không chọn. Bảng nghĩa ở `00-domain.md` viết "huỷ khi chưa `APPROVED`", rộng hơn sơ đồ — A-053.
+- **`cancel`** nhận đúng hai trạng thái của máy trạng thái `request`: `DRAFT`, và `CHANGES_REQUESTED` ở ca `SLOT_DATA`. Trạng thái khác thì trả `REQUEST_NOT_CANCELLABLE`. `archive_reason` của `document` do server gán — `REQUEST_CANCELLED` (mục Bảng mã của `08-hitl.md`); nhân viên không chọn. `document` đang dừng chờ tiếp quản thì `cancel` vẫn chạy và đóng bước `TAKEOVER` (mục Dừng có kiểm soát và tiếp quản của `08-hitl.md`). Bảng nghĩa ở `00-domain.md` viết "huỷ khi chưa `APPROVED`", rộng hơn sơ đồ — A-053.
 
 ### 2.5 Hàng đợi và văn bản — F2, F3, F4
 
 | Method | Path | Mô tả | Permission | Chạy | Body → Response |
 |---|---|---|---|---|---|
 | GET | `/review-queue?status=PENDING_APPROVAL\|PENDING_SIGNATURE\|PENDING_SEAL` | Hàng đợi một trạng thái, chờ lâu nhất trước. `status` **bắt buộc, một giá trị** | Theo `status`: `document.approve_content` · `document.sign` · `document.apply_seal`. Có `request.read_all` thì thấy mọi văn bản; chỉ có `request.read_assigned` thì thấy văn bản có bước duyệt giao cho mình | — | → `ReviewQueuePage` |
-| GET | `/issue-queue` | Văn bản `SIGNED` không cần dấu hoặc `SEALED`, chưa có lệnh phát hành đang chạy | `document.issue` | — | → `ReviewQueuePage` |
+| GET | `/issue-queue` | Văn bản `SIGNED` không cần dấu hoặc `SEALED`, chưa có lệnh phát hành đang chạy, không đang dừng chờ tiếp quản | `document.issue` | — | → `ReviewQueuePage` |
+| GET | `/takeover-queue` | Văn bản đang dừng ở `halt_for_human` — có bước `TAKEOVER` `OPEN` — mở lâu nhất trước | `document.approve_content`, `document.reject` hoặc `document.issue`, cộng `request.read_all`: bước `TAKEOVER` không giao cho ai | — | → `ReviewQueuePage` |
 | GET | `/documents/{document_id}` | Màn hình duyệt: biến và giá trị, nguồn và `provenance`, bản render, bước duyệt, quyết định, lần dừng gần nhất | `request.read_all`, hoặc `request.read_assigned` với bước duyệt giao cho mình trên văn bản đó | — | → `DocumentReviewView` |
 
 Nhân viên — người tạo yêu cầu — **không** gọi `GET /documents/{id}`. Họ thấy trạng thái văn bản của mình trong `RequestDetail.documents`, gồm trạng thái, số, ngày phát hành và id bản cuối để tải.
@@ -269,15 +272,19 @@ Mọi endpoint ở đây: `SYNC_ENQUEUE`, đối tượng chính là `document`,
 | POST | `/documents/{document_id}/actions/sign` | `document_sign` | `document.sign` | `SIGNED` | `resume_document_graph` | `SignBody` |
 | POST | `/documents/{document_id}/actions/apply-seal` | `document_apply_seal` | `document.apply_seal` | `SEALED` | `resume_document_graph` | `ApplySealBody` |
 | POST | `/documents/{document_id}/actions/issue` | `document_issue` | `document.issue` | `ISSUE_ORDERED` | `finalize_issue` | `IssueBody` |
+| POST | `/documents/{document_id}/actions/resolve-halt` | `document_takeover_resolve` | Theo lối ra: `document.approve_content` · `document.reject` · `document.issue` | `TAKEOVER_RESOLVED` | `resume_document_graph` | `ResolveHaltBody` |
 
-Response của năm endpoint đầu là **200** `DecisionResult`. `issue` trả **202**: lệnh phát hành đã ghi, còn việc cấp số và `ISSUED` đến sau qua stream tín hiệu. Response mang `document.issue_in_progress = true` và **chưa có số** (mục Tool Registry của `03-agents.md`).
+Response của năm endpoint đầu và của `resolve-halt` là **200** `DecisionResult`. `issue` trả **202**: lệnh phát hành đã ghi, còn việc cấp số và `ISSUED` đến sau qua stream tín hiệu. Response mang `document.issue_in_progress = true` và **chưa có số** (mục Tool Registry của `03-agents.md`).
 
 **Ghi chú**
 
 - **Hai cổng là hai endpoint.** `approve-content` và `apply-seal` không có tham số nào gộp được thành một thao tác (NFR-01, EC-SR-05).
 - **`request-changes`:** `change_scope` và `change_reason` không rỗng là bắt buộc; `change_targets` tuỳ chọn. Mỗi phần tử của `change_targets` phải là tên một biến nội dung tự do của phiên bản template đang dùng, hoặc tên một slot của `request_type` đó; sai thì trả `CHANGE_TARGET_INVALID`. Nhận ở `PENDING_APPROVAL` và `PENDING_SIGNATURE`.
+- **`sign`:** cùng giao dịch với `PENDING_SIGNATURE → SIGNED`, `request` chuyển `IN_REVIEW → APPROVED` — `APPROVED` nghĩa là đã ký (AUD-01 của `13-audit.md`). `approve-content` không đổi trạng thái `request`.
 - **`apply-seal`:** `copies_count ≥ 1`; `page_count ≥ 2` khi `seal_type = EDGE_STAMP`. `seal_type` lấy từ `document`, không nhận từ client. Ở `NON_PRODUCTION`, `seal_action` mang chế độ đã ghim — là dấu thử nghiệm (D-009).
-- **`self_approval_reason`** có mặt trên `approve-content`, `request-changes`, `reject`, `sign`, `apply-seal`, `issue` — đúng các permission bị chặn khi người thụ hưởng là người duyệt (mục Tách biệt trách nhiệm của `00-domain.md`).
+- **`self_approval_reason`** có mặt trên `approve-content`, `request-changes`, `reject`, `sign`, `apply-seal`, `issue`, `resolve-halt` — đúng các permission bị chặn khi người thụ hưởng là người duyệt (mục Tách biệt trách nhiệm của `00-domain.md`). Bước mang cờ `self_approved` của từng thao tác: mục Thao tác của người duyệt và tách biệt trách nhiệm của `08-hitl.md` (ADR-027).
+- **`resolve-halt`:** body mang `document_halt_id` của lần dừng đang mở và `resolution` ∈ {`RETRY`, `REJECT_REQUEST`, `RETURN_TO_ISSUE_QUEUE`}; `rejection_reason` bắt buộc khi và chỉ khi `REJECT_REQUEST`. Permission theo lối ra; chỉ `REJECT_REQUEST` kiểm D-006. Lối ra không được dùng cho `at_node` và `reason_code` của lần dừng thì trả `TAKEOVER_RESOLUTION_NOT_ALLOWED` kèm `allowed_resolutions`; lần dừng không còn mở thì `STATE_CONFLICT`. Bảng lối ra ở mục Dừng có kiểm soát và tiếp quản của `08-hitl.md`.
+- **`DOCUMENT_AWAITING_TAKEOVER`:** `issue` — và `submit` ở ca `SLOT_DATA` — trả mã này khi `document` đang có bước `TAKEOVER` `OPEN`: thread đang chờ ở `await_human_takeover`.
 - Lối ra khác `SEALED` ở `PENDING_SEAL` chưa có (A-034, Phase 8), nên chưa có endpoint từ chối dùng dấu.
 
 ### 2.7 Tải file — F3, F4, F6
@@ -299,7 +306,8 @@ Nhân viên chỉ nhận `pdf`: `.docx` là bản sửa được của một vă
 | POST | `/documents/{document_id}/actions/revoke-confirm` | `document_revoke_confirm` | `document.revoke_confirm` | `SYNC` | `decision_record` loại `REVOKE_CONFIRMED` | `RevokeConfirmBody` |
 
 - `revocation_reason` là bắt buộc ở bước khởi tạo, lưu ở `decision_record_text` loại `REVOCATION_REASON`. `document` đứng yên ở `ISSUED` giữa hai bước.
-- Bước xác nhận chỉ đích danh `decision_record` khởi tạo mà nó xác nhận. **Người xác nhận trùng người khởi tạo thì trả `SEPARATION_OF_DUTIES_VIOLATION`.** Đường thoát cho tổ chức chỉ có một người thuộc Phase 8 (sequence diagram (e) của `02-architecture.md`), nên contract hôm nay không có đường thoát. `approval_step` cũng không có loại bước nào cho thu hồi để mang cờ `self_approved`.
+- Bước xác nhận chỉ đích danh `decision_record` khởi tạo mà nó xác nhận. **Người xác nhận trùng người khởi tạo:** còn người khác mang `document.revoke_confirm` thì trả `SEPARATION_OF_DUTIES_VIOLATION`; không còn ai thì đường thoát D-006 áp dụng — `self_approval_reason` bắt buộc, thiếu thì `SELF_APPROVAL_REASON_REQUIRED` (AUD-23 (f); mục Thu hồi văn bản của `08-hitl.md`; sequence diagram (e) của `02-architecture.md`). Cả hai endpoint nhận `self_approval_reason`.
+- Cờ `self_approved` nằm trên bước `REVOKE_INITIATE` — sinh ra đã `DECIDED` ở bước khởi tạo — và bước `REVOKE_CONFIRM` — mở ở bước khởi tạo, đóng ở bước xác nhận (migration `0007`, ADR-027).
 - Không job nào: `document_graph` đã kết thúc trước khi thu hồi xảy ra được.
 - Chuyển sang `SUPERSEDED` không có endpoint: chưa có thao tác nào đưa `document` vào trạng thái đó (A-054).
 
@@ -364,7 +372,7 @@ Không có endpoint đánh dấu đã đọc. Cột `notification.read_at` và `
 - Hai lệnh `GET` đầu cũng nhận `template.manage`: người tải template cần đọc slot schema để viết `manifest`.
 - **`PUT` theo khoá tự nhiên, không cần `Idempotency-Key`.** Không có `expected_row_version` là tạo mới; có thì là sửa có điều kiện.
 - **`slot_definition_upsert` không đổi độ nhạy của một slot đã có.** Khác độ nhạy hiện hành thì trả `USE_SENSITIVITY_CHANGE`. Đổi độ nhạy chỉ đi qua `change-sensitivity`, vì nâng lên `RES` là thao tác **phá huỷ** (mục Lưu trữ và xoá dữ liệu cá nhân của `04-data.md`).
-- **Nhãn phá huỷ ở mức contract:** `preview` trả số dòng sẽ bị xoá giá trị. Khi thay đổi là phá huỷ, `change-sensitivity` bắt buộc có `expected_erase_count`: thiếu thì trả `DESTRUCTIVE_CONFIRMATION_REQUIRED`, lệch với số đếm lúc chạy thì trả `DESTRUCTIVE_COUNT_CHANGED` và không xoá gì. Người thực hiện vì vậy luôn thấy trước đúng số dòng mình sẽ xoá. Giao diện thuộc Phase 8.
+- **Nhãn phá huỷ ở mức contract:** `preview` trả số dòng sẽ bị xoá giá trị. Khi thay đổi là phá huỷ, `change-sensitivity` bắt buộc có `expected_erase_count`: thiếu thì trả `DESTRUCTIVE_CONFIRMATION_REQUIRED`, lệch với số đếm lúc chạy thì trả `DESTRUCTIVE_COUNT_CHANGED` và không xoá gì. Người thực hiện vì vậy luôn thấy trước đúng số dòng mình sẽ xoá. Giao diện: mục Nhãn phá huỷ của `slot_sensitivity_change` ở `08-hitl.md`.
 - Cấu hình sổ văn bản và định dạng số không có endpoint: chưa có permission nào — A-042 chỉ thêm `request_type.manage`, không phủ sổ văn bản (AUD-05 của `13-audit.md`; tiêu chí T7 ở mục Loại yêu cầu thứ ba của `12-roadmap.md`). Bản đầu nạp bằng data migration (mục Nguyên tắc dữ liệu của `04-data.md`).
 
 ### 2.11 Nhật ký và tự duyệt — NFR-02, F3
@@ -384,7 +392,7 @@ Không có endpoint đánh dấu đã đọc. Cột `notification.read_at` và `
 | POST | `/delegations` | `delegation_create` | `delegation.manage` | `SYNC` | `audit_event` của lần tạo — ngoại lệ, mục 1.8 | `DelegationCreateBody` → 201 `Delegation` |
 | POST | `/delegations/{delegation_id}/actions/revoke` | `delegation_revoke` | `delegation.manage` | `SYNC` | — | `RevokeDelegationBody` → `Delegation` |
 
-Schema theo đúng cột của bảng `delegation`. Ai được uỷ quyền cho ai, uỷ quyền có áp cho bước duyệt đang mở không, và quan hệ với đường thoát tự duyệt thuộc Phase 8.
+Schema theo đúng cột của bảng `delegation`. Ai được uỷ quyền cho ai, uỷ quyền có áp cho bước duyệt đang mở không, và quan hệ với đường thoát tự duyệt: chốt khi uỷ quyền `[Should]` được kích hoạt. Sprint đầu cắt vế lập hộ (AUD-15); người duyệt vắng mặt dùng cấp permission tạm (A-078) *(cập nhật ở đợt sửa 5 sau Phase 13 — trước đó ghi "thuộc Phase 8", Phase 8 không làm)*.
 
 ### 2.13 `ROOM_BOOKING` `[Should]` `[NGOÀI-OPENAPI]`
 
@@ -498,7 +506,7 @@ Sau `turn.reply` hoặc `turn.error`, server đóng stream.
 |---|---|---|---|---|
 | `NOTIFICATIONS` | Mọi người đã đăng nhập | `GET /notifications` | **Số dòng** `notification` của người nhận | `uq_notification_dedupe` — cột đầu là `recipient_employee_id`, nên `COUNT` theo người nhận đi bằng index đã có |
 | `MY_REQUESTS` | Người có `request.read_own` | `GET /requests?scope=OWN` | Dấu vân tay của tập (`id`, `row_version`) các `request` do mình tạo | `ix_request_created_by` |
-| `REVIEW_QUEUE` | Người có `document.approve_content`, `document.sign`, `document.apply_seal` hoặc `document.issue` | `GET /review-queue` và `GET /issue-queue` | Dấu vân tay của tập (`id`, `row_version`) các `document` ở ba trạng thái chờ | `ix_document_review_queue` |
+| `REVIEW_QUEUE` | Người có `document.approve_content`, `document.sign`, `document.apply_seal` hoặc `document.issue` | `GET /review-queue`, `GET /issue-queue` và `GET /takeover-queue` | Dấu vân tay của tập (`id`, `row_version`) các `document` ở ba trạng thái chờ, cộng tập (`id`, `row_version`) các bước `TAKEOVER` đang `OPEN` | `ix_document_review_queue` · `ix_approval_step_open_by_kind` |
 
 **Vì sao đếm số dòng, không so timestamp, không dùng `pushed_at`.**
 
@@ -532,7 +540,8 @@ Nguồn duy nhất của danh mục. `openapi.yaml` khai đúng tập này dư�
 | `IDEMPOTENCY_KEY_REQUIRED` | 400 | Endpoint tạo dòng mà thiếu `Idempotency-Key` | — | — |
 | `IDEMPOTENCY_KEY_CONFLICT` | 409 | Trùng khoá mà lệch tác nhân, đối tượng hoặc loại thao tác (mục 1.8). **Không** trả nội dung dòng | Thử lại thao tác | — |
 | `STATE_CONFLICT` | 409 | Trạng thái hay `row_version` không còn như lúc đọc (mục 1.9) | Tải lại để xem trạng thái mới | `current_status` |
-| `SEPARATION_OF_DUTIES_VIOLATION` | 409 | Người xác nhận thu hồi trùng người khởi tạo | Chuyển cho người khác xác nhận | — |
+| `SEPARATION_OF_DUTIES_VIOLATION` | 409 | Người xác nhận thu hồi trùng người khởi tạo, và còn người khác mang `document.revoke_confirm` — đường thoát D-006 không áp dụng | Chuyển cho người khác xác nhận | — |
+| `DOCUMENT_AWAITING_TAKEOVER` | 409 | Thao tác đánh thức `document_graph` — `issue`, `submit` ca `SLOT_DATA` — khi văn bản đang dừng chờ tiếp quản | Chờ phòng hành chính xử lý | — |
 | `OPERATING_MODE_UNCHANGED` | 422 | `to_mode` trùng chế độ hiệu lực hiện tại | Kiểm `GET /me` trước khi gửi | `current_mode` |
 | `RATE_LIMITED` | 429 | Vượt ngưỡng `rate_limit_window` — chỉ `POST /auth/session` ở Sprint đầu | Thử lại sau | `retry_after_seconds` |
 | `REQUEST_NOT_EDITABLE` | 409 | Xác nhận slot khi `request` không còn ở trạng thái bổ sung được | Tải lại yêu cầu | `current_status` |
@@ -548,6 +557,7 @@ Nguồn duy nhất của danh mục. `openapi.yaml` khai đúng tập này dư�
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | Sai loại file | Chọn đúng loại file | — |
 | `VALIDATION_FAILED` | 422 | Body, tham số hoặc cursor sai | Sửa đúng các trường được nêu | `fields[]`: `field`, `code` |
 | `SELF_APPROVAL_REASON_REQUIRED` | 422 | Đường thoát tự duyệt áp dụng mà thiếu lý do | Nhập lý do tự duyệt | — |
+| `TAKEOVER_RESOLUTION_NOT_ALLOWED` | 422 | `resolve-halt` với lối ra không được dùng cho `at_node` và `reason_code` của lần dừng | Chọn một lối ra được nêu | `allowed_resolutions` |
 | `REQUEST_NOT_READY` | 422 | `submit` mà chưa đủ điều kiện xử lý | Bổ sung hoặc xác nhận các mục được nêu | `missing_slots`, `unconfirmed_slots`, `failed_rules` |
 | `CHANGE_TARGET_INVALID` | 422 | `change_targets` có tên không phải biến hay slot của văn bản đó | Chọn lại phạm vi sửa | `targets` |
 | `TEMPLATE_VARIABLES_INVALID` | 422 | `manifest` lệch với file hoặc với slot schema | Sửa template hoặc `manifest` | `variables[]`: `variable_name`, `code` |
@@ -568,10 +578,10 @@ Mã con của `fields[].code`: `REQUIRED` · `BLANK` · `INVALID_FORMAT` · `OUT
 | `employee_lookup` | `NOT_FOUND` · `FORBIDDEN` · `FIELD_NOT_ALLOWED` | **Không** | Graph xử lý; nhân viên thấy câu trả lời từ khuôn — ví dụ cần uỷ quyền (EC-IL-01). Khuôn không nói nhân viên thứ ba có tồn tại hay không |
 | `request_open` | `TYPE_NOT_SUPPORTED` · `REPLACED_NOT_DRAFT` | **Không** | Khuôn câu trả lời |
 | `request_slots_write` | `EVIDENCE_MISMATCH` · `RULE_FAILED` · `NOT_EDITABLE` · `SLOT_NOT_ALLOWED` | **Không** | Slot bị loại thì agent hỏi lại bằng khuôn |
-| `request_slots_read` | `SLOT_NOT_DECLARED` | **Không bao giờ** | Đây là bug: prompt module xin một slot nó không khai. Lộ ra là rò cấu trúc prompt. Trong lượt chat nó thành khuôn "hệ thống đang bận"; trong `document_graph` nó dẫn tới `halt_for_human` với một mã lý do chung của bảng mã Phase 8 — **không** phải mã này. Chỉ `observability` thấy mã thật |
+| `request_slots_read` | `SLOT_NOT_DECLARED` | **Không bao giờ** | Đây là bug: prompt module xin một slot nó không khai. Lộ ra là rò cấu trúc prompt. Trong lượt chat nó thành khuôn "hệ thống đang bận"; trong `document_graph` nó dẫn tới `halt_for_human` với `reason_code` `SYSTEM_DEFECT` (mục Bảng mã của `08-hitl.md`) — **không** phải mã này. Chỉ `observability` thấy mã thật |
 | `request_transition`, `document_transition`, `document_draft_save`, `document_number_assign`, `document_halt_record` | `ILLEGAL_TRANSITION` · `NOT_READY` · `NO_ISSUE_ORDER` · `NOT_DRAFT` · `UNKNOWN_REASON_CODE` · `DOCUMENT_NOT_FOUND` | **Không** | Bất biến nội bộ. Lọt tới `api` thì thành `INTERNAL_ERROR` |
 | `prior_attempt_lookup` · `procedure_retrieval` | `NONE` · danh sách rỗng | Không phải lỗi | Nhánh đã thiết kế |
-| `template_fetch` · `review_readiness_check` · `signing_route` · `docx_render` · `pdf_export` · `render_integrity_check` | `NO_ACTIVE_TEMPLATE` · `VARIABLE_MISSING` · `PLACEHOLDER_VALUE` · `WRONG_SOURCE` · `FRAME_TEXT_IN_VARIABLE` · `SEAL_UNDETERMINED` · `TEMPLATE_NOT_ACTIVE_AT_RENDER` · `NO_ELIGIBLE_SIGNER` · `MISSING_VARIABLE` · `UNKNOWN_VARIABLE` · `TEMPLATE_NOT_ACTIVE` · `CONVERSION_FAILED` · `TIMEOUT` · `FONT_MISSING` · `RENDER_CHECKSUM_MISMATCH` · `RENDER_OBJECT_MISSING` | **Không qua `error_code`** | Chạy trong `queue_worker`, dẫn tới `halt_for_human`. Cán bộ thấy qua `DocumentReviewView.latest_halt.reason_code` — một mã của **bảng mã Phase 8**, không phải nguyên văn các mã này. Bảng mã quyết mã nào của tool được giữ nguyên cho người tiếp quản |
+| `template_fetch` · `review_readiness_check` · `signing_route` · `docx_render` · `pdf_export` · `render_integrity_check` | `NO_ACTIVE_TEMPLATE` · `VARIABLE_MISSING` · `PLACEHOLDER_VALUE` · `WRONG_SOURCE` · `FRAME_TEXT_IN_VARIABLE` · `SEAL_UNDETERMINED` · `TEMPLATE_NOT_ACTIVE_AT_RENDER` · `NO_ELIGIBLE_SIGNER` · `MISSING_VARIABLE` · `UNKNOWN_VARIABLE` · `TEMPLATE_NOT_ACTIVE` · `CONVERSION_FAILED` · `TIMEOUT` · `FONT_MISSING` · `RENDER_CHECKSUM_MISMATCH` · `RENDER_OBJECT_MISSING` | **Không qua `error_code`** | Chạy trong `queue_worker`, dẫn tới `halt_for_human`. Cán bộ thấy qua `DocumentReviewView.latest_halt.reason_code` — một mã của bảng `reason_code` ở mục Bảng mã của `08-hitl.md`, không phải nguyên văn các mã này. Giữ nguyên tên: `FONT_MISSING`, `NO_ELIGIBLE_SIGNER`, `RENDER_CHECKSUM_MISMATCH`, `RENDER_OBJECT_MISSING`, `TEMPLATE_NOT_ACTIVE`; các mã còn lại được gộp. `NO_ACTIVE_TEMPLATE` xảy ra trước khi có `document`, nên đi đường job lỗi vĩnh viễn, không vào `halt_for_human` |
 | `request_slot_confirm` | `NOT_EDITABLE` · `NOT_PROPOSED` · `STALE_VALUE` | **Có** | `REQUEST_NOT_EDITABLE` · `SLOT_NOT_PROPOSED` · `SLOT_VALUE_STALE` |
 | `stored_file_fetch` | Lệch checksum · mất object | **Có, gộp** | `FILE_UNAVAILABLE` — không nói là lệch hay mất; chi tiết ở `observability` |
 | `room_availability_check` `[Should]` | `ROOM_NOT_FOUND` | `[NGOÀI-OPENAPI]` | — |
@@ -586,7 +596,7 @@ Cho Phase 13: mọi thao tác của `tool_layer` có một đích, hoặc có l�
 |---|---|---|
 | Thao tác cổng | `request_submit` | `POST /requests/{id}/actions/submit` |
 | | `request_cancel` | `POST /requests/{id}/actions/cancel` |
-| | `document_approve_content` · `document_request_changes` · `document_reject` · `document_sign` · `document_apply_seal` · `document_issue` | Mục 2.6, một endpoint mỗi thao tác |
+| | `document_approve_content` · `document_request_changes` · `document_reject` · `document_sign` · `document_apply_seal` · `document_issue` · `document_takeover_resolve` | Mục 2.6, một endpoint mỗi thao tác |
 | | `document_revoke_initiate` · `document_revoke_confirm` `[Should]` | Mục 2.8 |
 | | `booking_confirm` `[Should]` | `[NGOÀI-OPENAPI]`, mục 2.13 |
 | Thao tác của nhân viên trước `SUBMITTED` | `request_slot_confirm` | `POST /requests/{id}/actions/confirm-slots` |
@@ -609,13 +619,13 @@ Mọi mục có owner và hạn ở `ASSUMPTIONS.md`. Mục này chỉ gom lại
 
 Owner Phase 8; hai phương án đề xuất ở A-052.
 
-**Thứ tự chưa có index — đề xuất, chưa thêm.** `schema.sql` đã chốt; Phase 13 duyệt các đề xuất này.
+**Thứ tự chưa có index — đã giải.** Hai đề xuất dưới đây được nhận ở Phase 13 và đã thêm bằng `backend/migrations/schema/0006_waiting_order_indexes.sql`. Bảng giữ lại làm lịch sử lý do hình dạng.
 
 | Endpoint | Đề xuất | Lý do hình dạng |
 |---|---|---|
 | `GET /requests?scope=ALL` — AC Must của F4 | `ix_request_waiting ON request (status_changed_at, id) WHERE status IN ('SUBMITTED', 'IN_REVIEW', 'CHANGES_REQUESTED', 'APPROVED')` | Một cột thời gian đứng đầu, nên danh sách **gộp** bốn trạng thái đi thẳng theo index. `id` ở cuối để keyset không phải sắp thêm ở chỗ trùng |
 | `GET /issue-queue` | `ix_document_awaiting_issue ON document (status_changed_at, id) WHERE status IN ('SIGNED', 'SEALED')` | Cùng hình dạng. Dòng `SIGNED` cần dấu chỉ tồn tại thoáng qua vì `document_sign` chuyển tiếp sang `PENDING_SEAL` trong cùng thao tác |
-| `GET /delegations?as=DELEGATOR` `[Should]` | Chờ Phase 8 chốt ngữ nghĩa | — |
+| `GET /delegations?as=DELEGATOR` `[Should]` | Chờ ngữ nghĩa uỷ quyền — chốt khi uỷ quyền `[Should]` được kích hoạt. Sprint đầu cắt vế lập hộ (AUD-15); người duyệt vắng mặt dùng cấp permission tạm (A-078) *(cập nhật ở đợt sửa 5 sau Phase 13 — trước đó ghi "thuộc Phase 8", Phase 8 không làm)* | — |
 
 **Phương án bị loại — `ix_audit_event_entity ON audit_event (entity_type, entity_id)`** (vòng duyệt Phase 5 lần 2, F3). Được đề xuất để tra tác nhân khi trùng khoá idempotency ở hai bảng không có cột người thực hiện, `template` và `delegation`. Loại vì hai lý do:
 
@@ -628,7 +638,7 @@ Nếu Phase 8 cần xem lịch sử của một đối tượng không mang `req
 
 **Còn mở — Phase 5 phát hiện:**
 
-1. **A-048** — đã quyết ở vòng duyệt Phase 5: phiên không lưu DB; credential ở bảng riêng do Phase 9 thêm; khoá sau nhiều lần sai và buộc đổi lần đầu không thuộc Sprint đầu. Còn mở ở Phase 9, **không chặn Phase 6**. Kèm hai rủi ro có chủ: không thu hồi được phiên đã cấp trước khi hết hạn; mật khẩu seed cũng là mật khẩu dùng lâu dài.
+1. **A-048** — đã quyết ở vòng duyệt Phase 5: phiên không lưu DB; credential ở bảng riêng do Phase 9 thêm; khoá sau nhiều lần sai và buộc đổi lần đầu không thuộc Sprint đầu. Cơ chế và thuật toán đã chốt ở Phase 9 (ADR-021); tham số còn `TBD` (A-048). Kèm hai rủi ro có chủ: không thu hồi được phiên đã cấp trước khi hết hạn; mật khẩu seed cũng là mật khẩu dùng lâu dài.
 2. **A-049 — đã chốt** bằng quyết định: `client` do `api` phục vụ tĩnh, cùng origin tuyệt đối.
 3. **A-050** — Render có chuyển tiếp response dạng stream mà không gom đệm không. Nếu không, NFR-08 mất phần "tăng dần" nhưng không mất tính đúng.
 4. **A-051** — hành vi nền tảng web và framework mà contract dựa vào: `EventSource`, `SameSite=Strict`, preflight của header tuỳ biến, framework có huỷ xử lý khi client ngắt kết nối không.

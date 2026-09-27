@@ -1,6 +1,6 @@
 # Agent & Tool Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.13 · **Trạng thái:** Draft chờ duyệt · **v0.2–0.3:** hai vòng sửa theo review — xem các mục ngày 2026-09-12 (lần 5, lần 6) của `CHANGELOG.md` · **v0.4:** sửa ở Phase 4 theo phép K1 và J2 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.5:** danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1) — mục ngày 2026-09-13 (lần 2) · **v0.6:** tool `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.7:** thao tác `request_slot_confirm` (mục 5.4 mới, mục 5.4 và 5.5 cũ đánh số lại thành 5.5 và 5.6), failure handling của `intake_agent` — mục ngày 2026-09-13 (lần 4) · **v0.8:** mục 5.7, bản kê thao tác do endpoint gọi — vòng duyệt Phase 5 (A2), mục ngày 2026-09-13 (lần 5) · **v0.9:** danh sách ngoại lệ đóng có ba mục, thêm `llm_usage` (ADR-019) — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.10:** biên node và ca canary thứ hai ở mục Checkpointer và PII; `FONT_MISSING` của `pdf_export` — vòng duyệt Phase 6 (B2, B3), mục ngày 2026-09-13 (lần 9) · **v0.11:** dòng "Chạy ở" của `intake_agent` và dòng độ trễ ở bảng năng lực model theo ADR-016 — mục ngày 2026-09-14 · **v0.12:** đợt sửa A-068, A-073, A-075 — ánh xạ output của `classify_intent`, `procedure_store_status`, luật `last_seen_request_status`; dòng phiên bản đầu file trước đó còn ghi 0.8 dù ghi chú đã tới v0.11 — sửa cùng lượt — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.13:** mục Hybrid search — kênh lexical là full-text lõi, chưa phải BM25 (ADR-026, AUD-09) — mục ngày 2026-09-26 (đợt sửa 1) của `CHANGELOG.md`
+**Phiên bản:** 0.18 · **Trạng thái:** Draft chờ duyệt · **v0.2–0.3:** hai vòng sửa theo review — xem các mục ngày 2026-09-12 (lần 5, lần 6) của `CHANGELOG.md` · **v0.4:** sửa ở Phase 4 theo phép K1 và J2 — mục ngày 2026-09-13 của `CHANGELOG.md` · **v0.5:** danh sách ngoại lệ đóng của luật ghi qua `tool_layer` (U1) — mục ngày 2026-09-13 (lần 2) · **v0.6:** tool `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.7:** thao tác `request_slot_confirm` (mục 5.4 mới, mục 5.4 và 5.5 cũ đánh số lại thành 5.5 và 5.6), failure handling của `intake_agent` — mục ngày 2026-09-13 (lần 4) · **v0.8:** mục 5.7, bản kê thao tác do endpoint gọi — vòng duyệt Phase 5 (A2), mục ngày 2026-09-13 (lần 5) · **v0.9:** danh sách ngoại lệ đóng có ba mục, thêm `llm_usage` (ADR-019) — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.10:** biên node và ca canary thứ hai ở mục Checkpointer và PII; `FONT_MISSING` của `pdf_export` — vòng duyệt Phase 6 (B2, B3), mục ngày 2026-09-13 (lần 9) · **v0.11:** dòng "Chạy ở" của `intake_agent` và dòng độ trễ ở bảng năng lực model theo ADR-016 — mục ngày 2026-09-14 · **v0.12:** đợt sửa A-068, A-073, A-075 — ánh xạ output của `classify_intent`, `procedure_store_status`, luật `last_seen_request_status`; dòng phiên bản đầu file trước đó còn ghi 0.8 dù ghi chú đã tới v0.11 — sửa cùng lượt — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.13:** mục Hybrid search — kênh lexical là full-text lõi, chưa phải BM25 (ADR-026, AUD-09) — mục ngày 2026-09-26 (đợt sửa 1) của `CHANGELOG.md` · **v0.14:** `document_sign` đưa `request` sang `APPROVED` (AUD-01); bản kê thêm sáu thao tác vận hành, `slot_sensitivity_change`, `operating_mode_transition_reject` (AUD-08); vế `delegation` của `employee_lookup` là `[Should]` (AUD-15) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.15:** tiếp quản sau `halt_for_human` — node `route_takeover`, thao tác cổng `document_takeover_resolve`, khoá idempotency mới của `document_halt_record` (A-044, ADR-027); cạnh `render_draft → halt_for_human`; bước mang cờ tự duyệt cho `document_issue` và thu hồi — mục ngày 2026-09-26 (đợt sửa 3) · **v0.16:** con trỏ tới thiết kế ở đợt sửa 3b — đóng phiên nhàn rỗi, ca `HR_PROFILE` sai, quyền của chủ thể dữ liệu · **v0.17:** căn cứ bảo vệ dữ liệu cá nhân đổi sang Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP (AUD-26, A-080) — mục ngày 2026-09-26 (AUD-26) · **v0.18:** đợt sửa 4 sau Phase 13 — con trỏ cũ tới Phase 4, 8, 9, 11 và owner phase (AUD-11)
 
 > File này chốt agent nào tồn tại, mỗi agent được đọc gì, gọi tool nào, chạy trên graph LangGraph nào, dừng ở đâu chờ người, nhớ gì và quên gì. File này **không** viết nội dung prompt (Phase 7), **không** thiết kế bảng/cột (Phase 4), **không** thiết kế màn hình duyệt hay cơ chế dừng khi chạm trần (Phase 8).
 
@@ -66,7 +66,7 @@ Xuất phát từ giả thuyết **một agent + nhiều tool**. Chỉ tách khi
 | **Model tier** | **Rẻ.** Output bị schema chặn chặt (mã enum, id, giá trị có bằng chứng nguyên văn) nên chất lượng câu chữ của model không đi vào đâu. RISK-02/M8 không được canh bằng độ mạnh của model mà bằng quy tắc "hỏi, không đoán" cộng khuôn câu hỏi làm rõ. **Không** leo thang sang model mạnh khi model rẻ "kém tự tin": confidence tự báo của LLM chưa hiệu chỉnh, và F1 đã chốt hành vi khi không chắc là **hỏi** |
 | **Failure handling** | Lỗi gọi model (timeout, lỗi provider): retry có backoff, số lần theo A-031; hết lượt thì trả khuôn "hệ thống đang bận, thử lại sau" và **không đổi dữ liệu nghiệp vụ**. Thứ duy nhất nhánh lỗi được ghi là **đúng một dòng `chat_message` của agent mang mã khuôn lỗi**, để client dựng lại được lượt đó bằng GET khi stream đứt (mục SSE của `05-api.md`). Nhánh lỗi **không** tạo `request`, **không** ghi `request_slot`, **không** chuyển trạng thái `request`. Những gì các node chạy **trước** lỗi trong cùng lượt đã ghi — ví dụ `open_request` chạy trước `extract_slots` — đứng nguyên, không hoàn tác; chúng idempotent theo tin nhắn của lượt nên gửi lại không nhân đôi. JSON không qua schema: sửa lỗi parse đúng một lần; lần hai hỏng thì coi như không hiểu và hỏi lại bằng khuôn. Giá trị slot không có đoạn trích nguyên văn khớp tin nhắn: loại, coi như thiếu, hỏi lại |
 | **Điều kiện thoát vòng lặp** | Trong một lượt, `intake_graph` là DAG, không có cạnh quay lui — mỗi lượt chạy tới `END`. Ở mức hội thoại, hỏi làm rõ lặp quá số lần theo A-031 thì chuyển sang khuôn hướng dẫn liên hệ phòng hành chính trực tiếp. Bộ đếm được đặt lại **đúng một lần cho mỗi `request`**, khi `request` đó rời giai đoạn thu thập (luật ở mục 6.3, A-068) — không đặt lại ở mọi lượt. Không có vòng tự lặp nào không cần nhân viên gõ thêm |
-| **Token budget** | Tính chung vào budget của `request` tại `ai_gateway`, gồm cả token embedding. Lượt chat trước khi có `request` (chưa phân loại) tính vào budget của `chat_session`. Giá trị: `TBD` (A-022). Chạm trần: dừng lượt, khuôn chuyển liên hệ phòng hành chính; cơ chế chi tiết thuộc Phase 8 |
+| **Token budget** | Tính chung vào budget của `request` tại `ai_gateway`, gồm cả token embedding. Lượt chat trước khi có `request` (chưa phân loại) tính vào budget của `chat_session`. Giá trị: mục Định cỡ A-022 của `11-ops.md`. Chạm trần: dừng lượt, khuôn chuyển liên hệ phòng hành chính — mục Ngưỡng cảnh báo & cơ chế cắt chi phí của `11-ops.md` |
 
 ### 3.2 `drafting_agent`
 
@@ -81,7 +81,7 @@ Xuất phát từ giả thuyết **một agent + nhiều tool**. Chỉ tách khi
 | **Model tier** | **Mạnh** (NFR-06). Lý do thật không phải độ khó — mỗi template Sprint đầu chỉ có một biến nội dung tự do, ngắn — mà là output đi vào văn bản chính thức, và câu chữ kém sẽ quay lại thành vòng `CHANGES_REQUESTED` (M2). Có hạ tier được không là câu hỏi cho bộ eval Phase 10, không phải cho phase này |
 | **Failure handling** | Lỗi gọi model: job trong `queue_worker` retry có backoff (A-031), hết lượt thì `halt_for_human`. JSON hỏng: sửa lỗi parse đúng một lần, rồi `halt_for_human`. Output hợp schema nhưng trượt `validate_free_content` (rỗng, placeholder, chứa câu chữ khung): sinh lại đúng một lần, rồi `halt_for_human`. Không bao giờ để `document` sang `PENDING_APPROVAL` với biến rỗng (NFR-06) |
 | **Điều kiện thoát vòng lặp** | **Mọi chu trình trong `document_graph` đều đi qua một `interrupt`** — tức một hành động của người thật — **trừ đúng một vòng**: sinh lại sau khi `validate_free_content` trượt. Vòng đó bị chặn cứng ở **một lần cho mỗi biến trong mỗi vòng sửa**, bằng `regenerated_variables` trong state (mục 6.4); lần trượt thứ hai đi thẳng vào `halt_for_human`. Số chu trình qua người bị chặn thêm bởi trần số vòng `CHANGES_REQUESTED` (A-022); chạm trần thì `halt_for_human` |
-| **Token budget** | Tính vào budget của `request` tại `ai_gateway`. Nguyên tử chi phí: một lời gọi LLM sinh một biến nội dung tự do (ADR-009); cận trên có hai hệ số, ở mục 9.3. Giá trị: `TBD` (A-022) |
+| **Token budget** | Tính vào budget của `request` tại `ai_gateway`. Nguyên tử chi phí: một lời gọi LLM sinh một biến nội dung tự do (ADR-009); cận trên có hai hệ số, ở mục 9.3. Giá trị: mục Định cỡ A-022 của `11-ops.md` |
 
 ### 3.3 Yêu cầu năng lực của model — provider chưa chọn
 
@@ -92,7 +92,7 @@ Không chốt nhà cung cấp hay model cụ thể (A-026). Hai tier phải tho�
 | Output tuân JSON Schema, có cơ chế ép hoặc validate phía provider | ✔ | ✔ | INV-02 — không có thì mọi lời gọi thành vòng sửa lỗi parse |
 | Chất lượng tiếng Việt | Hiểu | Hiểu và viết văn phong hành chính | Input và output đều tiếng Việt |
 | Điều khoản xử lý dữ liệu: không dùng dữ liệu gửi đi để huấn luyện, có cam kết lưu trữ | ✔ | ✔ | Slot `RES` đi tới provider (mục Data flow diagram của `02-architecture.md`) |
-| Vị trí xử lý dữ liệu và nghĩa vụ chuyển dữ liệu cá nhân ra nước ngoài | ✔ | ✔ | Nghị định 13/2023/NĐ-CP — nghĩa vụ cụ thể `[CẦN XÁC MINH]`, chưa có văn bản gốc trong `docs/reference/` |
+| Vị trí xử lý dữ liệu và nghĩa vụ chuyển dữ liệu cá nhân ra nước ngoài | ✔ | ✔ | Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP (A-080) — nghĩa vụ cụ thể `[CẦN XÁC MINH]`, chưa có văn bản gốc trong `docs/reference/` |
 | Độ trễ đủ để một lượt chat chạy trong tiến trình `api` mà người dùng chờ được, và kết thúc trong hạn chót của lượt | ✔ | — | ADR-005, ADR-016 — hạn chót của lượt (A-031) không dài hơn shutdown delay; giới hạn thời gian request (A-025) chỉ cắt stream |
 
 Yêu cầu tương tự áp cho embedding model (A-028), cộng thêm: cùng một model cho cả nạp kho và truy vấn.
@@ -161,7 +161,7 @@ Bảng này mô tả từng tool. **Ai được gọi tool nào, và mỗi nhóm
 
 | Tool | Mục đích | Input | Output | Side effect | Permission cần | Error case | Idempotency | Vị trí so với cổng HITL |
 |---|---|---|---|---|---|---|---|---|
-| `employee_lookup` | Tra giá trị `HR_PROFILE` để **đề xuất** (D-002); hoặc chỉ kiểm mã nhân viên có tồn tại | `employee_code`, `fields` — danh sách tên slot `HR_PROFILE` của loại đang mở; rỗng thì chỉ kiểm tồn tại | Mỗi trường: giá trị, `source`, `synced_at` | Đọc | Người tra là chính người thụ hưởng, **hoặc** có `request.create_on_behalf`, **hoặc** có `delegation` còn hiệu lực — kiểm **trước** khi đọc hồ sơ người thứ ba (EC-IL-01) | `NOT_FOUND` · `FORBIDDEN` (chưa có uỷ quyền) · `FIELD_NOT_ALLOWED` (trường ngoài slot schema của loại đang mở) | Đọc, tự nhiên idempotent | Trước `SUBMITTED`. Không cần HITL; giá trị chỉ là đề xuất, nhân viên xác nhận |
+| `employee_lookup` | Tra giá trị `HR_PROFILE` để **đề xuất** (D-002); hoặc chỉ kiểm mã nhân viên có tồn tại | `employee_code`, `fields` — danh sách tên slot `HR_PROFILE` của loại đang mở; rỗng thì chỉ kiểm tồn tại | Mỗi trường: giá trị, `source`, `synced_at` | Đọc | Người tra là chính người thụ hưởng, **hoặc** có `request.create_on_behalf`, **hoặc** `[Should]` có `delegation` còn hiệu lực — vế này cắt khỏi Sprint đầu (AUD-15) — kiểm **trước** khi đọc hồ sơ người thứ ba (EC-IL-01) | `NOT_FOUND` · `FORBIDDEN` (chưa có uỷ quyền) · `FIELD_NOT_ALLOWED` (trường ngoài slot schema của loại đang mở) | Đọc, tự nhiên idempotent | Trước `SUBMITTED`. Không cần HITL; giá trị chỉ là đề xuất, nhân viên xác nhận |
 | `request_open` | Tạo `request` ở `DRAFT` khi đã rõ `request_type` loại được hỗ trợ; nếu là đổi loại (EC-CV-02) thì chuyển `request` cũ sang `CANCELLED` trong cùng giao dịch | `chat_session_id`, `request_type`, `beneficiary_employee_id`, `replaces_request_id` | `request_id` | Ghi `postgresql` | `request.create` hoặc `request.create_on_behalf` | `TYPE_NOT_SUPPORTED` · `REPLACED_NOT_DRAFT` (loại cũ đã `SUBMITTED` thì không huỷ ngầm) | Theo (`chat_session_id`, `current_message_id`) | Trước `SUBMITTED` |
 | `request_slots_write` | Ghi giá trị slot `USER_INPUT` do `extract_slots` trích. **Không** ghi xác nhận của nhân viên — việc đó là thao tác `request_slot_confirm` (mục 5.4) | `request_id`, danh sách (tên slot, giá trị, id `chat_message` bằng chứng, đoạn trích) | Slot đã ghi, slot bị loại kèm mã lý do | Ghi `postgresql` | `request.supply_info` trên `request` của mình | `EVIDENCE_MISMATCH` — đoạn trích không có nguyên văn trong tin nhắn bằng chứng, tức là **suy diễn**, bị loại · `RULE_FAILED` · `NOT_EDITABLE` (`request` không ở `DRAFT`, `NEEDS_INFO`, hoặc `CHANGES_REQUESTED` ca `SLOT_DATA`) · `SLOT_NOT_ALLOWED` | Theo (`request_id`, id `chat_message`) | Trước `SUBMITTED`. Kiểm bằng chứng nằm **trong tool**, không trong node — bỏ qua node thì không bỏ qua được kiểm tra |
 | `request_slots_read` | Nạp giá trị slot cho prompt, theo đúng danh sách tự khai của prompt module | `request_id`, `slot_names` | Giá trị các slot đó | Đọc | Tác nhân hệ thống của graph đang xử lý chính `request` đó | `SLOT_NOT_DECLARED` (tên không có trong khai báo của module gọi) | Đọc | Mọi vị trí trước cổng 1 |
@@ -173,12 +173,12 @@ Bảng này mô tả từng tool. **Ai được gọi tool nào, và mỗi nhóm
 | `document_draft_save` | Ghi văn bản các biến nội dung tự do vừa sinh, kèm phiên bản prompt module và dấu vân tay input đã dùng (để tính phụ thuộc, ADR-009) | `document_id`, (tên biến, văn bản, phiên bản prompt module) | Tên biến đã ghi | Ghi `postgresql` | Tác nhân hệ thống; `document` phải ở `DRAFT` | `NOT_DRAFT` — **chặn cứng mọi lần ghi nội dung khi document không ở `DRAFT`**; đây là lớp thứ hai của INV-01 | Theo (`document_id`, tên biến, số lần sinh) | Trước cổng 1 |
 | `review_readiness_check` | Kiểm tất định định nghĩa **đủ điều kiện trình duyệt** (F2) | `document_id` | Đạt / danh sách mã lỗi | Đọc | Tác nhân hệ thống | Mã lỗi: `VARIABLE_MISSING` · `PLACEHOLDER_VALUE` · `WRONG_SOURCE` · `FRAME_TEXT_IN_VARIABLE` · `SEAL_UNDETERMINED` · `TEMPLATE_NOT_ACTIVE_AT_RENDER` | Đọc | Trước cổng 1 |
 | `document_transition` | Chuyển trạng thái `document` mà **tác nhân hệ thống** được phép làm. Mỗi nhóm caller có tập chuyển đổi riêng (mục 5.5): `drafting_agent` — tạo `DRAFT` (ghim `operating_mode`), `CHANGES_REQUESTED → DRAFT`, `DRAFT → PENDING_APPROVAL`; `finalize_issue` — `SIGNED` hoặc `SEALED` → `ISSUED`. `APPROVED → PENDING_SIGNATURE` thuộc `signing_route`, không thuộc tool này | `document_id`, trạng thái đích; với `ISSUED` thêm id lệnh phát hành | Trạng thái mới | Ghi `postgresql`. Vào `PENDING_APPROVAL`: cùng giao dịch đưa `request` sang `IN_REVIEW` nếu chưa ở đó. Vào `ISSUED`: cùng giao dịch đưa `request` sang `FULFILLED` nếu mọi artifact đã tới trạng thái cuối | Tác nhân hệ thống | `ILLEGAL_TRANSITION` · `NOT_READY` — tool **tự chạy lại** `review_readiness_check` trước `DRAFT → PENDING_APPROVAL`; node không bỏ qua được · `NO_ISSUE_ORDER` — sang `ISSUED` mà không có lệnh phát hành hợp lệ của người mang `document.issue` | Chuyển sang trạng thái đang có = không làm gì | `DRAFT → PENDING_APPROVAL` là **điểm vào cổng 1**. `→ ISSUED` nằm **sau mọi cổng**. Không có chuyển đổi nào vượt qua một cổng |
-| `signing_route` | Xác định người ký, ghi `signer_user_id`, chuyển `APPROVED → PENDING_SIGNATURE` | `document_id` | `signer_user_id` | Ghi `postgresql` | Tác nhân hệ thống | `NO_ELIGIBLE_SIGNER` → `halt_for_human`. Nếu người đủ quyền duy nhất là người thụ hưởng: **không** tự chọn đường thoát tự duyệt, chỉ đánh dấu để người đó phải nhập `self_approval_reason` khi ký (D-006, chi tiết Phase 8) | Theo `document_id` + vòng | Giữa hai cổng. Sprint đầu một cấp; nhiều cấp và uỷ quyền là `[Should]` |
+| `signing_route` | Xác định người ký, ghi `signer_user_id`, chuyển `APPROVED → PENDING_SIGNATURE` | `document_id` | `signer_user_id` | Ghi `postgresql` | Tác nhân hệ thống | `NO_ELIGIBLE_SIGNER` → `halt_for_human`. Nếu người đủ quyền duy nhất là người thụ hưởng: **không** tự chọn đường thoát tự duyệt, chỉ đánh dấu để người đó phải nhập `self_approval_reason` khi ký (D-006; phép xác định ở mục Tách biệt trách nhiệm — D-006 của `08-hitl.md`) | Theo `document_id` + vòng | Giữa hai cổng. Sprint đầu một cấp; nhiều cấp và uỷ quyền là `[Should]` |
 | `document_number_assign` | Cấp `document_number` nguyên tử từ `document_register`, dải theo `operating_mode` đã ghim (`TRIAL` hoặc `OFFICIAL`); huỷ số đã cấp khi phát hành bỏ cuộc | `document_id`, id lệnh phát hành; hoặc (`document_id`, lý do huỷ) | `document_number`, `issued_date` (bằng ngày cấp số) | Ghi `postgresql` | Tác nhân hệ thống, **chỉ** khi có lệnh phát hành hợp lệ của người mang `document.issue` | `NO_ISSUE_ORDER` · xung đột đồng thời trên sổ được giải trong giao dịch, không trả số trùng | Theo `document_id`: document đã có dòng `ASSIGNED` thì trả lại chính dòng đó, không lấy số mới. Huỷ chuyển dòng sang `VOIDED` kèm lý do; số `VOIDED` không bao giờ tái sử dụng | Sau mọi cổng. **Chỉ `finalize_issue` gọi** (mục 5.2) |
 | `docx_render` | Điền bảng giá trị biến vào template, xuất `.docx`; watermark khi `operating_mode` đã ghim là `NON_PRODUCTION` | `document_id`, loại bản render (nháp / cuối) | Khoá object, checksum | Ghi `object_storage` (khoá content-addressed, ADR-003) và ghi đường dẫn + checksum vào `postgresql` | Tác nhân hệ thống | `MISSING_VARIABLE` · `UNKNOWN_VARIABLE` (có giá trị cho biến template không khai) · `TEMPLATE_NOT_ACTIVE` | Khoá = hash(phiên bản template, bảng giá trị, `operating_mode`) — hash trên **input**, không trên byte đầu ra. **Ghi một lần:** khoá đã có object thì không ghi lại; dùng object và checksum của lần ghi đầu (mục 5.6). **Không có tham số tắt watermark** — tool đọc `operating_mode` từ document, không nhận từ caller | Bản nháp: trước cổng 1. Bản cuối: sau mọi cổng, chỉ trong `finalize_issue` |
 | `pdf_export` | Chuyển `.docx` sang `.pdf` | Khoá object `.docx` | Khoá object `.pdf`, checksum | Ghi `object_storage` + `postgresql` | Tác nhân hệ thống | `CONVERSION_FAILED` · `TIMEOUT` · `FONT_MISSING` — một font trong `required_fonts` của phiên bản template đang render không có mặt trong image, kiểm **trước** khi gọi bộ chuyển đổi, không để bộ chuyển đổi tự thay font → `halt_for_human`. Cả ba là **mã nội bộ của tool**, không vào danh mục `error_code` của `05-api.md` (mục Mã lỗi của `05-api.md`). Phép kiểm `FONT_MISSING` là lớp phòng thủ thêm chừng nào `api` và `queue_worker` dùng chung image, và **bắt buộc** khi tách image (ADR-015). Công cụ chuyển đổi: LibreOffice headless (ADR-015) | Theo checksum của `.docx` nguồn | Như `docx_render` |
 | `notification_send` | Gửi thông báo trong ứng dụng (và đẩy qua SSE) | Mã sự kiện, người nhận, tham chiếu `request`/`document` | — | Ghi `postgresql` | Tác nhân hệ thống | Lỗi gửi không làm hỏng giao dịch nghiệp vụ; retry qua job | Theo (mã sự kiện, người nhận) | Mọi vị trí. Nội dung là khuôn chỉ mang mã, tên loại và trạng thái — **không** mang giá trị slot `PER`/`RES` |
-| `document_halt_record` | Ghi việc `document_graph` dừng có kiểm soát: mã lý do, node dừng, vòng sửa hiện tại | `document_id`, `reason_code`, `at_node`, `revision_round`, `trace_id` | Id bản ghi dừng | Ghi `postgresql`, sinh `audit_event` cùng giao dịch như mọi tool ghi. **Không** đổi trạng thái `document` — document giữ nguyên trạng thái lúc dừng | Tác nhân hệ thống; chỉ `halt_for_human` gọi | `UNKNOWN_REASON_CODE` — mã ngoài bảng mã; bảng mã thuộc Phase 8 · `DOCUMENT_NOT_FOUND` | Theo (`document_id`, `at_node`, `revision_round`): ghi lại cùng một lần dừng không tạo bản ghi thứ hai | Mọi vị trí — dừng xảy ra được cả trước cổng 1 lẫn sau mọi cổng. Chỉ mang mã, **không** mang giá trị slot hay văn bản |
+| `document_halt_record` | Ghi việc `document_graph` dừng có kiểm soát: mở bước `TAKEOVER`, ghi mã lý do, node dừng, vòng sửa hiện tại | `document_id`, `reason_code`, `at_node`, `revision_round`, `trace_id` | Id bản ghi dừng | Ghi `postgresql` — bước `TAKEOVER` và `document_halt` trong một giao dịch, sinh `audit_event` cùng giao dịch như mọi tool ghi. **Không** đổi trạng thái `document` — document giữ nguyên trạng thái lúc dừng | Tác nhân hệ thống; chỉ `halt_for_human` gọi | `UNKNOWN_REASON_CODE` — mã ngoài bảng `reason_code` ở mục Bảng mã của `08-hitl.md` · `DOCUMENT_NOT_FOUND` | Theo **bước `TAKEOVER` đang mở** của `document`: có thì trả lại lần dừng của bước đó, không ghi gì mới. Lần dừng sau một lần tiếp quản — kể cả cùng node, cùng vòng — là bản ghi mới (A-044, ADR-027) | Mọi vị trí — dừng xảy ra được cả trước cổng 1 lẫn sau mọi cổng. Chỉ mang mã, **không** mang giá trị slot hay văn bản |
 | `render_integrity_check` | Kiểm **toàn vẹn byte** của một bản render, ngay trước người hay bước đầu tiên dựa vào byte của nó. Thêm ở Phase 4 | `render_id` | Đạt / mã lỗi | Đọc `object_storage` và `postgresql` | Tác nhân hệ thống | `RENDER_CHECKSUM_MISMATCH` — byte đọc lại không khớp checksum đã commit ở `stored_object_commit` → `halt_for_human` · `RENDER_OBJECT_MISSING` → `halt_for_human` | Đọc | Bản đã duyệt nội dung: giữa hai cổng, gọi từ `route_signing` **trước** `signing_route`. Bản cuối: sau mọi cổng, trong `finalize_issue`, trước giao dịch chuyển `ISSUED`. Lớp timeout: tool chạm `object_storage` |
 | `room_availability_check` `[Should]` | Kiểm xung đột lịch và sức chứa (EC-RB-01, EC-RB-02) | `room_id`, `start_at`, `end_at`, `attendee_count` | Trống / các khung bận (không kèm chủ đề cuộc họp người khác) / phòng thay thế | Đọc | `request.create` | `ROOM_NOT_FOUND` | Đọc | Trước `SUBMITTED` |
 
@@ -205,15 +205,16 @@ Các thao tác dưới đây chỉ đi vào từ `api` với **người thật**
 
 | Thao tác | Permission | Chuyển đổi | Enqueue |
 |---|---|---|---|
-| `request_submit` | `request.create` hoặc `request.supply_info` trên `request` của mình | `DRAFT → SUBMITTED`, hoặc `CHANGES_REQUESTED → SUBMITTED` ở ca `SLOT_DATA`. **Tự kiểm lại tất định** định nghĩa đủ điều kiện xử lý (F1) — không tin kết quả kiểm của graph | Job render mới (D-010, ADR-004), hoặc job resume `document_graph` tại `await_resubmission`; `[Should]` giữ chỗ `room_booking` `HELD` |
-| `request_cancel` | `request.cancel_own` trên `request` của mình | `DRAFT → CANCELLED`, hoặc `CHANGES_REQUESTED → CANCELLED` ở ca `SLOT_DATA`. Ca thứ hai, cùng giao dịch: `document` `CHANGES_REQUESTED → ARCHIVED` với `archive_reason` bắt buộc, cộng `decision_record` loại `REQUEST_CANCELLED` (A-035, mục Bảng chi tiết của `04-data.md`) | Ca `SLOT_DATA`: resume tại `await_resubmission` để graph kết thúc. Ca `DRAFT`: không — chưa có `document` nào (D-010) |
-| `document_approve_content` | `document.approve_content` | `PENDING_APPROVAL → APPROVED`; ghi `approved_content_hash` (INV-01) | Resume tại `await_content_review` |
-| `document_request_changes` | `document.request_changes` | `PENDING_APPROVAL` hoặc `PENDING_SIGNATURE` → `CHANGES_REQUESTED`. **Bắt buộc** `change_scope` và `change_reason` không rỗng; `change_targets` tuỳ chọn. Ca `SLOT_DATA`: `request → CHANGES_REQUESTED`. Ca `FREE_CONTENT`: `request` **ở nguyên `IN_REVIEW`** | Resume tại `await_content_review` hoặc `await_signature` |
+| `request_submit` | `request.create` hoặc `request.supply_info` trên `request` của mình | `DRAFT → SUBMITTED`, hoặc `CHANGES_REQUESTED → SUBMITTED` ở ca `SLOT_DATA`. **Tự kiểm lại tất định** định nghĩa đủ điều kiện xử lý (F1) — không tin kết quả kiểm của graph | Job render mới (D-010, ADR-004), hoặc job resume `document_graph` tại `await_resubmission`; `[Should]` giữ chỗ `room_booking` `HELD`. Ca `SLOT_DATA` mà `document` đang có bước `TAKEOVER` `OPEN`: trả `DOCUMENT_AWAITING_TAKEOVER`, không enqueue |
+| `request_cancel` | `request.cancel_own` trên `request` của mình | `DRAFT → CANCELLED`, hoặc `CHANGES_REQUESTED → CANCELLED` ở ca `SLOT_DATA`. Ca thứ hai, cùng giao dịch: `document` `CHANGES_REQUESTED → ARCHIVED` với `archive_reason` bắt buộc, cộng `decision_record` loại `REQUEST_CANCELLED` (A-035, mục Bảng chi tiết của `04-data.md`) | Ca `SLOT_DATA`: resume tại `await_resubmission` để graph kết thúc — hoặc tại `await_human_takeover` nếu `document` đang dừng; khi đó cùng giao dịch đóng bước `TAKEOVER` `CANCELLED` (mục Dừng có kiểm soát và tiếp quản của `08-hitl.md`). Ca `DRAFT`: không — chưa có `document` nào (D-010) |
+| `document_approve_content` | `document.approve_content` | `PENDING_APPROVAL → APPROVED`; ghi `approved_content_hash` (INV-01); `request` **ở nguyên `IN_REVIEW`** | Resume tại `await_content_review` |
+| `document_request_changes` | `document.request_changes` | `PENDING_APPROVAL` hoặc `PENDING_SIGNATURE` → `CHANGES_REQUESTED`. **Bắt buộc** `change_scope` và `change_reason` không rỗng; `change_targets` tuỳ chọn. Ca `SLOT_DATA`: `request → CHANGES_REQUESTED`, và slot nguồn `HR_PROFILE` nằm trong `change_targets` bị bỏ xác nhận (mục Ca `SLOT_DATA` do `HR_PROFILE` sai của `08-hitl.md`). Ca `FREE_CONTENT`: `request` **ở nguyên `IN_REVIEW`** | Resume tại `await_content_review` hoặc `await_signature` |
 | `document_reject` | `document.reject` | `PENDING_APPROVAL → REJECTED`; `request → REJECTED` | Resume để graph kết thúc |
-| `document_sign` | `document.sign` | `PENDING_SIGNATURE → SIGNED`, rồi `SIGNED → PENDING_SEAL` nếu `requires_seal` | Resume tại `await_signature` |
+| `document_sign` | `document.sign` | `PENDING_SIGNATURE → SIGNED`, rồi `SIGNED → PENDING_SEAL` nếu `requires_seal`; cùng giao dịch `request IN_REVIEW → APPROVED` — `APPROVED` nghĩa là đã ký (AUD-01, `GLOSSARY.md`) | Resume tại `await_signature` |
 | `document_apply_seal` | `document.apply_seal` | `PENDING_SEAL → SEALED`; ghi `seal_register` (ở `NON_PRODUCTION` ghi là thử nghiệm) | Resume tại `await_seal` |
-| `document_issue` | `document.issue` | Ghi **lệnh phát hành** mang người ra lệnh. **Không cấp số** — số chỉ được cấp trong `finalize_issue` (đoạn dưới bảng) | Job `finalize_issue` |
-| `document_revoke_initiate` · `document_revoke_confirm` | Hai permission tách rời | `ISSUED → REVOKED` sau đủ hai bước | Không — `document_graph` đã kết thúc trước khi thu hồi có thể xảy ra |
+| `document_issue` | `document.issue` | Ghi **lệnh phát hành** mang người ra lệnh, cùng bước `ISSUE_ORDER` sinh ra đã `DECIDED` — chỗ mang cờ tự duyệt (ADR-027). **Không cấp số** — số chỉ được cấp trong `finalize_issue` (đoạn dưới bảng). `document` đang có bước `TAKEOVER` `OPEN` thì trả `DOCUMENT_AWAITING_TAKEOVER` | Job `finalize_issue` |
+| `document_takeover_resolve` | Theo lối ra: `RETRY` — `document.approve_content`; `REJECT_REQUEST` — `document.reject`; `RETURN_TO_ISSUE_QUEUE` — `document.issue` | Đóng bước `TAKEOVER` `DECIDED`. `REJECT_REQUEST`: `request` `SUBMITTED`/`IN_REVIEW`/`CHANGES_REQUESTED` → `REJECTED`, `document` `DRAFT`/`CHANGES_REQUESTED`/`APPROVED` → `ARCHIVED` với `archive_reason = TAKEOVER_REJECTED`. Hai lối ra còn lại không đổi trạng thái. Chi tiết ở mục Dừng có kiểm soát và tiếp quản của `08-hitl.md` | Resume tại `await_human_takeover` |
+| `document_revoke_initiate` · `document_revoke_confirm` | Hai permission tách rời | `ISSUED → REVOKED` sau đủ hai bước. Khởi tạo ghi bước `REVOKE_INITIATE` sinh ra đã `DECIDED` và mở bước `REVOKE_CONFIRM`; xác nhận đóng bước đó. Trùng người: đường thoát D-006 khi không còn ai khác mang `document.revoke_confirm` (mục Thu hồi văn bản của `08-hitl.md`) | Không — `document_graph` đã kết thúc trước khi thu hồi có thể xảy ra |
 | `booking_confirm` `[Should]` | `booking.confirm` | `HELD → CONFIRMED` | — |
 
 **Nơi cấp số: `finalize_issue`, trong `queue_worker` — một nơi duy nhất.** `document_issue` chạy trong luồng request đồng bộ của `api` và chỉ ghi lệnh phát hành; nó không tiêu số nào. `document_number_assign` chỉ có một caller là `finalize_issue`.
@@ -237,7 +238,7 @@ Hệ quả của việc chốt nơi cấp số:
 1. Từ lúc ghi lệnh tới lúc `finalize_issue` bắt đầu — ít nhất một chu kỳ poll của `queue_worker` (ADR-004). **Chưa có** `document_number`.
 2. Từ lúc có số tới lúc commit `ISSUED` — trong lúc render bản cuối và xuất PDF. **Đã có** số nhưng văn bản **chưa** phát hành.
 
-Khoảng này kết thúc bằng `ISSUED`, hoặc bằng số `VOIDED` cộng `halt_for_human`. `issue_in_progress` đúng khi có lệnh phát hành chưa hoàn tất và document chưa `ISSUED` — cùng quy ước cờ dẫn xuất với `sla_breached`. Người dùng nhìn thấy được khoảng này, nên cách hiển thị nó — kể cả đoạn 2, khi số đã tồn tại mà văn bản chưa phát hành — **thuộc Phase 8**. Không thiết kế giao diện ở đây.
+Khoảng này kết thúc bằng `ISSUED`, hoặc bằng số `VOIDED` cộng `halt_for_human`. `issue_in_progress` đúng khi có lệnh phát hành chưa hoàn tất và document chưa `ISSUED` — cùng quy ước cờ dẫn xuất với `sla_breached`. Người dùng nhìn thấy được khoảng này, nên cách hiển thị nó — kể cả đoạn 2, khi số đã tồn tại mà văn bản chưa phát hành — **thuộc Phase 8**, đã làm ở mục Duyệt dấu và khoảng hoàn tất phát hành của `08-hitl.md`. Không thiết kế giao diện ở đây.
 
 ### 5.3 Thao tác vận hành — không agent nào gọi
 
@@ -246,6 +247,12 @@ Khoảng này kết thúc bằng `ISSUED`, hoặc bằng số `VOIDED` cộng `h
 | `expire_request` | Cron Job của `queue_worker` | Mục 7.4 |
 | `checkpoint_purge` | Job của `queue_worker` | Xoá mọi checkpoint của một thread đã kết thúc (mục 6.5) |
 | `procedure_ingest` | Job của `queue_worker` | Nạp một `procedure_document`: tách chunk, `embed_corpus_chunk`, ghi; kích hoạt phiên bản mới và tắt phiên bản cũ trong cùng giao dịch (mục 8) |
+| `object_claim_reconcile` | Cron Job của `queue_worker` | Nhặt claim `stored_object` chưa commit đã hết lease, xoá object nếu có, xoá dòng claim. Định nghĩa đầy đủ ở mục Lưu trữ file và bất biến bản render của `04-data.md`. *Ghi vào bản kê ở đợt sửa 2 sau Phase 13* |
+| `rate_limit_window_sweep` | Cron Job của `queue_worker` | Xoá dòng `rate_limit_window` cũ hơn N cửa sổ (A-031). Sổ sách kỹ thuật, không sinh `audit_event` (mục Rate limit của `09-security.md`; A-055). *Đặt tên ở đợt sửa 2* |
+| `chat_session_idle_close` | Cron Job của `queue_worker` | Phiên `OPEN` nhàn rỗi quá thời hạn (A-010) → `CLOSED`, `close_reason = IDLE_TIMEOUT`; `graph_thread` của phiên → `ENDED`; enqueue `checkpoint_purge` — cùng một giao dịch, như bước đóng phiên của `expire_request`. Không đổi trạng thái `request` nào. Quan hệ với `request` còn `NEEDS_INFO` trong phiên: A-038. *Đặt tên ở đợt sửa 2; thiết kế chi tiết ở mục Đóng phiên nhàn rỗi của `08-hitl.md` (đợt sửa 3b)* |
+| `needs_info_reminder` | Cron Job của `queue_worker` | `request` ở `NEEDS_INFO` tới mốc nhắc (A-014) → enqueue `notification_send` cho người tạo. Idempotent theo (`request_id`, mốc). Mã sự kiện `NEEDS_INFO_REMINDER` (mục Bảng mã của `08-hitl.md`). *Đặt tên ở đợt sửa 2* |
+| `document_retention_archive` | Cron Job của `queue_worker` | Chuyển `document` ở `ISSUED`, `REVOKED`, `SUPERSEDED`, `REJECTED` sang `ARCHIVED` khi tới hạn, ghi `archived_from_status`. Điều kiện tới hạn chờ A-010, và với `ISSUED` còn là hết thời hạn hiệu lực — chưa định nghĩa. Chưa chạy được cho tới khi A-010 đóng. *Đặt tên ở đợt sửa 2* |
+| `draft_render_sweep` | Cron Job của `queue_worker` | Dọn bản render trung gian — không ghim — theo đúng thứ tự bốn bước ở mục Lưu trữ file và bất biến bản render của `04-data.md`; thời hạn A-010. *Đặt tên ở đợt sửa 2* |
 
 ### 5.4 Thao tác của nhân viên trước `SUBMITTED` — không node nào của graph được gọi
 
@@ -272,7 +279,7 @@ Bốn nhóm caller trong graph. Một tool có mặt ở hai nhóm thì mỗi nh
 - **`intake_agent`** — mọi node của `intake_graph`.
 - **`drafting_agent`** — `prepare_draft`, `draft_free_content`, `validate_free_content`, `render_draft`, `check_review_readiness`, `submit_for_review`, `reopen_draft`, `compute_targets`, `revise_free_content`.
 - **Node tất định sau cổng, không thuộc agent nào** — `route_signing`, `route_after_signature`, `finalize_issue`, `notify_issued`.
-- **Node dùng chung của `document_graph`** — `halt_for_human`, `route_review` và các node `interrupt`. Chỉ `halt_for_human` gọi tool.
+- **Node dùng chung của `document_graph`** — `halt_for_human`, `route_review`, `route_takeover` và các node `interrupt`. Chỉ `halt_for_human` gọi tool.
 
 | Tool | `intake_agent` | `drafting_agent` | Node sau cổng | Node dùng chung | Vị trí so với cổng HITL |
 |---|---|---|---|---|---|
@@ -330,8 +337,10 @@ Nhóm thứ tư: chỉ endpoint gọi, không node nào của graph gọi, khôn
 | `request_type_upsert` · `slot_definition_upsert` | `request_type`, `slot_definition` — trừ độ nhạy của một slot đã có | `request_type.manage` (A-042, đã vào danh mục ở Phase 9) | Cấu hình |
 | `delegation_create` · `delegation_revoke` `[Should]` | `delegation` | `delegation.manage` | Cấu hình |
 | `operating_mode_transition` *(thêm ở Phase 9, ADR-020)* | `operating_mode_change` | `operating_mode.change` | Không thuộc vòng đời văn bản — chuyển `operating_mode` toàn hệ thống |
+| `operating_mode_transition_reject` *(ADR-023; ghi vào bản kê ở đợt sửa 2 sau Phase 13)* | Chỉ `audit_event` mức `WARNING` — không ghi `operating_mode_change` | `operating_mode.change` | Từ chối chuyển sang `PRODUCTION` khi `BO19_ENVIRONMENT ≠ prod` |
+| `slot_sensitivity_change` *(đặt tên ở Phase 4; ghi vào bản kê ở đợt sửa 2)* | `slot_definition.sensitivity`; nâng lên `RES` thì xoá hồi tố giá trị trên `request` `EXPIRED` cùng loại, cùng giao dịch | `request_type.manage` | Cấu hình — thao tác **phá huỷ**, định nghĩa ở mục Lưu trữ và xoá dữ liệu cá nhân của `04-data.md` |
 
-Mười ba → **mười bốn** thao tác. Mọi thao tác ở đây sinh `audit_event` theo luật ở đầu mục 5, mức `WARNING` riêng cho `operating_mode_transition` (mục `operating_mode_change` của `09-security.md`). Với `chat_message_append` và `stored_file_fetch`, luật đó đang kéo ngược định nghĩa của `audit_event` ở `GLOSSARY.md` — A-055, chưa giải.
+Mười ba → mười bốn (Phase 9) → **mười sáu** thao tác (đợt sửa 2 sau Phase 13). Mọi thao tác ở đây sinh `audit_event` theo luật ở đầu mục 5, mức `WARNING` riêng cho `operating_mode_transition` và `operating_mode_transition_reject` (danh sách đóng ở mục Enum khác của `GLOSSARY.md`). Với `chat_message_append` và `stored_file_fetch`, luật đó đang kéo ngược định nghĩa của `audit_event` ở `GLOSSARY.md` — A-055, chưa giải.
 
 ---
 
@@ -346,7 +355,7 @@ Mười ba → **mười bốn** thao tác. Mọi thao tác ở đây sinh `audi
 
 **Thread của `intake_graph` theo `chat_session`, không theo `request`.** Một cuộc hội thoại sinh được nhiều `request` nối tiếp (EC-CV-01, EC-CV-02). `request` chỉ được tạo khi đã rõ một loại được hỗ trợ (`request_open`), nên cuộc chat hỏi chuyện ngoài phạm vi **không** để lại `request` rác trong danh sách của nhân viên (F4). Độ mịn của thread không còn là câu hỏi PII, vì checkpoint không chứa giá trị (ADR-008).
 
-`chat_session` và `chat_message` là entity logic mới, chốt ở `GLOSSARY.md`; bảng cụ thể thuộc Phase 4. Tin nhắn của một phiên kể từ lần đóng `request` trước được gắn vào `request` mới khi `request_open` chạy, để luật xoá ở mục 7.4 biết tin nhắn nào thuộc lần thử nào.
+`chat_session` và `chat_message` là entity logic mới, chốt ở `GLOSSARY.md`; bảng cụ thể ở mục Bảng chi tiết của `04-data.md`. Tin nhắn của một phiên kể từ lần đóng `request` trước được gắn vào `request` mới khi `request_open` chạy, để luật xoá ở mục 7.4 biết tin nhắn nào thuộc lần thử nào.
 
 ### 6.2 State schema
 
@@ -421,7 +430,7 @@ class ReviewSignal(TypedDict):
 
 
 class HaltInfo(TypedDict):
-    reason_code: str                        # bảng mã và cách xử lý thuộc Phase 8
+    reason_code: str                        # bảng mã: mục Bảng mã của 08-hitl.md
     at_node: str
 
 
@@ -571,6 +580,7 @@ flowchart TD
     validate_free_content -->|hop le| render_draft
     validate_free_content -->|hong sau mot lan sinh lai| halt_for_human
     render_draft --> check_readiness
+    render_draft -->|loi render| halt_for_human
     check_readiness -->|dat| submit_for_review
     check_readiness -->|khong dat| halt_for_human
     submit_for_review --> await_content_review
@@ -629,7 +639,8 @@ flowchart TD
 | `validate_free_content` → `draft_free_content` | Có biến trượt kiểm; biến đó **chưa** nằm trong `regenerated_variables`; `revision_round = 0` | Chỉ sinh lại **đúng biến trượt** (ADR-009). Ghi tên biến vào `regenerated_variables` trước khi sinh lại |
 | `validate_free_content` → `revise_free_content` | Như dòng trên, nhưng `revision_round ≥ 1` | Lần sinh lại dùng cùng input đã khai của `revise_free_content` |
 | `validate_free_content` → `halt_for_human` | Có biến trượt kiểm mà **đã** nằm trong `regenerated_variables` | Lần sinh lại duy nhất của biến đó trong vòng này đã dùng. Đây là cận của vòng lặp duy nhất không đi qua `interrupt` |
-| `draft_free_content` → `halt_for_human` | `ai_gateway` báo chạm trần token budget | Tương tự với `revise_free_content`; cơ chế dừng thuộc Phase 8 |
+| `draft_free_content` → `halt_for_human` | `ai_gateway` chặn lời gọi (`BUDGET_EXCEEDED`, `BUDGET_UNAVAILABLE`), lỗi gọi model hết retry, hoặc JSON hỏng sau lần sửa parse | Tương tự với `revise_free_content`. Mã lý do ở mục Bảng mã của `08-hitl.md` |
+| `render_draft` → `halt_for_human` | `docx_render` hay `pdf_export` trả lỗi: `MISSING_VARIABLE`, `UNKNOWN_VARIABLE`, `TEMPLATE_NOT_ACTIVE`, `CONVERSION_FAILED`, `TIMEOUT`, `FONT_MISSING` | Cạnh có từ Phase 3 trong cột Error case của mục Tool Registry, vẽ vào sơ đồ ở đợt sửa 3 |
 | `check_review_readiness` → `submit_for_review` / `halt_for_human` | `review_readiness_check` đạt / không đạt | Không đạt thì document **ở lại `DRAFT`** |
 | `route_review` → nhánh tương ứng | Đọc quyết định từ DB: `APPROVED` · `REJECTED` · `CHANGES_REQUESTED` kèm `change_scope` | Payload resume chỉ mang `decision_record_id` |
 | `route_review` → `halt_for_human` | `revision_round` đã chạm trần số vòng `CHANGES_REQUESTED` | Trần thuộc A-022 |
@@ -649,9 +660,34 @@ flowchart TD
 | `await_seal` | `PENDING_SEAL` | Người có `document.apply_seal` | **Cổng 2** |
 | `await_issue` | `SIGNED` hoặc `SEALED` | Người có `document.issue` | Không — lệnh phát hành |
 | `await_resubmission` | `CHANGES_REQUESTED`; `request` cũng `CHANGES_REQUESTED` | Nhân viên, qua `request_submit` hoặc `request_cancel` | Không |
-| `await_human_takeover` | Giữ nguyên trạng thái lúc dừng | Thiết kế ở Phase 8 | Không |
+| `await_human_takeover` | Giữ nguyên trạng thái lúc dừng — `DRAFT`, `CHANGES_REQUESTED`, `APPROVED`, `SIGNED` hoặc `SEALED`; không bao giờ ở một trạng thái chờ cổng | Người mang permission của lối ra, qua `document_takeover_resolve`; hoặc nhân viên qua `request_cancel` ở ca `SLOT_DATA` | Không |
 
-`halt_for_human` ghi mã lý do và node dừng qua `document_halt_record`, gửi thông báo qua `notification_send`, rồi `interrupt` tại `await_human_takeover`. Nó đảm bảo phần mà NFR-06 đòi: **dừng ở một điểm có tên, không để `document` dở dang giữa chừng** — document không bao giờ vào `PENDING_APPROVAL` khi còn trượt kiểm tra. Trạng thái hiển thị, giao diện và cách người tiếp quản đưa graph đi tiếp thuộc Phase 8.
+`halt_for_human` ghi mã lý do và node dừng qua `document_halt_record`, gửi thông báo qua `notification_send`, rồi `interrupt` tại `await_human_takeover`. Nó đảm bảo phần mà NFR-06 đòi: **dừng ở một điểm có tên, không để `document` dở dang giữa chừng** — document không bao giờ vào `PENDING_APPROVAL` khi còn trượt kiểm tra. Hiển thị, bảng mã và thao tác tiếp quản: mục Dừng có kiểm soát và tiếp quản của `08-hitl.md`.
+
+**Phần 3 — sau tiếp quản.** `route_takeover` là node đầu sau `await_human_takeover`. Như `route_review`, nó đọc quyết định từ DB — payload resume chỉ mang `decision_record_id` — và không gọi tool nào.
+
+```mermaid
+flowchart TD
+    halt_for_human[halt_for_human - document_halt_record, notification_send]
+    await_human_takeover[[await_human_takeover - INTERRUPT]]
+    route_takeover{route_takeover - doc quyet dinh tu DB}
+    AT_NODE([ve dung at_node da dung])
+    AWAIT_ISSUE([ve await_issue])
+    END_T([ket thuc - ARCHIVED hoac request da huy])
+
+    halt_for_human --> await_human_takeover
+    await_human_takeover --> route_takeover
+    route_takeover -->|RETRY| AT_NODE
+    route_takeover -->|RETURN_TO_ISSUE_QUEUE| AWAIT_ISSUE
+    route_takeover -->|REJECT_REQUEST| END_T
+    route_takeover -->|request CANCELLED| END_T
+```
+
+| Cạnh | Điều kiện | Ghi chú |
+|---|---|---|
+| `route_takeover` → `at_node` | `TAKEOVER_RESOLVED` với `RETRY` | `at_node` ∈ {`draft_free_content`, `revise_free_content`, `render_draft`, `route_signing`}. Mã lý do ở `validate_free_content`, `check_review_readiness`, `route_review` không nhận `RETRY` (mục Bảng mã của `08-hitl.md`) |
+| `route_takeover` → `await_issue` | `RETURN_TO_ISSUE_QUEUE` | Chỉ khi `at_node = finalize_issue`. Phát hành lại cần lệnh mới |
+| `route_takeover` → `END` | `REJECT_REQUEST`, hoặc `request` đã `CANCELLED` | `graph_thread` → `ENDED`, `checkpoint_purge` |
 
 **`route_review` đọc quyết định từ DB, không từ payload resume.** Payload chỉ mang `decision_record_id`. Nếu trạng thái DB không khớp tín hiệu — ví dụ `request` đã bị huỷ trong lúc chờ — node kết thúc mà không làm gì.
 
@@ -659,7 +695,7 @@ flowchart TD
 
 ### 6.5 Checkpointer và PII
 
-- **Checkpointer PostgreSQL** của LangGraph, cùng instance `postgresql` với dữ liệu nghiệp vụ (Phase 2). Bảng cụ thể do thư viện sở hữu; cơ chế giữ lịch sử theo từng bước và việc lỗi của node có được ghi vào checkpoint hay không là `[CẦN XÁC MINH]` theo tài liệu của phiên bản thư viện được dùng — không ghi từ trí nhớ.
+- **Checkpointer PostgreSQL** của LangGraph, cùng instance `postgresql` với dữ liệu nghiệp vụ (Phase 2). Bảng cụ thể do thư viện sở hữu; cơ chế giữ lịch sử theo từng bước và việc lỗi của node có được ghi vào checkpoint hay không là `[CẦN XÁC MINH]` theo tài liệu của phiên bản thư viện được dùng — không ghi từ trí nhớ. **Cập nhật (đợt sửa 4 sau Phase 13):** A-045 `Đã chốt` ở Phase 6 cho bảng, migration, quyền và lịch sử theo bước (`docs/reference/langgraph-checkpoint-postgres.md`); còn đúng một vế `[CẦN XÁC MINH]` — lỗi của node có được tuần tự hoá vào checkpoint không.
 - **Checkpoint chứa gì:** state theo mục 6.2, payload `interrupt` và giá trị resume. Cả ba chỉ gồm id, mã, tên.
 
 **Xoá slot `RES` khỏi mọi checkpoint khi `request` `EXPIRED` (A-014)** — câu trả lời gồm bốn lớp:
@@ -684,7 +720,7 @@ Ràng buộc này chỉ an toàn nếu "quay lại trong hạn" (EC-CV-04) đư�
 - **Template đổi phiên bản trong lúc chờ duyệt:** bản nháp đã vào `PENDING_APPROVAL` vẫn duyệt được — điều kiện phiên bản ở F2 xét tại thời điểm render. Nếu sau đó có vòng sửa, lần render mới dùng phiên bản đang hiệu lực, và sinh lại mọi biến nội dung tự do nếu danh mục biến đã đổi (ADR-009).
 - **Prompt module đổi phiên bản:** chỉ áp cho lần sinh kế tiếp. Phiên bản prompt module được ghi cùng mỗi biến đã sinh (`document_draft_save`).
 - **Nhân viên quay lại chat sau nhiều ngày:** `load_turn` đọc trạng thái `request` gắn với phiên hiện tại từ DB; `EXPIRED` thì đi nhánh `resume_context` (EC-CV-04). Quay lại ở một `chat_session` **mới** thì `load_turn` chưa tìm được `request` đang mở của nhân viên — xem Open Questions.
-- **Phát hiện thread kẹt — hai dạng.** Metric và cảnh báo thuộc Phase 11.
+- **Phát hiện thread kẹt — hai dạng.** Metric và cảnh báo: mục Chỗ quan sát cho điều kiện đảo ngược của `11-ops.md`.
   1. Document ở một trạng thái chờ mà thread **không** đứng ở `interrupt` tương ứng, và không có job resume nào đang chờ.
   2. Thread đứng **đúng** `interrupt` tương ứng với trạng thái document, nhưng `request` cha đã ở trạng thái kết thúc. Dạng (1) không bắt được dạng này vì thread và document khớp nhau. Ca từng biết — `request` bị huỷ trong lúc thread chờ ở `await_resubmission` (A-035) — nay được `request_cancel` đánh thức thread cho nó kết thúc; dạng (2) còn là lưới an toàn cho đường nào khác bỏ sót.
 
@@ -694,7 +730,7 @@ Ràng buộc này chỉ an toàn nếu "quay lại trong hạn" (EC-CV-04) đư�
 - **Deploy cuốn chiếu:** code cũ gặp checkpoint có `schema_version` mới hơn thì **không xử lý** và trả job về hàng đợi — không đánh thất bại, không đoán.
 - **Tên node `interrupt` là contract.** Không đổi tên hay xoá một node `interrupt` khi còn thread đang chờ tại đó. Đổi tên thì giữ node cũ làm bí danh chuyển sang node mới; chỉ xoá khi số thread chờ bằng 0. Kiểm tra trước deploy: đếm thread đang chờ theo từng node `interrupt`.
 - Bỏ một trường: ba bước — ngừng đọc, ngừng ghi, rồi mới xoá khỏi schema.
-- State chỉ gồm tham chiếu nên migration state không bao giờ chạm dữ liệu nghiệp vụ. Migration dữ liệu nghiệp vụ thuộc Phase 4.
+- State chỉ gồm tham chiếu nên migration state không bao giờ chạm dữ liệu nghiệp vụ. Migration dữ liệu nghiệp vụ: ADR-017.
 
 ---
 
@@ -708,7 +744,7 @@ Không có graph memory. Không agent nào ghi vào memory dài hạn.
 |---|---|---|---|---|---|---|
 | **Working** | Giá trị slot vừa nạp cho prompt; output LLM thô trước khi validate | Bộ nhớ tiến trình, trong phạm vi **một node** | Trong node | Trong node | Mất khi node trả về. Không bao giờ vào checkpoint (ADR-008) | Tự mất |
 | **Session — điều khiển luồng** | State ở mục 6.2 | Checkpoint trong `postgresql` | Đầu mỗi lượt chat, mỗi lần resume | Sau mỗi bước của graph | Tới khi thread kết thúc, rồi `checkpoint_purge` | Hệ thống |
-| **Session — nội dung hội thoại** | `chat_message`: văn bản tin nhắn, cùng dữ liệu dẫn xuất từ nó như `retrieval_query` | `postgresql` | LLM chỉ đọc **lượt hiện tại** (mục 4.1). Giao diện đọc toàn bộ để hiển thị lại cho nhân viên | `api` ghi mỗi lượt | Văn bản tin nhắn xếp `RES`: xoá khi `request` `EXPIRED` (mục 7.4). Trường hợp khác: `TBD` (A-010) | Hệ thống theo luật ở mục 7.4. Quyền yêu cầu xoá của chủ thể dữ liệu: Phase 9 |
+| **Session — nội dung hội thoại** | `chat_message`: văn bản tin nhắn, cùng dữ liệu dẫn xuất từ nó như `retrieval_query` | `postgresql` | LLM chỉ đọc **lượt hiện tại** (mục 4.1). Giao diện đọc toàn bộ để hiển thị lại cho nhân viên | `api` ghi mỗi lượt | Văn bản tin nhắn xếp `RES`: xoá khi `request` `EXPIRED` (mục 7.4). Trường hợp khác: `TBD` (A-010) | Hệ thống theo luật ở mục 7.4. Quyền của chủ thể dữ liệu: mục Quyền của chủ thể dữ liệu — ở mức nghĩa vụ của `09-security.md`, A-079 |
 | **Dài hạn — hồ sơ** | `employee`, giá trị `HR_PROFILE` | `postgresql` | `employee_lookup` khi đề xuất | Chỉ qua `employee.import`. Agent không bao giờ ghi | `TBD` (A-010) | Người có `employee.import` |
 | **Dài hạn — lần thử trước** | Giá trị slot `INT`/`PER` nguồn `USER_INPUT` còn giữ trên `request` `EXPIRED` | `postgresql`, trên chính dòng `request` đó | `prior_attempt_lookup`, khi mở `request` mới cùng `request_type` và cùng người thụ hưởng | `expire_request` giữ lại, không ghi thêm | A-014 và A-010 — xem câu hỏi mở ở mục 7.3 | Hệ thống |
 | **Vector** | Chunk của `procedure_document` | `pgvector` trong `postgresql` (ADR-002) | `procedure_retrieval`, **chỉ** ở nhánh ngoài phạm vi của `intake_agent` | `procedure_ingest` | Theo phiên bản tài liệu: phiên bản cũ bị tắt, không truy hồi được, nhưng giữ lại để truy vết trích dẫn đã từng hiển thị | Người có `procedure.manage` (A-033) |
@@ -789,7 +825,7 @@ Phase 2 từng nối retrieval vào bước soạn thảo; đã sửa ở sequen
 
 ### 8.5 Hybrid search
 
-- **Hai kênh trong một câu SQL** (ADR-002): kênh lexical trên văn bản đã chuẩn hoá và kênh vector trên `pgvector`. Kênh lexical dùng hàm xếp hạng full-text lõi của PostgreSQL, **chưa phải BM25** (ADR-026, `Proposed`). BM25 là hướng đảo ngược khi A-030 xác minh được một extension khả dụng trên Render.
+- **Hai kênh trong một câu SQL** (ADR-002): kênh lexical trên văn bản đã chuẩn hoá và kênh vector trên `pgvector`. Kênh lexical dùng hàm xếp hạng full-text lõi của PostgreSQL, **chưa phải BM25** (ADR-026). BM25 là hướng đảo ngược khi A-030 xác minh được một extension khả dụng trên Render.
 - **Gộp kết quả theo thứ hạng** (reciprocal rank fusion), không cộng điểm thô của hai kênh — điểm của hai kênh không cùng thang. Tham số và `top_k`: `TBD` (A-031).
 - **Không có ngưỡng điểm tương đồng quyết định "liên quan".** Điểm tương đồng không phải xác suất đã hiệu chỉnh. Việc đoạn nào liên quan do `select_procedure_passages` quyết định, và nó chỉ được chọn trong tập đã truy hồi.
 
@@ -804,7 +840,7 @@ Model không viết lại đoạn trích, nên không tồn tại đường nào
 
 ### 8.7 Metadata filter và chống rò tài liệu ngoài quyền
 
-Metadata logic của mỗi `procedure_document` — cột cụ thể thuộc Phase 4: tên, phiên bản, `is_active`, ngày hiệu lực, `department_scope` (toàn tổ chức hoặc danh sách phòng ban), `procedure_visibility` (`ORG_WIDE` · `DEPARTMENT_ONLY`).
+Metadata logic của mỗi `procedure_document` — cột cụ thể ở mục Bảng chi tiết của `04-data.md`: tên, phiên bản, `is_active`, ngày hiệu lực, `department_scope` (toàn tổ chức hoặc danh sách phòng ban), `procedure_visibility` (`ORG_WIDE` · `DEPARTMENT_ONLY`).
 
 Năm lớp, không lớp nào dựa vào prompt:
 
@@ -841,7 +877,7 @@ Sai cả hai loại thì chọn `SLOT_DATA`, và `change_targets` gồm cả bi�
 
 **LLM không đọc `change_reason` để quyết phạm vi sửa.** Nếu model đọc lý do rồi tự quyết biến nào phải sửa, lý do đó thành một kênh injection do chính người duyệt vô tình mở. Phạm vi sửa do người chọn; `change_reason` chỉ tới `revise_free_content` như dữ liệu, cho đúng biến đã được chọn (mục 4.2).
 
-Dữ liệu `HR_PROFILE` sai là một ca `SLOT_DATA` mà nhân viên không tự sửa được: cần `employee.import` cập nhật hồ sơ rồi nhân viên xác nhận lại. Giao diện của ca này thuộc Phase 8.
+Dữ liệu `HR_PROFILE` sai là một ca `SLOT_DATA` mà nhân viên không tự sửa được: cần `employee.import` cập nhật hồ sơ rồi nhân viên xác nhận lại. Giao diện và hai quy tắc đường dữ liệu của ca này — bỏ xác nhận ở `document_request_changes`, đề xuất lại ở `propose_values` khi `employee.synced_at` mới hơn — ở mục Ca `SLOT_DATA` do `HR_PROFILE` sai của `08-hitl.md` (đợt sửa 3b).
 
 ### 9.2 Mỗi ca gọi LLM bao nhiêu lần
 
@@ -875,7 +911,7 @@ Hai trần độc lập, hai đơn vị khác nhau:
 
 Cận trên cho một `document`: **(1 + R) × V × 2 × 2** lời gọi LLM sinh nội dung tự do — R là trần số vòng `CHANGES_REQUESTED`, V là số biến nội dung tự do của template, số 1 là vòng soạn đầu. Retry do lỗi gọi model (A-031) nằm ngoài cận này; lời gọi lỗi có bị tính token hay không là `[CẦN XÁC MINH]` theo điều khoản của provider (A-026). Đây là cận để định cỡ trần, không phải chi phí điển hình — thường một biến chỉ tốn một lời gọi mỗi vòng. Bỏ một trong hai hệ số là định cỡ hụt.
 
-Một vòng có thể tốn 0 token. Định cỡ trần token theo "số vòng × chi phí một lần render đầy đủ" là định cỡ sai đơn vị. Chạm trần nào cũng đi vào `halt_for_human`; cơ chế dừng thuộc Phase 8.
+Một vòng có thể tốn 0 token. Định cỡ trần token theo "số vòng × chi phí một lần render đầy đủ" là định cỡ sai đơn vị. Chạm trần nào cũng đi vào `halt_for_human`; cơ chế dừng ở mục Dừng có kiểm soát và tiếp quản của `08-hitl.md`.
 
 **Nói thẳng về Sprint đầu:** mỗi template hiện chỉ có một biến nội dung tự do, nên với `FREE_CONTENT` thì "từng phần" và "toàn bộ" tốn như nhau. Lợi ích về token của ADR-009 ở Sprint đầu nằm ở các ca `SLOT_DATA` 0 lời gọi; lợi ích về chú ý của người duyệt thì có ngay.
 
@@ -889,7 +925,7 @@ Một vòng có thể tốn 0 token. Định cỡ trần token theo "số vòng 
 | `drafting_agent`, `document_graph` | `orchestrator` | `queue_worker` |
 | Mọi lời gọi LLM và embedding, kiểm allowlist, token budget | `ai_gateway` | Tiến trình của nơi gọi |
 | Mọi tool ở mục 5.1, thao tác cổng ở mục 5.2, thao tác của nhân viên ở mục 5.4, thao tác do endpoint gọi ở mục 5.7 | `tool_layer` | `api` hoặc `queue_worker` |
-| `expire_request`, `checkpoint_purge` | `queue_worker` | Cron Job hoặc Background Worker |
+| `expire_request`, `checkpoint_purge`, `object_claim_reconcile`, `rate_limit_window_sweep`, `chat_session_idle_close`, `needs_info_reminder`, `document_retention_archive`, `draft_render_sweep` | `queue_worker` | Cron Job hoặc Background Worker |
 | `procedure_ingest`, `embed_corpus_chunk` | `queue_worker` gọi `tool_layer` và `ai_gateway` | Background Worker |
 | Kho `procedure_document` | `vector_store` | `postgresql` |
 | Bản render | `object_storage` | — |
@@ -910,17 +946,17 @@ Một vòng có thể tốn 0 token. Định cỡ trần token theo "số vòng 
 
 **Còn mở:**
 
-1. **Hai ràng buộc kéo ngược nhau quanh `chat_session`** (A-038, owner Phase 8, cùng cụm A-029). Đây là thiết kế thật, không phải lỗi trình bày; không sửa ở Phase 3.
+1. **Hai ràng buộc kéo ngược nhau quanh `chat_session`** (A-038, owner Product Owner, cùng cụm A-029). Đây là thiết kế thật, không phải lỗi trình bày; không sửa ở Phase 3.
    - *Ràng buộc thứ nhất:* thứ tự thời hạn ở A-010 và A-014 — phiên chứa `request` đang `NEEDS_INFO` phải đóng và bị purge không muộn hơn lúc `request` đó `EXPIRED` (mục 6.5). Nó đẩy về phía đóng phiên sớm.
    - *Ràng buộc thứ hai:* `load_turn` chỉ đọc `request` gắn với phiên hiện tại (mục 6.6). Vì vậy đóng phiên sớm đẩy nhân viên sang `chat_session` mới, nơi `request` đang `NEEDS_INFO` không được khôi phục — EC-CV-04 trượt.
-2. **`procedure.manage` chưa nằm trong gói vai trò nào** (A-039, owner Phase 9). Hiện chỉ cấp lẻ; không tự gán vai trò.
-3. **Hiển thị khoảng hoàn tất phát hành** (cờ `issue_in_progress`, mục 5.2) thuộc Phase 8 — đặc biệt đoạn đã có số mà văn bản chưa phát hành.
-4. **Phiên bản pgvector trên Render** (A-037, owner người triển khai, hạn trước Phase 4) quyết định trần 1024 của A-028 là lựa chọn hay ràng buộc cứng.
+2. **`procedure.manage` chưa nằm trong gói vai trò nào** (A-039 — `Đã chốt` ở Phase 9: giữ cấp lẻ, mục AuthZ của `09-security.md`). Hiện chỉ cấp lẻ; không tự gán vai trò.
+3. ~~**Hiển thị khoảng hoàn tất phát hành** (cờ `issue_in_progress`, mục 5.2) thuộc Phase 8 — đặc biệt đoạn đã có số mà văn bản chưa phát hành.~~ **Giải ở đợt sửa 3b:** mục Duyệt dấu và khoảng hoàn tất phát hành của `08-hitl.md`.
+4. **Phiên bản pgvector trên Render** (A-037, owner người triển khai, hạn ở `ASSUMPTIONS.md`) quyết định trần 1024 của A-028 là lựa chọn hay ràng buộc cứng.
 5. **Lý do của hybrid search trong `CLAUDE.md`** ("mã nhân viên và tên riêng") không có đối tượng (mục 8.8). Giữ nguyên theo quyết định của anh; không sửa `CLAUDE.md`.
 6. **Bản giữ trên `request` `EXPIRED` sau khi đã được đề xuất lại** (mục 7.3) — đã quyết ở Phase 4.
 7. **Máy trạng thái và thread** — đã có owner, không sửa ở phase này:
-   - `request` ở `CHANGES_REQUESTED` không có đường sang `EXPIRED` (A-029, owner Phase 8).
-   - `PENDING_SEAL` chỉ có một lối ra là `SEALED` (A-034, owner Phase 8).
+   - `request` ở `CHANGES_REQUESTED` không có đường sang `EXPIRED` (A-029, owner Product Owner).
+   - `PENDING_SEAL` chỉ có một lối ra là `SEALED` (A-034, owner Product Owner).
    - Thread `document_graph` kẹt vĩnh viễn khi `request` bị huỷ trong lúc chờ ở `await_resubmission` — đã đóng ở Phase 4 bằng thao tác cổng `request_cancel` (A-035 `Đã chốt`).
 
 Giả định mới của Phase 3: A-026 → A-039 trong `ASSUMPTIONS.md`; A-035, A-036 thêm ở vòng sửa lần 1, A-037 → A-039 ở vòng sửa lần 2.

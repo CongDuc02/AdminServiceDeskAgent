@@ -1,6 +1,6 @@
 # Roadmap — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.4 · **Trạng thái:** Đã duyệt (PO, 2026-09-25) · **v0.2:** vòng duyệt Phase 12 — đối chiếu đủ `07-prompts.md`, `09-security.md` và mọi endpoint của `openapi.yaml`; tiêu chí loại yêu cầu thứ ba; owner nợ Phase 8 về Product Owner — mục ngày 2026-09-25 (vòng duyệt Phase 12) của `CHANGELOG.md` · **v0.3:** thứ tự cắt của Sprint 1 và phần an ninh không được cắt (R1-2), cổng 2.8, Open Questions sau khi PO trả lời — mục ngày 2026-09-25 (duyệt Phase 12) của `CHANGELOG.md` · **v0.4:** đợt sửa A-068, A-073, A-075 — cổng 2.3 và 3.6 đạt, AC của F6 thêm biện pháp bù của A-076, tiêu chí T6 bỏ — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md`
+**Phiên bản:** 0.10 · **Trạng thái:** Đã duyệt (PO, 2026-09-25) · **v0.2:** vòng duyệt Phase 12 — đối chiếu đủ `07-prompts.md`, `09-security.md` và mọi endpoint của `openapi.yaml`; tiêu chí loại yêu cầu thứ ba; owner nợ Phase 8 về Product Owner — mục ngày 2026-09-25 (vòng duyệt Phase 12) của `CHANGELOG.md` · **v0.3:** thứ tự cắt của Sprint 1 và phần an ninh không được cắt (R1-2), cổng 2.8, Open Questions sau khi PO trả lời — mục ngày 2026-09-25 (duyệt Phase 12) của `CHANGELOG.md` · **v0.4:** đợt sửa A-068, A-073, A-075 — cổng 2.3 và 3.6 đạt, AC của F6 thêm biện pháp bù của A-076, tiêu chí T6 bỏ — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.5:** ma trận truy vết dùng ID `AC-Fx.y` (AUD-19); lập hộ Sprint đầu chỉ qua `request.create_on_behalf` (AUD-15) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.6:** tiếp quản sau `halt_for_human` vào Sprint 2 — deliverable, AC-2.11, hai endpoint; A-044 đề xuất đóng, A-077 mới (AUD-02) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.7:** A-044 `Đã chốt`; A-078 vào cổng 2.2; ca kiểm cơ chế K3, K4 — mục ngày 2026-09-26 (quyết định PO sau đợt 3) · **v0.8:** A-079 vào cổng 4.4 — mục ngày 2026-09-26 (đợt sửa 3b) · **v0.9:** đợt sửa 4 sau Phase 13 — cổng 1.12, 1.13 (A-081, A-082); owner cổng 1.10, 1.11 theo câu 7; nội dung cũ (AUD-11) · **v0.10:** cổng 2.9 (A-010); A-030 ở AC-2.1 — mục ngày 2026-09-26 (đợt sửa 5)
 
 > File này xếp phạm vi Must của PRD thành các sprint có thứ tự, mỗi sprint có Objective, Deliverable, Dependency, Acceptance Criteria và rủi ro chính, kèm các cổng phải qua trước từng sprint. File này **không** khai lại mức MoSCoW (nguồn duy nhất: mục Scope & priority của `01-prd.md`), **không** đặt ngày hay ước lượng khối lượng (A-071), **không** thiết kế lại bất cứ thứ gì đã chốt, và **không** giải hộ các giả định của phase khác — chỉ đặt chúng vào đúng cổng.
 
@@ -77,8 +77,10 @@ flowchart LR
 | 1.7 | Giá trị định dạng số và ký hiệu cho sổ, kể cả dải `TRIAL` | A-009 — hạn gốc "trước lần cấp số đầu tiên, kể cả số dải `TRIAL`" | Product Owner | AC — cấp số ở AC-1.2 |
 | 1.8 | Giá trị `contract_type` và các cột CSV hồ sơ nhân viên | A-013 | Product Owner | AC — `contract_type` là slot bắt buộc của `WORK_CONFIRMATION` |
 | 1.9 | Múi giờ của tổ chức | A-041 | Product Owner | AC — bước kiểm khởi động #13 chặn khi thiếu |
-| 1.10 | Giá trị làm việc cho tham số vận hành chưa định cỡ — số lần retry, hạn chót lượt, ba lớp timeout, ngưỡng và độ dài cửa sổ rate limit đăng nhập. Được mang nhãn "chưa hiệu chỉnh", không được vắng | A-031; bước kiểm khởi động #5, #11; mục Rate limit của `09-security.md` | Người triển khai | AC |
-| 1.11 | Giá trị làm việc cho tham số `argon2id` và thời hạn token phiên, nhãn "chưa hiệu chỉnh" | A-048, ADR-021 | Người triển khai | AC — đăng nhập ở AC-1.1 |
+| 1.10 | Giá trị làm việc cho tham số vận hành chưa định cỡ — số lần retry, hạn chót lượt, ba lớp timeout, ngưỡng và độ dài cửa sổ rate limit đăng nhập. Được mang nhãn "chưa hiệu chỉnh", không được vắng | A-031; bước kiểm khởi động #5, #11; mục Rate limit của `09-security.md` | Product Owner — người triển khai đề xuất giá trị làm việc (câu 7) | AC |
+| 1.11 | Giá trị làm việc cho tham số `argon2id` và thời hạn token phiên, nhãn "chưa hiệu chỉnh" | A-048, ADR-021 | Product Owner — người triển khai đề xuất giá trị làm việc (câu 7) | AC — đăng nhập ở AC-1.1 |
+| 1.12 | Lockfile ghim cả phụ thuộc bắc cầu, gồm `langgraph-checkpoint` đúng bản đã kiểm | A-081 | Người triển khai | Khởi động — image và CI cài từ lockfile |
+| 1.13 | Hành vi mặc định của `langsmith` đã xác minh; bước kiểm khởi động từ chối chạy khi biến bật tracing được đặt | A-082 | Người triển khai | Khởi động — trước lần đầu hệ thống gọi provider thật |
 
 Trần token và trần số vòng **không** nằm ở đây — đã có giá trị khởi tạo ở mục Định cỡ A-022 của `11-ops.md`.
 
@@ -92,7 +94,7 @@ Trần token và trần số vòng **không** nằm ở đây — đã có giá 
 
 | Tầng | Deliverable | Ghi chú phạm vi |
 |---|---|---|
-| Dữ liệu | `migrate_main` chạy đủ bốn bước của mục Migration và checkpointer của `06-structure.md` trên PostgreSQL local, gồm `0001`–`0004`; data migration `0001_permission_catalog.sql`; data migration nạp cấu hình `WORK_CONFIRMATION`, một `document_register` và một phiên bản template `ACTIVE` | Cấu hình nạp bằng data migration — màn hình F6 ở Sprint 3. Danh mục biến của template nạp sẵn vẫn phải qua đúng phép kiểm lúc tải lên (mục Template của `04-data.md`) |
+| Dữ liệu | `migrate_main` chạy đủ bốn bước của mục Migration và checkpointer của `06-structure.md` trên PostgreSQL local, gồm mọi file ở `backend/migrations/schema/` — hiện `0001`–`0008`; data migration `0001_permission_catalog.sql`; data migration nạp cấu hình `WORK_CONFIRMATION`, một `document_register` và một phiên bản template `ACTIVE` | Cấu hình nạp bằng data migration — màn hình F6 ở Sprint 3. Danh mục biến của template nạp sẵn vẫn phải qua đúng phép kiểm lúc tải lên (mục Template của `04-data.md`) |
 | Kiểm contract | Chạy `tools/contract-checks/check_grants.py --app-dsn` trên DB local đã migrate bằng `migrate_main` | Nhóm quyền của `employee_credential` và `rate_limit_window` đã bổ sung vào `check_grants.py` ở vòng duyệt Phase 12 |
 | Vận hành seed | Nạp `employee` giả qua data migration; seed `employee_role`, `employee_credential` và một dòng `employee_permission_grant` cấp `document.sign` cho một `ADMIN_OFFICER` — bằng thao tác vận hành chạy `bo19_migrator` (mục AuthZ của `09-security.md`) | **Không** cấp `operating_mode.change` cho ai — lớp 1 của ADR-023 |
 | Khởi động | `bo19.startup` với mọi bước ở mục Bước kiểm khởi động của `06-structure.md` áp cho `api` và `worker`, gồm #16–17 — lớp 2 của ADR-023 | `BO19_ENVIRONMENT = dev` |
@@ -180,29 +182,30 @@ Bảng bước, giả định cần đóng và luật riêng ở `.claude/comman
 | # | Điều kiện | Nguồn | Chặn |
 |---|---|---|---|
 | 2.1 | S0 của Spike 1 đạt, hoặc đã có quyết định thay kiến trúc dữ liệu | `spike.md`, AC-1.13 | Khởi động |
-| 2.2 | A-029, A-034, A-038, A-044, A-053 có quyết định | Mục 10 | Khởi động |
+| 2.2 | A-029, A-034, A-038, A-053 có quyết định. ~~A-044~~ — `Đã chốt` ngày 2026-09-26 (ADR-027). ~~A-078~~ — `Đã chốt` ngày 2026-09-26: cấp permission tạm, runbook ở `11-ops.md` | Mục 10 | Khởi động |
 | 2.3 | ~~Đợt sửa `03-agents.md` cho A-068 và A-073 hướng (a) đã áp~~ **Đã đạt** — áp 2026-09-25 | A-068, A-073 | — |
 | 2.4 | Thời hạn chờ ở `NEEDS_INFO` trước `EXPIRED` có giá trị làm việc | A-014 | AC-2.7 |
 | 2.5 | Chọn nhà cung cấp object storage | A-024, kết quả S7 | AC-2.1 |
 | 2.6 | Ba vế secret của CI | A-067 | AC-2.1 |
 | 2.7 | Cách đọc IP thật của client phía sau proxy Render | A-062 | AC-2.9 |
 | 2.8 | Nếu Sprint 1 đã cắt bậc 3, 6 hoặc 7 ở R1-2: các hạng mục đó đã có | R1-2 | Khởi động — trước lần đầu hệ thống nhận request từ ngoài máy người triển khai |
+| 2.9 | Thời hạn đóng phiên nhàn rỗi có giá trị làm việc | A-010 | `chat_session_idle_close` |
 
 ### 5.2 Deliverable
 
 - **Vòng sửa và từ chối:** `document_request_changes` cả hai `change_scope`; `reopen_draft`, `compute_targets`, P5 `revise_free_content` với `previous_statement` và `change_reason` chỉ tới biến trong `change_targets` (mục P5 `revise_free_content` của `07-prompts.md`); gửi lại ở ca `SLOT_DATA` qua `request_submit`; `document_reject` — theo mục Luồng yêu cầu sửa và agent làm lại của `08-hitl.md`.
-- **Dừng có kiểm soát:** mọi đường vào `halt_for_human` ở mục Cơ chế dừng khi chạm trần của `08-hitl.md`, gồm JSON hỏng lần hai và `BUDGET_EXCEEDED`; `document_halt_record`; banner `halted` trên `/documents/:documentId`; nhánh `VOIDED` của `finalize_issue`.
+- **Dừng có kiểm soát và tiếp quản:** mọi đường vào `halt_for_human` ở mục Dừng có kiểm soát và tiếp quản của `08-hitl.md`, gồm JSON hỏng lần hai và `BUDGET_EXCEEDED`; `document_halt_record` với khoá theo bước `TAKEOVER`; node `route_takeover`; thao tác `document_takeover_resolve` với ba lối ra; `/takeover` và banner tiếp quản trên `/documents/:documentId`; nhánh `VOIDED` của `finalize_issue`; bảng mã `reason_code`, `archive_reason`, `event_code` (migration `0007`).
 - **Hết hạn và huỷ:** cron `expire_request` với số phận dữ liệu theo `slot_sensitivity` (A-014); `prior_attempt_lookup`; `checkpoint_purge`; `request_cancel`.
 - **Hội thoại:** EC-CV-01 → EC-CV-04; `ask_clarification` với luật đặt lại đúng một lần (A-068); `MULTIPLE` qua `secondary_intent` (EC-CV-01); khuôn riêng cho loại `KNOWN_UNSUPPORTED` — nêu tên loại, liệt kê mọi loại đang hỗ trợ (EC-WC-03, EC-CV-03); nhánh ngoài phạm vi khi `procedure_store_status` trả `NOT_READY` — không gọi `embed_query`, trả hướng xử lý thủ công tất định và nói rõ kho không có căn cứ (A-073); bổ sung dữ liệu cho ca `SLOT_DATA` qua chính hội thoại. Luật ở mục `intake_graph` của `03-agents.md`.
 - **Render `dev`:** CI pipeline chạy `migrate_main` rồi mới trigger deploy (ADR-022); Web Service, Background Worker, Cron Job từ **một** image (ADR-015); `check_grants.py --app-dsn` chạy sau migrate trong CI; secret riêng cho môi trường, credential `bo19_migrator` chỉ có ở CI, không ở biến môi trường của `api` hay `worker` (mục Secret management trên Render của `09-security.md`).
 - **Rate limit trên Render:** khoá theo IP đọc đúng theo A-062; cron dọn `rate_limit_window` (mục Rate limit của `09-security.md`, mục Background worker & Cron của `11-ops.md`).
-- **Harness eval:** schema `EvalCase` ở mục `EvalCase` của `10-eval.md`; các nhóm chạy được với `WORK_CONFIRMATION`; canary C1, C2; ca kiểm cơ chế K1, K2 (mục Ca kiểm cơ chế graph của `10-eval.md`). Kết quả **không kết luận được** trước khi A-023 đóng — ghi rõ trong mọi báo cáo chạy.
+- **Harness eval:** schema `EvalCase` ở mục `EvalCase` của `10-eval.md`; các nhóm chạy được với `WORK_CONFIRMATION`; canary C1, C2; ca kiểm cơ chế K1–K4 (mục Ca kiểm cơ chế graph của `10-eval.md`). Kết quả **không kết luận được** trước khi A-023 đóng — ghi rõ trong mọi báo cáo chạy.
 
 ### 5.3 Acceptance Criteria
 
 | ID | Tiêu chí | Truy vết |
 |---|---|---|
-| AC-2.1 | AC-1.1, AC-1.3, AC-1.7 đạt lại trên Render `dev` | DoD điều 1; R1-3 |
+| AC-2.1 | AC-1.1, AC-1.3, AC-1.7 đạt lại trên Render `dev` | DoD điều 1; R1-3; A-030 — `migrate_main` tạo được cột `tsvector` và index GIN |
 | AC-2.2 | Yêu cầu sửa `FREE_CONTENT` chỉ sinh lại biến trong `change_targets`; `request` ở nguyên `IN_REVIEW`; `change_reason` không tới lời gọi nào của biến ngoài `change_targets` | F3; ADR-009; mục P5 `revise_free_content` của `07-prompts.md` |
 | AC-2.3 | Chạm trần `R` vòng `CHANGES_REQUESTED`, và chạm trần token đặt thấp có chủ đích: `document` dừng ở `halt_for_human`, không vào `PENDING_APPROVAL` với biến rỗng, có dòng `document_halt` | NFR-06 |
 | AC-2.4 | Hai lệnh phát hành đồng thời không nhận cùng số; lỗi sau khi có số chuyển số sang `VOIDED` kèm lý do và không tái sử dụng | F3 |
@@ -212,6 +215,7 @@ Bảng bước, giả định cần đóng và luật riêng ở `.claude/comman
 | AC-2.8 | EC-CV-01 và EC-CV-02: hai nhu cầu thành hai `request` xử lý tuần tự; đổi loại giữa chừng không mang slot nào sang; một phiên có nhiều `request` nối tiếp không bị chuyển sang khuôn liên hệ trực tiếp chỉ vì bộ đếm làm rõ cộng dồn; K1 và K2 đạt | F1; nhóm G; A-068 |
 | AC-2.9 | Rate limit đăng nhập trên Render khoá đúng IP của client, không khoá chung IP của proxy | A-062 |
 | AC-2.10 | Yêu cầu mà `classify_intent` nhận ra là một loại `KNOWN_UNSUPPORTED` nhận khuôn riêng: nêu tên loại chưa hỗ trợ, liệt kê mọi loại đang hỗ trợ, kèm hướng xử lý thủ công; không `request` nào được mở | F1; EC-WC-03; EC-CV-03; mục `intake_graph` của `03-agents.md` |
+| AC-2.11 | Tiếp quản: `REJECT_REQUEST` trên một văn bản dừng ở vòng soạn đầu đưa `request` `SUBMITTED → REJECTED` và `document` `DRAFT → ARCHIVED` với `TAKEOVER_REJECTED`; `RETRY` sau `PROVIDER_UNAVAILABLE` mà dừng lại ở cùng node, cùng vòng tạo **lần dừng thứ hai** — hai dòng `document_halt`, hai bước `TAKEOVER`; `RETURN_TO_ISSUE_QUEUE` sau `VOIDED` cần một lệnh phát hành mới, và lệnh đó nhận số mới | NFR-06; A-044; AUD-07 |
 
 ### 5.4 Rủi ro chính
 
@@ -241,7 +245,7 @@ Bảng bước, giả định cần đóng và luật riêng ở `.claude/comman
 ### 6.2 Deliverable
 
 - **`INTRODUCTION_LETTER`:** P4 cho `work_content_statement`; EC-IL-01 → EC-IL-03, gồm `requires_seal` và `bearer_national_id` theo `recipient_org`.
-- **Nhập hộ và tách biệt trách nhiệm:** theo quyết định A-052 ở cả hai loại; đường thoát tự duyệt đủ bốn điều kiện; `GET /self-approvals`, `GET /audit-events`; `/audit`, `/audit/self-approvals`.
+- **Nhập hộ và tách biệt trách nhiệm:** theo quyết định A-052 ở cả hai loại. Lập hộ trong Sprint đầu chỉ qua `request.create_on_behalf` — vế `delegation` của điều 4 ở F1 cắt khỏi Sprint đầu, thiết kế giữ nguyên (AUD-15 của `13-audit.md`); đường thoát tự duyệt đủ bốn điều kiện; `GET /self-approvals`, `GET /audit-events`; `/audit`, `/audit/self-approvals`.
 - **F6 — template:** `template_create`, `template_version_upload` với các phép kiểm lúc tải lên — đủ biến bắt buộc, input của biến nội dung tự do chỉ là slot `USER_INPUT` của đúng `request_type`, font có trong image — và `audit_event` khi danh sách input đổi (mục Phiên bản và thay đổi của `07-prompts.md`); `template_version_activate`; tải bản gốc chỉ cho `template.manage`.
 - **F6 — hồ sơ và cấu hình:** `employee_import`; `request_type_upsert` — **từ chối đặt `SUPPORTED` khi `example_phrases` rỗng** (A-076), `slot_definition_upsert`, xem trước và thực hiện `slot_sensitivity_change`; seed `employee_permission_grant` cho `request_type.manage`, `procedure.manage`, `procedure.read_all` bằng thao tác vận hành.
 - **F6 — kho quy trình:** `procedure_version_upload`, job `procedure_ingest` với E2 `embed_corpus_chunk`, `procedure_version_deactivate`; `procedure_retrieval` với bộ lọc quyền trong SQL theo `department_scope` và `procedure.read_all` (mục AuthZ của `09-security.md`); nhánh có kho: E1 `embed_query` → P3 `select_procedure_passages` chỉ chọn id, hiển thị nguyên văn có trích nguồn (mục Prompt injection của `09-security.md`).
@@ -280,6 +284,7 @@ Bảng bước, giả định cần đóng và luật riêng ở `.claude/comman
 | 4.1 | Đáp án chuẩn 37 ca đã được Trưởng phòng Hành chính duyệt | A-023 | AC-4.1 |
 | 4.2 | Ba con số của buổi UAT: số người, số ca kịch bản, ai chấm | A-020 | AC-4.3 |
 | 4.3 | Ngưỡng metric Cảnh báo đã chốt **trước** khi đo | A-019 | AC-4.3 |
+| 4.4 | Quyền của chủ thể dữ liệu: ba chỗ hở có quyết định. **Hạn sớm hơn nếu** dữ liệu cá nhân thật được nạp trước cổng này — khi đó là điều kiện của lần nạp đó | A-079; mục Quyền của chủ thể dữ liệu — ở mức nghĩa vụ của `09-security.md` | Nạp dữ liệu cá nhân thật |
 
 ### 7.2 Deliverable
 
@@ -355,6 +360,7 @@ Mọi cặp method–path của `openapi.yaml`, và sprint đầu tiên dựng n
 | `GET /review-queue` · `GET /issue-queue` · `GET /documents/{document_id}` | 1 |
 | `POST /documents/{document_id}/actions/approve-content`, `sign`, `apply-seal`, `issue` | 1 |
 | `POST /documents/{document_id}/actions/request-changes`, `reject` | 2 |
+| `GET /takeover-queue` · `POST /documents/{document_id}/actions/resolve-halt` | 2 |
 | `GET /documents/{document_id}/renders/{render_id}/file` | 1 |
 | `GET /notifications` · `GET /signals` | 3 |
 | `GET`, `POST /templates` · `GET /templates/{template_id}` · `POST …/versions` · `POST …/activate` · `GET …/source` | 3 |
@@ -377,9 +383,11 @@ Phase 8 giữ ☑ (quyết định PO, 2026-09-25). Các giả định dưới �
 | A-029 | `CHANGES_REQUESTED` ca `SLOT_DATA` không có đường sang `EXPIRED` | Product Owner | Trước Sprint 2 | Sprint 2 dựng vòng `SLOT_DATA` |
 | A-034 | `PENDING_SEAL` không có lối ra ngoài `SEALED` | Product Owner | Trước Sprint 2 | Sprint 2 dựng nhánh từ chối và sửa; cổng 2 là chỗ duy nhất không có |
 | A-038 | Quay lại trong hạn ở một `chat_session` mới | Product Owner | Trước Sprint 2 | AC-2.7 |
-| A-044 | Khoá idempotency của `document_halt_record` khi dừng hai lần cùng node | Product Owner | Trước Sprint 2 | Sprint 2 dựng `halt_for_human` và tiếp quản |
+| ~~A-044~~ | Khoá idempotency của `document_halt_record` — **`Đã chốt` 2026-09-26** (ADR-027 `Accepted`) | — | — | — |
+| A-077 | Tiếp quản chưa có lối soạn tay, chưa có lối ra cho `CONTENT_HASH_MISMATCH` | Product Owner | Trước Sprint 4 | Hạn gốc "trước UAT"; Sprint 4 là sprint sẵn sàng UAT |
+| ~~A-078~~ | Người mang permission duy nhất khác người thụ hưởng vắng dài ngày — **`Đã chốt` 2026-09-26**: cấp permission tạm (mục Runbook — cấp và thu hồi permission tạm của `11-ops.md`) | — | — | — |
 | A-053 | Huỷ ở `NEEDS_INFO`, `SUBMITTED`, `IN_REVIEW` | Product Owner | Trước Sprint 2 | Sprint 2 dựng `request_cancel` |
-| A-068 | Reset `clarification_count` | Product Owner — đợt sửa `03-agents.md` riêng, gộp cùng A-073 hướng (a) | Trước Sprint 2 | Hạn gốc "trước UAT"; kéo sớm lên vì Sprint 2 dựng EC-CV-01 (AC-2.8) |
+| ~~A-068~~ | Reset `clarification_count` — **`Đã chốt` 2026-09-25**, đợt sửa `03-agents.md` gộp cùng A-073 hướng (a) | — | — | Hạn gốc "trước UAT"; kéo sớm lên vì Sprint 2 dựng EC-CV-01 (AC-2.8) |
 | A-056 | Lượt chat chết giữa chừng không có điểm dừng có tên | Product Owner | Trước Sprint 3 | Phải có trước UAT; nếu quyết thêm một thao tác thì cần một sprint để dựng |
 | A-052 | Nhập hộ ở cả hai loại; D-006 đang sai theo hai chiều | Product Owner | Trước Sprint 3 | Hạn đổi ở vòng duyệt Phase 12 — thay hạn cũ "Phase 8 không được duyệt khi A-052 chưa giải" |
 | A-054 | Không thao tác nào đưa `document` sang `SUPERSEDED` | Product Owner | Sau UAT, cùng F5 | Không chạm hạng mục nào của Sprint đầu |
@@ -404,26 +412,26 @@ Chưa đánh số sprint: độ dài sprint chưa có (A-071), và thứ tự d�
 
 ## 12. Ma trận truy vết
 
-Mỗi dòng là một AC hay NFR của `01-prd.md`, và sprint mà nó **đạt lần đầu**. Sprint sau chỉ giữ cho nó không vỡ.
+Mỗi dòng là một AC hay NFR của `01-prd.md`, và sprint mà nó **đạt lần đầu**. Cột PRD dùng ID `AC-Fx.y` của `01-prd.md` (đợt sửa 2 sau Phase 13). F5 là `[Should]`, không có dòng. Sprint sau chỉ giữ cho nó không vỡ.
 
 | PRD | Nội dung, rút gọn | Sprint |
 |---|---|---|
-| F1 | Phân loại hoặc hỏi lại khi nhập nhằng | 1 (đường chính), 2 (EC-CV-03) |
-| F1 | Ngoài phạm vi có hướng xử lý thủ công, đúng cả khi kho rỗng | 2 (kho rỗng), 3 (có kho) |
-| F1 | Thu slot, chỉ `SUBMITTED` khi đủ điều kiện xử lý | 1 |
-| F1 | Nhiều nhu cầu một lượt; đổi loại giữa chừng; quay lại sau gián đoạn | 2 |
-| F2 | Render tại thời điểm `SUBMITTED` | 1 |
-| F2 | Chỉ điền biến; LLM chỉ sinh nội dung tự do | 1 |
-| F2 | Provenance `HR_PROFILE` trên màn hình duyệt | 1 |
-| F2 | Chỉ vào `PENDING_APPROVAL` khi đủ điều kiện trình duyệt | 1 (kiểm), 2 (nhánh trượt → `halt_for_human`) |
-| F3 | Hai cổng là hai quyết định | 1 |
-| F3 | Từ chối, yêu cầu sửa có lý do | 2 |
-| F3 | Cấp số đúng một lần, nguyên tử, không trùng khi đồng thời; `VOIDED` không tái sử dụng | 1 (cấp số), 2 (đồng thời, `VOIDED`) |
-| F3 | Mỗi quyết định một `audit_event` | 1 |
-| F3 | Bản render ở `SEALED`/`ISSUED` bất biến; không xoá cứng `ISSUED`; mô hình có `REVOKED`/`SUPERSEDED` | 1 (ứng dụng, local), 2 (tầng lưu trữ, Render) |
-| F4 | Trạng thái có diễn giải tiếng Việt; thiếu gì, sửa gì; hàng đợi chờ lâu nhất trước; `request` và artifact hiển thị riêng | 1 (hàng đợi), 3 (đủ) |
-| F6 | Thêm loại thứ ba không sửa code | 3 (diễn tập), 4 (UAT) |
-| F6 | Template có phiên bản, bản gốc bất biến; kiểm biến khi tải lên; import CSV có provenance; không kiểm thể thức | 3 |
+| AC-F1.1 | Phân loại hoặc hỏi lại khi nhập nhằng | 1 (đường chính), 2 (EC-CV-03) |
+| AC-F1.2 | Ngoài phạm vi có hướng xử lý thủ công, đúng cả khi kho rỗng | 2 (kho rỗng), 3 (có kho) |
+| AC-F1.3 | Thu slot, chỉ `SUBMITTED` khi đủ điều kiện xử lý | 1 |
+| AC-F1.4 · AC-F1.5 · AC-F1.6 | Nhiều nhu cầu một lượt; đổi loại giữa chừng; quay lại sau gián đoạn | 2 |
+| AC-F2.1 | Render tại thời điểm `SUBMITTED` | 1 |
+| AC-F2.2 · AC-F2.3 | Chỉ điền biến; LLM chỉ sinh nội dung tự do | 1 |
+| AC-F2.4 | Provenance `HR_PROFILE` trên màn hình duyệt | 1 |
+| AC-F2.5 | Chỉ vào `PENDING_APPROVAL` khi đủ điều kiện trình duyệt | 1 (kiểm), 2 (nhánh trượt → `halt_for_human`) |
+| AC-F3.1 | Hai cổng là hai quyết định | 1 |
+| AC-F3.2 | Từ chối, yêu cầu sửa có lý do | 2 |
+| AC-F3.3 · AC-F3.4 | Cấp số đúng một lần, nguyên tử, không trùng khi đồng thời; `VOIDED` không tái sử dụng | 1 (cấp số), 2 (đồng thời, `VOIDED`) |
+| AC-F3.5 | Mỗi quyết định một `audit_event` | 1 |
+| AC-F3.6 · AC-F3.7 · AC-F3.8 | Bản render ở `SEALED`/`ISSUED` bất biến; không xoá cứng `ISSUED`; mô hình có `REVOKED`/`SUPERSEDED` | 1 (ứng dụng, local), 2 (tầng lưu trữ, Render) |
+| AC-F4.1 → AC-F4.4 | Trạng thái có diễn giải tiếng Việt; thiếu gì, sửa gì; hàng đợi chờ lâu nhất trước; `request` và artifact hiển thị riêng | 1 (hàng đợi), 3 (đủ) |
+| AC-F6.1 | Thêm loại thứ ba không sửa code | 3 (diễn tập), 4 (UAT) |
+| AC-F6.2 → AC-F6.5 | Template có phiên bản, bản gốc bất biến; kiểm biến khi tải lên; import CSV có provenance; không kiểm thể thức | 3 |
 | NFR-01 | HITL hai cổng | 1 |
 | NFR-02 | Tách biệt trách nhiệm theo người thụ hưởng, đường thoát tự duyệt | 1 (chặn), 3 (nhập hộ, đường thoát) |
 | NFR-03 | Chế độ phi sản xuất: watermark, dải `TRIAL`, dấu thử nghiệm; đổi chế độ là hành động được ghi nhận | 1 (ba ràng buộc, lớp 1–2 của ADR-023), 4 (endpoint đổi chế độ, lớp 3) |
@@ -443,7 +451,7 @@ Không có AC nào của F1, F2, F3, F4, F6 hay NFR-01 → NFR-08 không có spr
 Mọi mục có owner và hạn ở `ASSUMPTIONS.md`. Mục này gom những gì Phase 12 và vòng duyệt của nó phát hiện.
 
 1. **A-075 — đã chốt** bằng ADR-025 ở đợt sửa ngày 2026-09-25, gộp cùng A-068 và A-073. Hệ quả còn mở: A-076 — thay đổi catalog qua F6 không đi qua regression gate; biện pháp bù ở AC-3.2 và AC-4.4.
-2. **`rate_limit_window` — PO chốt quyền theo cột của `04-data.md` là chuẩn.** Đề xuất migration `0005` cùng phần sửa `check_grants.py` ở `docs/design/proposals/migration-0005-rate-limit-window-column-grant.md`, **chưa áp**.
+2. **`rate_limit_window` — PO chốt quyền theo cột của `04-data.md` là chuẩn.** Đề xuất migration `0005` cùng phần sửa `check_grants.py` ở `docs/design/proposals/migration-0005-rate-limit-window-column-grant.md` — **đã áp** 2026-09-25.
 3. **Ký tự lạ trong `07-prompts.md` — đã sửa** thành "sinh lại" theo phép của PO (2026-09-25).
 4. **Owner và hạn của nợ Phase 8 trong `ASSUMPTIONS.md` — PO chấp nhận** (2026-09-25): owner là Product Owner, hạn là cổng sprint ở mục 10.
 5. **A-071, A-072 — vẫn mở, cổng trước Sprint 1.**

@@ -1,6 +1,6 @@
 # Phase 0 — Domain Discovery
 
-**Dự án:** BO-19 — Admin Service Desk Agent · **Phiên bản:** 0.11 · **Trạng thái:** Draft chờ duyệt
+**Dự án:** BO-19 — Admin Service Desk Agent · **Phiên bản:** 0.16 · **Trạng thái:** Draft chờ duyệt · **v0.12:** đợt sửa 2 sau Phase 13 — `APPROVED` của `request` nghĩa là đã ký (AUD-01); vế `delegation` của lập hộ cắt khỏi Sprint đầu (AUD-15); kiểu của `beneficiary_employee_id` (AUD-20) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.13:** đợt sửa 3 — cạnh `SUBMITTED → REJECTED` có thao tác đi qua, thêm `request CHANGES_REQUESTED → REJECTED`, `document DRAFT → ARCHIVED`, `APPROVED → ARCHIVED` qua thao tác tiếp quản (AUD-07, AUD-02 (d)); phần Phase 8 của D-006 đã làm (AUD-23 (e)) · **v0.14:** căn cứ bảo vệ dữ liệu cá nhân đổi sang Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP (AUD-26, A-080) — mục ngày 2026-09-26 (AUD-26) · **v0.15:** đợt sửa 4 sau Phase 13 — hạn của A-009 và mẫu `.docx` trỏ cổng 1.7, 1.6 của `12-roadmap.md`; con trỏ cũ (AUD-11) · **v0.16:** đợt sửa 5 sau Phase 13 — hai `TBD` của catalog trỏ A-002, ngưỡng EC-RB-04 trỏ A-012
 
 > File này chốt **từ vựng nghiệp vụ**: có những loại yêu cầu nào, mỗi loại cần dữ liệu gì, văn bản đi qua những trạng thái nào, ai được làm gì. Từ Phase 1 trở đi mọi tài liệu phải dùng đúng tên ở đây và ở [`GLOSSARY.md`](./GLOSSARY.md). File này **không** chọn công nghệ, **không** thiết kế API, **không** định nghĩa agent hay tool.
 
@@ -38,8 +38,8 @@ Bốn loại đầu lấy nguyên từ đề bài. Hai loại cuối là `[ĐỀ
 | `INTRODUCTION_LETTER` | Giấy giới thiệu | `document` | `tpl_introduction_letter` | `ADMIN_OFFICER` | Có — dấu tròn | TBD (A-002) | — |
 | `ROOM_BOOKING` | Đặt phòng họp | `room_booking` | Không có | `ADMIN_OFFICER` | Không | TBD (A-002) | `[Should]` |
 | `SEAL_REQUEST` | Yêu cầu đóng dấu cho văn bản ngoài | `seal_action` | Không có | `ADMIN_OFFICER` + `SIGNER` | Đây chính là hành vi được duyệt | TBD (A-002) | `[Could]` |
-| `INCOME_CONFIRMATION` `[ĐỀ XUẤT]` | Giấy xác nhận thu nhập | `document` | `tpl_income_confirmation` | `ADMIN_OFFICER` + phê duyệt dữ liệu lương | Có — dấu tròn | TBD | `[Could]` |
-| `BUSINESS_TRIP_ORDER` `[ĐỀ XUẤT]` | Quyết định cử đi công tác | `document` | `tpl_business_trip_order` | `SIGNER` | Có — dấu tròn | TBD | `[Could]` |
+| `INCOME_CONFIRMATION` `[ĐỀ XUẤT]` | Giấy xác nhận thu nhập | `document` | `tpl_income_confirmation` | `ADMIN_OFFICER` + phê duyệt dữ liệu lương | Có — dấu tròn | TBD (A-002) | `[Could]` |
+| `BUSINESS_TRIP_ORDER` `[ĐỀ XUẤT]` | Quyết định cử đi công tác | `document` | `tpl_business_trip_order` | `SIGNER` | Có — dấu tròn | TBD (A-002) | `[Could]` |
 
 Cột **Phạm vi** chỉ đánh dấu hạng mục sẽ bị cắt khỏi Sprint đầu. Mức MoSCoW đầy đủ chốt ở mục Scope & priority của PRD.
 
@@ -80,7 +80,7 @@ Hệ quả: nhân viên **không** phải tự xin dấu cho giấy xác nhận 
 | `PER` | `PERSONAL` | Nhận dạng một cá nhân cụ thể |
 | `RES` | `RESTRICTED` | Định danh pháp lý, hoặc nội dung suy ra được tình trạng sức khoẻ, pháp lý, tài chính của cá nhân |
 
-Độ nhạy **không trùng với nguồn**. `purpose` và `work_content` là `USER_INPUT` nhưng ở mức `RES` vì text tự do có thể chứa "đi làm thủ tục tại Toà án" hay "khám tại bệnh viện"; `date_of_birth` là `HR_PROFILE` nhưng chỉ ở mức `PER`. Mọi rule về mask log, giữ hay xoá dữ liệu khi `EXPIRED`, và hiển thị trên màn hình duyệt đều phải key theo cột này, **không** theo danh sách tên trường viết tay. Slot nào được vào prompt gửi LLM **không** do cột này quyết định, mà do danh sách input tự khai của từng prompt module (NFR-05 của PRD). Ánh xạ ba mức này sang phân loại của Nghị định 13/2023/NĐ-CP `[CẦN XÁC MINH]` — chưa có văn bản gốc trong `docs/reference/`.
+Độ nhạy **không trùng với nguồn**. `purpose` và `work_content` là `USER_INPUT` nhưng ở mức `RES` vì text tự do có thể chứa "đi làm thủ tục tại Toà án" hay "khám tại bệnh viện"; `date_of_birth` là `HR_PROFILE` nhưng chỉ ở mức `PER`. Mọi rule về mask log, giữ hay xoá dữ liệu khi `EXPIRED`, và hiển thị trên màn hình duyệt đều phải key theo cột này, **không** theo danh sách tên trường viết tay. Slot nào được vào prompt gửi LLM **không** do cột này quyết định, mà do danh sách input tự khai của từng prompt module (NFR-05 của PRD). Ánh xạ ba mức này sang phân loại của Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP (A-080) `[CẦN XÁC MINH]` — chưa có văn bản gốc trong `docs/reference/`.
 
 **Quy tắc cứng:** agent **không bao giờ** được suy diễn giá trị của slot `USER_INPUT` từ ngữ cảnh hội thoại, từ yêu cầu cũ, hay từ hồ sơ nhân viên. Thiếu thì hỏi lại.
 
@@ -112,7 +112,7 @@ Trách nhiệm khi văn bản sai vì dữ liệu nhân sự sai thuộc về ng
 | Slot | Kiểu | Nguồn | Nhạy cảm | Bắt buộc | Rule kiểm tra |
 |---|---|---|---|---|---|
 | `requester_employee_code` | string | `SYSTEM` | `INT` | ✔ | Lấy từ phiên đăng nhập, không cho sửa |
-| `beneficiary_employee_id` | string | `SYSTEM` | `INT` | ✔ | Người thụ hưởng văn bản. Mặc định bằng `requester_employee_code`; người có `request.create_on_behalf` được đặt khác. Là căn cứ của quy tắc tách biệt trách nhiệm ở mục 7.3 |
+| `beneficiary_employee_id` | uuid | `SYSTEM` | `INT` | ✔ | Người thụ hưởng văn bản — **id** của `employee`, không phải mã nhân viên. Mặc định là người tạo; người có `request.create_on_behalf` được đặt khác. Là căn cứ của quy tắc tách biệt trách nhiệm ở mục 7.3 |
 | `full_name` | string | `HR_PROFILE` | `PER` | ✔ | Chỉ đọc. Lệch so với lời nhân viên khai thì chặn và báo phòng HC |
 | `department_name` | string | `HR_PROFILE` | `INT` | ✔ | Chỉ đọc |
 | `job_title` | string | `HR_PROFILE` | `INT` | ✔ | Chỉ đọc |
@@ -136,7 +136,7 @@ Mọi slot nguồn `HR_PROFILE` ở bảng này chịu ba ràng buộc provenanc
 | Slot | Kiểu | Nguồn | Nhạy cảm | Bắt buộc | Rule kiểm tra |
 |---|---|---|---|---|---|
 | `requester_employee_code` | string | `SYSTEM` | `INT` | ✔ | Từ phiên đăng nhập |
-| `bearer_employee_code` | string | `USER_INPUT` | `INT` | ✔ | Người mang giấy, đồng thời là `beneficiary_employee_id`. Mặc định bằng requester. Nếu khác → bắt buộc có `delegation` hoặc permission `request.create_on_behalf`, xem EC-IL-01 |
+| `bearer_employee_code` | string | `USER_INPUT` | `INT` | ✔ | Người mang giấy, đồng thời là `beneficiary_employee_id`. Mặc định bằng requester. Nếu khác → người lập bắt buộc có permission `request.create_on_behalf`, xem EC-IL-01. Vế `delegation` là `[Should]`, cắt khỏi Sprint đầu (AUD-15) |
 | `bearer_full_name`, `bearer_job_title` | string | `HR_PROFILE` | `PER` | ✔ | Chỉ đọc, tra theo `bearer_employee_code` |
 | `bearer_national_id` | string | `HR_PROFILE` | `RES` | ○ | PII mức cao. Bắt buộc khi `recipient_org` là cơ quan nhà nước (A-013) |
 | `recipient_org` | string | `USER_INPUT` | `PER` | ✔ | Không rỗng |
@@ -223,7 +223,8 @@ stateDiagram-v2
     CHANGES_REQUESTED --> SUBMITTED: soan lai va gui lai
     CHANGES_REQUESTED --> CANCELLED: nhan vien huy
     IN_REVIEW --> REJECTED: tu choi kem ly do
-    IN_REVIEW --> APPROVED: duyet
+    CHANGES_REQUESTED --> REJECTED: tiep quan tu choi
+    IN_REVIEW --> APPROVED: da ky
     APPROVED --> FULFILLED: artifact da den trang thai cuoi
     FULFILLED --> [*]
     REJECTED --> [*]
@@ -243,9 +244,9 @@ stateDiagram-v2
 | `SUBMITTED` | Nhân viên đã xác nhận gửi, chưa ai nhận xử lý | `EMPLOYEE` |
 | `IN_REVIEW` | Đã vào hàng đợi duyệt của phòng HC | Hệ thống |
 | `CHANGES_REQUESTED` | Người duyệt trả lại kèm yêu cầu sửa cụ thể | Người có `document.request_changes` |
-| `APPROVED` | Đã duyệt, đang thực thi artifact | Người có `document.approve_content` |
+| `APPROVED` | **Đã ký** — `document` đã rời `PENDING_SIGNATURE`; đang hoàn tất artifact: đóng dấu, phát hành. Duyệt nội dung **không** đưa `request` tới đây (AUD-01) | Người có `document.sign`, trong thao tác `document_sign` |
 | `FULFILLED` | Artifact đã tới trạng thái cuối — `document` `ISSUED`, hoặc `room_booking` `CONFIRMED` | Hệ thống |
-| `REJECTED` | Từ chối, bắt buộc có `rejection_reason` | Người có `document.reject` |
+| `REJECTED` | Từ chối, bắt buộc có `rejection_reason` | Người có `document.reject` — qua `document_reject` ở cổng 1, hoặc qua lối ra `REJECT_REQUEST` của `document_takeover_resolve` khi `document_graph` đã dừng: từ `SUBMITTED` ("không đủ điều kiện theo quy chế"), `IN_REVIEW` hoặc `CHANGES_REQUESTED` (mục Dừng có kiểm soát và tiếp quản của `08-hitl.md`) |
 | `CANCELLED` | Nhân viên tự huỷ khi chưa `APPROVED` | `EMPLOYEE` |
 | `EXPIRED` | Hết hạn chờ nhân viên bổ sung thông tin (A-014) | Hệ thống |
 
@@ -276,7 +277,9 @@ stateDiagram-v2
     REVOKED --> ARCHIVED
     SUPERSEDED --> ARCHIVED
     REJECTED --> ARCHIVED
-    CHANGES_REQUESTED --> ARCHIVED: request bi huy
+    CHANGES_REQUESTED --> ARCHIVED: ban nhap bi bo
+    DRAFT --> ARCHIVED: tiep quan tu choi
+    APPROVED --> ARCHIVED: tiep quan tu choi
     ARCHIVED --> [*]
 ```
 
@@ -294,7 +297,7 @@ stateDiagram-v2
 | `ISSUED` | Đã cấp số và phát hành cho nhân viên | Permission `document.issue` · thời điểm **duy nhất** cấp `document_number` |
 | `REVOKED` | Thu hồi hoặc huỷ hiệu lực | Bắt buộc có `revocation_reason` và người quyết định |
 | `SUPERSEDED` | Bị một văn bản mới thay thế | Trỏ tới `document` thay thế |
-| `ARCHIVED` | Kết thúc vòng đời hoạt động, chỉ còn giá trị lưu vết. **Hai đường vào khác loại:** (1) văn bản đã đi hết vòng đời — từ `ISSUED` khi hết thời hạn hiệu lực, hoặc từ `REVOKED`, `SUPERSEDED`, `REJECTED`; (2) **bản nháp bị bỏ** vì `request` bị huỷ trong lúc `document` đang ở `CHANGES_REQUESTED` — chưa từng có hiệu lực, nên không "hết" hiệu lực | Đường vào thứ hai **bắt buộc** có `archive_reason` (A-035). Thời hạn lưu TBD (A-010). Bảng mã `archive_reason`: Phase 8 |
+| `ARCHIVED` | Kết thúc vòng đời hoạt động, chỉ còn giá trị lưu vết. **Hai đường vào khác loại:** (1) văn bản đã đi hết vòng đời — từ `ISSUED` khi hết thời hạn hiệu lực, hoặc từ `REVOKED`, `SUPERSEDED`, `REJECTED`; (2) **bản nháp bị bỏ** — chưa từng ký, chưa từng có hiệu lực, nên không "hết" hiệu lực: `request` bị huỷ khi `document` đang ở `CHANGES_REQUESTED`, hoặc người tiếp quản từ chối yêu cầu khi `document` đang dừng ở `DRAFT`, `CHANGES_REQUESTED` hay `APPROVED` | Đường vào thứ hai **bắt buộc** có `archive_reason` (A-035). Thời hạn lưu TBD (A-010). Bảng mã `archive_reason`: mục Bảng mã của `08-hitl.md` |
 
 **Ba bất biến của vòng đời này:**
 
@@ -324,14 +327,14 @@ stateDiagram-v2
 
 ## 6. Cấp số văn bản
 
-Ràng buộc nghiệp vụ; cơ chế thực thi thuộc Phase 4.
+Ràng buộc nghiệp vụ; cơ chế thực thi ở mục Sổ số văn bản của `04-data.md` (ADR-011).
 
 - **Sổ văn bản** (`document_register`) là nguồn sự thật duy nhất về số văn bản. Mỗi bản ghi gắn với một `document` hoặc mang trạng thái `VOIDED`. Thiết kế này giả định tổ chức là một pháp nhân đơn nhất dùng một dãy số duy nhất (A-001).
 - **Thời điểm cấp số:** đúng lúc `document` chuyển sang `ISSUED`, không sớm hơn. Cấp số ở `DRAFT` sẽ tạo lỗ hổng số mỗi khi bản nháp bị từ chối.
 - **Chống trùng số:** việc cấp số phải là thao tác nguyên tử trên sổ. Hai yêu cầu phát hành đồng thời không bao giờ nhận cùng một số.
 - **Chống lỗ hổng số:** nếu giao dịch phát hành thất bại **sau** khi đã cấp số, số đó được đánh dấu `VOIDED` kèm lý do và **không bao giờ tái sử dụng**. Sổ ưu tiên tính giải trình được hơn tính liên tục của dãy số.
 - **Định dạng số: cấu hình được, không hardcode.** Ký hiệu văn bản chứa phần viết tắt tên cơ quan nên khác nhau theo từng tổ chức — hardcode là sai trong **mọi** trường hợp, không chỉ trường hợp chưa biết giá trị. Vì vậy Phase 4 thiết kế `document_register` với định dạng số cấu hình được **ngay từ đầu**, không chờ ai xác nhận. Đây là yêu cầu gốc, không phải chi phí phát sinh (ADR-001).
-- **Giá trị định dạng cụ thể:** `TBD` (A-009), do Product Owner xác minh **trước Phase 4**.
+- **Giá trị định dạng cụ thể:** `TBD` (A-009), do Product Owner xác minh — hạn ở cổng 1.7 của `12-roadmap.md` (A-009; hạn "trước Phase 4" cũ đã đổi ở vòng duyệt Phase 6).
 - **Chu kỳ:** giả định đánh số theo năm và reset đầu năm (A-009).
 
 ### 6.1 Thể thức văn bản — ai chịu trách nhiệm
@@ -340,8 +343,8 @@ Thể thức **không** do agent sinh và **không** thuộc Phase 7. Khung th�
 
 | Việc | Owner | Mốc |
 |---|---|---|
-| Xác minh định dạng số và ký hiệu văn bản | Product Owner | Trước Phase 4 |
-| Chuẩn bị mẫu `.docx` đúng thể thức | Product Owner | Trước Phase 7 |
+| Xác minh định dạng số và ký hiệu văn bản | Product Owner | Cổng 1.7 của `12-roadmap.md` (A-009) |
+| Chuẩn bị mẫu `.docx` đúng thể thức | Product Owner | Cổng 1.6 của `12-roadmap.md` (A-058) |
 | Nghiệm thu thể thức của văn bản phát hành | **Không có ai** — đây là câu trả lời cuối, không phải khoảng trống chờ lấp | Không có. Hệ quả: hệ thống chạy ở **chế độ phi sản xuất**, mục 6.2 (A-018, D-009) |
 
 **Quy tắc trích dẫn pháp lý:** cấm viết số điều, khoản, điểm hay phụ lục của Nghị định 30/2020/NĐ-CP **từ trí nhớ**. Chỉ trích dẫn khi văn bản gốc đã có trong `docs/reference/`. Chưa có thì ghi `[CẦN XÁC MINH]` và chỉ mô tả ở mức nguyên tắc. Áp dụng cho mọi phase.
@@ -360,7 +363,7 @@ Không có ai nghiệm thu thể thức (A-018). Hệ quả **không** phải l�
 | 2 | `document_register` cấp số từ **dải số riêng**, tách hẳn khỏi dải số thật | `register_series = TRIAL`. Dải thật `OFFICIAL` không bị tiêu tốn số nào, nên khi chuyển sang sản xuất thì sổ số thật vẫn sạch |
 | 3 | **Không đóng dấu thật.** Cổng `PENDING_SEAL` vẫn chạy đủ quy trình duyệt, nhưng `seal_action` được ghi là thử nghiệm và không có thao tác đóng dấu vật lý nào xảy ra | Giữ nguyên cổng HITL để luồng được kiểm thử thật, chỉ chặn hành vi vật lý |
 
-**Tháo chế độ này là một quyết định có người ký, không phải một cờ cấu hình.** Thiết kế phải làm cho việc chuyển sang `PRODUCTION` đòi hỏi một hành động được ghi nhận và quy trách nhiệm được — không phải sửa biến môi trường rồi deploy lại. Cơ chế cụ thể thuộc Phase 9 và Phase 11.
+**Tháo chế độ này là một quyết định có người ký, không phải một cờ cấu hình.** Thiết kế phải làm cho việc chuyển sang `PRODUCTION` đòi hỏi một hành động được ghi nhận và quy trách nhiệm được — không phải sửa biến môi trường rồi deploy lại. Cơ chế: ADR-020 (endpoint có permission), ADR-023 (khoá theo môi trường).
 
 Ba ràng buộc này phải trở thành **NFR ở Phase 1**, không chỉ nằm trong `ASSUMPTIONS.md`.
 
@@ -454,6 +457,8 @@ Thiết kế **không giả định** tổ chức có từ hai người duyệt 
 
 Ràng buộc này phải trở thành một **NFR ở Phase 1** và một rule kiểm tra ở **Phase 9**. **Phase 8** thiết kế chi tiết: cách hệ thống xác định "chỉ còn một người đủ quyền", màn hình nhập lý do, mục tự duyệt trên dashboard, và quan hệ giữa đường thoát này với cơ chế uỷ quyền khi vắng mặt.
 
+**Đã làm ở đợt sửa 3 sau Phase 13:** phép xác định "chỉ còn một người đủ quyền", bước mang cờ `self_approved` của từng thao tác, và đường thoát cho ràng buộc hai người ở bước thu hồi — mục Tách biệt trách nhiệm — D-006 và mục Thu hồi văn bản của `08-hitl.md`, ADR-027. Quan hệ với uỷ quyền chốt khi uỷ quyền `[Should]` được kích hoạt (AUD-15).
+
 ---
 
 ## 8. Edge case nghiệp vụ
@@ -492,7 +497,7 @@ Mỗi loại yêu cầu có tối thiểu 2 ca ở chiều thứ hai. Toàn bộ
 
 | ID | Tình huống | Hành vi đúng |
 |---|---|---|
-| EC-IL-01 | Trợ lý xin giấy giới thiệu **hộ người khác** | `bearer_employee_code` khác `requester_employee_code` → bắt buộc có `delegation` còn hiệu lực. Chưa có thì `NEEDS_INFO`. Agent **không** được tra hồ sơ người thứ ba trước khi uỷ quyền được xác nhận |
+| EC-IL-01 | Trợ lý xin giấy giới thiệu **hộ người khác** | `bearer_employee_code` khác `requester_employee_code` → **Sprint đầu:** người lập bắt buộc có `request.create_on_behalf`; không có thì `NEEDS_INFO`. `[Should]`: thêm đường qua `delegation` còn hiệu lực do người mang giấy trao — cắt khỏi Sprint đầu, thiết kế giữ nguyên (AUD-15). Agent **không** được tra hồ sơ người thứ ba trước khi uỷ quyền được xác nhận |
 | EC-IL-02 | Xin hiệu lực **6 tháng** cho một chuyến làm việc một ngày | Chặn nếu vượt trần `valid_to - valid_from` (TBD, A-011); dưới trần nhưng lệch bất thường so với `work_content` thì cảnh báo cho người duyệt, không tự cắt ngắn |
 | EC-IL-03 | Giới thiệu tới **cơ quan nhà nước** | Đặt `requires_seal = true` với `seal_type = ORGANIZATION_ROUND` và bắt buộc có `bearer_national_id`. Thiếu thì không được vào hàng đợi duyệt |
 
@@ -503,7 +508,7 @@ Mỗi loại yêu cầu có tối thiểu 2 ca ở chiều thứ hai. Toàn bộ
 | EC-RB-01 | **Trùng lịch** — phòng đã có `room_booking` ở `HELD` hoặc `CONFIRMED` chồng khung giờ | Chặn, nêu rõ đang trùng khung giờ nào, đề xuất phòng khác hoặc khung giờ khác. Tuyệt đối không ghi đè hay tự dời lịch người khác. Không tiết lộ chủ đề cuộc họp của người khác, chỉ nêu khung giờ bận |
 | EC-RB-02 | `attendee_count` **vượt sức chứa** phòng | Chặn, gợi ý phòng đủ sức chứa trong cùng khung giờ |
 | EC-RB-03 | Đặt **ngoài giờ làm việc** hoặc ngày lễ | Không chặn cứng; gắn cờ và đưa vào hàng đợi duyệt kèm ghi chú để người có `booking.confirm` quyết |
-| EC-RB-04 | Huỷ **sau khi đã `CONFIRMED`**, sát giờ họp | Cho huỷ, giải phóng phòng ngay, ghi nhật ký người huỷ và thời điểm. `request` vẫn ở `FULFILLED` — đây là ví dụ artifact sống tiếp sau khi request đã đóng. Ngưỡng "sát giờ" và chính sách no-show: TBD |
+| EC-RB-04 | Huỷ **sau khi đã `CONFIRMED`**, sát giờ họp | Cho huỷ, giải phóng phòng ngay, ghi nhật ký người huỷ và thời điểm. `request` vẫn ở `FULFILLED` — đây là ví dụ artifact sống tiếp sau khi request đã đóng. Ngưỡng "sát giờ" và chính sách no-show: TBD (A-012) |
 
 ### Đóng dấu — cổng `PENDING_SEAL` và `SEAL_REQUEST` `[Could]`
 
@@ -528,7 +533,7 @@ Mỗi loại yêu cầu có tối thiểu 2 ca ở chiều thứ hai. Toàn bộ
 | D-005 | Mô hình hoá theo permission chứ không role cứng. `document.issue` và `document.apply_seal` tách rời | Anh chốt, 2026-09-11 |
 | D-006 | Căn cứ chặn của tách biệt trách nhiệm là `beneficiary_employee_id == approver_employee_id`, **không** phải người tạo yêu cầu — nhập hộ rồi duyệt là hợp lệ. Không giả định tổ chức có hai người duyệt: có đường thoát tự duyệt nhưng bắt buộc lý do, cờ `self_approved`, audit mức `WARNING`, hiện trên dashboard. Cấm mọi phương án tự động bỏ qua kiểm tra. Chi tiết ở Phase 8 | Anh chốt, 2026-09-11 |
 | D-007 | Khung thể thức nằm trong template `.docx` do người soạn; agent chỉ điền biến; prompt Phase 7 chỉ sinh nội dung tự do. Thể thức không thuộc phạm vi Phase 7 → **ADR-001** | Anh chốt, 2026-09-11 |
-| D-008 | Phase 4 thiết kế `document_register` với định dạng số **cấu hình được ngay từ đầu**. Owner xác minh: định dạng số trước Phase 4, mẫu `.docx` trước Phase 7. Nghiệm thu thể thức chưa có người có thẩm quyền — ghi nhận ở NFR-03 của PRD là không có người đảm nhận, cấm bịa owner. Cấm trích dẫn điều khoản ND 30/2020 từ trí nhớ. A-009 giữ mức rủi ro cao, mitigation là HITL, residual risk ghi rõ ở mục 6.1 | Anh chốt, 2026-09-11 |
+| D-008 | Phase 4 thiết kế `document_register` với định dạng số **cấu hình được ngay từ đầu**. Owner xác minh: định dạng số trước Phase 4, mẫu `.docx` trước Phase 7. *Cập nhật (đợt sửa 4 sau Phase 13), không đổi quyết định: hai hạn nay ở cổng 1.7 và 1.6 của `12-roadmap.md`.* Nghiệm thu thể thức chưa có người có thẩm quyền — ghi nhận ở NFR-03 của PRD là không có người đảm nhận, cấm bịa owner. Cấm trích dẫn điều khoản ND 30/2020 từ trí nhớ. A-009 giữ mức rủi ro cao, mitigation là HITL, residual risk ghi rõ ở mục 6.1 | Anh chốt, 2026-09-11 |
 | D-009 | Không có ai nghiệm thu thể thức — câu trả lời cuối, A-018 đóng ở trạng thái `Mở` vĩnh viễn cho tới khi có người. Hệ quả: hệ thống chỉ chạy ở **chế độ phi sản xuất** (watermark không gỡ được · dải số `TRIAL` riêng · không đóng dấu thật). Tháo chế độ là quyết định có người ký, không phải cờ cấu hình. Vào NFR ở Phase 1 | Anh chốt, 2026-09-11 |
 | D-010 | `document` được render **tại thời điểm `request` chuyển sang `SUBMITTED`** — đủ hai biên: không bao giờ **trước** `SUBMITTED`, và không hoãn tới sau đó. *Không trước:* yêu cầu chưa đủ điều kiện xử lý theo định nghĩa ở PRD F1, render sẽ tạo ra đúng thứ ADR-001 muốn tránh — một artifact trông như văn bản thật nhưng không phải; và mỗi lần sửa slot phải render lại, tốn token cho thứ chưa chắc được gửi. *Không hoãn tới `IN_REVIEW`:* `IN_REVIEW` không phải trạng thái do hệ thống điều khiển — nó phụ thuộc việc có người mở hàng đợi hay không, nên yêu cầu gửi chiều thứ Sáu sẽ không có văn bản tới sáng thứ Hai mà không vì bất kỳ lý do kỹ thuật nào. Văn bản tồn tại trước khi có người nhận xử lý là **điều mong muốn**: cán bộ mở hàng đợi là thấy bản nháp sẵn. Hệ quả: ở `EXPIRED` **không tồn tại file nháp nào**. Tính năng cho nhân viên xem trước, nếu cần, là một feature riêng có tên và ở mức `[Could]`, **không** phải hệ quả ngầm của việc render sớm | Anh chốt, 2026-09-11 |
 
@@ -559,5 +564,5 @@ Những thứ còn chưa xác minh đều là **giả định có cách xác min
 | Mã | Chưa có gì | Ai gỡ |
 |---|---|---|
 | A-002 | Số liệu vận hành thật — không có baseline cho metric ở mục Goals & metrics của PRD | Product Owner, phỏng vấn phòng hành chính |
-| A-009 | Giá trị định dạng số và ký hiệu văn bản | Product Owner, trước Phase 4 |
+| A-009 | Giá trị định dạng số và ký hiệu văn bản | Product Owner, cổng 1.7 của `12-roadmap.md` |
 | A-018 | Người nghiệm thu thể thức — đã trả lời là không có; cách thay thế là xin văn bản mẫu thật để đối chiếu ngược | Product Owner |

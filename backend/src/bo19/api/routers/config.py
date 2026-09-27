@@ -1,1 +1,1 @@
-"""Router config — nhóm endpoint config theo 05-api.md:2. Chưa handler (DESIGN MODE)."""
+"""Router config — nhóm endpoint config theo 05-api.md mục Endpoint. Chưa handler (DESIGN MODE)."""

@@ -38,7 +38,7 @@ Ví dụ tự thêm dòng nơi nhận, tự đổi cách ghi ngày tháng cho h�
 - Agent **chỉ điền biến** đã được khai báo trong template. Agent không tạo biến mới, không sửa văn bản ngoài vùng biến, không đổi bố cục.
 - Prompt soạn thảo ở Phase 7 **chỉ sinh phần nội dung tự do**: lý do, mục đích, nội dung công việc cụ thể. Phần này cũng được đưa vào template qua một biến.
 - Vì vậy **thể thức văn bản không thuộc phạm vi Phase 7.** Phase 7 không viết prompt mô tả thể thức, không kiểm tra thể thức trong output validation, và không nhận trách nhiệm về thể thức.
-- Mẫu `.docx` đúng thể thức do **Product Owner chuẩn bị trước Phase 7**.
+- Mẫu `.docx` đúng thể thức do **Product Owner chuẩn bị trước Phase 7**. *Cập nhật (đợt sửa 4 sau Phase 13), không đổi quyết định: hạn nay ở cổng 1.6 của `12-roadmap.md`.*
 
 ### Quy tắc trích dẫn kèm theo quyết định này
 

@@ -1,6 +1,6 @@
 # Data Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.3 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 4 (S–V) — mục ngày 2026-09-13 (lần 2) của `CHANGELOG.md` · **v0.3:** `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.4:** ai ghi `llm_usage` và mã `BUDGET_UNAVAILABLE` (ADR-019), `template_version.required_fonts` (ADR-015), kết quả xác minh A-045 và A-047 — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.5:** dòng `schema_migration` ở mục 1.1 — vòng duyệt Phase 6 (B1), mục ngày 2026-09-13 (lần 9) · **v0.6:** `employee_credential`, `rate_limit_window` — Phase 9, mục ngày 2026-09-14 (lần 2) của `CHANGELOG.md` · **v0.7:** hai bảng trên chuyển sang `backend/migrations/schema/0002_phase9_security.sql`, `contracts/schema.sql` trả về nguyên trạng đóng Phase 6 — mục ngày 2026-09-14 (lần 3) của `CHANGELOG.md` · **v0.8:** mục 5.1/5.3 — object metadata (`x-bo19-pin-reason`, `x-bo19-document-number`) trên bản ghim `ISSUED`, phục vụ đối soát sau khôi phục — quyết định của PO duyệt đề xuất từ Phase 11, không đổi `contracts/schema.sql`; mục ngày 2026-09-25 của `CHANGELOG.md` · **v0.9:** mục 3.8 — `ix_job_latest_by_document`, bảng của `backend/migrations/schema/0003_job_failed_index.sql`, không của `contracts/schema.sql`; cùng mục ngày · **v0.10:** dòng `llm_usage` — định dạng `trace_id` (ADR-024), `CHECK` ở `backend/migrations/schema/0004_observability_trace_id.sql`, không ở `contracts/schema.sql`; mục ngày 2026-09-25 của `CHANGELOG.md`
+**Phiên bản:** 0.18 · **Trạng thái:** Draft chờ duyệt · **v0.2:** vòng duyệt Phase 4 (S–V) — mục ngày 2026-09-13 (lần 2) của `CHANGELOG.md` · **v0.3:** `render_integrity_check` — mục ngày 2026-09-13 (lần 3) · **v0.4:** ai ghi `llm_usage` và mã `BUDGET_UNAVAILABLE` (ADR-019), `template_version.required_fonts` (ADR-015), kết quả xác minh A-045 và A-047 — Phase 6, mục ngày 2026-09-13 (lần 8) · **v0.5:** dòng `schema_migration` ở mục 1.1 — vòng duyệt Phase 6 (B1), mục ngày 2026-09-13 (lần 9) · **v0.6:** `employee_credential`, `rate_limit_window` — Phase 9, mục ngày 2026-09-14 (lần 2) của `CHANGELOG.md` · **v0.7:** hai bảng trên chuyển sang `backend/migrations/schema/0002_phase9_security.sql`, `contracts/schema.sql` trả về nguyên trạng đóng Phase 6 — mục ngày 2026-09-14 (lần 3) của `CHANGELOG.md` · **v0.8:** mục 5.1/5.3 — object metadata (`x-bo19-pin-reason`, `x-bo19-document-number`) trên bản ghim `ISSUED`, phục vụ đối soát sau khôi phục — quyết định của PO duyệt đề xuất từ Phase 11, không đổi `contracts/schema.sql`; mục ngày 2026-09-25 của `CHANGELOG.md` · **v0.9:** mục 3.8 — `ix_job_latest_by_document`, bảng của `backend/migrations/schema/0003_job_failed_index.sql`, không của `contracts/schema.sql`; cùng mục ngày · **v0.10:** dòng `llm_usage` — định dạng `trace_id` (ADR-024), `CHECK` ở `backend/migrations/schema/0004_observability_trace_id.sql`, không ở `contracts/schema.sql`; mục ngày 2026-09-25 của `CHANGELOG.md` · **v0.11:** hai index của `0006` (`ix_request_waiting`, `ix_document_awaiting_issue`); dòng trỏ tới `contracts/README.md` ở mục 1.1; số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 1) của `CHANGELOG.md` · **v0.12:** đoạn `delegation` — vế lập hộ cắt khỏi Sprint đầu (AUD-15); hai câu permission còn ghi "chưa có" ở mục Lọc quyền và so khớp phòng ban, mục Lưu trữ và xoá dữ liệu cá nhân và mục Open Questions (AUD-05, AUD-11) — mục ngày 2026-09-26 (đợt sửa 2) · **v0.13:** migration `0007` — bước `TAKEOVER`, `ISSUE_ORDER`, `REVOKE_INITIATE`, `REVOKE_CONFIRM`; `decision_record.takeover_resolution`; khoá idempotency mới của `document_halt` (A-044); ba bảng mã thành `CHECK`; `ARCHIVED` từ `DRAFT`, `APPROVED` (AUD-02, AUD-07, ADR-027) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.14:** dòng hồ sơ nhân viên của mục 8.1 trỏ về quyền của chủ thể ở `09-security.md` (AUD-24) — mục ngày 2026-09-26 (đợt sửa 3b) · **v0.15:** ba cột cấp tạm của `employee_permission_grant` (migration `0008`, A-078) — mục ngày 2026-09-26 (quyết định PO sau đợt 3b) · **v0.16:** căn cứ bảo vệ dữ liệu cá nhân đổi sang Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP (AUD-26, A-080) — mục ngày 2026-09-26 (AUD-26) · **v0.17:** đợt sửa 4 sau Phase 13 — con trỏ cũ (AUD-11); `audit.read_all` và object mồ côi (AUD-24) · **v0.18:** đợt sửa 5 sau Phase 13 — ngữ nghĩa uỷ quyền và phép kiểm D-006 trỏ về nơi đã quyết; tham chiếu theo tên mục (AUD-17)
 
 > File này chốt mô hình dữ liệu vật lý: bảng, cột, ràng buộc, index, quyền trên cơ sở dữ liệu, lưu trữ file, vector collection và chính sách xoá dữ liệu cá nhân. Contract DDL nằm ở [`contracts/schema.sql`](./contracts/schema.sql). File này **không** thiết kế API (Phase 5), màn hình duyệt hay bảng mã lý do (Phase 8), AuthZ chi tiết (Phase 9), và **không** định cỡ thời hạn hay tham số vận hành (Phase 11).
 
@@ -45,11 +45,13 @@ Tên entity, trạng thái, enum, agent, tool dùng đúng `GLOSSARY.md`. Ánh x
 | *Tầng kỹ thuật* — `llm_usage` | `llm_usage` | Kế toán token; không chứa văn bản |
 | *Tầng kỹ thuật* — `embedding_collection` | `embedding_collection`, `procedure_chunk_embedding_v1` | Một bảng cho mỗi phiên bản collection (ADR-012) |
 | *Tầng kỹ thuật* — `employee_credential` | `employee_credential` | Credential đăng nhập, tách khỏi `employee`; ghi bằng thao tác vận hành seed, ngoài `tool_layer` (Phase 9, A-048). Bảng của `0002_phase9_security.sql`, không của `contracts/schema.sql` |
-| *Tầng kỹ thuật* — `rate_limit_window` | `rate_limit_window` | Đếm lần thử theo cửa sổ thời gian cho rate limit đăng nhập (Phase 9, mục 6 của `09-security.md`). Bảng của `0002_phase9_security.sql`, không của `contracts/schema.sql` |
+| *Tầng kỹ thuật* — `rate_limit_window` | `rate_limit_window` | Đếm lần thử theo cửa sổ thời gian cho rate limit đăng nhập (Phase 9, mục Rate limit của `09-security.md`). Bảng của `0002_phase9_security.sql`, không của `contracts/schema.sql` |
 | *Tầng kỹ thuật* — sổ migration | `schema_migration` | **Không** nằm trong `schema.sql`. Trình chạy migration tạo nó; `bo19_migrator` sở hữu; `bo19_app` chỉ `SELECT`, cho bước kiểm khởi động. Mang tên file, loại schema hay data, sha256, thời điểm áp. Thêm ở vòng duyệt Phase 6 (ADR-017) |
 | Checkpoint của `orchestrator` | Bảng của LangGraph | **Không** nằm trong `schema.sql` (mục 8.6) |
 
 **Độ phủ (V3):** bảng trên phủ đủ **47 bảng** của toàn bộ schema — **45 bảng của `contracts/schema.sql`** (đóng nguyên vẹn ở Phase 6, không đổi), cộng **2 bảng của `backend/migrations/schema/0002_phase9_security.sql`** (`employee_credential`, `rate_limit_window`, Phase 9 — mục Migration bổ sung của Phase 9 trong `09-security.md`). `schema.sql` tự nó vẫn 45 bảng; con số 47 là của hệ schema sau migration, không phải của một file. Mỗi bảng hoặc là entity của chính nó, hoặc thuộc một dòng có lý do tách ở cột ghi chú; không bảng nào đứng ngoài ánh xạ.
+
+**Schema sau migration ở đâu:** `contracts/README.md` liệt mọi migration sau `schema.sql` và nói rõ `schema.sql` dừng ở trạng thái đóng Phase 6 (AUD-03 của `13-audit.md`).
 
 **Không có** bảng `department`. **Không** version cấu hình `request_type`. Lý do và hệ quả ở mục 3.2 và mục 6.3.
 
@@ -81,13 +83,13 @@ Tên entity, trạng thái, enum, agent, tool dùng đúng `GLOSSARY.md`. Ánh x
 | Sửa theo cột | `chat_message`, `template_version`, `document_register`, `document_register_counter`, `document_register_entry`, `notification`, `procedure_document_version`, `embedding_collection` | `UPDATE` chỉ trên các cột liệt kê trong `schema.sql`. Ví dụ `document_register_entry` chỉ sửa được `status`, `voided_at`, `void_reason` |
 | Đủ vòng đời | `job` | Kể cả dọn job đã xong |
 | Chỉ đọc — ghi bằng thao tác vận hành | `employee_credential` | Seed và đổi mật khẩu chạy bằng `bo19_migrator`, ngoài `tool_layer`; `bo19_app` chỉ `SELECT` để kiểm đăng nhập (H1, A-048). Bảng của `backend/migrations/schema/0002_phase9_security.sql` — **không** trong `contracts/schema.sql` (Phase 9, mục Migration bổ sung của Phase 9 trong `09-security.md`) |
-| Đếm và dọn theo cửa sổ | `rate_limit_window` | `INSERT`, `UPDATE (attempt_count)`, `DELETE` khi cửa sổ hết hạn. Khác nhóm "Chỉ thêm": giá trị đổi tại chỗ và dòng bị xoá, nhưng là sổ sách kỹ thuật nên không `audit_event`, không `row_version` (A-055, mục 6 của `09-security.md`). Bảng của `backend/migrations/schema/0002_phase9_security.sql` — **không** trong `contracts/schema.sql` (Phase 9) |
+| Đếm và dọn theo cửa sổ | `rate_limit_window` | `INSERT`, `UPDATE (attempt_count)`, `DELETE` khi cửa sổ hết hạn. Khác nhóm "Chỉ thêm": giá trị đổi tại chỗ và dòng bị xoá, nhưng là sổ sách kỹ thuật nên không `audit_event`, không `row_version` (A-055, mục Rate limit của `09-security.md`). Bảng của `backend/migrations/schema/0002_phase9_security.sql` — **không** trong `contracts/schema.sql` (Phase 9) |
 
-**Không dùng row-level security.** Trong phạm vi Phase 4 không có nhu cầu lọc hiển thị nào phải đặt ở tầng DB. Lọc quyền xem theo phòng ban là việc của Phase 9; nếu Phase 9 chọn row-level security cho **việc lọc**, đó là quyết định của Phase 9, không phải công cụ bất biến.
+**Không dùng row-level security.** Trong phạm vi Phase 4 không có nhu cầu lọc hiển thị nào phải đặt ở tầng DB. Lọc quyền xem theo phòng ban là việc của Phase 9 — đã chốt: giữ org-wide ở Sprint đầu, không dùng row-level security (mục Row-level theo phòng ban của `09-security.md`).
 
 **Giới hạn — nói thẳng.**
 
-- Role sở hữu vẫn sửa được mọi thứ. Ranh giới tin cậy vì vậy là credential của `bo19_migrator`: ai giữ, dùng khi nào, và việc dùng nó có để lại vết không — thuộc Phase 9 và Phase 11. Bất biến ở đây chặn **ứng dụng**, kể cả khi ứng dụng có lỗi hay bị prompt injection khai thác. Nó không chặn người vận hành cơ sở dữ liệu.
+- Role sở hữu vẫn sửa được mọi thứ. Ranh giới tin cậy vì vậy là credential của `bo19_migrator`: ai giữ, dùng khi nào, và việc dùng nó có để lại vết không — ADR-022 và mục Secret management trên Render của `09-security.md`. Bất biến ở đây chặn **ứng dụng**, kể cả khi ứng dụng có lỗi hay bị prompt injection khai thác. Nó không chặn người vận hành cơ sở dữ liệu.
 - Quyền theo cột không phân biệt được *giá trị*. `bo19_app` sửa được `document_register_entry.status`, nên về quyền nó có thể chuyển sang `VOIDED` cả một dòng đã gắn với văn bản `ISSUED`. Chặn điều đó là việc của `document_number_assign`; `ck_document_issued_complete` chỉ bảo đảm document `ISSUED` luôn trỏ tới một dòng sổ.
 
 ### 1.4 Dữ liệu danh mục nạp ở đâu
@@ -97,13 +99,13 @@ Tên entity, trạng thái, enum, agent, tool dùng đúng `GLOSSARY.md`. Ánh x
 | Danh mục | Cách nạp |
 |---|---|
 | `permission`, `role`, `role_permission` | **Data migration** có phiên bản, tách khỏi schema migration, chạy bằng `bo19_migrator`. Nội dung lấy từ mục Permission và vai trò của `00-domain.md`. Viết ở Phase 9: `backend/migrations/data/0001_permission_catalog.sql` |
-| `employee_role`, `employee_permission_grant` | Data migration hoặc script vận hành chạy bằng `bo19_migrator`. Không có màn hình quản trị trong phạm vi — vai trò quản trị hệ thống không được mô hình hoá (mục Permission và vai trò của `00-domain.md`). Cấp lẻ cho người cụ thể chưa seed được ở thời điểm thiết kế — chưa có nhân viên thật (mục 3.2 của `09-security.md`) |
+| `employee_role`, `employee_permission_grant` | Data migration hoặc script vận hành chạy bằng `bo19_migrator`. Không có màn hình quản trị trong phạm vi — vai trò quản trị hệ thống không được mô hình hoá (mục Permission và vai trò của `00-domain.md`). Cấp lẻ cho người cụ thể chưa seed được ở thời điểm thiết kế — chưa có nhân viên thật (mục Đường nạp thật của `09-security.md`) |
 | `employee` | Import CSV qua ứng dụng, permission `employee.import` (D-002) |
 | `request_type`, `slot_definition` | Luồng cấu hình của F6 qua ứng dụng. Bản đầu cho hai loại của Sprint đầu nạp bằng data migration. Permission `request_type.manage` — Phase 9, A-042, cùng file `0001_permission_catalog.sql` ở trên |
 | `document_register`, `document_register_format` | Qua ứng dụng; bản đầu nạp bằng data migration khi Product Owner có giá trị (A-009) |
 | `template*` | Tải lên qua F6, permission `template.manage` |
 | `embedding_collection` | Dòng của một phiên bản collection đi cùng migration tạo bảng của phiên bản đó, **sau khi** model được chọn (A-028). Trước lúc đó không có collection `ACTIVE` nào, và `procedure_retrieval` trả danh sách rỗng — đúng nhánh "không có căn cứ" đã thiết kế cho kho rỗng |
-| Mã `archive_reason`, `reason_code` của `document_halt` | Bảng mã thuộc Phase 8. DB chỉ kiểm hình dạng mã |
+| Mã `archive_reason`, `reason_code` của `document_halt`, `event_code` của `notification` | Bảng mã ở mục Bảng mã của `08-hitl.md`. Migration `0007` biến cả ba thành `CHECK` theo bảng mã — thêm mã là thêm một migration |
 | `room` | Chờ A-012 |
 | `operating_mode_change` | Không nạp gì. Chưa có dòng nào nghĩa là `NON_PRODUCTION` — mặc định an toàn |
 
@@ -116,7 +118,7 @@ Tên entity, trạng thái, enum, agent, tool dùng đúng `GLOSSARY.md`. Ánh x
 | Enum (bảng.cột) | Giá trị | Vượt ranh giới? | Ở đâu |
 |---|---|---|---|
 | `request_slot.value_status` | `PROVIDED` · `PROPOSED` · `CONFIRMED` · `SYSTEM_SET` · `ERASED` | **Có** | Màn hình xác nhận của nhân viên (D-002), màn hình duyệt, API chat |
-| `approval_step.step_kind`, `approval_step.status` | `CONTENT_REVIEW` · `SIGNATURE` · `SEAL` · `BOOKING_CONFIRM`; `OPEN` · `DECIDED` · `CANCELLED` | **Có** | Hàng đợi duyệt, API |
+| `approval_step.step_kind`, `approval_step.status` | `CONTENT_REVIEW` · `SIGNATURE` · `SEAL` · `BOOKING_CONFIRM` · `TAKEOVER` · `ISSUE_ORDER` · `REVOKE_INITIATE` · `REVOKE_CONFIRM` (bốn giá trị cuối: migration `0007`); `OPEN` · `DECIDED` · `CANCELLED` | **Có** | Hàng đợi duyệt, hàng đợi tiếp quản, API |
 | `chat_session.close_reason` | `IDLE_TIMEOUT` · `REQUEST_EXPIRED` | **Có** | Câu báo khi nhân viên quay lại (EC-CV-04, A-038) |
 | `document_render.render_kind` | `DRAFT` · `FINAL` | **Có** | API tải file: bản nháp hay bản phát hành |
 | `document_render_pin.pin_reason` | `APPROVED_CONTENT` · `ISSUED` | **Có** | Payload `audit_event` của việc ghim |
@@ -126,7 +128,7 @@ Tên entity, trạng thái, enum, agent, tool dùng đúng `GLOSSARY.md`. Ánh x
 | `template_variable.kind`, `template_version.status` | Mục 3.3 | **Có** | Màn hình tải template của F6 |
 | `document_register.reset_policy` | `YEARLY` · `NEVER` | **Có** | Cấu hình sổ |
 | `audit_event.actor_kind` | `EMPLOYEE` · `SYSTEM` | **Có** | Màn hình nhật ký |
-| `notification.event_code`, `document_halt.reason_code` | Chưa có bảng mã | **Có**, khi có bảng mã (Phase 8) | Hộp thông báo, màn hình tiếp quản |
+| `notification.event_code`, `document_halt.reason_code`, `decision_record.takeover_resolution` | Mục Bảng mã và mục Dừng có kiểm soát và tiếp quản của `08-hitl.md` | **Có** — đã nâng lên `GLOSSARY.md` ở đợt sửa 3 | Hộp thông báo, màn hình tiếp quản |
 | `job.job_type`, `job.status`, `graph_thread.status`, `stored_object.purpose`, `embedding_collection.status`, `embedding_collection.distance_metric` | Mục 3.8, mục 5, mục 6 | Không | Chỉ DB và `observability` |
 | `llm_usage.model_tier`, `llm_usage.outcome` | Mục 3.8 | Không — trừ khi Phase 11 đưa chúng lên một màn hình cho người dùng | Tổng hợp chi phí |
 
@@ -250,9 +252,9 @@ erDiagram
 
 **`permission`** (`code` dạng `entity.action`, PK) · **`role`** (`code` viết HOA, PK) · **`role_permission`** (PK ghép) · **`employee_role`** (PK ghép, `granted_at`) — danh mục, nạp bằng data migration.
 
-**`employee_permission_grant`** — quyền cấp lẻ ngoài gói vai trò: `id`, `employee_id`, `permission_code`, `granted_at`, `revoked_at` (✔, không trước `granted_at`).
+**`employee_permission_grant`** — quyền cấp lẻ ngoài gói vai trò: `id`, `employee_id`, `permission_code`, `granted_at`, `revoked_at` (✔, không trước `granted_at`). **Cấp tạm** (A-078, migration `0008`): thêm `grant_reason`, `approved_by_employee_id`, `expected_revoke_on` — có đủ cả ba hoặc không có cái nào (`ck_permission_grant_temporary_complete`); lý do không rỗng; người duyệt khác người được cấp. Quy trình ở mục Runbook — cấp và thu hồi permission tạm của `11-ops.md`.
 
-**`delegation`** `[Should]` — `delegator_employee_id` và `delegate_employee_id` (phải khác nhau), `permission_code` là quyền được uỷ, `valid_from` < `valid_to`, `revoked_at` ✔. Ở ca EC-IL-01, người mang giấy uỷ cho người lập quyền tạo yêu cầu nhân danh mình. Ngữ nghĩa uỷ quyền khi vắng mặt cho người duyệt thuộc Phase 8; bảng chỉ chốt hình dạng.
+**`delegation`** `[Should]` — `delegator_employee_id` và `delegate_employee_id` (phải khác nhau), `permission_code` là quyền được uỷ, `valid_from` < `valid_to`, `revoked_at` ✔. Ở ca EC-IL-01, người mang giấy uỷ cho người lập quyền tạo yêu cầu nhân danh mình — **vế này cắt khỏi Sprint đầu** (AUD-15 của `13-audit.md`): lập hộ trong Sprint đầu chỉ qua `request.create_on_behalf`. Bảng giữ nguyên, không đổi DDL. Ngữ nghĩa uỷ quyền khi vắng mặt cho người duyệt: chốt khi uỷ quyền `[Should]` được kích hoạt. Sprint đầu cắt vế lập hộ (AUD-15); người duyệt vắng mặt dùng cấp permission tạm (A-078) *(cập nhật ở đợt sửa 5 sau Phase 13 — trước đó ghi "thuộc Phase 8", Phase 8 không làm)*; bảng chỉ chốt hình dạng.
 
 | Index | Lý do |
 |---|---|
@@ -405,6 +407,7 @@ Slot chưa có dòng nào là slot còn thiếu. **Bằng chứng lưu dạng v�
 | `ix_request_created_by` | F4: nhân viên xem yêu cầu của mình, mới nhất trước |
 | `ix_request_chat_session` — partial | `load_turn` đọc `request` gắn với phiên hiện tại |
 | `ix_request_open_due` — partial, bốn trạng thái mở sau `SUBMITTED` | Quét SLA và escalation (Phase 8) |
+| `ix_request_waiting (status_changed_at, id)` — partial, bốn trạng thái mở sau `SUBMITTED` | `GET /requests?scope=ALL` — chờ lâu nhất trước (F4). **Bảng của `backend/migrations/schema/0006_waiting_order_indexes.sql`, không của `contracts/schema.sql`** |
 
 ### 3.5 Văn bản
 
@@ -426,7 +429,7 @@ Slot chưa có dòng nào là slot còn thiếu. **Bằng chứng lưu dạng v�
 | `final_render_id`, `issued_register_entry_id`, `issued_date`, `issued_at` | | ✔ | — | Bắt buộc cả bốn ở `ISSUED`, `REVOKED`, `SUPERSEDED`. `issued_register_entry_id` **chỉ** được có sau `ISSUED`: số tồn tại trong khoảng hoàn tất phát hành nhưng chưa gắn vào `document` |
 | `supersedes_document_id` | uuid | ✔ | — | FK tới `document`, `UNIQUE`: một văn bản bị thay thế bởi tối đa một văn bản |
 | `archived_from_status`, `archived_at` | text, timestamptz | ✔ | — | Có cả hai khi và chỉ khi `ARCHIVED`. `archived_from_status` ∈ {`ISSUED`, `REVOKED`, `SUPERSEDED`, `REJECTED`, `CHANGES_REQUESTED`} |
-| `archive_reason` | text | ✔ | — | **Bắt buộc khi `archived_from_status = 'CHANGES_REQUESTED'`** — đường vào thứ hai của `ARCHIVED` (mục 3.5.1). Bảng mã: Phase 8 |
+| `archive_reason` | text | ✔ | — | **Bắt buộc khi `archived_from_status` ∈ {`CHANGES_REQUESTED`, `DRAFT`, `APPROVED`}** — đường vào thứ hai của `ARCHIVED`, bản nháp bị bỏ (mục 3.5.1; `DRAFT`, `APPROVED` thêm ở migration `0007` cho lối ra `REJECT_REQUEST` của thao tác tiếp quản). `ck_document_archive_reason_value` ép mỗi mã đi với đúng đường vào của nó; bảng mã ở mục Bảng mã của `08-hitl.md`. `ck_document_seal_determined` cho phép `requires_seal` `NULL` ở `ARCHIVED` từ `DRAFT` |
 
 Năm khoá ngoại ghép với chính `id` của `document` — tới bản nháp hiện hành, bản đã duyệt, bản cuối, quyết định duyệt và dòng sổ đã cấp — bảo đảm mọi thứ `document` trỏ tới **thuộc về đúng nó**. Không có quyền `DELETE`.
 
@@ -447,6 +450,7 @@ Giá trị hiện hành của một biến là dòng `PASSED` có (`revision_rou
 |---|---|
 | `ix_document_request` | Tra `document` của một `request` (F4, `load_turn`) |
 | `ix_document_review_queue` — partial, ba trạng thái chờ người | Hàng đợi duyệt sắp theo thời gian chờ (F4) |
+| `ix_document_awaiting_issue (status_changed_at, id)` — partial, `SIGNED`/`SEALED` | `GET /issue-queue` — chờ lâu nhất trước. **Bảng của `backend/migrations/schema/0006_waiting_order_indexes.sql`** |
 | `uq_free_content_attempt` | Idempotency; cũng phục vụ tra giá trị hiện hành theo thứ tự giảm dần |
 
 #### 3.5.1 Khi `request` bị huỷ lúc `document` đang `CHANGES_REQUESTED` — A-035
@@ -472,7 +476,7 @@ Ràng buộc "`request` `CANCELLED` thì `document` của nó không còn ở tr
 | Cột | Kiểu | Null | Mặc định | Ràng buộc · ghi chú |
 |---|---|---|---|---|
 | `document_id`, `room_booking_id` | uuid | ✔ | — | Đúng một trong hai. `room_booking_id` chỉ đi với `BOOKING_CONFIRM` `[Should]` |
-| `step_kind` | text | — | — | `CONTENT_REVIEW` · `SIGNATURE` · `SEAL` · `BOOKING_CONFIRM` |
+| `step_kind` | text | — | — | `CONTENT_REVIEW` · `SIGNATURE` · `SEAL` · `BOOKING_CONFIRM` · `TAKEOVER` · `ISSUE_ORDER` · `REVOKE_INITIATE` · `REVOKE_CONFIRM` (migration `0007`, ADR-027). `ISSUE_ORDER` và `REVOKE_INITIATE` **sinh ra đã `DECIDED`** trong giao dịch của thao tác — chỉ là chỗ mang cờ tự duyệt, không bao giờ `OPEN`, không dựng hàng đợi trên chúng. `TAKEOVER` mở cùng giao dịch với `document_halt`; `REVOKE_CONFIRM` mở ở bước khởi tạo thu hồi |
 | `level` | smallint | — | 1 | Định tuyến nhiều cấp `[Should]` |
 | `revision_round` | integer | — | 0 | — |
 | `assignee_employee_id` | uuid | ✔ | — | `NULL`: bất kỳ ai mang permission tương ứng |
@@ -492,18 +496,18 @@ Ràng buộc "`request` `CANCELLED` thì `document` của nó không còn ở tr
 | `SIGNED` · `SEALED` | `document_sign` · `document_apply_seal` |
 | `ISSUE_ORDERED` | `document_issue` — đây chính là **lệnh phát hành**, không có bảng riêng |
 | `REVOKE_INITIATED` · `REVOKE_CONFIRMED` | `document_revoke_initiate` · `document_revoke_confirm` |
-| `TAKEOVER_RESOLVED` | Thao tác tiếp quản sau `halt_for_human` — Phase 8 |
+| `TAKEOVER_RESOLVED` | `document_takeover_resolve` — tiếp quản sau `halt_for_human` (mục Dừng có kiểm soát và tiếp quản của `08-hitl.md`) |
 | `BOOKING_CONFIRMED` | `booking_confirm` `[Should]` |
 
-Cột: `actor_employee_id` (—, luôn là người thật), `delegation_id` ✔, `request_id` (—), `document_id` ✔ (bắt buộc với các loại chạm văn bản), `approval_step_id` ✔ (bắt buộc với `APPROVED`, `CHANGES_REQUESTED`, `SIGNED`, `SEALED`, `BOOKING_CONFIRMED`), `document_halt_id` ✔ (có khi và chỉ khi `TAKEOVER_RESOLVED`), `change_scope` (có khi và chỉ khi `CHANGES_REQUESTED`), `change_targets` ✔ (chỉ với `CHANGES_REQUESTED`).
+Cột: `actor_employee_id` (—, luôn là người thật), `delegation_id` ✔, `request_id` (—), `document_id` ✔ (bắt buộc với các loại chạm văn bản), `approval_step_id` ✔ (bắt buộc với `APPROVED`, `CHANGES_REQUESTED`, `SIGNED`, `SEALED`, `BOOKING_CONFIRMED`, và — từ migration `0007` — `ISSUE_ORDERED`, `TAKEOVER_RESOLVED`, `REVOKE_INITIATED`, `REVOKE_CONFIRMED`), `document_halt_id` ✔ (có khi và chỉ khi `TAKEOVER_RESOLVED`), `takeover_resolution` ✔ (có khi và chỉ khi `TAKEOVER_RESOLVED`; `RETRY` · `REJECT_REQUEST` · `RETURN_TO_ISSUE_QUEUE`; migration `0007`), `change_scope` (có khi và chỉ khi `CHANGES_REQUESTED`), `change_targets` ✔ (chỉ với `CHANGES_REQUESTED`).
 
 **`decision_record_text`** — PK (`decision_record_id`, `text_kind`), `text_kind` ∈ {`CHANGE_REASON`, `REJECTION_REASON`, `REVOCATION_REASON`}, `body` không rỗng, `RES`. Tách khỏi `decision_record` vì hai nghĩa vụ đối nghịch: bản ghi quyết định phải **bất biến**, còn văn bản lý do — có thể mang dữ liệu cá nhân — phải **xoá được** khi hết hạn lưu (A-010). Bảng tách ra có quyền thêm và xoá, không có quyền sửa: lý do ghi một lần, xoá được, **không bao giờ bị viết lại**. Lý do bắt buộc với loại nào là kiểm của thao tác cổng, vì nó là ràng buộc giữa hai bảng.
 
-**`document_halt`** — `document_id`, `reason_code` (dạng mã viết HOA; bảng mã Phase 8), `at_node`, `revision_round`, `trace_id`. `UNIQUE (document_id, at_node, revision_round)` là idempotency của `document_halt_record` theo mục Tool Registry của `03-agents.md`. Chỉ thêm.
+**`document_halt`** — `document_id`, `reason_code` (bảng mã ở mục Bảng mã của `08-hitl.md`, `CHECK` từ migration `0007`), `at_node`, `revision_round`, `trace_id`, `takeover_step_id` (migration `0007`, `NOT NULL`, `UNIQUE`: bước `TAKEOVER` của lần dừng này). ~~`UNIQUE (document_id, at_node, revision_round)` là idempotency của `document_halt_record`~~ — **bỏ ở migration `0007` (A-044):** khoá đó gộp nhầm lần dừng thứ hai ở cùng node, cùng vòng sau một lần `RETRY`. Idempotency mới: `document` đã có bước `TAKEOVER` `OPEN` thì `document_halt_record` trả lại lần dừng của bước đó; `uq_approval_step_one_open` chặn hai bước `TAKEOVER` cùng mở (ADR-027). Chỉ thêm.
 
 **`operating_mode_change` không phải một `decision_record`.** `decision_record` luôn gắn một `request` (`request_id` `NOT NULL`), và nghĩa của nó — đánh thức thread nào, đổi trạng thái gì — xác định theo `request` và `document`. Việc tháo chế độ phi sản xuất không thuộc `request` nào.
 
-**Không viết được bằng DDL, thuộc thao tác cổng và Phase 9:** người thụ hưởng không được duyệt (D-006); hai người khác nhau cho khởi tạo và xác nhận thu hồi. Cả hai cần dữ liệu từ dòng hoặc bảng khác.
+**Không viết được bằng DDL, thuộc thao tác cổng và Phase 9:** người thụ hưởng không được duyệt (D-006); hai người khác nhau cho khởi tạo và xác nhận thu hồi. Cả hai cần dữ liệu từ dòng hoặc bảng khác. *Cập nhật (đợt sửa 5 sau Phase 13): phép kiểm ở mục Tách biệt trách nhiệm — D-006 của `08-hitl.md`.*
 
 | Index | Lý do |
 |---|---|
@@ -557,7 +561,7 @@ Cột: `actor_employee_id` (—, luôn là người thật), `delegation_id` ✔
 
 **Ai ghi `llm_usage`:** `ai_gateway` — module sổ budget của nó, không phải node, **không** đi qua `tool_layer`, **không** sinh `audit_event`, vì đây là sổ sách kỹ thuật chứ không phải hành động nghiệp vụ. Nó là một trong **ba** mục của danh sách ngoại lệ đóng ghi ở mục Tool Registry của `03-agents.md`, và là **bảng duy nhất** `ai_gateway` được đọc hay ghi (ADR-019). Mỗi dòng được ghi trong một giao dịch riêng của `ai_gateway`, commit trước khi kết quả về tới node — kể cả dòng của hai ca từ chối `BUDGET_EXCEEDED` và `ALLOWLIST_REJECTED`, nên node chết ngay sau đó thì dòng vẫn còn. **`outcome` thêm mã `BUDGET_UNAVAILABLE` ở Phase 6:** không đọc được số token đã tiêu thì lời gọi bị từ chối, và ca đó không được ghi nhầm thành `BUDGET_EXCEEDED` (ADR-019).
 
-**`operating_mode_change`** — `from_mode`, `to_mode` (khác nhau), `decided_by_employee_id`, `decision_reference` (tham chiếu văn bản quyết định có người ký, không rỗng), `effective_at` (`UNIQUE`). Chỉ thêm. Chế độ hiện hành là dòng có `effective_at` lớn nhất đã tới; **chưa có dòng nào nghĩa là `NON_PRODUCTION`**, nên một cơ sở dữ liệu mới luôn khởi đầu ở chế độ an toàn. Cơ chế ký và xác nhận thuộc Phase 9 và Phase 11.
+**`operating_mode_change`** — `from_mode`, `to_mode` (khác nhau), `decided_by_employee_id`, `decision_reference` (tham chiếu văn bản quyết định có người ký, không rỗng), `effective_at` (`UNIQUE`). Chỉ thêm. Chế độ hiện hành là dòng có `effective_at` lớn nhất đã tới; **chưa có dòng nào nghĩa là `NON_PRODUCTION`**, nên một cơ sở dữ liệu mới luôn khởi đầu ở chế độ an toàn. Cơ chế ký và xác nhận: ADR-020, ADR-023.
 
 | Index | Lý do |
 |---|---|
@@ -565,7 +569,7 @@ Cột: `actor_employee_id` (—, luôn là người thật), `delegation_id` ✔
 | `ix_job_running_lease` — partial, `RUNNING` | Thu hồi job của worker đã chết khi lease hết hạn |
 | `uq_job_dedupe_pending` — partial | Hai lần enqueue cùng một việc — ví dụ hai job resume cho cùng một quyết định — không cùng chờ |
 | `ix_job_pending_by_document` — partial | Bộ phát hiện thread kẹt dạng (1): "không có job resume nào đang chờ" cho văn bản đó |
-| `ix_job_latest_by_document (subject_document_id, enqueued_at DESC)` — không partial | Cờ dẫn xuất `document.job_failed` (Phase 11, mục Background worker & Cron của `11-ops.md`) — cần đọc cả dòng `FAILED`, không chỉ `QUEUED`/`RUNNING`. **Bảng của `backend/migrations/schema/0003_job_failed_index.sql`, không của `contracts/schema.sql`** (đúng tiền lệ Phase 9, mục 3 của `06-structure.md`) |
+| `ix_job_latest_by_document (subject_document_id, enqueued_at DESC)` — không partial | Cờ dẫn xuất `document.job_failed` (Phase 11, mục Background worker & Cron của `11-ops.md`) — cần đọc cả dòng `FAILED`, không chỉ `QUEUED`/`RUNNING`. **Bảng của `backend/migrations/schema/0003_job_failed_index.sql`, không của `contracts/schema.sql`** (đúng tiền lệ Phase 9, mục Cây backend của `06-structure.md`) |
 | `ix_graph_thread_waiting` — partial, `WAITING` | Đếm thread đang chờ theo từng node `interrupt` trước khi deploy; bộ phát hiện thread kẹt |
 | `ix_graph_thread_to_purge` — partial, `ENDED` | `checkpoint_purge` nhặt thread đã kết thúc |
 | `ix_notification_inbox` | Hộp thông báo của một người |
@@ -750,7 +754,7 @@ Việc ghim xảy ra khi người thật bấm duyệt, thường sau nhiều gi
 
 **Hệ quả cho luồng request đồng bộ.** Chỉ một lần ghim nằm trong luồng request: ghim `APPROVED_CONTENT` trong `document_approve_content`. Việc ghim tự nó chỉ là một câu `INSERT` vào `postgresql`, cùng giao dịch với duyệt. Việc đọc object để kiểm checksum nằm ở `route_signing` và `finalize_issue`, cả hai trong `queue_worker`. Không thao tác cổng nào đọc `object_storage`, nên lo ngại A-025 cho biện pháp này **đã hết** — và hết vì phép kiểm đã về đúng chỗ, không phải vì nó được dời đi để lách giới hạn.
 
-**Sau khi trượt kiểm:** `document` đứng yên ở trạng thái lúc kiểm — `APPROVED` với bản đã duyệt, `SIGNED`/`SEALED` với bản cuối. Máy trạng thái không đổi. Cách tiếp quản — render lại từ đúng giá trị đã duyệt rồi ghim bản mới — thuộc thiết kế tiếp quản của Phase 8, cùng bảng mã lý do dừng.
+**Sau khi trượt kiểm:** `document` đứng yên ở trạng thái lúc kiểm — `APPROVED` với bản đã duyệt, `SIGNED`/`SEALED` với bản cuối. Máy trạng thái không đổi. ~~Cách tiếp quản — render lại từ đúng giá trị đã duyệt rồi ghim bản mới — thuộc thiết kế tiếp quản của Phase 8, cùng bảng mã lý do dừng.~~ **Sửa ở đợt sửa 3 sau Phase 13:** render lại từ đúng giá trị đã duyệt cho **cùng input**, nên trùng khoá và rơi vào ca (a) — nhận lại chính object đã hỏng, không ghi được bản mới. Lối tiếp quản thật: khôi phục byte ở tầng lưu trữ — versioning hay khoá đối tượng, yêu cầu T2 gửi A-024 — rồi `RETRY`; không khôi phục được thì `REJECT_REQUEST` với bản đã duyệt, hoặc `RETURN_TO_ISSUE_QUEUE` với bản cuối — lệnh phát hành mới mang số mới, tức input mới và khoá mới. Mã `RENDER_CHECKSUM_MISMATCH`, `RENDER_OBJECT_MISSING` ở mục Bảng mã của `08-hitl.md`.
 
 ### 5.5 Chuỗi bảo đảm bất biến của bản đã ghim
 
@@ -775,7 +779,7 @@ Thứ tự bắt buộc:
 3. Xoá object ở `object_storage`.
 4. Xoá dòng `stored_object`.
 
-Chết giữa bước 2 và 4 để lại object không còn trong DB: đó là **rò dung lượng**, không phải lỗi đúng sai. Phát hiện bằng đối chiếu danh sách object với DB (Phase 11). Thời điểm dọn: sau khi `document` tới trạng thái kết thúc, cộng một thời hạn `TBD` (A-010).
+Chết giữa bước 2 và 4 để lại object không còn trong DB: đó là **rò dung lượng**, không phải lỗi đúng sai. Phát hiện bằng đối chiếu danh sách object với DB — mục Runbook — đối chiếu object mồ côi của `11-ops.md`. Thời điểm dọn: sau khi `document` tới trạng thái kết thúc, cộng một thời hạn `TBD` (A-010).
 
 ---
 
@@ -842,7 +846,7 @@ Không có collection `ACTIVE` thì khởi động bình thường và `procedur
 - **Chỗ so khớp trong câu SQL của `procedure_retrieval`** là **bước đầu tiên**: một biểu thức bảng chung chọn tập chunk đủ điều kiện — phiên bản `is_active`, và (`procedure_visibility = 'ORG_WIDE'` hoặc mã phòng ban của người đang chat nằm trong `department_scope`). Hai kênh xếp hạng — lexical và vector — **chỉ chạy trên tập đó**, rồi mới gộp thứ hạng. Đó là lớp 1 của mục Retrieval trong `03-agents.md`: lọc **trước** khi xếp hạng, trong cùng một câu truy vấn.
 - **Mã phòng ban của người đang chat** lấy từ `employee` theo phiên đăng nhập, không bao giờ từ nội dung chat.
 - **Lớp 4** — đọc lại đoạn trích theo id để hiển thị — dùng lại đúng biểu thức điều kiện đó.
-- **Vế permission** của bộ lọc ("phòng ban **và permission** của người đang chat") chưa có permission nào được định nghĩa cho việc xem tài liệu quy trình. Thuộc Phase 9 (Open Questions).
+- **Vế permission** của bộ lọc ("phòng ban **và permission** của người đang chat") là `procedure.read_all`, cấp lẻ — thêm ở Phase 9 (A-043 `Đã chốt`). Bộ lọc thêm một nhánh `OR` cho permission này, vẫn lọc trước khi xếp hạng (mục AuthZ của `09-security.md`).
 
 **Hệ quả của việc không có bảng `department`:** CSV đổi mã một phòng ban mà `department_scope` không được cập nhật thì tài liệu `DEPARTMENT_ONLY` đó **không còn ai thấy**. Hỏng theo hướng mất chức năng, không theo hướng rò — cùng họ fail-closed với ADR-008. `procedure_ingest` đối chiếu mọi mã trong `department_scope` với mã đang có ở `employee` còn hoạt động và cảnh báo mã không tồn tại.
 
@@ -872,7 +876,7 @@ Bảng rỗng; không index nào cần dữ liệu mẫu; truy vấn trả danh 
 
 Trong suốt quá trình, truy vấn chạy trên collection cũ. Kho rỗng thì bước 2 không có việc gì và việc đổi diễn ra ngay.
 
-**(3) Thêm index ANN:** migration tạo index HNSW trên cột `embedding` của bảng collection `ACTIVE`, opclass L2 (`vector_l2_ops` — mục 4 của `docs/reference/pgvector-dimension-limits.md`). Kích hoạt khi tín hiệu "latency của `procedure_retrieval` đặt cạnh số chunk đang hiệu lực" phát ra — dòng ADR-012 ở bảng chỗ quan sát của Phase 11 trong `_PLAN.md`; ngưỡng đặt khi có số liệu thật (A-002, A-031). Thời lượng tạo index và ảnh hưởng của nó lên ghi giao dịch là đúng tín hiệu thứ hai của ADR-002, đã có chỗ quan sát ở Phase 11.
+**(3) Thêm index ANN:** migration tạo index HNSW trên cột `embedding` của bảng collection `ACTIVE`, opclass L2 (`vector_l2_ops` — mục FAQ của `docs/reference/pgvector-dimension-limits.md`). Kích hoạt khi tín hiệu "latency của `procedure_retrieval` đặt cạnh số chunk đang hiệu lực" phát ra — dòng ADR-012 ở bảng chỗ quan sát của Phase 11 trong `_PLAN.md`; ngưỡng đặt khi có số liệu thật (A-002, A-031). Thời lượng tạo index và ảnh hưởng của nó lên ghi giao dịch là đúng tín hiệu thứ hai của ADR-002, đã có chỗ quan sát ở Phase 11.
 
 **A-037 hôm nay không chặn gì — vì chưa có index ANN**, không phải vì giới hạn phiên bản. Nó thành ràng buộc cứng kể từ bước (3); khi đó `vector(1024)` nằm trong giới hạn index của mọi phiên bản mà nguồn mô tả (ADR-012).
 
@@ -905,7 +909,7 @@ Trong suốt quá trình, truy vấn chạy trên collection cũ. Kho rỗng th�
 - Danh mục permission không có quyền sửa hay xoá `audit_event` (mục Permission và vai trò của `00-domain.md`). Hai lớp khớp nhau: không người dùng nào có quyền nghiệp vụ đó, và ứng dụng không có quyền DB đó.
 - **Chưa có ở phase này:** bằng chứng chống sửa ở phía người vận hành DB — ví dụ chuỗi hash nối các bản ghi. `_PLAN.md` giao việc "chứng minh tính bất biến" cho Phase 8; nếu Phase 8 cần thêm cột thì đó là một migration thêm cột, không đổi cột nào đang có.
 
-**Ai xem:** `audit.read_own` và `audit.read_all`; lọc theo phòng ban thuộc Phase 9. **Thời hạn lưu:** A-010. Ứng dụng không xoá được; nếu luật lưu trữ cho phép hay buộc xoá khi hết hạn, đó là một thủ tục vận hành bằng role sở hữu, thiết kế cùng lúc với A-010.
+**Ai xem:** `audit.read_own` và `audit.read_all`; `audit.read_all` giữ org-wide ở Sprint đầu, cùng lập luận và cùng điều kiện kích hoạt lọc với `request.read_all` (mục Row-level theo phòng ban của `09-security.md`). **Thời hạn lưu:** A-010. Ứng dụng không xoá được; nếu luật lưu trữ cho phép hay buộc xoá khi hết hạn, đó là một thủ tục vận hành bằng role sở hữu, thiết kế cùng lúc với A-010.
 
 | Index | Lý do |
 |---|---|
@@ -918,7 +922,7 @@ Trong suốt quá trình, truy vấn chạy trên collection cũ. Kho rỗng th�
 
 ## 8. Lưu trữ và xoá dữ liệu cá nhân
 
-Nghĩa vụ theo Nghị định 13/2023/NĐ-CP — mục đích thu thập, thời hạn lưu, quyền của chủ thể — xử lý ở mức nghĩa vụ. Không trích điều khoản; bản gốc chưa có trong `docs/reference/` — `[CẦN XÁC MINH]`. Mọi thời hạn cuối cùng: `TBD` (A-010).
+Nghĩa vụ theo Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP (A-080) — mục đích thu thập, thời hạn lưu, quyền của chủ thể — xử lý ở mức nghĩa vụ. Không trích điều khoản; bản gốc chưa có trong `docs/reference/` — `[CẦN XÁC MINH]`. Mọi thời hạn cuối cùng: `TBD` (A-010).
 
 ### 8.1 Ma trận dữ liệu × sự kiện
 
@@ -933,7 +937,7 @@ Nghĩa vụ theo Nghị định 13/2023/NĐ-CP — mục đích thu thập, th�
 | Bản render đã ghim | `object_storage`, `document_render` | Không áp dụng | **Ứng dụng không bao giờ xoá** | Luật lưu trữ, A-010 |
 | Văn bản lý do | `decision_record_text` | Không áp dụng | Xoá dòng; `decision_record` giữ nguyên | A-010 |
 | `self_approval_reason` | `approval_step` | Không áp dụng | Giữ cùng bản ghi duyệt — trách nhiệm giải trình của D-006 | A-010 |
-| Hồ sơ nhân viên | `employee` | — | Nghỉ việc: `is_active = false`, không xoá dòng. Xoá hay ẩn danh, và quyền yêu cầu xoá của chủ thể: Phase 9 | A-010 |
+| Hồ sơ nhân viên | `employee` | — | Nghỉ việc: `is_active = false`, không xoá dòng. Xoá hay ẩn danh, và quyền của chủ thể: mục Quyền của chủ thể dữ liệu — ở mức nghĩa vụ của `09-security.md` — ẩn danh chưa có thao tác, A-079 | A-010 |
 | Checkpoint | Bảng của LangGraph | Không cần thao tác (ADR-008); phiên chứa `request` bị đóng và purge (mục 8.5) | Purge khi thread kết thúc (mục 8.6) | — |
 | `audit_event`, `llm_usage`, `notification`, `document_halt`, `job.payload` | | Không chứa PII theo luật của từng bảng | — | Phase 11, A-010 |
 
@@ -949,10 +953,10 @@ Nghĩa vụ theo Nghị định 13/2023/NĐ-CP — mục đích thu thập, th�
 | Nâng từ `INT` lên `PER` | Không xoá gì — `EXPIRED` giữ cả `INT` lẫn `PER` · vẫn ghi `audit_event` |
 | **Hạ mức**, bất kỳ | Không chạm dữ liệu cũ · **vẫn ghi `audit_event`** (Q3). Hạ mức là **nới** chính sách: từ đó về sau, giá trị lẽ ra bị xoá khi `EXPIRED` sẽ được giữ. Một thay đổi không đụng dữ liệu cũ nhưng đổi số phận dữ liệu tương lai vẫn phải để lại dấu vết |
 
-- **Nhãn PHÁ HUỶ (Q2).** Nâng lên `RES` là một thao tác phá huỷ dữ liệu, kích hoạt bởi một thay đổi cấu hình. Trong luồng cấu hình của F6 nó mang nhãn phá huỷ: người thực hiện phải thấy trước số dòng sẽ bị xoá giá trị rồi mới xác nhận. Giao diện thuộc Phase 8.
+- **Nhãn PHÁ HUỶ (Q2).** Nâng lên `RES` là một thao tác phá huỷ dữ liệu, kích hoạt bởi một thay đổi cấu hình. Trong luồng cấu hình của F6 nó mang nhãn phá huỷ: người thực hiện phải thấy trước số dòng sẽ bị xoá giá trị rồi mới xác nhận. Giao diện: mục Nhãn phá huỷ của `slot_sensitivity_change` ở `08-hitl.md` (đợt sửa 3b).
 - `request` ở trạng thái kết thúc khác — `FULFILLED`, `REJECTED`, `CANCELLED` — không thuộc luật `EXPIRED`; thời hạn của chúng ở A-010. Thao tác này không quét chúng.
-- **Log kỹ thuật đã ghi thì không sửa lại được.** Nâng một slot từ `INT` lên `RES` không che được giá trị đã từng xuất hiện không mask trong log trước đó; thời hạn giữ log thuộc Phase 11.
-- **Permission của thao tác này chưa tồn tại** — cả luồng cấu hình `request_type` của F6 chưa có permission (A-042).
+- **Log kỹ thuật đã ghi thì không sửa lại được.** Nâng một slot từ `INT` lên `RES` không che được giá trị đã từng xuất hiện không mask trong log trước đó; thời hạn giữ log: A-070.
+- **Permission của thao tác này:** `request_type.manage`, cấp lẻ — thêm ở Phase 9 (A-042 `Đã chốt`, mục AuthZ của `09-security.md`). *Bản trước ghi "chưa tồn tại"; sửa ở đợt sửa 2 sau Phase 13 (AUD-05).*
 
 **Cơ chế này KHÔNG phủ văn bản `chat_message` (Q4).** Tin nhắn thô xếp `RES` bằng một luật chung ở mục Memory của `03-agents.md`, không đi qua `slot_sensitivity`, và bị xoá khi `EXPIRED` bất kể slot nào được phân loại thế nào. Đó là **hai đường xoá khác nhau**: đổi phân loại slot không làm tin nhắn bị xoá sớm hơn hay muộn hơn.
 
@@ -1023,13 +1027,13 @@ Giao Phase 8, cùng cụm với A-029.
 
 1. **A-040 — Render có cho tạo role runtime không sở hữu bảng, và có cho chạy migration bằng một role khác không.** Toàn bộ mục 1.3 dựa trên câu trả lời "có" cho cả hai. Nếu "không", mọi bất biến ở mục 1.3, mục 4.3, mục 5.5 và mục 7 rơi về tầng ứng dụng, và thiết kế phải được xét lại — không phải chỉnh nhẹ.
 2. **A-041** — múi giờ của tổ chức, quyết định ngày cấp số và kỳ đánh số.
-3. **A-042** — luồng cấu hình `request_type` và slot schema của F6, kể cả `slot_sensitivity_change`, chưa có permission nào trong danh mục. Không tự thêm permission.
-4. **A-043** — vế permission của bộ lọc quyền tài liệu quy trình (mục 6.3) chưa có permission nào được định nghĩa.
-5. **A-044** — khoá idempotency (`document_id`, `at_node`, `revision_round`) của `document_halt_record`, chốt ở Phase 3, sẽ gộp nhầm hai lần dừng nếu sau khi tiếp quản graph lại dừng ở cùng node trong cùng vòng. Cơ chế tiếp quản thuộc Phase 8.
+3. **A-042** — ~~chưa có permission nào~~ **đã chốt ở Phase 9:** `request_type.manage`, cấp lẻ; `slot_sensitivity_change` dùng cùng permission.
+4. **A-043** — ~~chưa có permission nào~~ **đã chốt ở Phase 9:** `procedure.read_all`, cấp lẻ.
+5. **A-044** — ~~khoá idempotency (`document_id`, `at_node`, `revision_round`) của `document_halt_record`, chốt ở Phase 3, sẽ gộp nhầm hai lần dừng nếu sau khi tiếp quản graph lại dừng ở cùng node trong cùng vòng. Cơ chế tiếp quản thuộc Phase 8.~~ **Giải ở đợt sửa 3 sau Phase 13:** khoá theo bước `TAKEOVER` đang mở (mục 3.6, ADR-027).
 6. **A-045** — hành vi của checkpointer LangGraph: bảng, migration và quyền; lịch sử theo bước; có ghi cùng giao dịch với bảng ứng dụng không (mục 3.8, mục 8.6).
-7. **A-038** — đã cập nhật theo K4 và phát hiện ở mục 8.5; owner Phase 8.
+7. **A-038** — đã cập nhật theo K4 và phát hiện ở mục 8.5; owner Product Owner.
 8. **A-024 — ràng buộc mua sắm.** Nhà cung cấp `object_storage` bắt buộc có ghi có điều kiện, khoá đối tượng hoặc versioning (mục 5.4). Không nhà cung cấp nào đáp ứng thì ca ghi đè thành rủi ro chấp nhận, ghi ở mục Risk register của PRD kèm người chấp nhận.
 9. **A-046** — exclusion constraint cho `room_booking` `[Should]`: thiết kế đích, chờ xác minh (mục 3.9).
-10. **Kiểm toàn vẹn bản đã ghim** — đã làm theo phép của anh, bằng tool riêng `render_integrity_check` chứ không gộp vào `signing_route` (mục 5.4; lý do ở mục Tool Registry của `03-agents.md`). Cách tiếp quản sau khi trượt kiểm thuộc Phase 8.
+10. **Kiểm toàn vẹn bản đã ghim** — đã làm theo phép của anh, bằng tool riêng `render_integrity_check` chứ không gộp vào `signing_route` (mục 5.4; lý do ở mục Tool Registry của `03-agents.md`). Cách tiếp quản sau khi trượt kiểm: mục 5.4 và mục Dừng có kiểm soát và tiếp quản của `08-hitl.md` (đợt sửa 3 sau Phase 13).
 11. **Bảng chỗ quan sát của Phase 11 trong `_PLAN.md`** đã có hai dòng cho ADR-011 và ADR-012 (phép S3). Câu dẫn của khối đó vẫn ghi "điều kiện đảo ngược của ADR ở Phase 2"; không sửa vì phép S3 chỉ phủ cái bảng.
 

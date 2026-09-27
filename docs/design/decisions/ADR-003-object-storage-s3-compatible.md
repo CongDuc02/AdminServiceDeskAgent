@@ -23,7 +23,7 @@ Ràng buộc sản phẩm đã chốt ở AC của F3 (`01-prd.md`), không thư
 **Chọn C.**
 
 - `object_storage` là một dịch vụ S3-compatible bên ngoài Render. **Nhà cung cấp cụ thể và chi phí: `TBD`** (A-024) — không chốt ở phase này, không phải vì thiếu quyết đoán mà vì chọn vendor là quyết định vận hành/chi phí, không phải quyết định kiến trúc, và `CLAUDE.md` cấm bịa số liệu giá chưa xác minh.
-- Ràng buộc lên **interface**, chốt được ngay bất kể vendor: khoá đối tượng (object key) của bản render gắn với `document` ở `SEALED` hoặc `ISSUED` bắt buộc là **content-addressed** — gồm `document_id`, phiên bản/hash nội dung. `tool_layer` không bao giờ phát lệnh ghi (PUT/overwrite) lên một khoá đã tồn tại thuộc hai trạng thái này; mọi lần render tạo ra khoá mới.
+- Ràng buộc lên **interface**, chốt được ngay bất kể vendor: khoá đối tượng (object key) của bản render gắn với `document` ở `SEALED` hoặc `ISSUED` bắt buộc là **content-addressed** — gồm `document_id`, phiên bản/hash nội dung. `tool_layer` không bao giờ phát lệnh ghi (PUT/overwrite) lên một khoá đã tồn tại thuộc hai trạng thái này; mọi lần render tạo ra khoá mới. *Cập nhật (đợt sửa 4 sau Phase 13), không đổi quyết định: khoá là hash trên **input**, không trên byte đầu ra — trùng input thì dùng lại khoá và object đã ghi, ghi một lần (mục Khoá object theo input và ràng buộc ghi một lần của `03-agents.md`).*
 - Checksum của mỗi bản lưu ở PostgreSQL (bảng liên quan tới `document`, chi tiết ở Phase 4) để đối chiếu khi đọc — phát hiện được nếu object storage trả về nội dung sai khoá do lỗi phía nhà cung cấp.
 
 ## Consequences

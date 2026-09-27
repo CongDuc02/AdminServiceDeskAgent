@@ -1,6 +1,6 @@
 # Ops, Cost & Deployment — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.9 · **Trạng thái:** Draft chờ duyệt — bốn đề xuất diff đã áp; đợt sửa `03-agents.md` cho A-068 đã áp (2026-09-25); còn chờ lượt GLOSSARY/contract cho Phase 5, 8 · **v0.9:** mục 10.4 — trần `chat_session` 46.500 thành giá trị đang hiệu lực, sửa câu về phương án (b') — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md`
+**Phiên bản:** 0.13 · **Trạng thái:** Draft chờ duyệt — bốn đề xuất diff đã áp; đợt sửa `03-agents.md` cho A-068 đã áp (2026-09-25); lượt GLOSSARY/contract cho Phase 5, 8 đã chạy ở đợt sửa 2, 3 sau Phase 13 · **v0.11:** căn cứ bảo vệ dữ liệu cá nhân — A-080 (AUD-26) · **v0.10:** mục 14 — runbook cấp và thu hồi permission tạm (A-078 `Đã chốt`), mục ngày 2026-09-26 (quyết định PO sau đợt 3b) · **v0.9:** mục 10.4 — trần `chat_session` 46.500 thành giá trị đang hiệu lực, sửa câu về phương án (b') — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.12:** đợt sửa 4 sau Phase 13 — hai dòng chỗ quan sát (AUD-12); runbook object mồ côi, nơi lưu bản ghi eval (AUD-24); nội dung cũ (AUD-11) · **v0.13:** đợt sửa 5 sau Phase 13 — tham chiếu tới mục không tồn tại của `ASSUMPTIONS.md` (AUD-17); W3C Trace Context, quy đổi token `[CẦN XÁC MINH]` (AUD-21)
 
 > File này chốt vận hành trên Render: môi trường dev/staging/prod, cold start, worker nền, cron, migration, backup & restore, observability, dashboard SLA & tồn đọng, mô hình chi phí LLM, ngưỡng cảnh báo & cơ chế cắt chi phí, và định cỡ A-022. File này **không** thiết kế lại state machine, schema DB, endpoint API, hay `halt_for_human` — chỉ tham chiếu và bổ sung phần vận hành chưa phase nào chạm tới. Bốn thay đổi cần chạm phase đã đóng (`06-structure.md`, `04-data.md` ×2, `05-api.md`/`openapi.yaml`) được viết thành **đề xuất diff riêng**, duyệt từng cái một — **cả bốn đã áp**, PO duyệt lần lượt 2026-09-16 và 2026-09-25 — xem mục 13.
 
@@ -34,7 +34,7 @@ Ba môi trường **không chia sẻ** database hay object storage — mỗi mô
 | 2 | Bước kiểm khởi động mới — lệch giữa `BO19_ENVIRONMENT` và `operating_mode` hiện hành thì **Chặn**, không khởi động | Trạng thái đã nằm trong DB, bất kể đến bằng đường nào, nhưng chỉ kiểm lúc khởi động |
 | 3 | Chặn tại endpoint — `POST /operating-mode/transitions` từ chối chuyển sang `PRODUCTION` khi `BO19_ENVIRONMENT ≠ prod`, ghi `audit_event` mức `WARNING` qua thao tác `operating_mode_transition_reject` | Mọi lần gọi endpoint, tại thời điểm gọi, không chờ khởi động lại |
 
-Đề xuất diff cho bảng bước kiểm khởi động của `06-structure.md` (Lớp 2) và cho `05-api.md`/`openapi.yaml` (Lớp 3, mã lỗi mới) — chưa áp, xem mục 13.
+Đề xuất diff cho bảng bước kiểm khởi động của `06-structure.md` (Lớp 2) và cho `05-api.md`/`openapi.yaml` (Lớp 3, mã lỗi mới) — đã áp (mục 13).
 
 **Residual risk còn lại sau ba lớp:** một lần restore dữ liệu (không qua endpoint) chèn thẳng một dòng `operating_mode_change` mang `PRODUCTION` vào DB của `staging`, xảy ra **giữa** hai lần khởi động — Lớp 2 chỉ bắt ở lần khởi động kế tiếp, không tức thời; Lớp 3 không áp vì không đi qua endpoint. Chấp nhận, vì tần suất restore thấp hơn nhiều tần suất khởi động.
 
@@ -79,7 +79,7 @@ Cột bảng `job`, sáu `job_type`, cơ chế lease, bảng index — đã ch�
 
 Job `FAILED` vĩnh viễn **không tự động retry** — người xem alert enqueue lại thủ công sau khi sửa nguyên nhân.
 
-**`job_failed` — cờ dẫn xuất, chưa có chỗ đứng trong contract:** tính từ dòng `job` mới nhất trong `{resume_document_graph, finalize_issue}` cho một `document_id` (**không** gồm `render_document` — lý do ở bảng trên); bật khi dòng đó `status = FAILED`. Chưa có trong response nào của `05-api.md`; `ix_job_pending_by_document` là partial trên `QUEUED`/`RUNNING`, không phủ truy vấn `FAILED` theo `document_id` — cần index mới nếu contract dưới được duyệt. **Đề xuất diff cho `05-api.md`+`openapi.yaml`, chưa áp — mục 13.**
+**`job_failed` — cờ dẫn xuất, đã có trong contract (`DocumentSummary.job_failed`, đề xuất ở mục 13 đã áp):** tính từ dòng `job` mới nhất trong `{resume_document_graph, finalize_issue}` cho một `document_id` (**không** gồm `render_document` — lý do ở bảng trên); bật khi dòng đó `status = FAILED`. Chưa có trong response nào của `05-api.md`; `ix_job_pending_by_document` là partial trên `QUEUED`/`RUNNING`, không phủ truy vấn `FAILED` theo `document_id` — cần index mới nếu contract dưới được duyệt. **Đề xuất diff cho `05-api.md`+`openapi.yaml` — đã áp, mục 13.**
 
 ### 3.3 Cron
 
@@ -149,7 +149,7 @@ Ai chịu trách nhiệm và tần suất — `TBD` (A-066).
 
 ### 6.1 Log schema
 
-Log JSON có cấu trúc ra stdout (mục `observability` của `02-architecture.md`). Mọi dòng: `trace_id`, `component`, `level`, `message` qua handler mask duy nhất (bước kiểm khởi động #10; quy tắc mask ở mục Mask trong log kỹ thuật của `09-security.md`). Khác `audit_event`: log kỹ thuật xoay vòng theo retention kỹ thuật, `audit_event` không bao giờ. Retention kỹ thuật — `TBD`, ghi thành **A-070** (mục 12 của `ASSUMPTIONS.md`), không để trống không ID.
+Log JSON có cấu trúc ra stdout (mục `observability` của `02-architecture.md`). Mọi dòng: `trace_id`, `component`, `level`, `message` qua handler mask duy nhất (bước kiểm khởi động #10; quy tắc mask ở mục Mask trong log kỹ thuật của `09-security.md`). Khác `audit_event`: log kỹ thuật xoay vòng theo retention kỹ thuật, `audit_event` không bao giờ. Retention kỹ thuật — `TBD`, ghi thành **A-070** (`ASSUMPTIONS.md`), không để trống không ID.
 
 **Quy ước bổ sung — nguồn dữ liệu cho mục 6.3, không phải trang trí:** mọi lời gọi `tool_layer` và mọi truy vấn `persistence` trên đường nóng được nêu đích danh ở mục 6.3 ghi kèm `duration_ms` trong log kỹ thuật, gắn `trace_id`. Đây là quy ước log — thuộc phạm vi thiết kế của Phase 11 (`observability`), không đụng schema hay contract nào đã đóng. Cụ thể, bốn điểm đo **mới** cần thêm để mục 6.3 có nguồn thật (không chỉ áp cho các lời gọi đã hiển nhiên có `duration_ms`):
 
@@ -162,7 +162,7 @@ Log JSON có cấu trúc ra stdout (mục `observability` của `02-architecture
 
 **Định dạng `trace_id` — chốt bằng ADR-024, đóng câu bỏ ngỏ của ADR-019** (*"Thêm `CHECK` hình dạng cần định dạng của `trace_id`, mà chưa phase nào chốt — không bịa ở đây"*): **UUID v4, chữ thường, có gạch nối** (`8-4-4-4-12` hex, ví dụ `550e8400-e29b-41d4-a716-446655440000`) — cùng khuôn mọi khoá chính `uuid` khác trong `schema.sql`, không cần thư viện hay quy ước mới. Sinh **một lần cho mỗi đơn vị công việc** tại điểm vào: một lần cho mỗi request HTTP của `api` (một lượt chat, dù chạy ở task tách khỏi request theo ADR-016, vẫn sinh `trace_id` khi task bắt đầu — không tái dùng qua nhiều lượt); một lần cho mỗi lượt job của `queue_worker`. Truyền xuyên `orchestrator`/`tool_layer`/`ai_gateway` trong cùng đơn vị công việc, ghi vào mọi dòng log, `llm_usage.trace_id`, và `audit_event.trace_id`.
 
-**Có điều kiện đảo ngược — vì vậy là ADR-024, không phải một dòng cấu hình trơn:** công cụ APM chọn ở A-069 có thể ép một định dạng khác (ví dụ W3C Trace Context, 32 hex không gạch nối). Áp phép thử J3: có điều kiện đảo ngược nêu được → cần ADR. A-069 buộc chéo ngược lại ADR-024 — người chọn công cụ APM phải đọc được ràng buộc này trước khi chọn, không phát hiện xung đột sau khi đã chọn.
+**Có điều kiện đảo ngược — vì vậy là ADR-024, không phải một dòng cấu hình trơn:** công cụ APM chọn ở A-069 có thể ép một định dạng khác (ví dụ W3C Trace Context, 32 hex không gạch nối — `[CẦN XÁC MINH]` — bản gốc chưa có trong `docs/reference/` (AUD-21)). Áp phép thử J3: có điều kiện đảo ngược nêu được → cần ADR. A-069 buộc chéo ngược lại ADR-024 — người chọn công cụ APM phải đọc được ràng buộc này trước khi chọn, không phát hiện xung đột sau khi đã chọn.
 
 **Kéo theo một `CHECK` mới trên `llm_usage.trace_id`, ở đúng hiện vật của nó — một migration, không phải sửa `contracts/schema.sql` đã đóng:** **✅ Đã áp (2026-09-25)** — `backend/migrations/schema/0004_observability_trace_id.sql` (mục 13, đúng tiền lệ Phase 9 — `contracts/schema.sql` giữ nguyên trạng đóng Phase 6). `trace_id` của `llm_usage` đã là `NOT NULL` trong `contracts/schema.sql` (khác `audit_event.trace_id`, cột đó nullable) — `CHECK` chỉ thêm hình dạng, không có nhánh `IS NULL OR`.
 
@@ -179,11 +179,11 @@ Log JSON có cấu trúc ra stdout (mục `observability` của `02-architecture
 
 Đây là bảng **minh hoạ theo nhóm**, không phải danh sách đầy đủ — danh sách đầy đủ, đối chiếu từng tín hiệu của `_PLAN.md`, ở mục 6.3.
 
-**Công cụ APM/metric cụ thể — không phải một TBD chờ A-002 trả lời.** A-002 là số liệu vận hành (số nhân viên, số yêu cầu/tháng) — nó không bao giờ trả lời "dùng công cụ nào", chỉ xác nhận **có đủ tải để việc trả phí cho một công cụ đáng giá hay không**. Việc **chọn** công cụ là một quyết định riêng, ghi thành **A-069** (mục 12 của `ASSUMPTIONS.md`), owner Người triển khai, tiêu chí chọn nêu trong đó — không đội lốt TBD của A-002.
+**Công cụ APM/metric cụ thể — không phải một TBD chờ A-002 trả lời.** A-002 là số liệu vận hành (số nhân viên, số yêu cầu/tháng) — nó không bao giờ trả lời "dùng công cụ nào", chỉ xác nhận **có đủ tải để việc trả phí cho một công cụ đáng giá hay không**. Việc **chọn** công cụ là một quyết định riêng, ghi thành **A-069** (`ASSUMPTIONS.md`), owner Người triển khai, tiêu chí chọn nêu trong đó — không đội lốt TBD của A-002.
 
 ### 6.3 Chỗ quan sát cho điều kiện đảo ngược — ánh xạ đầy đủ, đối chiếu từng dòng của `_PLAN.md`
 
-Không lặp lại **nội dung** tín hiệu (đã phát biểu đủ ở `_PLAN.md`) — bảng dưới trả lời đúng câu DoD hỏi: **mỗi tín hiệu có chỗ quan sát trong thiết kế này chưa, và ở đâu.** Chín nhóm ADR, mười ba dòng tín hiệu — không bỏ dòng nào; dòng nào chưa có trước phiên này thì bổ sung ngay, vì đây chính là việc `_PLAN.md` giao cho Phase 11.
+Không lặp lại **nội dung** tín hiệu (đã phát biểu đủ ở `_PLAN.md`) — bảng dưới trả lời đúng câu DoD hỏi: **mỗi tín hiệu có chỗ quan sát trong thiết kế này chưa, và ở đâu.** Chín nhóm ADR, mười ba dòng tín hiệu — không bỏ dòng nào *(đợt sửa 4 sau Phase 13: thêm hai dòng ADR-008 và ADR-015 vế công cụ, AUD-12 — mười nhóm, mười lăm dòng; hai dòng này đã thêm vào `_PLAN.md` ở lần khép audit, theo lệnh của PO)*; dòng nào chưa có trước phiên này thì bổ sung ngay, vì đây chính là việc `_PLAN.md` giao cho Phase 11.
 
 **Cột "Nguồn dữ liệu" trả lời đúng câu phải trả lời — metric lấy từ đâu, có thật hay còn là chỗ trống.** Dòng nào không chỉ được nguồn thì ghi thẳng "chưa có nguồn", không giả vờ đã tuân thủ.
 
@@ -201,6 +201,8 @@ Không lặp lại **nội dung** tín hiệu (đã phát biểu đủ ở `_PLA
 | ADR-014 | Một lần tải file tiến sát giới hạn thời gian request | Phân phối thời lượng tải file, cạnh kích thước file và giới hạn request (A-025) | **Có, sau quy ước mục 6.1 (điểm 3)** |
 | ADR-015 | Cold start của `api` sau khi có LibreOffice | Đã có — mục 2, không lặp ở đây | **Có** — "đo trực tiếp", đã ở mục 6.2 từ Phase 2 |
 | ADR-015 | Lease `stored_object` so với thời lượng upload | Phân phối thời lượng upload bản render, cạnh độ dài lease, kèm số lần `render_integrity_check` trượt `RENDER_CHECKSUM_MISMATCH` | **Một phần.** Số lần trượt checksum: **Có** — `document_halt WHERE reason_code = 'RENDER_CHECKSUM_MISMATCH'`. Thời lượng upload: **Có, sau quy ước mục 6.1** (cùng điểm 1, mở rộng cho bước upload của `docx_render`/`pdf_export`) |
+| ADR-008 | Số truy vấn và latency đọc DB do node gọi LLM gây ra, cạnh latency lượt chat | Số lần đọc `persistence` và tổng `duration_ms` của chúng trong một lượt, theo node, đặt cạnh thời lượng lượt cùng `trace_id` | **Có, sau quy ước mục 6.1** — `duration_ms` log trên truy vấn `persistence`; cần thêm trường tên node vào bản ghi log. *Thêm ở đợt sửa 4 sau Phase 13 (AUD-12)* |
+| ADR-015, vế công cụ | Bộ nhớ hay thời lượng chuyển đổi của worker tiến sát giới hạn của gói Render | Phân phối thời lượng `pdf_export`, cạnh bộ nhớ tiến trình `worker` | Thời lượng: **Có** — `duration_ms` log của `pdf_export`. Bộ nhớ: **chưa có nguồn** — số liệu bộ nhớ tiến trình trên Render `[CẦN XÁC MINH]`, cùng họ dòng ADR-004 vòng poll. *Thêm ở đợt sửa 4 sau Phase 13 (AUD-12)* |
 | ADR-013 · A-050 | Proxy Render gom đệm stream | Không phải metric liên tục — phép thử một lần | **Không áp dụng** — nguồn là kết quả phép thử thủ công/CI một lần, theo dõi qua hạn A-050, không phải một dòng taxonomy |
 
 **Tổng kết trung thực:** 11/13 dòng có nguồn (một phần hoặc đầy đủ) sau khi mục 6.1 bổ sung bốn điểm đo mới; **2 dòng thật sự chưa có nguồn** — cả hai đều là "tỷ trọng IO trên tổng tải `postgresql`" (ADR-004(c), nửa của ADR-013), cần thống kê ở tầng PostgreSQL/Render mà quy ước log của riêng ứng dụng không tạo ra được. Không che giấu hai dòng này bằng chữ "Mới" mơ hồ như bản trước.
@@ -263,7 +265,7 @@ Chi_phi(request) = Sigma(loi_goi_LLM) [ token_input x gia_input(tier) + token_ou
 
 ### 10.1 Đơn vị đã chốt
 
-Nguyên tử chi phí (một lời gọi LLM sinh một biến), cận trên `(1+R)×V×2×2` — ADR-009, mục Đơn vị render lại của `03-agents.md`. Cơ chế dừng — mục Cơ chế dừng khi chạm trần của `08-hitl.md`.
+Nguyên tử chi phí (một lời gọi LLM sinh một biến), cận trên `(1+R)×V×2×2` — ADR-009, mục Đơn vị render lại của `03-agents.md`. Cơ chế dừng — mục Dừng có kiểm soát và tiếp quản của `08-hitl.md`.
 
 ### 10.2 Bảng giá trị — mỗi thành phần gắn nhãn loại
 
@@ -277,7 +279,7 @@ Nguyên tử chi phí (một lời gọi LLM sinh một biến), cận trên `(1
 | Trần token/lời gọi `classify_intent` | 1.500 | Ước lượng — phụ thuộc kích thước `request_type_catalog` (mục 10.3) |
 | Trần token/lời gọi `extract_slots` | 3.500 | Ước lượng — phụ thuộc số slot của loại đang mở + trần output đã cố định ở Phase 7 (`maxItems:8`, `evidence_quote` 300 ký tự); biên rộng có chủ đích vì đây là ô ước lượng thô nhất bảng |
 | Trần token/lời gọi `select_procedure_passages` | 6.000 | Ước lượng — input lớn hơn (đoạn quy trình ứng viên) |
-| Trần token/lời gọi `embed_query` | 500 | Ước lượng có căn cứ — `retrieval_query.maxLength = 200` ký tự (mục Output contract của `07-prompts.md`), ~100–150 token, dư ~3× |
+| Trần token/lời gọi `embed_query` | 500 | Ước lượng có căn cứ — `retrieval_query.maxLength = 200` ký tự (mục Output contract của `07-prompts.md`), ~100–150 token `[CẦN XÁC MINH]` — bản gốc chưa có trong `docs/reference/` (AUD-21): quy đổi ký tự tiếng Việt ra token phụ thuộc tokenizer của model chưa chọn, A-026, dư ~3× |
 | Số lượt thu slot điển hình (sau `request_open`) | 4 | **Kích cỡ điển hình** — không có trần lượt cho `ASK_SLOT` |
 | Số yêu cầu nối tiếp điển hình/phiên (`N`) | 3 | **Kích cỡ điển hình** |
 | Giả định: 1 lần đi lạc ngoài phạm vi mỗi chu kỳ yêu cầu | — | **Giả định kích cỡ, chưa có số liệu (A-002)** — không phải quan sát thật, phán đoán worst-case |
@@ -301,7 +303,7 @@ Nguyên tử chi phí (một lời gọi LLM sinh một biến), cận trên `(1
 
 Đây là **một điều kiện đảo ngược có tên** (chỗ quan sát ở mục 6.3): trần build với 32.000 nếu A-068 chưa đóng khi build; đổi sang 46.500 ngay khi A-068 đóng theo (b') — cấu hình phải cập nhật cùng lúc, không trễ. **A-068 đã đóng trước khi có build nào** (2026-09-25), nên bản build đầu tiên dùng thẳng 46.500.
 
-**Phương án (b') — đề xuất cho đợt sửa `03-agents.md` riêng (không thuộc Phase 11):** reset `clarification_count = 0` tại `load_turn`, khi node phát hiện `request` trước đó của phiên đã đạt một trong các trạng thái: `SUBMITTED`, `IN_REVIEW`, `CHANGES_REQUESTED`, `APPROVED`, `FULFILLED`, `REJECTED` (đích danh — không dùng chữ "kết thúc"). **Không bao giờ** reset khi trạng thái là `CANCELLED` hoặc `EXPIRED` — cả hai không phải một kết quả nhân viên đạt được, và `CANCELLED` từ `DRAFT` (đổi loại giữa chừng, EC-CV-02) không được phép cấp lại ngân sách miễn phí. **`DRAFT` và `NEEDS_INFO` không nằm ở cả hai danh sách** vì đó là request **chưa kết thúc** — điều kiện reset (đòi trạng thái sau cùng của request trước) không áp dụng cho một request còn đang chạy, không phải bị bỏ sót. Đã rà đủ 10 trạng thái của `request` (mục Trạng thái `request` của `GLOSSARY.md`): 6 trạng thái reset + `CANCELLED`/`EXPIRED` không reset + `DRAFT`/`NEEDS_INFO` không áp dụng = 10, không còn trạng thái nào ở vùng xám. ~~`load_turn` đã đọc sẵn điều kiện tương tự (bảng cạnh điều kiện, mục `6.3` của `03-agents.md`: *"request đã gửi, đã đóng hoặc hết hạn"*) — thêm nhánh reset là mở rộng logic đã có, không phải khớp nối mới~~; phương án (a) (reset tại `open_request`) và việc reset trực tiếp tại thời điểm `request_submit` bị loại vì lý do ở A-068.
+**Phương án (b') — đề xuất cho đợt sửa `03-agents.md` riêng (không thuộc Phase 11) — đã áp 2026-09-25:** reset `clarification_count = 0` tại `load_turn`, khi node phát hiện `request` trước đó của phiên đã đạt một trong các trạng thái: `SUBMITTED`, `IN_REVIEW`, `CHANGES_REQUESTED`, `APPROVED`, `FULFILLED`, `REJECTED` (đích danh — không dùng chữ "kết thúc"). **Không bao giờ** reset khi trạng thái là `CANCELLED` hoặc `EXPIRED` — cả hai không phải một kết quả nhân viên đạt được, và `CANCELLED` từ `DRAFT` (đổi loại giữa chừng, EC-CV-02) không được phép cấp lại ngân sách miễn phí. **`DRAFT` và `NEEDS_INFO` không nằm ở cả hai danh sách** vì đó là request **chưa kết thúc** — điều kiện reset (đòi trạng thái sau cùng của request trước) không áp dụng cho một request còn đang chạy, không phải bị bỏ sót. Đã rà đủ 10 trạng thái của `request` (mục Trạng thái `request` của `GLOSSARY.md`): 6 trạng thái reset + `CANCELLED`/`EXPIRED` không reset + `DRAFT`/`NEEDS_INFO` không áp dụng = 10, không còn trạng thái nào ở vùng xám. ~~`load_turn` đã đọc sẵn điều kiện tương tự (bảng cạnh điều kiện, mục `6.3` của `03-agents.md`: *"request đã gửi, đã đóng hoặc hết hạn"*) — thêm nhánh reset là mở rộng logic đã có, không phải khớp nối mới~~; phương án (a) (reset tại `open_request`) và việc reset trực tiếp tại thời điểm `request_submit` bị loại vì lý do ở A-068.
 
 **Sửa ở đợt sửa ngày 2026-09-25 (quyết định PO) — câu gạch ở trên sai.** Điều kiện "`request` đã gửi, đã đóng hoặc hết hạn" đúng ở **mọi** lượt sau khi gửi, không chỉ lượt đầu. Đặt lại bộ đếm theo điều kiện đó nghĩa là đặt lại ở mọi lượt, và trần `C` không bao giờ chạm. (b') vì vậy **không** mở rộng được logic có sẵn mà không thêm gì: cần thêm một trường mã trạng thái, `last_seen_request_status`, để đặt lại **đúng một lần** — khi `request` rời `DRAFT`/`NEEDS_INFO` lần đầu. Cùng trường đó sửa luôn cạnh `load_turn → resume_context`, vốn cũng đúng ở mọi lượt. Luật đầy đủ ở mục `intake_graph` của `03-agents.md`; ca kiểm K1, K2 ở mục Ca kiểm cơ chế graph của `10-eval.md`. Hệ quả với lý do đã loại phương án (d) ở A-068 — "thêm trường `IntakeState` mới, xâm lấn nhiều hơn (b') trong khi (b') đủ": vế "(b') đủ" không còn đúng. (b') đã sửa vẫn được giữ vì trường thêm vào là một mã trạng thái, không phải bộ đếm thứ hai — nghĩa của `clarification_count` vẫn là một bộ đếm duy nhất.
 
@@ -329,6 +331,8 @@ Theo mục 4 (luật 1 và 11) của `CLAUDE.md` — rà lại toàn bộ file n
 
 Bảy việc trên gộp vào lượt sửa GLOSSARY/contract cho Phase 8 và Phase 5, một phiên riêng — mục 1–6 đã đủ điều kiện xử lý (ba đề xuất liên quan đều đã áp); mục 7 là việc của `05-api.md`/`openapi.yaml` (Phase 5), không phải Phase 8.
 
+**Cả bảy đã giải** *(ghi ở đợt sửa 4 sau Phase 13)*: 7 ở đợt sửa 1 (AUD-04); 3, 4, 5, 6 ở đợt sửa 2 (AUD-10); 1, 2 ở đợt sửa 3 — bảng mã ở mục Bảng mã của `08-hitl.md` (AUD-02).
+
 ---
 
 ## 13. Đề xuất diff — cả bốn đã áp (2026-09-16, 2026-09-25)
@@ -340,10 +344,63 @@ Bốn thay đổi chạm phase đã đóng, viết thành đề xuất riêng, d
 | `docs/design/proposals/diff-06-structure-startup-checks.md` | `06-structure.md` | **✅ Đã áp (2026-09-16).** Hai bước kiểm khởi động mới (Lớp 2 của ADR-023): #16 lệch `BO19_ENVIRONMENT`/`operating_mode` (Chặn), #17 thiếu `BO19_ENVIRONMENT` (Chặn). Không nâng mức bước #15 (giữ "Ghi log") |
 | `docs/design/proposals/diff-04-data-object-metadata-tag.md` | `04-data.md` | **✅ Đã áp (2026-09-25).** Object metadata (`x-bo19-pin-reason`, `x-bo19-document-number`) lúc ghim bản `ISSUED` — phục vụ đối soát sau khôi phục (mục 5.2(b)) |
 | `docs/design/proposals/diff-05-api-job-failed-and-reject-error.md` | `05-api.md`, `contracts/openapi.yaml`, `04-data.md` | **✅ Đã áp (2026-09-25).** Trường `job_failed` trên `DocumentSummary` (`GET /review-queue`/`GET /issue-queue`); mã lỗi `ENVIRONMENT_NOT_ALLOWED` cho Lớp 3 (ADR-023) từ chối; index `ix_job_latest_by_document` — `backend/migrations/schema/0003_job_failed_index.sql`, không sửa `contracts/schema.sql` |
-| `docs/design/proposals/migration-0004-trace-id-format.md` | `backend/migrations/schema/0004_observability_trace_id.sql` + câu mô tả ở `04-data.md` — **không** sửa `contracts/schema.sql` | **✅ Đã áp (2026-09-25).** `CHECK` hình dạng UUID v4 trên `llm_usage.trace_id` (ADR-024) — đóng câu bỏ ngỏ của ADR-019 (mục 6.1). Cột đã `NOT NULL`, không thêm `IS NULL OR`. **Chưa kiểm bằng `tools/contract-checks`** — công cụ đó chỉ áp `contracts/schema.sql`, không chạy migration `0002`–`0004` |
+| `docs/design/proposals/migration-0004-trace-id-format.md` | `backend/migrations/schema/0004_observability_trace_id.sql` + câu mô tả ở `04-data.md` — **không** sửa `contracts/schema.sql` | **✅ Đã áp (2026-09-25).** `CHECK` hình dạng UUID v4 trên `llm_usage.trace_id` (ADR-024) — đóng câu bỏ ngỏ của ADR-019 (mục 6.1). Cột đã `NOT NULL`, không thêm `IS NULL OR`. ~~**Chưa kiểm bằng `tools/contract-checks`** — công cụ đó chỉ áp `contracts/schema.sql`, không chạy migration `0002`–`0004`~~ **Đã kiểm:** `--local-migrated` áp `0001` → `0008`, lệch 0 (đợt sửa 4 sau Phase 13) |
+
+---
+
+## 14. Runbook — cấp và thu hồi permission tạm (A-078)
+
+*Thêm theo quyết định PO sau đợt sửa 3b sau Phase 13: A-078 chọn (a).*
+
+**Khi nào dùng.** Văn bản đứng ở hàng đợi vì mọi người khác mang permission P đang vắng dài ngày, và người có mặt duy nhất mang P là người thụ hưởng — D-006 chặn người đó, còn người vắng vẫn nằm trong tập người thay thế (mục Tách biệt trách nhiệm — D-006 của `08-hitl.md`). Cũng dùng khi không ai có mặt mang P. "Dài ngày" là phán đoán của người duyệt nghiệp vụ; không có ngưỡng số.
+
+**Ai làm gì.**
+
+- **Người duyệt** — một nhân viên có trong `employee`, do tổ chức chỉ định — quyết cấp, cho ai, vì sao, tới ngày nào. Không phải người được cấp: `ck_permission_grant_approver_not_grantee`.
+- **Người vận hành** chạy lệnh qua CI bằng `bo19_migrator` — credential đó chỉ có ở CI (ADR-022). Không có endpoint: không có thao tác cấp permission ở `tool_layer` (mục AuthZ của `09-security.md`).
+
+**Cấp — một giao dịch:**
+
+1. **Chốt đủ năm thứ:** permission P; người được cấp S; lý do; người duyệt A; ngày dự kiến thu hồi R, không sớm hơn hôm nay.
+2. **Kiểm trước, chỉ đọc:**
+   - S `is_active = true`.
+   - S **không phải người thụ hưởng** của văn bản nào đang chờ ở bước dùng P — điều kiện của PO cho A-078. Cấp cho người thụ hưởng là vô ích: phép kiểm D-006 lúc thao tác vẫn chặn S trên chính văn bản của S, vì người vắng vẫn nằm trong tập người thay thế.
+   - S chưa mang P — qua vai trò, hay qua một dòng `employee_permission_grant` chưa thu hồi.
+3. **Ghi** một dòng `employee_permission_grant`: `employee_id` = S, `permission_code` = P, `grant_reason`, `approved_by_employee_id` = A, `expected_revoke_on` = R. Thiếu một trong ba trường cuối thì `ck_permission_grant_temporary_complete` từ chối (migration `0008`).
+4. **Xác minh:** `GET /me` của S có P — `Me.permissions` gồm quyền cấp lẻ còn hiệu lực. Từ đây S nằm trong tập người thay thế và duyệt được văn bản của người thụ hưởng kia; đường thoát tự duyệt không mở cho ai.
+
+**Thu hồi:**
+
+1. **Khi nào:** người vắng trở lại, hoặc tới R — tuỳ cái nào sớm hơn.
+2. **Kiểm trước:** không còn `approval_step` `OPEN` nào giao cho S (`assignee_employee_id` = S) ở bước dùng P — ví dụ bước ký mà `signing_route` đã chọn S. Còn thì S làm xong trước; định tuyến lại bước đang mở chưa được thiết kế.
+3. **Ghi** `revoked_at = now()` trên đúng dòng đó, bằng `UPDATE` có điều kiện `revoked_at IS NULL`.
+4. **Gia hạn** không sửa `expected_revoke_on` của dòng cũ: thu hồi dòng cũ, cấp một dòng mới với lý do mới — lịch sử cấp giữ được từng lần.
+
+**Quá hạn chưa thu hồi.** Truy vấn: dòng có `expected_revoke_on < current_date` và `revoked_at IS NULL`. Người vận hành chạy mỗi ngày làm việc; tự động hoá thành cảnh báo đi cùng công cụ ở A-069. Bảng nhỏ, không cần index.
+
+**Dấu vết.** Việc cấp và thu hồi không qua `tool_layer`, nên không sinh `audit_event`. Bằng chứng là chính dòng `employee_permission_grant` — lý do, người duyệt, thời điểm cấp, thời điểm thu hồi — cộng nhật ký lần chạy CI. Mọi quyết định S đưa ra trong thời gian được cấp là `decision_record` thường, có `actor_employee_id` = S.
+
+---
+
+## 15. Runbook — đối chiếu object mồ côi *(đợt sửa 4 sau Phase 13, AUD-24)*
+
+`04-data.md` mục Dọn bản trung gian: tiến trình chết giữa bước xoá dòng DB và bước xoá object để lại object không còn dòng nào trong DB — **rò dung lượng**, không phải lỗi đúng sai. Ca "lệnh ghi treo tới sau" ở mục Ba ca của L2 của `04-data.md` cũng để lại object không có claim. `object_claim_reconcile` chỉ nhặt claim đã hết lease — không thấy object không có dòng nào.
+
+- **Làm gì:** liệt kê object trong bucket theo tiền tố khoá của dự án, trừ đi mọi `object_key` có trong `stored_object`. Phần còn lại, nếu cũ hơn độ dài lease (A-031), là mồ côi.
+- **Ai, khi nào:** người vận hành, định kỳ. Chu kỳ `TBD` (A-031). Không tự động hoá ở Sprint đầu: không có thao tác có tên, không Cron.
+- **Xoá hay không:** chỉ báo. Người vận hành xoá tay sau khi kiểm — một object mà DB không biết có thể là bằng chứng của đúng ca ghi đè ở mục Ba ca của L2, nên xoá tự động là xoá bằng chứng.
+- **Phụ thuộc:** thao tác liệt kê object của nhà cung cấp và chi phí của nó — `[CẦN XÁC MINH]`, A-024.
+
+## 16. Nơi lưu bản ghi kết quả eval *(đợt sửa 4 sau Phase 13, AUD-24)*
+
+`10-eval.md` mục Bản ghi kết quả và baseline để việc này cho người triển khai.
+
+- **Mỗi lần chạy:** artefact của lần chạy CI, gắn đủ các trường mà mục đó liệt kê. Thời gian CI giữ artefact phụ thuộc nhà cung cấp CI — `[CẦN XÁC MINH]`.
+- **Baseline:** commit vào repo, cùng commit với thay đổi được chốt làm baseline, vì baseline phải sống lâu hơn thời gian giữ artefact của CI và phải đi theo đúng phiên bản mã. Đường dẫn chốt cùng lúc đặt harness eval vào cây thư mục — cây ở mục Cây thư mục gốc của `06-structure.md` chưa có chỗ cho harness.
+- **Không chứa dữ liệu cá nhân thật:** bộ eval dùng ca soạn sẵn; UAT dùng dữ liệu giả (quyết định PO về AUD-24). Chạy eval trên dữ liệu thật thì bản ghi thành dữ liệu cá nhân — cùng điều kiện với A-079.
 
 ---
 
 ## Open Questions
 
-Không có câu hỏi mở chỉ tồn tại trong file này. Giả định liên quan: A-022 (thu hẹp, mục 10), A-025, A-031 (mốc F6 mới, mục 10.3), A-041, A-057, A-059, A-060 (đóng), A-062, A-063, A-065, A-066 (mới), **A-067 (Mở — ba vế secret CI)**, **A-068 (Mở — reset `clarification_count`, phương án (b'), owner đợt sửa `03-agents.md` riêng do PO khởi động, hạn trước buổi UAT vì làm hỏng M3)**, **A-069 (mới, Mở — chọn công cụ APM, không phải A-002 "trả lời")**, **A-070 (mới, Mở — retention log kỹ thuật, cân nhắc Nghị định 13/2023/NĐ-CP)**, A-024 (vẫn `Mở`) — xem `ASSUMPTIONS.md`. Bốn đề xuất diff — cả bốn đã áp (mục 13). Còn chờ: đợt sửa `03-agents.md` riêng cho A-068, và lượt GLOSSARY/contract cho Phase 5 và Phase 8 (bảy việc, mục 12).
+Không có câu hỏi mở chỉ tồn tại trong file này. Giả định liên quan: A-022 (thu hẹp, mục 10), A-025, A-031 (mốc F6 mới, mục 10.3), A-041, A-057, A-059, A-060 (đóng), A-062, A-063, A-065, A-066 (mới), **A-067 (Mở — ba vế secret CI)**, **A-068 (`Đã chốt` 2026-09-25 — reset `clarification_count`, phương án (b'), owner đợt sửa `03-agents.md` riêng do PO khởi động, hạn trước buổi UAT vì làm hỏng M3)**, **A-069 (mới, Mở — chọn công cụ APM, không phải A-002 "trả lời")**, **A-070 (mới, Mở — retention log kỹ thuật, cân nhắc căn cứ bảo vệ dữ liệu cá nhân — A-080)**, A-024 (vẫn `Mở`) — xem `ASSUMPTIONS.md`. Bốn đề xuất diff — cả bốn đã áp (mục 13). Còn chờ: đợt sửa `03-agents.md` riêng cho A-068, và lượt GLOSSARY/contract cho Phase 5 và Phase 8 (bảy việc, mục 12).
