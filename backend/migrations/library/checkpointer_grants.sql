@@ -1,2 +1,2 @@
--- GRANT cho bảng checkpoint của langgraph-checkpoint-postgres — xem 06-structure.md:8
--- Chạy bằng bo19_migrator SAU setup() autocommit. Nội dung đầy đủ ở 06-structure.md:8.
+-- GRANT cho bảng checkpoint của langgraph-checkpoint-postgres — xem 06-structure.md mục Migration và checkpointer
+-- Chạy bằng bo19_migrator SAU setup() autocommit. Nội dung đầy đủ ở 06-structure.md mục Migration và checkpointer.

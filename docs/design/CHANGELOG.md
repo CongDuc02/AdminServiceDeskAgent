@@ -2273,3 +2273,42 @@ Việc 5 của PO sau đợt 3b. Chạy hoàn toàn trong scratchpad, ngoài rep
 - Lượt quét từ khoá của phụ lục A.7, chạy lại: 213 → 152 dòng.
 - `check_refs.py` trên các dòng thêm mới: 84 con trỏ "mục … của `file`", không con trỏ nào sai tên mục.
 - Không đổi DDL, không đổi sơ đồ Mermaid — không chạy lại `check_grants.py`, `mmdc`.
+
+---
+
+## 2026-09-27 (đợt sửa 5, khép audit Phase 13) — Quyết định PO sau đợt 4; AUD-17, 18, 21; trạng thái cuối
+
+### Quyết định PO sau đợt 4 — đã áp
+
+| File | Thay đổi |
+|---|---|
+| `GLOSSARY.md` → 0.25 | Định nghĩa **Product Owner** ở mục Thuật ngữ nghiệp vụ: vai trò của dự án, người duyệt cổng sprint và chốt Open Questions |
+| `ASSUMPTIONS.md` → 0.35 | Chú giải thêm trạng thái `Thu hẹp`, `Hoãn`. A-010 hạn trước cổng Sprint 2. A-002 `Hoãn` — không AC nào của Sprint 1–4 dùng; mở lại khi xếp sprint cho Dashboard SLA hoặc trước milestone sản xuất. A-030 `Thu hẹp` — ADR-026 đã giải việc chọn kênh; vế còn lại kiểm ở AC-2.1. **A-083 mới, `Hoãn`** — BM25 và tách từ tiếng Việt trên Render. A-012 thêm ngưỡng EC-RB-04 |
+| `12-roadmap.md` → 0.10 | Cổng 2.9 (A-010); A-030 ở cột Truy vết của AC-2.1 |
+| `decisions/ADR-026-…` | Điều kiện đảo ngược trỏ A-083 — không đổi quyết định |
+| `13-audit.md` | AUD-11: bảng phân loại 153 dòng còn lại, liệt kê 29 dòng "khác" theo bốn nhóm — không dòng nào là nội dung cũ |
+
+Trong lúc phân loại, sửa 10 dòng cũ thật: ngữ nghĩa uỷ quyền "thuộc Phase 8" (`04-data.md`, `05-api.md` ×3), phép kiểm D-006 "Phase 9" (`04-data.md`), `TBD` không trỏ giả định (`00-domain.md` ×3 → A-002, A-012; `02-architecture.md` ×2 → A-026, A-024).
+
+### Đợt 5
+
+| AUD | Thay đổi |
+|---|---|
+| AUD-17 | `07-prompts.md`: 16 tham chiếu `file.md:dòng` → tên mục, chọn theo nội dung. 35 tham chiếu theo số mục sang file khác ở `04-data.md`, `07-prompts.md`, `09-security.md`, `10-eval.md`, `11-ops.md`, `ASSUMPTIONS.md`, ADR-020, ADR-024 → tên mục, tra tiêu đề của file đích; hai chỗ trỏ mục không tồn tại của `ASSUMPTIONS.md` bỏ số mục. `openapi.yaml` → 0.2.7. Docstring và chú thích của skeleton: 30 chỗ ở 28 file trong `backend/`, `frontend/`. Lần khép tìm thêm bốn tên mục cũ ở `09-security.md`, `10-eval.md`, `11-ops.md` — đã sửa |
+| AUD-18 | Không còn lệch |
+| AUD-21 | `[CẦN XÁC MINH]` cho RFC 3339, ISO 8601, JSON Schema draft 2020-12, W3C Trace Context, quy đổi ký tự ra token, tính chất các hàm hash — `05-api.md`, `openapi.yaml`, `07-prompts.md`, `10-eval.md`, `11-ops.md`, `09-security.md`, ADR-021, ADR-024 |
+
+Số phiên bản nâng: `00-domain.md` 0.16, `02-architecture.md` 0.15, `04-data.md` 0.18, `05-api.md` 0.16, `07-prompts.md` 0.4, `09-security.md` 0.6, `10-eval.md` 0.6, `11-ops.md` 0.13.
+
+### Khép audit — `13-audit.md` → 0.10
+
+Mục 7.5 (tiến độ), mục 8 mới — **trạng thái cuối từng AUD: 22 Đóng, 5 Mở** (AUD-07: A-053; AUD-09: `CLAUDE.md`; AUD-12: `_PLAN.md`; AUD-24: A-079; AUD-26: bản gốc pháp lý và `CLAUDE.md`). Phụ lục A.11 chứa nguyên script kiểm.
+
+### Đã chạy
+
+- `check_grants.py --local-migrated` (`0001` → `0008`): 176 / 68 / **Lệch 0**. `--local`: 169 / 63 / **Lệch 0**. `schema.sql` trùng sha256 `0001_initial.sql`.
+- `openapi-spec-validator`: 0.2.7 hợp lệ. `05-api.md` ↔ `openapi.yaml`: 56 = 52 + 4 `[NGOÀI-OPENAPI]`; mã lỗi 37 = 37.
+- `mmdc` 12.0.0: 32/32 sơ đồ; máy trạng thái khớp giữa các file.
+- Quét phụ lục A.7: 153 dòng, đã phân loại. Luật 12: không còn tham chiếu theo số dòng hay số mục sang file khác.
+
+**Ghi chú môi trường:** thư mục tạm của phiên bị thu hồi giữa đợt 5; công cụ kiểm dựng lại ngoài repo, nội dung ở phụ lục A.11. Không file nào của công cụ kiểm vào repo.

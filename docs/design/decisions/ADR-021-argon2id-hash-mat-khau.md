@@ -8,7 +8,7 @@
 
 `employee_credential.password_hash` (A-048) cần một hàm hash một chiều cho mật khẩu. Đây có điều kiện đảo ngược thật — không phải chi tiết cấu hình: tham số hàm càng "tốn tài nguyên" thì chống dò mật khẩu ngoại tuyến càng tốt nếu `password_hash` bị lộ, nhưng cùng tham số đó tốn đúng bằng đó tài nguyên ở **mỗi lần đăng nhập hợp lệ**, trên instance Render đang chạy `api`. Chọn sai họ hàm, hoặc chọn tham số mà không biết đánh đổi, khoá luôn khả năng điều chỉnh sau này mà không phá mọi hash đã có (đổi họ hàm bắt buộc đổi định dạng `hash_algorithm` và không xác minh lại được hash cũ theo tham số mới).
 
-Không trích số liệu benchmark hay khuyến nghị của bất kỳ tổ chức nào từ trí nhớ (luật trích dẫn của `CLAUDE.md`) — quyết định dưới đây dựa trên **tính chất hàm đã công bố công khai qua tên thuật toán**, không dựa trên một con số hay một khuyến nghị chưa có bản gốc trong `docs/reference/`.
+Không trích số liệu benchmark hay khuyến nghị của bất kỳ tổ chức nào từ trí nhớ (luật trích dẫn của `CLAUDE.md`) — quyết định dưới đây dựa trên **tính chất hàm đã công bố công khai qua tên thuật toán** — các tính chất đó cũng `[CẦN XÁC MINH]` — bản gốc chưa có trong `docs/reference/` (AUD-21) — không dựa trên một con số hay một khuyến nghị chưa có bản gốc trong `docs/reference/`.
 
 ## Options
 

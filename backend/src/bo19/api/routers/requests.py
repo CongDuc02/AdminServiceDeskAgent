@@ -1,1 +1,1 @@
-"""Router requests — nhóm endpoint requests theo 05-api.md:2. Chưa handler (DESIGN MODE)."""
+"""Router requests — nhóm endpoint requests theo 05-api.md mục Endpoint. Chưa handler (DESIGN MODE)."""

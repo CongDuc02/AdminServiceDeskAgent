@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: BO-19 Admin Service Desk Agent API
-  version: 0.2.6
+  version: 0.2.7
   description: |
     Contract máy đọc được của `docs/design/05-api.md` (Phase 5). Diễn giải, lý do và
     giới hạn nằm ở file đó; file này không lặp lại lập luận.
@@ -11,7 +11,8 @@ info:
     phải lỗi lệch (mục Nguyên tắc chung của `05-api.md`).
 
     Extension dùng trong file:
-      x-bo19-operation          tên thao tác của tool_layer (GLOSSARY.md mục 12, 05-api.md mục 2.1)
+      x-bo19-operation          tên thao tác của tool_layer (GLOSSARY.md mục Agent, graph, node, tool;
+                                05-api.md mục Thao tác của tool_layer được đặt tên ở Phase 5)
       x-bo19-permission         permission cần có (D-005 — permission, không phải vai trò). Danh sách
                                 là any-of: cần ÍT NHẤT MỘT, không bao giờ nghĩa là cần tất cả
       x-bo19-permission-also    danh sách nhóm, mỗi nhóm any-of; người gọi phải thoả MỌI nhóm, cộng
@@ -2992,7 +2993,7 @@ components:
             - $ref: '#/components/schemas/Uuid'
             - type: 'null'
         sla_target:
-          description: Khoảng thời gian ISO 8601; TBD (A-002)
+          description: Khoảng thời gian ISO 8601 [CẦN XÁC MINH — bản gốc chưa có trong docs/reference/, AUD-21]; TBD (A-002)
           type: [string, 'null']
         example_phrases:
           type: array

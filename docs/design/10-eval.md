@@ -1,8 +1,8 @@
 # Evaluation Framework — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.5 · **Trạng thái:** Draft chờ duyệt · **v0.2:** đợt sửa A-068, A-073, A-075 — ca kiểm cơ chế K1, K2; enum `request_type` của `EvalCase` không còn viết cứng; `catalog_fingerprint` trong bản ghi kết quả; giới hạn của regression gate với thay đổi catalog (A-076) — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.3:** `reason_code` theo bảng mã của `08-hitl.md` — `VALIDATION_FAILED` đổi thành `FREE_CONTENT_INVALID` (AUD-20) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.4:** ca kiểm cơ chế K3, K4 — lối ra tiếp quản không mở đường tự duyệt — mục ngày 2026-09-26 (quyết định PO sau đợt 3) · **v0.5:** đợt sửa 4 sau Phase 13 — "bốn việc" (AUD-22); chỗ quan sát ADR-009 khi `V > 1` (AUD-12); nơi lưu bản ghi eval (AUD-24)
+**Phiên bản:** 0.6 · **Trạng thái:** Draft chờ duyệt · **v0.2:** đợt sửa A-068, A-073, A-075 — ca kiểm cơ chế K1, K2; enum `request_type` của `EvalCase` không còn viết cứng; `catalog_fingerprint` trong bản ghi kết quả; giới hạn của regression gate với thay đổi catalog (A-076) — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.3:** `reason_code` theo bảng mã của `08-hitl.md` — `VALIDATION_FAILED` đổi thành `FREE_CONTENT_INVALID` (AUD-20) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.4:** ca kiểm cơ chế K3, K4 — lối ra tiếp quản không mở đường tự duyệt — mục ngày 2026-09-26 (quyết định PO sau đợt 3) · **v0.5:** đợt sửa 4 sau Phase 13 — "bốn việc" (AUD-22); chỗ quan sát ADR-009 khi `V > 1` (AUD-12); nơi lưu bản ghi eval (AUD-24) · **v0.6:** đợt sửa 5 sau Phase 13 — tham chiếu theo tên mục (AUD-17); JSON Schema draft 2020-12 `[CẦN XÁC MINH]` (AUD-21)
 
-> File này chốt: bộ dữ liệu vàng (golden dataset) dùng để đo, metric cho từng chặng xử lý, cách chạy offline/online, rubric người chấm, phân loại lỗi (failure mode) và điều kiện được phép đổi prompt hoặc model. File này **không** định nghĩa lại nội dung hay phân bố 37 ca của bộ eval — nguồn duy nhất là mục Bộ eval chuẩn của `01-prd.md` (NFR-07). File này **không** thiết kế dashboard SLA hay ngưỡng cảnh báo vận hành (Phase 11), **không** chọn provider/model cụ thể (A-026, A-028, A-065), **không** viết prompt (Phase 7 đã chốt), **không** thiết kế bảng mã lý do dừng (Phase 8).
+> File này chốt: bộ dữ liệu vàng (golden dataset) dùng để đo, metric cho từng chặng xử lý, cách chạy offline/online, rubric người chấm, phân loại lỗi (failure mode) và điều kiện được phép đổi prompt hoặc model. File này **không** định nghĩa lại nội dung hay phân bố 37 ca của bộ eval — nguồn duy nhất là mục NFR-07 — Bộ eval của `01-prd.md`. File này **không** thiết kế dashboard SLA hay ngưỡng cảnh báo vận hành (Phase 11), **không** chọn provider/model cụ thể (A-026, A-028, A-065), **không** viết prompt (Phase 7 đã chốt), **không** thiết kế bảng mã lý do dừng (Phase 8).
 
 Tên entity, trạng thái, permission, agent, node, tool dùng đúng `GLOSSARY.md`. Quyết định `D-xxx`/`A-xxx` tham chiếu `00-domain.md` và `ASSUMPTIONS.md`. Không có entity, agent, node hay tool mới nào được đưa ra ở phase này — mọi tên dùng lại nguyên trạng, nên không có mục nào của `GLOSSARY.md` cần sửa.
 
@@ -22,7 +22,7 @@ Bốn việc PRD không phủ, vì lý do khác nhau, thuộc về Phase 10:
 
 1. **Canary suite** — kiểm hạ tầng (checkpoint không chứa PII), không kiểm hành vi nghiệp vụ. Giao cho Phase 10 ở mục Checkpointer và PII của `03-agents.md`.
 2. **Phương pháp recall@k** — NFR-07 dùng kho quy trình *giả lập* cho nhóm J vì kho thật chưa tồn tại (A-027); đó là 5 ca hội thoại, không phải một bộ đo retrieval. A-028 giao Phase 10 tiêu chí chọn embedding model bằng recall@k trên "bộ eval của chính dự án" — cần một bộ đo riêng, tách khỏi 37 ca.
-3. **Phương pháp so tier rẻ/mạnh** — `04-data.md` mục 3.8 (định nghĩa `llm_usage`) để ngỏ câu "có hạ tier được không là câu hỏi của Phase 10", và mục Agent Registry của `03-agents.md` nhắc lại đúng câu đó cho `drafting_agent`.
+3. **Phương pháp so tier rẻ/mạnh** — mục Vận hành của `04-data.md` (định nghĩa `llm_usage`) để ngỏ câu "có hạ tier được không là câu hỏi của Phase 10", và mục Agent Registry của `03-agents.md` nhắc lại đúng câu đó cho `drafting_agent`.
 4. **Ca kiểm cơ chế graph** *(thêm ở v0.2)* — kiểm một cơ chế của `intake_graph` mà 37 ca không phủ vì chúng chấm hành vi trên ngôn ngữ thật, không chấm bộ đếm hay luật rẽ. Mục 2.4.
 
 Cả bốn việc trên đều dừng ở **phương pháp**, không ra **kết quả** — xem lý do ở mục 9.
@@ -33,7 +33,7 @@ Cả bốn việc trên đều dừng ở **phương pháp**, không ra **kết 
 |---|---|---|
 | 1 | Đáp án chuẩn của 37 ca chỉ Trưởng phòng Hành chính đổi được | A-023 đã giao; Phase 10 không có thẩm quyền diễn giải lại nghiệp vụ |
 | 2 | Không đặt ngưỡng số chưa có căn cứ | Mục 4 của `CLAUDE.md` — cấm bịa số liệu; số nào chưa có nguồn thì `TBD` + `ASSUMPTIONS.md` |
-| 3 | Metric loại Bất biến (M4, M5, M6, M8) vẫn là ngưỡng tuyệt đối ở mọi phiên bản | `01-prd.md` mục 2 — không có phiên bản nào được "nợ" một ca sai |
+| 3 | Metric loại Bất biến (M4, M5, M6, M8) vẫn là ngưỡng tuyệt đối ở mọi phiên bản | mục Goals & metrics của `01-prd.md` — không có phiên bản nào được "nợ" một ca sai |
 | 4 | Metric loại Cảnh báo không chặn deploy | Cùng triết lý PRD; xem mục 8 |
 | 5 | Không chọn provider/model ở phase này | A-026 chưa chọn; chọn trước khi có phương tiện đo thật là bịa kết quả |
 
@@ -43,7 +43,7 @@ Cả bốn việc trên đều dừng ở **phương pháp**, không ra **kết 
 
 ### 2.1 Bộ eval hành vi — 37 ca
 
-**Nguồn:** mục Bộ eval chuẩn của `01-prd.md` (NFR-07). **Kích thước:** 37, chia 10 nhóm A–J theo đúng bảng đó. **Gán nhãn:** đáp án chuẩn do Trưởng phòng Hành chính duyệt (A-023, trạng thái `Mở`, hạn "Trước UAT"). **Phase 10 không đổi số ca, không đổi nhóm.**
+**Nguồn:** mục NFR-07 — Bộ eval của `01-prd.md`. **Kích thước:** 37, chia 10 nhóm A–J theo đúng bảng đó. **Gán nhãn:** đáp án chuẩn do Trưởng phòng Hành chính duyệt (A-023, trạng thái `Mở`, hạn "Trước UAT"). **Phase 10 không đổi số ca, không đổi nhóm.**
 
 Việc còn thiếu để 37 ca chạy được: mỗi ca trong NFR-07 chỉ có "cách dẫn xuất" — một câu văn xuôi. Phase 10 thêm cho mỗi ca bốn phần, theo schema `EvalCase` ở mục 10:
 
@@ -65,7 +65,7 @@ Hai ca, nguồn ở mục Checkpointer và PII của `03-agents.md`. **Không th
 | C1 — hội thoại | Chạy một hội thoại chứa giá trị `RES` đánh dấu (không phải dữ liệu thật), cho `request` gắn với hội thoại đó `EXPIRED` | Quét toàn bộ bảng checkpoint của LangGraph — **không tìm thấy** giá trị đánh dấu | Lớp 3 của mục Checkpointer và PII, `03-agents.md` |
 | C2 — exception | Ép một node ném exception mà thông điệp mang giá trị `RES` đánh dấu | Quét `checkpoint_writes` và mọi bảng checkpoint khác — **không tìm thấy** giá trị đánh dấu | Vế còn lại của A-045 ("exception được tuần tự hoá thế nào") |
 
-Canary không có "đáp án chuẩn cần người duyệt" — tiêu chí đạt là nhị phân, kiểm bằng máy (quét chuỗi). Chạy canary không thay thế 37 ca, và 37 ca không thay thế canary: một hội thoại chạy đúng về nghiệp vụ không bao giờ ném exception mang giá trị, nên C2 không được bao phủ bởi bất kỳ ca nào trong 37 ca (đúng như mục 6.5 của `03-agents.md` đã nói).
+Canary không có "đáp án chuẩn cần người duyệt" — tiêu chí đạt là nhị phân, kiểm bằng máy (quét chuỗi). Chạy canary không thay thế 37 ca, và 37 ca không thay thế canary: một hội thoại chạy đúng về nghiệp vụ không bao giờ ném exception mang giá trị, nên C2 không được bao phủ bởi bất kỳ ca nào trong 37 ca (đúng như mục Checkpointer và PII của `03-agents.md` đã nói).
 
 ### 2.3 Bộ đo retrieval (recall@k) — phương pháp, chưa có dữ liệu để chạy thật
 
@@ -129,7 +129,7 @@ Cột *Chấm bằng* dùng hai giá trị: **Máy** (so khớp cấu trúc/enum
 | `request` mỗi kỳ | Chi phí mỗi `request` | `SUM(llm_usage.token)` `GROUP BY request_id`, loại trừ `outcome IN ('BUDGET_UNAVAILABLE', 'ALLOWLIST_REJECTED')` — hai mã này không gọi provider, không tốn tiền thật | `llm_usage` | Nguồn cho NFR-06; ngưỡng cảnh báo định cỡ ở Phase 11 | Máy |
 | Một lượt chat (`intake_graph`), một vòng `document_graph` | Độ trễ | Thời lượng từ node đầu tới node cuối của một lượt/một vòng, theo `trace_id` | Offline eval (mỗi ca golden đo kèm latency) và production (`observability`) | NFR-08 — không đặt ngưỡng ở Sprint đầu | Máy |
 
-**Ghi chú công thức chi phí.** Đơn vị chi phí đúng theo ADR-009 là **một lời gọi LLM sinh một biến**, không phải "một lần render". Cận trên lý thuyết cho một `document` là `(1 + R) × V × 2 × 2` (mục 9.3 của `03-agents.md`, A-022). Offline eval nên đối chiếu số lời gọi thật của mỗi ca với cận trên này: một ca vượt cận trên mà không phải do `R` hay `V` khác dự kiến là **lỗi lập trình** (ví dụ vòng lặp không thoát đúng điều kiện), không phải chi phí hợp lệ — đây là một dạng kiểm tra hồi quy miễn phí đi kèm mỗi lần chạy offline eval.
+**Ghi chú công thức chi phí.** Đơn vị chi phí đúng theo ADR-009 là **một lời gọi LLM sinh một biến**, không phải "một lần render". Cận trên lý thuyết cho một `document` là `(1 + R) × V × 2 × 2` (mục Đơn vị đo cho A-022 của `03-agents.md`, A-022). Offline eval nên đối chiếu số lời gọi thật của mỗi ca với cận trên này: một ca vượt cận trên mà không phải do `R` hay `V` khác dự kiến là **lỗi lập trình** (ví dụ vòng lặp không thoát đúng điều kiện), không phải chi phí hợp lệ — đây là một dạng kiểm tra hồi quy miễn phí đi kèm mỗi lần chạy offline eval.
 
 ---
 
@@ -147,7 +147,7 @@ Canary suite (mục 2.2) và ca kiểm cơ chế (mục 2.4) chạy **riêng**, 
 
 ### 4.2 Bản ghi kết quả và baseline
 
-Mỗi lần chạy gắn với: phiên bản `prompt_module_version` của mọi prompt module liên quan (`07-prompts.md` mục 7), **`catalog_fingerprint` của `request_type_catalog` đã dùng** (ADR-025 — cùng phiên bản P1 mà catalog khác là một lần chạy khác), tier/provider model nếu đã chọn (A-026), phiên bản template dùng để render (nhóm H), commit mã nguồn. Đây là artefact vận hành của việc build/CI, **không** là bảng nghiệp vụ trong `contracts/schema.sql` — nơi lưu: mục Nơi lưu bản ghi kết quả eval của `11-ops.md` (đợt sửa 4 sau Phase 13); định dạng file cụ thể thuộc người triển khai.
+Mỗi lần chạy gắn với: phiên bản `prompt_module_version` của mọi prompt module liên quan (mục Phiên bản và thay đổi của `07-prompts.md`), **`catalog_fingerprint` của `request_type_catalog` đã dùng** (ADR-025 — cùng phiên bản P1 mà catalog khác là một lần chạy khác), tier/provider model nếu đã chọn (A-026), phiên bản template dùng để render (nhóm H), commit mã nguồn. Đây là artefact vận hành của việc build/CI, **không** là bảng nghiệp vụ trong `contracts/schema.sql` — nơi lưu: mục Nơi lưu bản ghi kết quả eval của `11-ops.md` (đợt sửa 4 sau Phase 13); định dạng file cụ thể thuộc người triển khai.
 
 **Baseline là kết quả chạy gần nhất được coi là "đúng như mong đợi".** Kỹ thuật (Phase 11/người triển khai) tự chốt baseline mới sau một thay đổi cải thiện có chủ đích, **miễn đáp án chuẩn không đổi** — đáp án chuẩn (nội dung 37 ca, mục 2.1) chỉ Trưởng phòng Hành chính đổi được (A-023). Hai việc này phải tách: đổi baseline (kỹ thuật tự làm) khác đổi đáp án chuẩn (cần duyệt lại theo nghiệp vụ) — lẫn hai việc là tự cho phép sửa đáp án qua đường kỹ thuật.
 
@@ -202,7 +202,7 @@ Không tạo mã lỗi mới. Mục này chỉ **xếp lại** các mã đã t�
 
 **Đọc bảng này để biết gì.** Một tấm lưới đủ dày để nói: mọi mã lỗi ở tầng tool và tầng duyệt nghiệp vụ đều nằm dưới một ca của 37 ca hoặc một test permission đã có nơi ở (M4). Lỗ hở thật duy nhất là tầng **hạ tầng render** và **provider thật** — hai thứ 37 ca không giả lập trung thực được, vì chúng phụ thuộc môi trường (`object_storage`, font, provider) mà môi trường đó chưa tồn tại ở giai đoạn thiết kế. Đây không phải lỗ hở của bộ eval — nó là giới hạn thật của việc kiểm tra offline, và phải được kiểm bằng cách khác (canary tầng hạ tầng, hoặc kiểm thủ công khi triển khai) — không thuộc phạm vi thiết kế của phase này.
 
-**Bảng mã `notification.event_code` và `document_halt.reason_code` đầy đủ còn treo ở Phase 8** (mục 8 của `GLOSSARY.md`). Phase 10 dùng đúng các mã đã xuất hiện ở `08-hitl.md`, không bịa thêm mã mới.
+**Bảng mã `notification.event_code` và `document_halt.reason_code` đầy đủ còn treo ở Phase 8** (mục Enum khác của `GLOSSARY.md`). Phase 10 dùng đúng các mã đã xuất hiện ở `08-hitl.md`, không bịa thêm mã mới.
 
 ---
 
@@ -212,7 +212,7 @@ Không tạo mã lỗi mới. Mục này chỉ **xếp lại** các mã đã t�
 
 Trước khi merge/deploy một thay đổi thuộc bất kỳ loại nào dưới đây:
 
-- Đổi `prompt_module_version` (major hoặc minor) của bất kỳ prompt module nào (mục 7 của `07-prompts.md`).
+- Đổi `prompt_module_version` (major hoặc minor) của bất kỳ prompt module nào (mục Phiên bản và thay đổi của `07-prompts.md`).
 - Đổi model/provider hoặc tier của `intake_agent`/`drafting_agent` (A-026, A-065).
 - Đổi embedding model (A-028).
 - Đổi phiên bản library `langgraph`/`langgraph-checkpoint-postgres`, hoặc sửa biên node của `orchestrator` (A-045).
@@ -241,7 +241,7 @@ flowchart TD
 ```
 
 1. Chạy lại toàn bộ 37 ca (mục 2.1), canary suite (mục 2.2) và ca kiểm cơ chế (mục 2.4).
-2. **Nhóm tương đương Bất biến** — mọi ca chấm bằng tiêu chí M8 (nhóm G) hay M6 (nhóm J), cộng canary C1/C2 và ca kiểm cơ chế K1/K2: **0 sai lệch** là điều kiện **hard**. K1/K2 vào nhóm hard vì chúng canh điều kiện thoát vòng lặp của `intake_agent` (mục Agent Registry của `03-agents.md`) — trượt là hội thoại không có trần, hoặc nhân viên hợp lệ bị đẩy sang liên hệ trực tiếp, tức hỏng M3. Trượt một ca ở đây thì không được merge/deploy, không có ngoại lệ — đúng tinh thần "Bất biến là ngưỡng tuyệt đối" của `01-prd.md` mục 2.
+2. **Nhóm tương đương Bất biến** — mọi ca chấm bằng tiêu chí M8 (nhóm G) hay M6 (nhóm J), cộng canary C1/C2 và ca kiểm cơ chế K1/K2: **0 sai lệch** là điều kiện **hard**. K1/K2 vào nhóm hard vì chúng canh điều kiện thoát vòng lặp của `intake_agent` (mục Agent Registry của `03-agents.md`) — trượt là hội thoại không có trần, hoặc nhân viên hợp lệ bị đẩy sang liên hệ trực tiếp, tức hỏng M3. Trượt một ca ở đây thì không được merge/deploy, không có ngoại lệ — đúng tinh thần "Bất biến là ngưỡng tuyệt đối" của mục Goals & metrics của `01-prd.md`.
 3. **Nhóm tương đương Cảnh báo** — tỷ lệ trượt `validate_free_content`/`halt_for_human` ở nhóm A/B/H, và M1-proxy (phân loại sai ngoài nhóm G): xấu đi so với baseline chỉ **cảnh báo**, ghi vào bản ghi kết quả của lần chạy, **không chặn** merge/deploy. Đây là lựa chọn đã chốt: giữ đúng triết lý "Cảnh báo không phải cổng nghiệm thu" của PRD cho cả gate kỹ thuật, không riêng gì cổng nghiệm thu UAT.
 4. Đáp án chuẩn (nội dung 37 ca) **không đổi** trong một lần gate. Nếu trong lúc chạy gate phát hiện một ca cũ có đáp án sai, đó là một thay đổi riêng, cần Trưởng phòng Hành chính duyệt lại và ghi `CHANGELOG.md` — không lẫn vào kết quả của lần gate đang chạy.
 
@@ -255,7 +255,7 @@ Chưa có căn cứ để đặt một con số cho nhóm Cảnh báo ở bướ
 
 ### 9.1 Hạ tier rẻ/mạnh cho `drafting_agent`
 
-Câu hỏi từ mục 3.8 của `04-data.md` và mục Agent Registry của `03-agents.md`. **Phương pháp A/B:**
+Câu hỏi từ mục Vận hành của `04-data.md` và mục Agent Registry của `03-agents.md`. **Phương pháp A/B:**
 
 1. Chạy đúng các ca sinh biến nội dung tự do — nhóm A, B, H — qua **cả hai** tier (rẻ và mạnh), cùng một `variable_guidance`.
 2. Chấm bằng rubric mục 6 (Người: Trưởng phòng Hành chính đọc `body` sinh ra, đánh giá dùng được hay phải sửa lại hoàn toàn) + đo chi phí/độ trễ theo mục 3.
@@ -271,7 +271,7 @@ Phương pháp đã đặc tả đầy đủ ở mục 2.3. Tóm lại: khi có 
 
 ## 10. `EvalCase` — schema khai báo
 
-Contract cho một ca trong bộ eval hành vi (mục 2.1). Chỉ khai field và kiểu; không có thân xử lý — đúng phạm vi DESIGN MODE.
+Contract cho một ca trong bộ eval hành vi (mục 2.1). Viết theo JSON Schema draft 2020-12 `[CẦN XÁC MINH]` — bản gốc chưa có trong `docs/reference/` (AUD-21). Chỉ khai field và kiểu; không có thân xử lý — đúng phạm vi DESIGN MODE.
 
 ```json
 {
@@ -348,4 +348,4 @@ Không có câu hỏi mở chỉ tồn tại trong file này. Ba giả định m
 
 ## Quyết định kiến trúc
 
-Không có ADR mới. Ba quyết định của phase này (gate mềm cho Cảnh báo, kỹ thuật tự chốt baseline, chỉ đưa phương pháp cho hai câu hỏi mở A/B) là quyết định trực tiếp của Product Owner trong phiên làm việc này, không phải lựa chọn công nghệ — không thuộc phạm vi ADR theo mục 3 của `CLAUDE.md`. Thiết kế dựa trên ADR-007, ADR-008, ADR-009, ADR-019 đã chốt.
+Không có ADR mới. Ba quyết định của phase này (gate mềm cho Cảnh báo, kỹ thuật tự chốt baseline, chỉ đưa phương pháp cho hai câu hỏi mở A/B) là quyết định trực tiếp của Product Owner trong phiên làm việc này, không phải lựa chọn công nghệ — không thuộc phạm vi ADR theo mục Tech stack của `CLAUDE.md`. Thiết kế dựa trên ADR-007, ADR-008, ADR-009, ADR-019 đã chốt.

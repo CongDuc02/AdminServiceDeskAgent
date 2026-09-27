@@ -1,6 +1,6 @@
 # Phase 0 — Domain Discovery
 
-**Dự án:** BO-19 — Admin Service Desk Agent · **Phiên bản:** 0.15 · **Trạng thái:** Draft chờ duyệt · **v0.12:** đợt sửa 2 sau Phase 13 — `APPROVED` của `request` nghĩa là đã ký (AUD-01); vế `delegation` của lập hộ cắt khỏi Sprint đầu (AUD-15); kiểu của `beneficiary_employee_id` (AUD-20) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.13:** đợt sửa 3 — cạnh `SUBMITTED → REJECTED` có thao tác đi qua, thêm `request CHANGES_REQUESTED → REJECTED`, `document DRAFT → ARCHIVED`, `APPROVED → ARCHIVED` qua thao tác tiếp quản (AUD-07, AUD-02 (d)); phần Phase 8 của D-006 đã làm (AUD-23 (e)) · **v0.14:** căn cứ bảo vệ dữ liệu cá nhân đổi sang Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP (AUD-26, A-080) — mục ngày 2026-09-26 (AUD-26) · **v0.15:** đợt sửa 4 sau Phase 13 — hạn của A-009 và mẫu `.docx` trỏ cổng 1.7, 1.6 của `12-roadmap.md`; con trỏ cũ (AUD-11)
+**Dự án:** BO-19 — Admin Service Desk Agent · **Phiên bản:** 0.16 · **Trạng thái:** Draft chờ duyệt · **v0.12:** đợt sửa 2 sau Phase 13 — `APPROVED` của `request` nghĩa là đã ký (AUD-01); vế `delegation` của lập hộ cắt khỏi Sprint đầu (AUD-15); kiểu của `beneficiary_employee_id` (AUD-20) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.13:** đợt sửa 3 — cạnh `SUBMITTED → REJECTED` có thao tác đi qua, thêm `request CHANGES_REQUESTED → REJECTED`, `document DRAFT → ARCHIVED`, `APPROVED → ARCHIVED` qua thao tác tiếp quản (AUD-07, AUD-02 (d)); phần Phase 8 của D-006 đã làm (AUD-23 (e)) · **v0.14:** căn cứ bảo vệ dữ liệu cá nhân đổi sang Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP (AUD-26, A-080) — mục ngày 2026-09-26 (AUD-26) · **v0.15:** đợt sửa 4 sau Phase 13 — hạn của A-009 và mẫu `.docx` trỏ cổng 1.7, 1.6 của `12-roadmap.md`; con trỏ cũ (AUD-11) · **v0.16:** đợt sửa 5 sau Phase 13 — hai `TBD` của catalog trỏ A-002, ngưỡng EC-RB-04 trỏ A-012
 
 > File này chốt **từ vựng nghiệp vụ**: có những loại yêu cầu nào, mỗi loại cần dữ liệu gì, văn bản đi qua những trạng thái nào, ai được làm gì. Từ Phase 1 trở đi mọi tài liệu phải dùng đúng tên ở đây và ở [`GLOSSARY.md`](./GLOSSARY.md). File này **không** chọn công nghệ, **không** thiết kế API, **không** định nghĩa agent hay tool.
 
@@ -38,8 +38,8 @@ Bốn loại đầu lấy nguyên từ đề bài. Hai loại cuối là `[ĐỀ
 | `INTRODUCTION_LETTER` | Giấy giới thiệu | `document` | `tpl_introduction_letter` | `ADMIN_OFFICER` | Có — dấu tròn | TBD (A-002) | — |
 | `ROOM_BOOKING` | Đặt phòng họp | `room_booking` | Không có | `ADMIN_OFFICER` | Không | TBD (A-002) | `[Should]` |
 | `SEAL_REQUEST` | Yêu cầu đóng dấu cho văn bản ngoài | `seal_action` | Không có | `ADMIN_OFFICER` + `SIGNER` | Đây chính là hành vi được duyệt | TBD (A-002) | `[Could]` |
-| `INCOME_CONFIRMATION` `[ĐỀ XUẤT]` | Giấy xác nhận thu nhập | `document` | `tpl_income_confirmation` | `ADMIN_OFFICER` + phê duyệt dữ liệu lương | Có — dấu tròn | TBD | `[Could]` |
-| `BUSINESS_TRIP_ORDER` `[ĐỀ XUẤT]` | Quyết định cử đi công tác | `document` | `tpl_business_trip_order` | `SIGNER` | Có — dấu tròn | TBD | `[Could]` |
+| `INCOME_CONFIRMATION` `[ĐỀ XUẤT]` | Giấy xác nhận thu nhập | `document` | `tpl_income_confirmation` | `ADMIN_OFFICER` + phê duyệt dữ liệu lương | Có — dấu tròn | TBD (A-002) | `[Could]` |
+| `BUSINESS_TRIP_ORDER` `[ĐỀ XUẤT]` | Quyết định cử đi công tác | `document` | `tpl_business_trip_order` | `SIGNER` | Có — dấu tròn | TBD (A-002) | `[Could]` |
 
 Cột **Phạm vi** chỉ đánh dấu hạng mục sẽ bị cắt khỏi Sprint đầu. Mức MoSCoW đầy đủ chốt ở mục Scope & priority của PRD.
 
@@ -508,7 +508,7 @@ Mỗi loại yêu cầu có tối thiểu 2 ca ở chiều thứ hai. Toàn bộ
 | EC-RB-01 | **Trùng lịch** — phòng đã có `room_booking` ở `HELD` hoặc `CONFIRMED` chồng khung giờ | Chặn, nêu rõ đang trùng khung giờ nào, đề xuất phòng khác hoặc khung giờ khác. Tuyệt đối không ghi đè hay tự dời lịch người khác. Không tiết lộ chủ đề cuộc họp của người khác, chỉ nêu khung giờ bận |
 | EC-RB-02 | `attendee_count` **vượt sức chứa** phòng | Chặn, gợi ý phòng đủ sức chứa trong cùng khung giờ |
 | EC-RB-03 | Đặt **ngoài giờ làm việc** hoặc ngày lễ | Không chặn cứng; gắn cờ và đưa vào hàng đợi duyệt kèm ghi chú để người có `booking.confirm` quyết |
-| EC-RB-04 | Huỷ **sau khi đã `CONFIRMED`**, sát giờ họp | Cho huỷ, giải phóng phòng ngay, ghi nhật ký người huỷ và thời điểm. `request` vẫn ở `FULFILLED` — đây là ví dụ artifact sống tiếp sau khi request đã đóng. Ngưỡng "sát giờ" và chính sách no-show: TBD |
+| EC-RB-04 | Huỷ **sau khi đã `CONFIRMED`**, sát giờ họp | Cho huỷ, giải phóng phòng ngay, ghi nhật ký người huỷ và thời điểm. `request` vẫn ở `FULFILLED` — đây là ví dụ artifact sống tiếp sau khi request đã đóng. Ngưỡng "sát giờ" và chính sách no-show: TBD (A-012) |
 
 ### Đóng dấu — cổng `PENDING_SEAL` và `SEAL_REQUEST` `[Could]`
 

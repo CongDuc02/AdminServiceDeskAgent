@@ -16,7 +16,7 @@ Cùng phase này mở **A-069** (chọn công cụ APM/metric cụ thể — ch�
 
 - **A — UUID v4.** Chữ thường, có gạch nối (`8-4-4-4-12` hex).
 - **B — ULID.** Sortable theo thời gian, cần thư viện mới.
-- **C — W3C Trace Context (`traceparent` trace-id).** 32 ký tự hex, không gạch nối — chuẩn OpenTelemetry.
+- **C — W3C Trace Context (`traceparent` trace-id).** 32 ký tự hex, không gạch nối — chuẩn OpenTelemetry. `[CẦN XÁC MINH]` — bản gốc chưa có trong `docs/reference/` (AUD-21).
 - **D — Hoãn định dạng, chờ A-069 chọn công cụ trước.** Không thêm `CHECK` nào ở Phase 11.
 
 ## Decision
@@ -29,7 +29,7 @@ Cùng phase này mở **A-069** (chọn công cụ APM/metric cụ thể — ch�
 
 **Điều kiện đảo ngược, ghi tường minh:** nếu công cụ APM chọn ở A-069 **bắt buộc** một định dạng `trace_id` khác UUID v4 (ví dụ để tích hợp trực tiếp, không qua tầng dịch), quyết định này phải mở lại — cần một `ALTER TABLE ... DROP CONSTRAINT` + `ADD CONSTRAINT` mới (migration tiếp theo), và một quyết định về các dòng `llm_usage`/`audit_event` đã ghi trước đó mang định dạng cũ (chấp nhận `CHECK` mới chỉ áp cho dòng ghi sau, hoặc chuyển đổi hồi tố — quyết định của lúc đó, không phải bây giờ).
 
-**Buộc chéo vào A-069 (mục 12 của `ASSUMPTIONS.md`):** tiêu chí chọn công cụ APM ở A-069 phải bao gồm câu hỏi *"công cụ này có ép một định dạng trace ID không tương thích UUID v4 không"* — người chọn công cụ đọc A-069 phải thấy ràng buộc này, không được để nó chỉ nằm trong một ADR riêng mà không ai đọc lại lúc chọn.
+**Buộc chéo vào A-069 (`ASSUMPTIONS.md`):** tiêu chí chọn công cụ APM ở A-069 phải bao gồm câu hỏi *"công cụ này có ép một định dạng trace ID không tương thích UUID v4 không"* — người chọn công cụ đọc A-069 phải thấy ràng buộc này, không được để nó chỉ nằm trong một ADR riêng mà không ai đọc lại lúc chọn.
 
 ## Consequences
 

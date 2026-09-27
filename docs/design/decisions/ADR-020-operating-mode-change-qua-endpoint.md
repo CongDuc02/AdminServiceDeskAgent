@@ -22,7 +22,7 @@ Câu hỏi đứng trước việc cấp permission `operating_mode.change` cho 
 **Chọn A.**
 
 1. **Quyền đã cấp đi ngược hướng B.** `bo19_app` đã có `INSERT` trên `operating_mode_change` từ Phase 4. `employee_credential` — nơi B thật sự đứng được — được thiết kế ngược lại: `bo19_app` cố tình **chỉ đọc**, để ứng dụng không có lệnh ghi credential nào. Chọn B ở đây nghĩa là phải thu hồi quyền `INSERT` đã cấp bằng một migration khác (đảo một quyết định Phase 4 không ai yêu cầu đảo), hoặc để nguyên một quyền ghi mà không dòng code nào dùng tới — cả hai đều phạm nguyên tắc "`bo19_app` chỉ có đúng các quyền được cấp" (mục Hai role và bất biến bằng quyền của `04-data.md`).
-2. **Thao tác vận hành không đi qua `tool_layer`, nên không sinh `audit_event`.** Đây là hành động hệ trọng nhất của hệ thống — nó bật/tắt toàn bộ ba ràng buộc của chế độ phi sản xuất (mục 6.2 của `00-domain.md`: watermark, dải số, cấm đóng dấu thật). Ghi nó ngoài `tool_layer` để nó nằm ngoài đúng nhật ký mà `audit.read_all` đọc là làm yếu chữ của D-009 ("được ghi nhận và quy trách nhiệm được"), không phải một cách khác để đạt cùng mục tiêu.
+2. **Thao tác vận hành không đi qua `tool_layer`, nên không sinh `audit_event`.** Đây là hành động hệ trọng nhất của hệ thống — nó bật/tắt toàn bộ ba ràng buộc của chế độ phi sản xuất (mục Chế độ phi sản xuất của `00-domain.md`: watermark, dải số, cấm đóng dấu thật). Ghi nó ngoài `tool_layer` để nó nằm ngoài đúng nhật ký mà `audit.read_all` đọc là làm yếu chữ của D-009 ("được ghi nhận và quy trách nhiệm được"), không phải một cách khác để đạt cùng mục tiêu.
 
 **Điều kiện đi kèm quyết định:**
 
