@@ -2369,3 +2369,16 @@ PO duyệt ADR-030, duyệt phép chặn của A-082 theo mẫu tên biến, và
 | `13-audit.md` → 0.12 | `grep` xác nhận `CLAUDE.md` đã đổi: AUD-09 Đóng; AUD-03 hết ghi chú; AUD-26 chỉ còn vế bản gốc pháp lý. **24 Đóng, 3 Mở** (AUD-07, AUD-24, AUD-26) |
 
 Tiến trình `pip-compile` của phép thử ADR-030 đã tắt theo lệnh PO; kết luận của ADR không dựa vào nó.
+
+---
+
+## 2026-09-27 (sẵn sàng Sprint 1 — mục 9, 10) — A-041 `Đã chốt`; hạn A-011, A-020, A-040, A-047 khớp roadmap
+
+PO duyệt mục 10 của bảng sẵn sàng cổng Sprint 1 và chốt múi giờ.
+
+| File | Thay đổi |
+|---|---|
+| `ASSUMPTIONS.md` → 0.38 | A-041 `Đã chốt`: `Asia/Ho_Chi_Minh` — kiểm bằng `zoneinfo` cùng `tzdata` 2026.4: UTC+07:00 cả ngày 15/01 lẫn 15/07/2026, `dst()` bằng 0. Hạn A-011 → cổng 3.3, A-020 → cổng 4.2 (thay "Trước grooming F1"). Hạn A-040, A-047 → cổng 2.10 mới (thay "Trước khi bắt đầu build") |
+| `12-roadmap.md` | Cổng 1.9 Đạt. Cổng 2.10 mới: role của PostgreSQL managed trên Render, `check_grants.py --app-dsn` đạt trên Render `dev` — A-040, A-047 |
+| `06-structure.md` | Bước kiểm khởi động #13 ghi giá trị múi giờ đã chốt |
+| `04-data.md` | Open Questions: A-041 đã chốt |
