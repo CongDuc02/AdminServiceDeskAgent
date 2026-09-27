@@ -1,6 +1,6 @@
 # Security & Guardrails — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.6 · **Trạng thái:** Draft chờ duyệt · **v0.3:** đợt sửa 3b sau Phase 13 — thêm mục 13, quyền của chủ thể dữ liệu ở mức nghĩa vụ (AUD-24 của `13-audit.md`); không sửa mục nào khác · **v0.4:** căn cứ bảo vệ dữ liệu cá nhân đổi sang Luật 2025 và Nghị định 356/2025/NĐ-CP (AUD-26); thời hạn thực hiện quyền của chủ thể · **v0.5:** đợt sửa 4 — dòng A-082 ở mục Mô hình mối đe doạ; `audit.read_all` ở mục Row-level theo phòng ban (AUD-24); nội dung cũ (AUD-11, AUD-22) · **v0.6:** đợt sửa 5 sau Phase 13 — tham chiếu theo tên mục (AUD-17); tính chất `argon2id` `[CẦN XÁC MINH]` (AUD-21)
+**Phiên bản:** 0.7 · **Trạng thái:** Draft chờ duyệt · **v0.3:** đợt sửa 3b sau Phase 13 — thêm mục 13, quyền của chủ thể dữ liệu ở mức nghĩa vụ (AUD-24 của `13-audit.md`); không sửa mục nào khác · **v0.4:** căn cứ bảo vệ dữ liệu cá nhân đổi sang Luật 2025 và Nghị định 356/2025/NĐ-CP (AUD-26); thời hạn thực hiện quyền của chủ thể · **v0.5:** đợt sửa 4 — dòng A-082 ở mục Mô hình mối đe doạ; `audit.read_all` ở mục Row-level theo phòng ban (AUD-24); nội dung cũ (AUD-11, AUD-22) · **v0.6:** đợt sửa 5 sau Phase 13 — tham chiếu theo tên mục (AUD-17); tính chất `argon2id` `[CẦN XÁC MINH]` (AUD-21) · **v0.7:** dòng A-082 ở mục Mô hình mối đe doạ trỏ tài liệu tham chiếu `langsmith` (2026-09-27)
 
 > File này chốt AuthN/AuthZ, rate limit, PII masking và hiển thị theo `slot_sensitivity`, phòng thủ prompt injection, output validation trước khi render, bảo vệ template gốc, và secret management trên Render. File này **không** thiết kế màn hình (Phase 8 đã đóng phần của nó), **không** định cỡ tham số vận hành bằng số liệu tải thật (Phase 11), và **không** lặp lại lập luận đã có ở ADR-001, ADR-007, ADR-008, ADR-013.
 
@@ -28,7 +28,7 @@ Sản phẩm giao có tên do ADR-013 trỏ tới (điều kiện đảo ngượ
 
 **Bề mặt tấn công chính** — ai đứng ở đâu: nhân viên đã đăng nhập (chat, upload `external_file` ở `SEAL_REQUEST` `[Could]`), người ngoài chưa đăng nhập (`POST /auth/session`, stream tín hiệu công khai không có), nội dung do bên thứ ba tạo mà hệ thống hiển thị lại (`procedure_document`, `external_document`).
 
-**Đường rời hệ thống ngoài `ai_gateway` qua phụ thuộc bắc cầu:** `langsmith` vào cây phụ thuộc qua `langchain-core`; hành vi mặc định `[CẦN XÁC MINH]`, lớp chặn là bước kiểm khởi động từ chối chạy khi biến bật tracing được đặt — A-082, trước cổng Sprint 1 *(đợt sửa 4 sau Phase 13)*.
+**Đường rời hệ thống ngoài `ai_gateway` qua phụ thuộc bắc cầu:** `langsmith` vào cây phụ thuộc qua `langchain-core`. Hành vi mặc định đã xác minh cho bản 0.14.1 — không đặt biến bật tracing thì không gửi gì (`docs/reference/langsmith-tracing-env.md`); đối chiếu lại khi lockfile chốt bản (A-081). Lớp chặn là bước kiểm khởi động từ chối chạy khi biến bật tracing được đặt — A-082, trước cổng Sprint 1.
 
 **Cái đang được chấp nhận có chủ, không phải khoảng trống**
 

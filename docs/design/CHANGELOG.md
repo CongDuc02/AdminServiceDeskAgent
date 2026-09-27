@@ -2328,3 +2328,27 @@ Mục 7.5 (tiến độ), mục 8 mới — **trạng thái cuối từng AUD: 2
 ### Đã chạy
 
 `check_grants.py` `--local-migrated` 176 / 68 / Lệch 0, `--local` 169 / 63 / Lệch 0; sha256 trùng; `openapi.yaml` 0.2.7 hợp lệ; `05-api.md` ↔ `openapi.yaml` 56 = 52 + 4, mã lỗi 37 = 37; `mmdc` 32/32; quét phụ lục A.7 153 dòng, phân loại không đổi; luật 12, phiên bản, ID treo — không lỗi.
+
+---
+
+## 2026-09-27 (cổng Sprint 1 — A-081, A-082) — ADR-030 `Proposed`; tài liệu tham chiếu `langsmith`
+
+Nhánh `design/a081-a082-build-prereq`, chưa merge.
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-030-khoa-phien-ban-bang-uv-pip-compile.md` | **Mới, `Proposed`.** Khoá bằng `uv pip compile`, đích là nền tảng của image (Linux x86_64), file dạng requirements có hash; image cài bằng `pip install --require-hashes --no-deps`; `langgraph-checkpoint==4.2.0` qua constraint; CI sinh lại và so. Loại: `pip-compile` (không chọn được nền tảng đích), `uv lock` + `uv sync` (đưa `uv` vào image), `pip freeze` (chụp môi trường máy chạy). Căn cứ là phép thử thật, ghi trong ADR |
+| `docs/reference/langsmith-tracing-env.md` | **Mới.** Mã nguồn nguyên văn từ wheel `langsmith` 0.14.1, `langchain-core` 1.6.5, `langgraph` 1.2.11 (có sha256), cùng phép thử hành vi 10 ca. Ghi rõ: đối chiếu lại khi lockfile chốt bản |
+| `ASSUMPTIONS.md` → 0.36 | A-081: tiến độ, trỏ ADR-030. A-082 → `Thu hẹp`: hành vi mặc định và tên biến đã xác minh cho bản chưa khoá |
+| `09-security.md` | Dòng A-082 ở mục Mô hình mối đe doạ: bỏ `[CẦN XÁC MINH]` cho bản 0.14.1, trỏ tài liệu tham chiếu |
+| `12-roadmap.md` | Cổng 1.12 trỏ ADR-030; cổng 1.13 ghi phần đã xong |
+
+### Đã chạy — trong scratchpad, không file nào vào repo
+
+- `uv` 0.12.19, `pip-tools` 7.6.1 — cài vào venv Python 3.11.9, phiên bản đọc từ metadata.
+- `uv pip compile … --python-platform x86_64-unknown-linux-gnu --python-version 3.11 --generate-hashes`: 71 gói, 1570 hash, có `uvloop`, không có `colorama`.
+- `pip install --dry-run --require-hashes --no-deps --only-binary=:all: --platform manylinux_2_28_x86_64 --python-version 3.11` trên lock đó: 71 wheel, mọi hash khớp.
+- Marker `uvloop`/`colorama` của `uvicorn[standard]` đọc từ `METADATA` của wheel `uvicorn` 0.34.2. Bản nháp đầu của ADR ghi nhầm `colorama` đến từ `click` — đã sửa theo metadata.
+- `pip-compile` trên Windows: tới lúc commit chưa xong. `pip-compile --help` không có tuỳ chọn nền tảng đích.
+- Phép thử `langsmith`: không đặt biến nào — 0 lần kết nối mạng; `LANGSMITH_TRACING=true`, `LANGSMITH_TRACING_V2=true`, `LANGCHAIN_TRACING_V2=true` — 16 lần thử kết nối tới cổng 443; `True`, `1` — không bật; `LANGCHAIN_TRACING=1` — `RuntimeError`.
+- `audit_checks.py` (phụ lục A.11 của `13-audit.md`): không ID treo, không tham chiếu theo số, phiên bản không lệch.
