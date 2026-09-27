@@ -1,6 +1,6 @@
 # ADR-030 — Khoá phiên bản phụ thuộc Python bằng `uv pip compile`, image cài bằng `pip` thường
 
-**Trạng thái:** Proposed · **Ngày:** 2026-09-27 · **Quyết định tại:** A-081 (cổng 1.12 của `12-roadmap.md`) · **Liên quan:** A-045 (checkpointer đã xác minh), A-082 (`langsmith`), ADR-015 (một image cho mọi tiến trình), mục Đặc tả `Dockerfile` và mục Xác minh contract của `06-structure.md`, `backend/pyproject.toml`
+**Trạng thái:** Accepted · **Ngày:** 2026-09-27 · **Duyệt:** PO, 2026-09-27 — `Proposed` → `Accepted`, kèm bước CI ở mục Decision · **Quyết định tại:** A-081 (cổng 1.12 của `12-roadmap.md`) · **Liên quan:** A-045 (checkpointer đã xác minh), A-082 (`langsmith`), ADR-015 (một image cho mọi tiến trình), mục Đặc tả `Dockerfile` và mục Xác minh contract của `06-structure.md`, `backend/pyproject.toml`
 
 ---
 
@@ -41,7 +41,13 @@ Công cụ cài bằng `pip` vào một venv Python 3.11.9 trên Windows: `uv` *
 - **File lock:** định dạng requirements, `--generate-hashes`, đặt cạnh `backend/pyproject.toml`. Tên file và vị trí chốt ở BUILD MODE.
 - **Ghim bắt buộc qua constraint:** `langgraph-checkpoint==4.2.0` — bản đã chạy thật trong bộ kiểm của A-045. Đổi bản này thì chạy lại phép xác minh của A-045.
 - **Image cài bằng `pip` thường:** `pip install --require-hashes --no-deps -r <lock>`. `uv` không vào image.
-- **CI:** sinh lại lock từ `pyproject.toml` rồi so với file đã commit — lệch thì hỏng build, cùng khuôn với type sinh từ `openapi.yaml` (mục Đặc tả `Dockerfile` của `06-structure.md`).
+- **Bước CI, BUILD MODE — theo yêu cầu của PO khi duyệt:** một job chạy **trên runner Linux**, ở mọi thay đổi chạm `backend/pyproject.toml`, file lock hay file constraint:
+  1. Cài đúng phiên bản `uv` ghi ở dòng đầu file lock.
+  2. Sinh lại lock bằng **đúng lệnh** ghi ở dòng đầu file lock — cùng đích nền tảng, phiên bản Python, constraint và `--generate-hashes` — ra một file tạm.
+  3. So file tạm với file đã commit. **Lệch một byte là job fail**, và merge bị chặn. Không tự sửa file đã commit trong CI.
+  4. Cùng job, `pip install --require-hashes --no-deps -r <lock>` vào một venv sạch để chứng minh lock cài được trên Linux.
+
+  Cùng khuôn với bước so type sinh từ `openapi.yaml` (mục Đặc tả `Dockerfile` của `06-structure.md`): cái sinh ra từ nguồn phải trùng cái đã commit. Chạy trên Linux vì đó là nền tảng của image — lệnh khoá đã nhắm Linux, nhưng phép so trên chính nền tảng đích loại thêm mọi khác biệt do máy chạy lệnh.
 - **Sinh lock thật là việc của BUILD MODE** — sau cổng 1.1. ADR này chỉ chốt cách làm.
 
 ## Consequences

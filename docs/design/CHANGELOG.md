@@ -2352,3 +2352,20 @@ Nhánh `design/a081-a082-build-prereq`, chưa merge.
 - `pip-compile` trên Windows: tới lúc commit chưa xong. `pip-compile --help` không có tuỳ chọn nền tảng đích.
 - Phép thử `langsmith`: không đặt biến nào — 0 lần kết nối mạng; `LANGSMITH_TRACING=true`, `LANGSMITH_TRACING_V2=true`, `LANGCHAIN_TRACING_V2=true` — 16 lần thử kết nối tới cổng 443; `True`, `1` — không bật; `LANGCHAIN_TRACING=1` — `RuntimeError`.
 - `audit_checks.py` (phụ lục A.11 của `13-audit.md`): không ID treo, không tham chiếu theo số, phiên bản không lệch.
+
+---
+
+## 2026-09-27 (ADR-030 Accepted; A-082 phép chặn; `CLAUDE.md` đã sửa) — AUD-09 Đóng
+
+PO duyệt ADR-030, duyệt phép chặn của A-082 theo mẫu tên biến, và tự áp diff `CLAUDE.md` (commit `408d0d8`).
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-030-…` | `Proposed` → `Accepted`. Thêm bước CI cho BUILD MODE: job trên runner Linux sinh lại lock bằng đúng lệnh ở dòng đầu file lock, so với bản đã commit — lệch thì fail và chặn merge; cùng job cài thử bằng `pip --require-hashes` |
+| `06-structure.md` | Đặc tả `Dockerfile`: dòng cài phụ thuộc Python thành `pip install --no-deps --require-hashes -r <lockfile>` (ADR-030) |
+| `ASSUMPTIONS.md` → 0.37 | A-081 `Thu hẹp` — còn sinh lock ở BUILD MODE. A-082: phép chặn ở bước kiểm khởi động — tên biến bắt đầu bằng `LANGSMITH_`/`LANGCHAIN_` và chứa `TRACING`, bất kể giá trị; **chưa áp vào `06-structure.md`** |
+| `docs/reference/langsmith-tracing-env.md` | Mục kết luận trỏ phép chặn theo mẫu ở A-082 |
+| `12-roadmap.md` | Cổng 1.12: ADR-030 `Accepted` |
+| `13-audit.md` → 0.12 | `grep` xác nhận `CLAUDE.md` đã đổi: AUD-09 Đóng; AUD-03 hết ghi chú; AUD-26 chỉ còn vế bản gốc pháp lý. **24 Đóng, 3 Mở** (AUD-07, AUD-24, AUD-26) |
+
+Tiến trình `pip-compile` của phép thử ADR-030 đã tắt theo lệnh PO; kết luận của ADR không dựa vào nó.

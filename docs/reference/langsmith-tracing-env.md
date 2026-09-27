@@ -252,4 +252,4 @@ LANGCHAIN_TRACING=1 (v1)                                -> {"langsmith.tracing_i
 | Khi bật thì gửi đi đâu | `LANGSMITH_ENDPOINT` / `LANGCHAIN_ENDPOINT`, mặc định `https://api.smith.langchain.com`; hoặc OpenTelemetry theo `*_TRACING_MODE`, `*_OTEL_*` | Mục 1; mục 2 |
 | Mã gọi có tự bật được không | Có — `configure(enabled=True)`, context manager, hay decorator của `langsmith`. Dự án không gọi các API đó; luật import của `06-structure.md` là chỗ chặn | Mục 1 |
 
-**Đầu vào cho bước kiểm khởi động của A-082** — đề xuất, chưa áp vào `06-structure.md`: từ chối khởi động khi **bất kỳ** biến nào trong `LANGSMITH_TRACING`, `LANGSMITH_TRACING_V2`, `LANGCHAIN_TRACING`, `LANGCHAIN_TRACING_V2` được đặt **khác rỗng — bất kể giá trị**. Chặt hơn điều kiện thật của thư viện (chỉ `"true"`), để không phụ thuộc cách một bản sau đọc giá trị.
+**Đầu vào cho bước kiểm khởi động của A-082.** Bốn tên biến ở trên là căn cứ. Phép chặn PO đã duyệt (2026-09-27) rộng hơn: chặn theo **mẫu tên** — bắt đầu bằng `LANGSMITH_` hoặc `LANGCHAIN_` và chứa `TRACING` — bất kể giá trị. Định nghĩa đầy đủ ở dòng A-082 của `docs/design/ASSUMPTIONS.md`.
