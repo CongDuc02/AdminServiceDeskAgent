@@ -2312,3 +2312,19 @@ Mục 7.5 (tiến độ), mục 8 mới — **trạng thái cuối từng AUD: 2
 - Quét phụ lục A.7: 153 dòng, đã phân loại. Luật 12: không còn tham chiếu theo số dòng hay số mục sang file khác.
 
 **Ghi chú môi trường:** thư mục tạm của phiên bị thu hồi giữa đợt 5; công cụ kiểm dựng lại ngoài repo, nội dung ở phụ lục A.11. Không file nào của công cụ kiểm vào repo.
+
+---
+
+## 2026-09-27 (khép audit — lần 2) — `_PLAN.md` hai dòng chỗ quan sát; AUD-12 Đóng
+
+| File | Thay đổi |
+|---|---|
+| `_PLAN.md` | Bảng chỗ quan sát của Phase 11 thêm hai dòng, theo lệnh của PO: **ADR-008** — số truy vấn và latency đọc `postgresql` do node gọi LLM gây ra, cạnh thời lượng lượt chat; **ADR-015, vế công cụ** — thời lượng `pdf_export` và bộ nhớ tiến trình `worker`, cạnh giới hạn của gói Render |
+| `11-ops.md` | Câu "hai dòng này chưa có ở `_PLAN.md`" → đã thêm |
+| `13-audit.md` → 0.11 | AUD-12 Đóng — **23 Đóng, 4 Mở** (AUD-07, AUD-09, AUD-24, AUD-26). Ghi kết quả kiểm `CLAUDE.md` |
+
+**`CLAUDE.md` chưa đổi.** PO báo đã sửa ba chỗ; trên đĩa và trong git file sửa lần cuối 2026-09-12, `main` và nhánh sửa đều còn "Nghị định 13/2023/NĐ-CP", "BM25 + vector", và mục Cấu trúc output chưa có `backend/migrations/`. Trợ lý không sửa file này (luật 11) — AUD-09, AUD-26 giữ Mở.
+
+### Đã chạy
+
+`check_grants.py` `--local-migrated` 176 / 68 / Lệch 0, `--local` 169 / 63 / Lệch 0; sha256 trùng; `openapi.yaml` 0.2.7 hợp lệ; `05-api.md` ↔ `openapi.yaml` 56 = 52 + 4, mã lỗi 37 = 37; `mmdc` 32/32; quét phụ lục A.7 153 dòng, phân loại không đổi; luật 12, phiên bản, ID treo — không lỗi.

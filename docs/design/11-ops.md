@@ -183,7 +183,7 @@ Log JSON có cấu trúc ra stdout (mục `observability` của `02-architecture
 
 ### 6.3 Chỗ quan sát cho điều kiện đảo ngược — ánh xạ đầy đủ, đối chiếu từng dòng của `_PLAN.md`
 
-Không lặp lại **nội dung** tín hiệu (đã phát biểu đủ ở `_PLAN.md`) — bảng dưới trả lời đúng câu DoD hỏi: **mỗi tín hiệu có chỗ quan sát trong thiết kế này chưa, và ở đâu.** Chín nhóm ADR, mười ba dòng tín hiệu — không bỏ dòng nào *(đợt sửa 4 sau Phase 13: thêm hai dòng ADR-008 và ADR-015 vế công cụ, AUD-12 — mười nhóm, mười lăm dòng; hai dòng này chưa có ở `_PLAN.md`, file do PO quản)*; dòng nào chưa có trước phiên này thì bổ sung ngay, vì đây chính là việc `_PLAN.md` giao cho Phase 11.
+Không lặp lại **nội dung** tín hiệu (đã phát biểu đủ ở `_PLAN.md`) — bảng dưới trả lời đúng câu DoD hỏi: **mỗi tín hiệu có chỗ quan sát trong thiết kế này chưa, và ở đâu.** Chín nhóm ADR, mười ba dòng tín hiệu — không bỏ dòng nào *(đợt sửa 4 sau Phase 13: thêm hai dòng ADR-008 và ADR-015 vế công cụ, AUD-12 — mười nhóm, mười lăm dòng; hai dòng này đã thêm vào `_PLAN.md` ở lần khép audit, theo lệnh của PO)*; dòng nào chưa có trước phiên này thì bổ sung ngay, vì đây chính là việc `_PLAN.md` giao cho Phase 11.
 
 **Cột "Nguồn dữ liệu" trả lời đúng câu phải trả lời — metric lấy từ đâu, có thật hay còn là chỗ trống.** Dòng nào không chỉ được nguồn thì ghi thẳng "chưa có nguồn", không giả vờ đã tuân thủ.
 

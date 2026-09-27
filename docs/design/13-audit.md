@@ -1,6 +1,6 @@
 # Consistency Audit — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.10 · **Trạng thái:** Đã khép — chờ PO duyệt (mục 8) · **Ngày chạy:** 2026-09-26 · **v0.2:** theo chỉ đạo của PO khi nhận kết quả — tách AUD-02 thành AUD-02 (Chặn) và AUD-23 (Cao); quét lại AUD-11 bằng `grep`, thêm vị trí còn sót và AUD-24 phát hiện trong lượt quét; bảng so sánh hai phương án của AUD-01; ghi ba quyết định của PO và bảng quyết định cho năm câu còn lại ở Open Questions. ID các AUD cũ giữ nguyên · **v0.3:** ghi quyết định của PO vòng ba — AUD-01 chọn (A) kèm hai điều kiện; nhận AUD-24 kèm hạn; xác nhận lượt sửa `08-hitl.md` ở đợt 3; ADR-026 đã viết (`Proposed`); việc (f) của AUD-23 dời từ đợt 1 sang đợt 3 vì phụ thuộc việc (e) · **v0.4:** ghi quyết định của PO vòng bốn — câu 3, câu 5, câu 6, hai index, hạn AUD-24, ADR-026 `Accepted`; câu 7 hoãn tới trước đợt 4; thêm **AUD-25** (phụ thuộc Python của skeleton trái ADR), tìm thấy khi làm migration `0006` · **v0.5:** quyết định của PO vòng năm — AUD-07 gắn `SUBMITTED → REJECTED` vào thao tác tiếp quản (đợt 3); AUD-25 sửa theo ADR thành đợt 2b; xác nhận xoá router `health` khớp câu 6a · **v0.6:** ghi tiến độ đợt sửa 3 — mục 7.1; ba việc PO cần duyệt từ đợt 3 ở mục Chờ PO chốt · **v0.7:** quyết định của PO khi nhận đợt 3 — mục Đã quyết; tiến độ đợt 3b ở mục 7.2 · **v0.8:** thêm **AUD-26** (căn cứ bảo vệ dữ liệu cá nhân đã cũ — PO phát hiện, đã sửa) và **AUD-27** (ngữ nghĩa `x-bo19-permission` không khai — xếp vào đợt 4); quyết định PO sau đợt 3b · **v0.9:** câu 7 đã quyết; tiến độ đợt 4 ở mục 7.4; phụ lục A.10 · **v0.10:** quyết định PO sau đợt 4; phân loại dòng còn lại của AUD-11; đợt 5 (mục 7.5); khép audit — trạng thái cuối từng AUD ở mục 8, kiểm máy toàn bộ ở phụ lục A.11
+**Phiên bản:** 0.11 · **Trạng thái:** Đã khép — chờ PO duyệt (mục 8) · **Ngày chạy:** 2026-09-26 · **v0.2:** theo chỉ đạo của PO khi nhận kết quả — tách AUD-02 thành AUD-02 (Chặn) và AUD-23 (Cao); quét lại AUD-11 bằng `grep`, thêm vị trí còn sót và AUD-24 phát hiện trong lượt quét; bảng so sánh hai phương án của AUD-01; ghi ba quyết định của PO và bảng quyết định cho năm câu còn lại ở Open Questions. ID các AUD cũ giữ nguyên · **v0.3:** ghi quyết định của PO vòng ba — AUD-01 chọn (A) kèm hai điều kiện; nhận AUD-24 kèm hạn; xác nhận lượt sửa `08-hitl.md` ở đợt 3; ADR-026 đã viết (`Proposed`); việc (f) của AUD-23 dời từ đợt 1 sang đợt 3 vì phụ thuộc việc (e) · **v0.4:** ghi quyết định của PO vòng bốn — câu 3, câu 5, câu 6, hai index, hạn AUD-24, ADR-026 `Accepted`; câu 7 hoãn tới trước đợt 4; thêm **AUD-25** (phụ thuộc Python của skeleton trái ADR), tìm thấy khi làm migration `0006` · **v0.5:** quyết định của PO vòng năm — AUD-07 gắn `SUBMITTED → REJECTED` vào thao tác tiếp quản (đợt 3); AUD-25 sửa theo ADR thành đợt 2b; xác nhận xoá router `health` khớp câu 6a · **v0.6:** ghi tiến độ đợt sửa 3 — mục 7.1; ba việc PO cần duyệt từ đợt 3 ở mục Chờ PO chốt · **v0.7:** quyết định của PO khi nhận đợt 3 — mục Đã quyết; tiến độ đợt 3b ở mục 7.2 · **v0.8:** thêm **AUD-26** (căn cứ bảo vệ dữ liệu cá nhân đã cũ — PO phát hiện, đã sửa) và **AUD-27** (ngữ nghĩa `x-bo19-permission` không khai — xếp vào đợt 4); quyết định PO sau đợt 3b · **v0.9:** câu 7 đã quyết; tiến độ đợt 4 ở mục 7.4; phụ lục A.10 · **v0.10:** quyết định PO sau đợt 4; phân loại dòng còn lại của AUD-11; đợt 5 (mục 7.5); khép audit — trạng thái cuối từng AUD ở mục 8, kiểm máy toàn bộ ở phụ lục A.11 · **v0.11:** AUD-12 Đóng — hai dòng chỗ quan sát đã vào `_PLAN.md`; `CLAUDE.md` chưa đổi trên đĩa nên AUD-09, AUD-26 giữ Mở; kiểm khép chạy lại ngày 2026-09-27
 
 > File này đối chiếu toàn bộ `docs/design/` với nhau và với phần repo mà tài liệu dựa vào (`backend/migrations/`, cây thư mục backend, `tools/contract-checks/`). Kết quả là bảng lỗi `AUD-xx` kèm thứ tự sửa đề xuất. File này **chỉ báo cáo**: không sửa file nào khác, ngoài một mục mới trong `CHANGELOG.md`. Nó **không** quyết thay PO những chỗ cần quyết định, **không** thêm giả định, ADR hay tên mới, và **không** mở lại quyết định đã chốt.
 
@@ -807,7 +807,7 @@ Sửa ngay khi PO mở, commit riêng. 17 chỗ ở 8 file đổi sang Luật B�
 | AUD-09 | Cao | **Mở** | Đợt 1 — ADR-026 | `CLAUDE.md` mục Ràng buộc domain vẫn ghi BM25 — PO sửa (luật 11) |
 | AUD-10 | Cao | Đóng | Đợt 2 | — |
 | AUD-11 | Cao | Đóng | Đợt 1–5 | 153 dòng khớp từ khoá còn lại đều đã phân loại, không dòng nào là nội dung cũ |
-| AUD-12 | Cao | **Mở** | Đợt 4 — `11-ops.md`, `10-eval.md` | `_PLAN.md` chưa có hai dòng ADR-008, ADR-015 vế công cụ — PO thêm (mục Chờ PO chốt) |
+| AUD-12 | Cao | Đóng | Đợt 4 — `11-ops.md`, `10-eval.md`; `_PLAN.md` ở lần khép (v0.11, PO cho phép) | — |
 | AUD-13 | Cao | Đóng | Đợt 4, 5 | Owner ghi vai trò Product Owner — `GLOSSARY.md` định nghĩa |
 | AUD-14 | Cao | Đóng | Đợt 4 | — |
 | AUD-15 | Cao | Đóng | Đợt 2 — cắt phạm vi | A-052, cổng trước Sprint 3 |
@@ -824,7 +824,9 @@ Sửa ngay khi PO mở, commit riêng. 17 chỗ ở 8 file đổi sang Luật B�
 | AUD-26 | Cao | **Mở** | Tài liệu đã đổi căn cứ (commit riêng) | Bản gốc Luật Bảo vệ dữ liệu cá nhân 2025 và Nghị định 356/2025/NĐ-CP — PO đưa vào `docs/reference/`, rồi gỡ `[CẦN XÁC MINH]` (A-080). `CLAUDE.md` vẫn ghi Nghị định 13 — PO |
 | AUD-27 | Cao | Đóng | Đợt 4 | — |
 
-**Tổng:** 27 AUD — **22 Đóng, 5 Mở**. Cả năm AUD còn mở đều chờ một việc ngoài phạm vi sửa tài liệu thiết kế của trợ lý: hai việc ở `CLAUDE.md` và một ở `_PLAN.md` (file do PO quản), hai quyết định của PO hoặc pháp chế (A-053, A-079) và bản gốc pháp lý (A-080). Không AUD nào còn mức Chặn ở trạng thái Mở.
+**Tổng (v0.11):** 27 AUD — **23 Đóng, 4 Mở**: AUD-07, AUD-09, AUD-24, AUD-26. Cả bốn chờ một việc ngoài phạm vi sửa của trợ lý: `CLAUDE.md` (AUD-09, AUD-26 — luật 11), quyết định của PO hoặc pháp chế (A-053, A-079), bản gốc pháp lý (A-080).
+
+**Kiểm `CLAUDE.md` ở v0.11.** PO báo đã sửa ba chỗ. Trên đĩa và trong git, file chưa đổi: sửa lần cuối 2026-09-12; `main` và `design/phase13-dot-sua` đều còn "Nghị định 13/2023/NĐ-CP" ở mục Ràng buộc domain, "BM25 + vector" ở cùng mục, và mục Cấu trúc output chưa có `backend/migrations/`. AUD-09, AUD-26 giữ Mở; ghi chú của AUD-03 giữ nguyên. Khi file đổi thì chạy lại `grep -n "BM25\|Nghị định 13\|migrations" CLAUDE.md`. Không AUD nào còn mức Chặn ở trạng thái Mở.
 
 **Kiểm máy ở lần khép** — lệnh và script ở phụ lục A.11:
 
@@ -885,8 +887,7 @@ Không có giả định mới ở phase này. ADR mới duy nhất là ADR-026 
 
 | Việc | Cần gì | AUD |
 |---|---|---|
-| `_PLAN.md` — hai dòng chỗ quan sát | PO đã nhận làm. Nội dung: (1) **ADR-008** — số truy vấn và latency đọc DB do node gọi LLM gây ra, đặt cạnh latency lượt chat; (2) **ADR-015, vế công cụ** — bộ nhớ hay thời lượng chuyển đổi của `worker` tiến sát giới hạn của gói Render. Chỗ quan sát trong thiết kế đã có ở mục Chỗ quan sát cho điều kiện đảo ngược của `11-ops.md` | AUD-12 |
-| `CLAUDE.md` | Mục Ràng buộc domain: BM25 → trỏ ADR-026; Nghị định 13/2023/NĐ-CP → căn cứ mới (A-080). Mục Cấu trúc output: `backend/migrations/`. Luật 11 — trợ lý không sửa | AUD-09, AUD-26, AUD-03 |
+| `CLAUDE.md` — **chưa đổi trên đĩa** (kiểm v0.11) | Mục Ràng buộc domain: BM25 → trỏ ADR-026; Nghị định 13/2023/NĐ-CP → căn cứ mới (A-080). Mục Cấu trúc output: `backend/migrations/`. Luật 11 — trợ lý không sửa | AUD-09, AUD-26, AUD-03 |
 | Bản gốc pháp lý | Luật Bảo vệ dữ liệu cá nhân 2025, Nghị định 356/2025/NĐ-CP vào `docs/reference/` | AUD-26 |
 | A-053 | Huỷ ở `NEEDS_INFO` và vế EC-CV-02 — cổng 2.2 | AUD-07 |
 
