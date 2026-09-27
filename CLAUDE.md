@@ -8,7 +8,7 @@
 
 **DESIGN MODE.** Nhiệm vụ là sinh tài liệu thiết kế, **không implement business logic**.
 
-Được phép sinh (vì đây là *contract*, không phải implementation):
+Được phép sinh (vì đây là _contract_, không phải implementation):
 
 - `openapi.yaml`
 - JSON Schema / Pydantic model chỉ chứa field + type + validator khai báo
@@ -91,7 +91,7 @@ Không được phép sinh: hàm có thân xử lý, prompt gọi LLM thật, co
 9. **Tài liệu tham chiếu trong `docs/reference/` là chuẩn format, không phải nội dung.** `sample_prd.md` là PRD của một dự án khác (trợ lý tra cứu kế toán). Học **cấu trúc, giọng văn, mức chi tiết, quy ước** của nó; tuyệt đối không bê nội dung nghiệp vụ kế toán, persona, metric hay pain point sang BO-19. Nếu một mục trong mẫu không áp dụng được cho BO-19, nói rõ trong một dòng thay vì bịa nội dung cho đầy.
 10. **Không nhồi.** Thà 1 trang chính xác còn hơn 5 trang lấp chỗ. Cấm viết mục kiểu "N/A cho hệ thống này" — nếu một mục không áp dụng thì nói rõ trong một dòng và giải thích tại sao.
 11. **Không tự ý sửa `CLAUDE.md`.** File này chỉ được sửa khi tôi cho phép **từng lần một**, và sau khi sửa phải **báo cáo diff** đầy đủ trong phần báo cáo cuối phase. Cho phép ở lần trước không có giá trị cho lần sau. Phát hiện `CLAUDE.md` sai hay mâu thuẫn thì **báo cáo và chờ**, không tự sửa. Riêng `docs/design/` thì được ghi tự do theo `_PLAN.md`.
-12. **Tham chiếu chéo giữa các file trỏ theo TÊN MỤC, không theo số mục.** Viết *"mục Risk register của PRD"*, không viết *"PRD mục 11"*. Số mục là toạ độ vị trí — nó dịch chuyển mỗi lần thêm hoặc bớt một mục, và mọi tham chiếu khoá vào nó đều gãy âm thầm. Tên mục không dịch chuyển. **Không có ngoại lệ**, kể cả với mục ổn định lâu nay: một quy tắc không ngoại lệ dễ tuân thủ hơn một quy tắc có một ngoại lệ phải nhớ. Trong cùng một file thì vẫn được trỏ theo số.
+12. **Tham chiếu chéo giữa các file trỏ theo TÊN MỤC, không theo số mục.** Viết _"mục Risk register của PRD"_, không viết _"PRD mục 11"_. Số mục là toạ độ vị trí — nó dịch chuyển mỗi lần thêm hoặc bớt một mục, và mọi tham chiếu khoá vào nó đều gãy âm thầm. Tên mục không dịch chuyển. **Không có ngoại lệ**, kể cả với mục ổn định lâu nay: một quy tắc không ngoại lệ dễ tuân thủ hơn một quy tắc có một ngoại lệ phải nhớ. Trong cùng một file thì vẫn được trỏ theo số.
 
 ---
 
@@ -101,12 +101,12 @@ Mọi phase liên quan phải trả lời được, không được lướt qua:
 
 - **Thể thức văn bản hành chính**: tham chiếu Nghị định 30/2020/NĐ-CP về công tác văn thư.
   **Quy tắc trích dẫn — áp cho MỌI nguồn bên ngoài, không riêng mục này:** cấm viết **từ trí nhớ** số điều, khoản, điểm, phụ lục của văn bản pháp luật; số hiệu và nội dung tiêu chuẩn; phiên bản, giới hạn và con số trong tài liệu sản phẩm; số liệu benchmark. Chỉ được trích dẫn khi bản gốc đã có trong `docs/reference/`. Chưa có thì ghi `[CẦN XÁC MINH]` kèm **tên văn bản** và chỉ mô tả ở mức nguyên tắc.
-- **Dữ liệu cá nhân nhân viên**: tham chiếu Nghị định 13/2023/NĐ-CP, xử lý ở mức nghĩa vụ (mục đích thu thập, thời hạn lưu, quyền của chủ thể), không phán quyết pháp lý.
+- **Dữ liệu cá nhân nhân viên**: tham chiếu Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP — thay Nghị định 13/2023/NĐ-CP từ 01/01/2026; số hiệu, điều khoản và thời hạn `[CẦN XÁC MINH]` tới khi bản gốc có trong `docs/reference/` (A-080). Xử lý ở mức nghĩa vụ (mục đích thu thập, thời hạn lưu, quyền của chủ thể), không phán quyết pháp lý.
 - **Cấp số văn bản**: sổ văn bản, chống trùng số, chống lỗ hổng số khi request thất bại, xử lý đồng thời.
 - **Vòng đời văn bản**: draft → duyệt → ký → đóng dấu → phát hành → lưu trữ → **thu hồi/huỷ hiệu lực**. Trạng thái thu hồi bắt buộc có mặt.
 - **Template `.docx`**: versioning template, biến thay thế, kiểm tra biến thiếu, render sang PDF, lưu bản gốc bất biến.
 - **Định tuyến duyệt**: nhiều cấp, ủy quyền khi vắng mặt, escalation quá hạn, từ chối kèm lý do, yêu cầu sửa lại.
-- **Tiếng Việt**: embedding tiếng Việt, chuẩn hoá dấu, hybrid search (BM25 + vector) cho mã nhân viên và tên riêng.
+- **Tiếng Việt**: embedding tiếng Việt, chuẩn hoá dấu, hybrid search (full-text lõi của PostgreSQL + vector — **chưa phải BM25**, xem ADR-026; BM25 là hướng đảo ngược khi A-083 xác minh được) cho mã nhân viên và tên riêng.
 - **LangGraph**: state schema, node/edge, conditional edge, `interrupt` để dừng chờ người duyệt, checkpointer trên PostgreSQL để resume sau nhiều giờ/ngày.
 - **Chi phí**: model routing (model rẻ cho phân loại/trích slot, model mạnh cho soạn thảo), token budget mỗi request, cache, ngưỡng cảnh báo.
 
@@ -127,7 +127,12 @@ docs/design/
   ...
   decisions/ADR-001-*.md
   contracts/openapi.yaml
-  contracts/schema.sql
+  contracts/schema.sql   # dừng ở trạng thái đóng Phase 6 — xem contracts/README.md
+  contracts/README.md    # danh sách migration sau schema.sql
+backend/migrations/
+  schema/                # DDL sau Phase 6: 0001_initial.sql = schema.sql, rồi 0002, 0003, … (ADR-017)
+  data/                  # dữ liệu danh mục nạp bằng data migration
+  library/               # quyền trên bảng của thư viện checkpointer
 ```
 
 ---
