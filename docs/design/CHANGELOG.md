@@ -2382,3 +2382,27 @@ PO duyệt mục 10 của bảng sẵn sàng cổng Sprint 1 và chốt múi gi�
 | `12-roadmap.md` | Cổng 1.9 Đạt. Cổng 2.10 mới: role của PostgreSQL managed trên Render, `check_grants.py --app-dsn` đạt trên Render `dev` — A-040, A-047 |
 | `06-structure.md` | Bước kiểm khởi động #13 ghi giá trị múi giờ đã chốt |
 | `04-data.md` | Open Questions: A-041 đã chốt |
+
+---
+
+## 2026-09-27 (sẵn sàng Sprint 1 — mục 9 và đề xuất chờ duyệt) — ADR-031, ADR-032 nháp; A-072 `Thu hẹp`; A-084
+
+Theo lệnh PO: ADR object storage local có phép thử giao thức ghi; đề xuất (chưa chốt) cho A-031, A-048, A-055, A-026; checklist dữ liệu tổ chức cho A-058, A-009, A-013, A-071.
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-031-object-storage-local-seaweedfs.md` | **Mới, `Proposed`.** Local dùng SeaweedFS 4.47 `weed mini`, bind `127.0.0.1`, bắt buộc credential, bucket bật versioning. Luật adapter ở mọi môi trường: mọi `PUT` mang `If-None-Match: *`. Loại: moto (mất dữ liệu khi khởi động lại; gắn khoá sau khi ghi lỗi), rclone (`If-None-Match` không chặn ghi đè; báo 200 cho lệnh ghi hỏng; không versioning), MinIO (`410 Gone`, archived), adapter ghi đĩa, bucket nhà cung cấp thật |
+| `docs/reference/object-storage-local-s3.md` | **Mới.** Phép thử T1–T10 cộng bền dữ liệu, credential, cổng mạng trên ba sản phẩm; trích wiki SeaweedFS, thông báo `410` của MinIO nguyên văn, sha256 của bản tải về |
+| `decisions/ADR-032-nha-cung-cap-llm-hai-tier.md` | **Mới, `Proposed` — nháp.** Một nhà cung cấp cho hai tier; hai mốc chọn theo loại dữ liệu đi ra. Vế chuyển dữ liệu ra nước ngoài: bốn câu hỏi `[CẦN XÁC MINH]`. Không xếp hạng nhà cung cấp nào |
+| `docs/reference/argon2-cffi-parameters.md` | **Mới.** Tham số mặc định của `argon2-cffi` 25.1.0 trích từ mã nguồn; đo verify trên máy người triển khai; phép thử đổi tham số không phá hash cũ |
+| `proposals/sprint1-working-values-a031-a048.md` | **Mới, chờ duyệt.** WV-01…WV-18, nhãn "chưa hiệu chỉnh", mỗi giá trị kèm loại căn cứ |
+| `proposals/a055-audit-event-scope.md` | **Mới, chờ duyệt.** Khuyến nghị hướng 1 — thu hẹp luật, danh sách miễn đóng |
+| `proposals/sprint1-org-data-checklist.md` | **Mới, chờ duyệt.** Checklist dữ liệu tổ chức; đánh giá mốc: giữ trước Sprint 1 cho giấy phép font và A-071; mốc giữa Sprint 1 cho mẫu, font, định dạng số, `contract_type`; cột CSV sang cổng trước Sprint 3 |
+| `ASSUMPTIONS.md` → 0.39 | A-072 `Thu hẹp`. A-084 mới — xử lý `412` ở adapter, `Mở`. A-024 thêm kiểm contract. A-031, A-048, A-055, A-026, A-058, A-009, A-013, A-071 trỏ đề xuất chờ duyệt |
+| `12-roadmap.md` | Cổng 1.3, 1.4, 1.5, 1.10, 1.11 trỏ ADR và đề xuất; Open Questions: A-072 `Thu hẹp`, A-071 chưa có dòng cổng |
+
+**Đã chạy, 2026-09-27, không file nào của phép thử vào repo:**
+
+- SeaweedFS 4.47, rclone v1.75.1: tải bản Windows từ GitHub Releases, checksum khớp file đi kèm. moto 5.2.3 cài bằng `pip`. `boto3`/`botocore` 1.37.3 — bản ghim của `backend/pyproject.toml`.
+- MinIO: `https://dl.min.io/…/minio.exe` trả `410 Gone`; GitHub API `archived: true`.
+- `argon2-cffi` 25.1.0: verify 20 lần, trung vị 424,5 ms trên máy người triển khai.
