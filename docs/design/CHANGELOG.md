@@ -2578,3 +2578,27 @@ PO áp diff mục Chế độ làm việc hiện tại, luật 2 và mục Defin
 | `ASSUMPTIONS.md` → 0.48 | A-048 trỏ ADR-034; A-026 trỏ ADR-035 |
 
 **Chưa làm, chờ PO duyệt hai ADR:** thêm ghim vào `backend/pyproject.toml`, sinh lại lock; sửa luật import của `06-structure.md` theo ADR-035; bước kiểm tham số `argon2id` đề xuất ở ADR-034.
+
+---
+
+## 2026-10-02 (PO duyệt ADR-034, ADR-035) — ghim mới, lock sinh lại, migration 0009, bước kiểm #20 #21
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-034-…` | `Accepted`. Mục mới "Điều kiện duyệt": đính chính ADR-021; bước kiểm #20, không ngoại lệ theo môi trường, test tự tạo hasher riêng; WV-16b theo tiến trình, `combined_main` chung một trần 4 |
+| `decisions/ADR-021-…` | Mục mới "Cập nhật 2026-10-02" — không biên dịch trên đích; nội dung gốc không sửa |
+| `decisions/ADR-035-…` | `Accepted`, cách đọc "hồ sơ model" được xác nhận. Mục mới "Điều kiện duyệt": hồ sơ model có schema và bước kiểm #21; đổi hồ sơ ghi `CHANGELOG.md` và kích hoạt Regression gate; `reasoning_tokens` vào budget và `llm_usage`; 429 chờ theo `retry-after` chỉ khi còn đủ hạn chót lượt. Kiểm lại `httpx2` từ `METADATA`: nguyên văn dòng 26, sha256 của wheel, dự án có trên PyPI. Thời lượng từ `usage` ghi vào log kỹ thuật, không vào DB |
+| `06-structure.md` → 0.17 | Bước kiểm khởi động **#20** (tham số `argon2id` ≥ WV-16) và **#21** (hồ sơ model hợp schema). Luật import: `httpx` điền vào chỗ `<sdk-llm>` của contract `allowlist-gate`; cây thư mục ghi `providers/` là nơi duy nhất import client gọi provider |
+| `10-eval.md` → 0.8 | Regression gate kích hoạt khi đổi hồ sơ model, kể cả chỉ `reasoning_effort` |
+| `11-ops.md` → 0.17 | Mục Định cỡ A-022: `reasoning_tokens` tính vào budget |
+| `04-data.md` → 0.21 | Cột `llm_usage.reasoning_tokens` |
+| `12-roadmap.md` → 0.26 | Mục mở O1-3: `completion_tokens` đã gồm token suy luận hay chưa; tới khi biết, budget cộng cả hai |
+| `proposals/sprint1-working-values-a031-a048.md` | WV-05: luật 429 |
+| `ASSUMPTIONS.md` → 0.49 | A-048 trỏ ADR-034 `Accepted`; A-026 trỏ ADR-035 `Accepted` |
+| `docs/reference/llm-groq.md` | Mục mới: header giới hạn và 429, có `retry-after` |
+| `backend/migrations/schema/0009_llm_usage_reasoning_tokens.sql` | **Mới.** Cột `reasoning_tokens integer`, `CHECK` không âm. Không `GRANT` mới |
+| `contracts/README.md` | Dòng của migration 0009 |
+| `backend/pyproject.toml` | Ghim `argon2-cffi==25.1.0` (ADR-034), `httpx==0.28.1` (ADR-035); bỏ hai ghi chú "cố ý không có" đã hết đúng |
+| `backend/requirements-linux.lock` | Sinh lại bằng đúng lệnh ở đầu file: 75 gói, 1727 hash — thêm `argon2-cffi`, `argon2-cffi-bindings`, `cffi`, `pycparser`; `httpx` không đổi bản |
+
+**Đã chạy, 2026-10-02:** sinh lại lock trong thư mục sạch — trùng từng byte. Container `python:3.11-slim`: `pip install --require-hashes --no-deps` đạt, `pip check` không lỗi, `argon2id` với WV-16 hash và verify đạt. `check_grants.py --local-migrated` áp `0001` → `0009`: 176 / 68 / **Lệch 0**.

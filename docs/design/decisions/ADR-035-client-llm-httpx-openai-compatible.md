@@ -1,6 +1,6 @@
 # ADR-035 — Client gọi LLM: `httpx` gọi thẳng API dạng OpenAI, một adapter, không SDK
 
-**Trạng thái:** Proposed · **Ngày:** 2026-10-02 · **Quyết định tại:** BUILD MODE, trước adapter provider của `ai_gateway` · **Liên quan:** ADR-032 (Groq cho mốc 1, điều kiện đảo ngược sang OpenRouter), ADR-007 (LLM không gọi tool, output JSON), ADR-016 (lượt chat, `turn.progress`), ADR-019 (`llm_usage`), ADR-025 (output contract sinh từ cấu hình), NFR-08 của `01-prd.md`, WV-04…WV-06, mục Luật import của `06-structure.md`, `docs/reference/llm-groq.md`, `docs/reference/llm-openrouter.md`
+**Trạng thái:** Accepted · **Duyệt:** PO, 2026-10-02 — xác nhận cách đọc "hồ sơ model"; kèm điều kiện ở mục Điều kiện duyệt · **Ngày:** 2026-10-02 · **Quyết định tại:** BUILD MODE, trước adapter provider của `ai_gateway` · **Liên quan:** ADR-032 (Groq cho mốc 1, điều kiện đảo ngược sang OpenRouter), ADR-007 (LLM không gọi tool, output JSON), ADR-016 (lượt chat, `turn.progress`), ADR-019 (`llm_usage`), ADR-025 (output contract sinh từ cấu hình), NFR-08 của `01-prd.md`, WV-04…WV-06, mục Luật import của `06-structure.md`, `docs/reference/llm-groq.md`, `docs/reference/llm-openrouter.md`
 
 ---
 
@@ -38,7 +38,7 @@ ADR-032 chọn Groq cho mốc 1: `openai/gpt-oss-20b` tier rẻ, `openai/gpt-oss
 | `usage` của Groq | `prompt_tokens`, `completion_tokens`, `completion_tokens_details.reasoning_tokens`, `prompt_time`, `completion_time` | Mục Đặc tả OpenAPI — ba schema liên quan của `docs/reference/llm-groq.md` |
 | `reasoning_effort` cho `gpt-oss` | `'low'`, `'medium'`, `'high'`; mặc định `'medium'`; giá trị ngoài tập của model trả 400 | Mục Đặc tả OpenAPI — ba schema liên quan của `docs/reference/llm-groq.md` |
 | Phụ thuộc của `groq` 1.7.0 | `anyio`, `distro`, `httpx`, `pydantic`, `sniffio`, `typing-extensions` — **cả sáu đã có trong lock** | `METADATA` của wheel |
-| Phụ thuộc của `openai` 3.23.0 | `anyio`, `httpx2`, `jiter`, `pydantic`, `sniffio`, `typing-extensions` — **`httpx2` và `jiter` chưa có trong lock** | `METADATA` của wheel |
+| Phụ thuộc của `openai` 3.23.0 | `anyio`, `httpx2`, `jiter`, `pydantic`, `sniffio`, `typing-extensions` — **`httpx2` và `jiter` chưa có trong lock** | `METADATA` của wheel — **kiểm lại theo yêu cầu của PO, 2026-10-02:** wheel `openai-3.23.0-py3-none-any.whl` sha256 `7fbec2e50a05ac0fa858629505688e5998fd82245058390ac1b6d98960174bd5`, dòng 26 của `METADATA` là nguyên văn `Requires-Dist: httpx2<3,>=2.12.0`. `httpx2` là một gói khác `httpx`: PyPI có dự án `httpx2`, bản 2.13.1, mô tả "The next generation HTTP client", mã nguồn ở `github.com/pydantic/httpx2` |
 | `httpx` trong lock hiện tại | `httpx==0.28.1`, kéo vào bởi `langchain-core` và `langgraph-sdk` | `backend/requirements-linux.lock` |
 | Khoá thử, thêm ghim trực tiếp `httpx==0.28.1` | Danh sách gói **không đổi** | Khoá thử cùng lệnh của ADR-030 |
 
@@ -51,7 +51,7 @@ ADR-032 chọn Groq cho mốc 1: `openai/gpt-oss-20b` tier rẻ, `openai/gpt-oss
   - `base_url`, và key là secret — mục Secret management trên Render của `09-security.md`;
   - mỗi tier một **hồ sơ model**: mã model, và các tham số riêng của model gửi kèm thân request. Tier rẻ trên Groq: `reasoning_effort: "low"` — chỉ đạo của PO.
 - **Mọi request:** `POST {base_url}/chat/completions`, `stream: false`, `response_format` loại `json_schema` với `strict: true` — schema dựng lúc gọi theo ADR-025. Không bao giờ gửi `logprobs`, `logit_bias`, `top_logprobs`, `messages[].name`; `n` luôn 1; `temperature` không đặt 0 — giá trị lấy từ hồ sơ model.
-- **`usage`:** đọc `prompt_tokens`, `completion_tokens`, `completion_tokens_details.reasoning_tokens`, và nếu có thì `prompt_time`, `completion_time`. Ghi vào `llm_usage` (ADR-019). Trường nào provider không trả thì để trống — **không suy ra**.
+- **`usage`:** đọc `prompt_tokens`, `completion_tokens`, `completion_tokens_details.reasoning_tokens`, và nếu có thì `prompt_time`, `completion_time`. Token ghi vào `llm_usage` (ADR-019) — `reasoning_tokens` vào cột mới của migration 0009. `prompt_time`, `completion_time` ghi vào log kỹ thuật, không vào DB. Trường nào provider không trả thì để trống — **không suy ra**.
 - **Retry và timeout:** chỉ ở `ai_gateway` — WV-04, WV-05, WV-06. `httpx` không retry; timeout của `httpx` đặt bằng timeout của lời gọi.
 - **Lỗi HTTP** ánh xạ về mã của `ai_gateway`: 429 và 5xx là lỗi thoáng qua, đi vào retry; 400 là lỗi của request, không retry — trong `document_graph` dẫn tới `SYSTEM_DEFECT` (mục Bảng mã của `08-hitl.md`).
 - **Đảo ngược sang OpenRouter — tiêu chí 1:** đổi `base_url` thành `https://openrouter.ai/api/v1`, key, và hồ sơ model — mã model `openai/gpt-4o-mini`, **bỏ** `reasoning_effort` vì đó là tham số của `gpt-oss`. **Không đổi dòng code nào.**
@@ -71,7 +71,7 @@ ADR-032 chọn Groq cho mốc 1: `openai/gpt-oss-20b` tier rẻ, `openai/gpt-oss
 
 - **Dự án tự viết phần SDK làm sẵn:** dựng request, đọc response, ánh xạ lỗi. Phần đọc response dùng model `pydantic` chỉ cho các trường dùng tới — `pydantic` đã có trong phụ thuộc. Test bằng response mẫu lấy từ đặc tả của Groq.
 - **"Tương thích OpenAI" là lời của provider, có thể lệch.** Groq tự nêu các trường không hỗ trợ. Khi điều kiện đảo ngược phát ra, phải chạy lại bộ eval — ADR-032 đã đòi.
-- **Luật import:** `httpx` gọi provider LLM chỉ được import trong `bo19.ai_gateway.providers`, cùng luật mà mục Luật import của `06-structure.md` đang đặt cho SDK provider. Cần sửa câu chữ của luật đó từ "SDK provider" thành "client gọi provider LLM" — **sau khi PO duyệt ADR này**.
+- **Luật import:** `httpx` chỉ được import trong `bo19.ai_gateway.providers` trong số các module gọi tới provider — contract `allowlist-gate` của mục Luật import của `06-structure.md`, đã điền `httpx` vào chỗ của `<sdk-llm>` (2026-10-02).
 
 **Điều kiện đảo ngược**
 
@@ -86,6 +86,17 @@ ADR-032 chọn Groq cho mốc 1: `openai/gpt-oss-20b` tier rẻ, `openai/gpt-oss
 
 **D — tích hợp LLM của LangChain.** Thêm các gói LangChain mà không tài liệu thiết kế nào chọn — `backend/pyproject.toml` ghi rõ `langchain` cố ý không có. `ai_gateway` vẫn phải bọc ngoài để làm allowlist, budget, ép JSON (ADR-008, ADR-019); lớp LangChain ở giữa không bớt được việc nào trong ba việc đó.
 
+## Điều kiện duyệt — PO, 2026-10-02
+
+**Cách đọc tiêu chí 1 được xác nhận:** "đổi model" gồm hồ sơ model.
+
+1. **Hồ sơ model nằm trong cấu hình có schema.** Schema liệt kê, cho từng mã model, các tham số được phép gửi kèm và miền giá trị của chúng — với `openai/gpt-oss-20b`, `openai/gpt-oss-120b`: `reasoning_effort` ∈ `low`, `medium`, `high`, theo đặc tả của Groq (mục Đặc tả OpenAPI — ba schema liên quan của `docs/reference/llm-groq.md`). **Bước kiểm khởi động #21** của `06-structure.md` từ chối chạy khi một hồ sơ thiếu trường bắt buộc, hoặc có tham số không thuộc model đó.
+2. **Đổi hồ sơ model — kể cả chỉ `reasoning_effort` — là một thay đổi có ghi:** một dòng `CHANGELOG.md`, và kích hoạt Regression gate của `10-eval.md` (mục Khi nào kích hoạt).
+3. **`reasoning_tokens` tính vào token budget** của mục Định cỡ A-022 của `11-ops.md`, và ghi vào `llm_usage` — cột `reasoning_tokens`, migration `0009_llm_usage_reasoning_tokens.sql`. `completion_tokens` của Groq đã gồm token suy luận hay chưa, đặc tả không nói: **mục mở O1-3 của Sprint 1** — xác định trên số đo thật bằng phép so `total_tokens` với `prompt_tokens + completion_tokens`. Tới khi có kết luận, budget cộng **cả hai** — `completion_tokens` và `reasoning_tokens` — tức tính dư chứ không tính thiếu.
+4. **429 trong lượt chat.** Groq đặt header `retry-after`, tính bằng giây, chỉ khi trả 429 (mục Header giới hạn và 429 của `docs/reference/llm-groq.md`). `ai_gateway` **chỉ chờ** theo `retry-after` khi thời gian còn lại của hạn chót lượt — WV-02 — còn ít nhất `retry-after` cộng một timeout lời gọi WV-04. Không đủ thì không chờ: trả khuôn "hệ thống đang bận". Lần chờ này **là** lần retry duy nhất của WV-05, không cộng thêm. Ghi cả vào dòng WV-05 của `proposals/sprint1-working-values-a031-a048.md`.
+
+**Đề xuất kèm, cho `worker` — PO chưa duyệt riêng:** trong `document_graph` không có WV-02. 429 đi vào retry của job (mục Retry, backoff và job lỗi vĩnh viễn của `11-ops.md`), với thời điểm chạy lại không sớm hơn `retry-after`.
+
 ## Open Questions
 
-- PO xác nhận cách đọc tiêu chí 1: "đổi model" gồm hồ sơ model — mục Decision.
+- Không có — cách đọc tiêu chí 1 đã được xác nhận. Mục mở O1-3 nằm ở `12-roadmap.md`.

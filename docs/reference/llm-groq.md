@@ -203,3 +203,48 @@ Giới hạn đặt ở cấp **organization**, theo từng model. Hai model có
 ```json
 "stream":{"default":false,"description":"If set, partial message deltas will be sent. Tokens will be sent as data-only [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format) as they become available, with the stream terminated by a `data: [DONE]` message. [Example code](/docs/text-chat#streaming-a-chat-completion).\\n","nullable":true,"type":"boolean"}
 ```
+
+### 6d. Header giới hạn và 429 — trang `https://console.groq.com/docs/rate-limits`, cùng bản đã lấy ở mục 5
+
+> In addition to viewing your limits on your account's limits page, you can also view rate limit information such as remaining requests and tokens in HTTP response
+> headers as follows:
+>
+> The following headers are set (values are illustrative):
+>
+> Header
+> Value
+> Notes
+>
+> retry-after
+> 2
+> In seconds
+>
+> x-ratelimit-limit-requests
+> 14400
+> Always refers to Requests Per Day (RPD)
+>
+> x-ratelimit-limit-tokens
+> 18000
+> Always refers to Tokens Per Minute (TPM)
+>
+> x-ratelimit-remaining-requests
+> 14370
+> Always refers to Requests Per Day (RPD)
+>
+> x-ratelimit-remaining-tokens
+> 17997
+> Always refers to Tokens Per Minute (TPM)
+>
+> x-ratelimit-reset-requests
+> 2m59.56s
+> Always refers to Requests Per Day (RPD)
+>
+> x-ratelimit-reset-tokens
+> 7.66s
+> Always refers to Tokens Per Minute (TPM)
+>
+> ## Handling Rate Limits
+>
+> When you exceed rate limits, our API returns a 429 Too Many Requests HTTP status code.
+>
+> Note: retry-after is only set if you hit the rate limit and status code 429 is returned. The other headers are always included.

@@ -1,6 +1,6 @@
 # ADR-034 — Thư viện hash mật khẩu: `argon2-cffi` 25.1.0, dùng trực tiếp
 
-**Trạng thái:** Proposed · **Ngày:** 2026-10-02 · **Quyết định tại:** BUILD MODE, trước code đăng nhập của Sprint 1 · **Liên quan:** ADR-021 (họ hàm `argon2id`), A-048 (WV-16, WV-16b), ADR-030 (lockfile), mục AuthN của `09-security.md`, `docs/reference/argon2-cffi-parameters.md`, `docs/reference/owasp-password-storage-argon2id.md`
+**Trạng thái:** Accepted · **Duyệt:** PO, 2026-10-02 — kèm ba điều kiện ở mục Điều kiện duyệt · **Ngày:** 2026-10-02 · **Quyết định tại:** BUILD MODE, trước code đăng nhập của Sprint 1 · **Liên quan:** ADR-021 (họ hàm `argon2id`), A-048 (WV-16, WV-16b), ADR-030 (lockfile), mục AuthN của `09-security.md`, `docs/reference/argon2-cffi-parameters.md`, `docs/reference/owasp-password-storage-argon2id.md`
 
 ---
 
@@ -71,6 +71,14 @@ Bộ nhớ và thời lượng verify đo ở mục Bộ nhớ đỉnh và thờ
 **C — `passlib`.** Cùng lý do với B: lớp bọc quanh A. Thêm nữa, ADR-021 đã loại `bcrypt`, nên phần lớn giá trị của một thư viện nhiều thuật toán không dùng tới.
 
 **D — `hashlib`.** Python 3.11 không có argon2 trong thư viện chuẩn — đã kiểm. Chỉ có `scrypt`, mà ADR-021 đã loại.
+
+## Điều kiện duyệt — PO, 2026-10-02
+
+1. **Đính chính ADR-021** bằng một mục "Cập nhật 2026-10-02": trên đích của dự án không phải biên dịch phần mở rộng gốc. Không sửa nội dung gốc của ADR-021.
+2. **Bước kiểm khởi động — #20 của mục Bước kiểm khởi động của `06-structure.md`:** tham số `argon2id` trong cấu hình thấp hơn WV-16 thì tiến trình từ chối chạy. **Không có ngoại lệ theo môi trường** — `dev` cũng vậy. Test cần nhanh thì **tự tạo hasher riêng** với tham số rẻ, không hạ cấu hình của ứng dụng.
+3. **Phạm vi của WV-16b:** semaphore **theo tiến trình**. `combined_main` (ADR-033) chạy `api` và `worker` trong một tiến trình, nên dùng **chung một trần 4** cho cả hai — không phải 4 cho mỗi vai.
+
+**Vị trí module xác thực** — nơi duy nhất gọi `verify` — chốt khi viết code đăng nhập của Sprint 1. Khi đó thêm một contract `forbidden` vào mục Luật import của `06-structure.md` để chỉ module đó và thao tác vận hành seed được import `argon2`.
 
 ## Open Questions
 
