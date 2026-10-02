@@ -2618,3 +2618,29 @@ Phát hiện khi xử lý xuống dòng của file lock. Máy người triển k
 **Không đổi:** nội dung mọi file `.sql`; quy ước "`0001` trùng byte với `schema.sql`" đúng ở cả hai dạng. `13-audit.md` ghi `0ce8dd…` ở phần kiểm máy của audit đã khép — giữ nguyên làm bản ghi lịch sử.
 
 **Đã chạy trên bản LF:** `check_grants.py --local` 169 / 63 / Lệch 0; `--local-migrated` (`0001` → `0009`) 176 / 68 / Lệch 0; cả hai log `schema.sql sha256: 937ca184…`.
+
+---
+
+## 2026-10-02 (PO: 429 của `worker`, cách đóng O1-3, rà CRLF)
+
+| File | Thay đổi |
+|---|---|
+| `11-ops.md` → 0.18 | Mục Retry, backoff và job lỗi vĩnh viễn: 429 của provider LLM trong job — chạy lại sau `max(backoff thường, retry-after)`; 429 vẫn tính vào `job.max_attempts`; log ghi mã con `PROVIDER_RATE_LIMITED` kèm `retry-after` |
+| `decisions/ADR-035-…` | Điều kiện 5: luật 429 cho `worker`, PO duyệt — thay đề xuất kèm. Điều kiện 3: cách đóng O1-3 — so token output nhìn thấy, đếm offline, với `completion_tokens` và `reasoning_tokens` của cùng lời gọi; có kết quả thì bỏ tính dư |
+| `08-hitl.md` → 0.8 | `PROVIDER_UNAVAILABLE`: mã con trong `audit_event` — `PROVIDER_RATE_LIMITED` cho 429, `PROVIDER_ERROR` cho 5xx, timeout, lỗi mạng |
+| `12-roadmap.md` → 0.27 | O1-3 đóng ở loạt gọi Groq thật đầu tiên, theo luật ở ADR-035 |
+| `.gitattributes` | Thêm: `docs/design/contracts/** text eol=lf`; `frontend/src/api/generated/** text eol=lf`; `*.docx`, `*.pdf`, `*.ttf`, `*.otf` là `binary`. Đã có từ trước: `*.sql`, `backend/requirements-linux.lock`, `backend/constraints.txt` giữ LF |
+
+**Rà theo yêu cầu của PO** — mọi file hệ thống băm hoặc so từng byte:
+
+| File | Vì sao băm hay so byte | Luật |
+|---|---|---|
+| `backend/migrations/**/*.sql`, `docs/design/contracts/schema.sql` | sha256 trong `schema_migration` — bước kiểm khởi động #1; `0001` trùng byte với `schema.sql` (ADR-017) | `*.sql text eol=lf` |
+| `backend/requirements-linux.lock`, `backend/constraints.txt` | CI sinh lại và so từng byte (ADR-030) | Đường dẫn cụ thể, `eol=lf` |
+| `docs/design/contracts/openapi.yaml`, `README.md` | Nguồn sinh type; thư mục contract | `docs/design/contracts/** text eol=lf` |
+| `frontend/src/api/generated/openapi.d.ts` | CI sinh lại từ `openapi.yaml` và so với bản đã commit — chưa có file, mới có `.gitkeep` | `frontend/src/api/generated/** text eol=lf` |
+| `*.docx`, `*.pdf`, `*.ttf`, `*.otf` | Mẫu, bản render và font được tính checksum hay so tên trong manifest — chưa có file nào trong repo | `binary` |
+
+Không thêm luật cho `backend/migrations/**/__init__.py`: sổ `schema_migration` chỉ băm file `.sql`. Checkout lại `docs/design/contracts/README.md` và `openapi.yaml` — trước đó là CRLF trên đĩa.
+
+**Đã chạy lại:** bộ kiểm thiết kế — `openapi.yaml` hợp lệ, 05↔openapi không lệch; `check_grants.py --local` và `--local-migrated` — Lệch 0, `schema.sql` sha256 `937ca184…`; lock sinh lại trùng từng byte.
