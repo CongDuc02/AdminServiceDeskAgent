@@ -2513,3 +2513,17 @@ PO đồng ý F3, F4, F5, F14 của `proposals/build-phase-free-tier-impact.md`.
 | `13-audit.md` → 0.14 | Trạng thái: "Đã khép — chờ PO duyệt" → "Đã khép — PO xác nhận 2026-10-02" |
 
 `_PLAN.md` do PO quản lý — không sửa.
+
+---
+
+## 2026-10-02 (PO trả lời cổng trước Sprint 1) — 1.1, 1.14 Đạt; hồ sơ danh sách ngắn mốc 1
+
+| File | Thay đổi |
+|---|---|
+| `12-roadmap.md` → 0.22 | Cổng 1.1 Đạt — PO tuyên bố BUILD MODE, có hiệu lực khi PO áp diff `CLAUDE.md`. Cổng 1.14 Đạt — một người, tuần tự, không khung thời gian. Cổng 1.5: danh sách ngắn và hồ sơ, chờ PO chọn. R1-2: hai track nối tiếp |
+| `decisions/ADR-032-…` | Mục mới "Danh sách ngắn của mốc 1": bảng hồ sơ năm ứng viên; GitHub Models loại vì đã ngừng hoạt động; Gemini free loại theo PO; OpenRouter là ngoại lệ trả phí PO cho phép. Khuyến nghị Groq. Hai phát hiện chạm thiết kế, chưa áp: `strict` của Groq đòi mọi property `required`; tin nhắn trần WV-15 đẩy P1 chạm trần 1.500 |
+| `ASSUMPTIONS.md` → 0.45 | A-026: danh sách ngắn, hồ sơ, khuyến nghị. A-031: WV-15 chạm trần P1. A-071 `Đã chốt` |
+| `docs/reference/llm-groq.md`, `llm-mistral.md`, `llm-openrouter.md`, `llm-github-models.md` | **Mới.** Trích nguyên văn điều khoản dữ liệu, structured output, giá, giới hạn — lấy 2026-10-02 |
+| `docs/reference/llm-token-count-p1-p2.md` | **Mới.** Đếm token offline của P1, P2 bằng `o200k_harmony`, `o200k_base`, `tekken_240911`; so với gói Free của Groq và trần A-022. Ghi rõ phần không đo được: khung chat, schema chèn vào prompt, token suy luận |
+
+**Chưa làm, theo chỉ đạo của PO:** cổng 1.12 → 1.13 chạy sau khi PO áp diff `CLAUDE.md`. Cổng 1.6 chờ file mẫu `.docx`.

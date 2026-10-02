@@ -1,6 +1,6 @@
 # ADR-032 — Nhà cung cấp LLM cho hai tier: một nhà cung cấp, chọn theo hai mốc dữ liệu
 
-**Trạng thái:** Proposed — chưa chọn nhà cung cấp nào. **Vế hai mốc (điều 2, 3 của mục Decision): PO duyệt 2026-09-27, kèm điều kiện eval ở điều 3.** Điều 1 và điều 4 vẫn là đề xuất · **Ngày:** 2026-09-27 · **Quyết định tại:** A-026 (cổng 1.5 của `12-roadmap.md`) · **Liên quan:** mục Yêu cầu năng lực của model — provider chưa chọn và mục Allowlist input của `03-agents.md`, ADR-007, ADR-008, ADR-019, mục Chiến lược ép JSON và xử lý lỗi parse của `07-prompts.md`, A-028 (embedding), A-079, A-080, cổng 4.4 của `12-roadmap.md`
+**Trạng thái:** Proposed — chưa chọn nhà cung cấp nào; **danh sách ngắn mốc 1 của PO và hồ sơ ứng viên ở mục Danh sách ngắn của mốc 1 (2026-10-02)**. **Vế hai mốc (điều 2, 3 của mục Decision): PO duyệt 2026-09-27, kèm điều kiện eval ở điều 3.** Điều 1 và điều 4 vẫn là đề xuất · **Ngày:** 2026-09-27 · **Quyết định tại:** A-026 (cổng 1.5 của `12-roadmap.md`) · **Liên quan:** mục Yêu cầu năng lực của model — provider chưa chọn và mục Allowlist input của `03-agents.md`, ADR-007, ADR-008, ADR-019, mục Chiến lược ép JSON và xử lý lỗi parse của `07-prompts.md`, A-028 (embedding), A-079, A-080, cổng 4.4 của `12-roadmap.md`
 
 ---
 
@@ -100,6 +100,31 @@ Bảng dưới chỉ chứa điều suy ra được từ hình dạng phương �
 **B — Hai nhà cung cấp.** Nhân đôi hồ sơ pháp lý và điều khoản, thêm một adapter, mà chưa có lợi ích nào được chỉ ra. Giữ làm điều kiện đảo ngược đầu tiên.
 
 **D — Model tự vận hành.** Đưa vào dự án một hạ tầng phục vụ model mà tech stack bắt buộc của `CLAUDE.md` không có, chưa biết Render có chạy được không, và thêm gánh vận hành cho một đội mà năng lực còn chưa biết (A-071). Chỉ xét khi văn bản gốc chặn A và không có C.
+
+## Danh sách ngắn của mốc 1 — PO, 2026-10-02
+
+PO gửi danh sách ngắn; người triển khai lập hồ sơ 1, 3, 4, 5 cho từng ứng viên và đo token của P1, P2. Mọi dữ kiện dưới đây lấy từ tài liệu tham chiếu ghi ở từng dòng, lấy ngày 2026-10-02 — không dữ kiện nào ghi từ trí nhớ.
+
+| Ứng viên | Hồ sơ 1 — dữ liệu | Hồ sơ 3 — structured output | Hồ sơ 4 — giá · 5 — giới hạn | Kết luận |
+|---|---|---|---|---|
+| **Groq** — `openai/gpt-oss-20b` tier rẻ, `openai/gpt-oss-120b` tier mạnh (`docs/reference/llm-groq.md`) | Mặc định không lưu dữ liệu suy luận; log tạm tối đa 30 ngày khi khắc phục sự cố hay điều tra lạm dụng; bật được Zero Data Retention. Services Agreement 8.1 chỉ cấp quyền cần để cung cấp dịch vụ — **không có câu "không huấn luyện" nguyên văn**. Lưu ở Mỹ | `strict: true` có cho cả hai model — constrained decoding; mọi property phải `required` | Free: RPM 30, RPD 1K, TPM 8K, TPD 200K mỗi model — bảng của tab Free, suy luận từ HTML, xác nhận khi có key | **Đạt điều kiện mốc 1**, kèm hai giới hạn ở dưới |
+| **Mistral** — Free mode, PO đã tắt training (`docs/reference/llm-mistral.md`) | Commercial Terms 4.2: không huấn luyện, **trừ** khi chưa opt-out ở sản phẩm mặc định bật, hoặc dùng model Labs, Preview | Có `strict` | Con số chỉ có trên trang Limits của tài khoản — `[CẦN XÁC MINH]`. Model hai tier: PO chưa chọn | **Chưa đủ hồ sơ** — thiếu giới hạn, model, bằng chứng đã tắt training, vị trí xử lý dữ liệu |
+| **GitHub Models** — dự phòng (`docs/reference/llm-github-models.md`) | — | — | — | **Loại**: trang chính thức ghi dịch vụ đã ngừng hoàn toàn từ 30/07/2026 |
+| **Gemini, gói free** | — | — | — | **Loại theo PO**: dùng dữ liệu để cải thiện sản phẩm, trái mục Yêu cầu năng lực của model — provider chưa chọn của `03-agents.md`. Căn cứ do PO nêu; bản gốc chưa có trong `docs/reference/` |
+| **OpenRouter** — `openai/gpt-4o-mini`; **ngoại lệ PO cho phép**, trả phí bằng credit (`docs/reference/llm-openrouter.md`) | Dữ liệu qua **hai** bên: OpenRouter và OpenAI hoặc Azure. Tắt được định tuyến tới provider có huấn luyện; chính sách riêng của OpenRouter và của OpenAI, Azure: `[CẦN XÁC MINH]` | Có `structured_outputs` cho endpoint này; mức tuân thủ `strict` tuỳ provider | Giá từ API: 0,00000015 USD mỗi token vào, 0,0000006 mỗi token ra. Không công bố TPM, TPD cho model trả phí | Dùng được làm **ngoại lệ** — trái A-085 (gói free), PO chấp nhận |
+
+**Token đo được** (`docs/reference/llm-token-count-p1-p2.md`, đếm offline, chưa gồm khung chat và token suy luận): một lượt chat — P1 và P2, đầu vào cộng đầu ra hiển thị — khoảng **1.663 token** với tin nhắn ngắn, **2.657** với tin nhắn trần WV-15, theo `o200k_harmony` và `o200k_base`; **1.829** và **2.895** theo `tekken_240911`.
+
+**So với gói Free của Groq:** TPM 8K cho khoảng **3–4 lượt chat mỗi phút cho cả tổ chức**, TPD 200K cho khoảng **75–120 lượt mỗi ngày** — cận trên, trước khi trừ token suy luận của `gpt-oss`, mặc định mức `medium`. Đủ cho một người thử và cho một lượt bộ eval mỗi lần. **Có thể không đủ cho buổi UAT nhiều người** — kiểm lại khi có số đo thật và con số A-020.
+
+**Hai phát hiện chạm thiết kế:**
+
+1. **`strict` của Groq đòi mọi property nằm trong `required`.** `ClassifyIntentResult` ở mục Output contract — JSON Schema đóng của `07-prompts.md` để `secondary_intent`, `retrieval_query` ngoài `required`, dù cả hai đã cho `null`. Đề xuất: đưa hai trường vào `required` — đúng cho mọi nhánh ép JSON, không riêng Groq. **Chưa áp** — chờ PO.
+2. **Tin nhắn trần WV-15 đẩy đầu vào P1 chạm trần 1.500 token** của mục Định cỡ A-022 của `11-ops.md`: 1.467 theo `o200k`, 1.602 theo `tekken`, chưa cộng khung chat. Hai hướng: hạ WV-15, hoặc nâng trần của `classify_intent`. **Chưa áp** — chờ số đo thật từ `usage` của API.
+
+**Khuyến nghị cho mốc 1: Groq** — `gpt-oss-20b` tier rẻ, `gpt-oss-120b` tier mạnh. Lý do: là ứng viên duy nhất đủ hồ sơ 1, 3, 4, 5 từ nguồn công khai; gói free; `strict` cho cả hai model; mặc định không lưu dữ liệu và có Zero Data Retention. **Dự phòng:** OpenRouter `gpt-4o-mini` cho tier rẻ — ngoại lệ PO đã cho phép — nếu giới hạn TPM của Groq chặn công việc. **Mistral** xét lại khi PO đưa được con số Limits, tên model và bằng chứng đã tắt training. Tier mạnh để bộ eval quyết, đúng chỉ đạo của PO.
+
+**Điều kiện trước lần gọi đầu, áp cho ứng viên được chọn:** bật Zero Data Retention (Groq) hoặc tắt định tuyến tới provider có huấn luyện (OpenRouter); ghi bằng chứng cấu hình vào tài liệu tham chiếu của ứng viên; chỉ dữ liệu giả — luật của mốc 1.
 
 ## Open Questions
 
