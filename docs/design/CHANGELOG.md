@@ -2527,3 +2527,16 @@ PO đồng ý F3, F4, F5, F14 của `proposals/build-phase-free-tier-impact.md`.
 | `docs/reference/llm-token-count-p1-p2.md` | **Mới.** Đếm token offline của P1, P2 bằng `o200k_harmony`, `o200k_base`, `tekken_240911`; so với gói Free của Groq và trần A-022. Ghi rõ phần không đo được: khung chat, schema chèn vào prompt, token suy luận |
 
 **Chưa làm, theo chỉ đạo của PO:** cổng 1.12 → 1.13 chạy sau khi PO áp diff `CLAUDE.md`. Cổng 1.6 chờ file mẫu `.docx`.
+
+---
+
+## 2026-10-02 (PO phản hồi c08ca02) — cổng 1.5 Đạt: Groq; `ClassifyIntentResult` bắt buộc mọi trường; tài liệu người thử
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-032-…` | `Accepted` cho mốc 1. Mục mới "Mốc 1 — quyết định của PO": Groq duy nhất, `gpt-oss-20b` tier rẻ, `gpt-oss-120b` tier mạnh; không fallback trong code; PO chấp nhận điều 8.1 Services Agreement của Groq thay câu "không huấn luyện", chỉ cho mốc 1; tier rẻ mức suy luận thấp; đo token và thời lượng từ `usage`; bật Zero Data Retention trước lần gọi đầu. Điều kiện đảo ngược: chuyển hẳn sang OpenRouter `gpt-4o-mini` khi hạn mức Groq chặn việc thử — lấy đủ hồ sơ 1, chạy lại eval. Open Questions: nơi đặt tài liệu người thử đã chốt |
+| `07-prompts.md` → 0.5 | `ClassifyIntentResult`: `secondary_intent`, `retrieval_query` vào `required`; `null` nghĩa là không có. Đúng cho mọi nhánh ép JSON, và là điều kiện của `strict` ở Groq |
+| `ASSUMPTIONS.md` → 0.46 | A-026 `Thu hẹp` — mốc 1 đã chọn. A-085: ngoại lệ trả phí duy nhất là OpenRouter `gpt-4o-mini` khi điều kiện đảo ngược của cổng 1.5 phát ra, trần 5 USD mỗi tháng. A-031: mục mở O1-1 |
+| `12-roadmap.md` → 0.23 | Cổng 1.5 Đạt. Mục mới "Mục mở của Sprint 1": O1-1 WV-15 so với trần P1, O1-2 tier mạnh qua eval. Cổng 4.6 mới: hạn mức Groq đủ cho buổi UAT, dùng số đo thật |
+| `11-ops.md` → 0.16 | Runbook dựng lại PostgreSQL free: lịch theo ngày dương lịch — ngày tạo, +25 dựng lại, +30 hết hạn, +44 bị xoá; kiểm trước Sprint 4 — cổng 4.5, 4.6 |
+| `docs/testing/nguoi-thu.md` | **Mới** — nơi PO chốt. Luật "không nhập dữ liệu thật" và vì sao; chế độ thử nghiệm; những điều người thử sẽ gặp; cách báo lỗi |

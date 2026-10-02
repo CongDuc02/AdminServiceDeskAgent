@@ -1,6 +1,6 @@
 # ADR-032 — Nhà cung cấp LLM cho hai tier: một nhà cung cấp, chọn theo hai mốc dữ liệu
 
-**Trạng thái:** Proposed — chưa chọn nhà cung cấp nào; **danh sách ngắn mốc 1 của PO và hồ sơ ứng viên ở mục Danh sách ngắn của mốc 1 (2026-10-02)**. **Vế hai mốc (điều 2, 3 của mục Decision): PO duyệt 2026-09-27, kèm điều kiện eval ở điều 3.** Điều 1 và điều 4 vẫn là đề xuất · **Ngày:** 2026-09-27 · **Quyết định tại:** A-026 (cổng 1.5 của `12-roadmap.md`) · **Liên quan:** mục Yêu cầu năng lực của model — provider chưa chọn và mục Allowlist input của `03-agents.md`, ADR-007, ADR-008, ADR-019, mục Chiến lược ép JSON và xử lý lỗi parse của `07-prompts.md`, A-028 (embedding), A-079, A-080, cổng 4.4 của `12-roadmap.md`
+**Trạng thái:** Accepted — **mốc 1: Groq** (PO, 2026-10-02), mục Mốc 1 — quyết định của PO. Mốc 2 chưa chọn; điều 1 và điều 4 của mục Decision vẫn là đề xuất cho mốc 2. **Vế hai mốc (điều 2, 3 của mục Decision): PO duyệt 2026-09-27, kèm điều kiện eval ở điều 3.** Điều 1 và điều 4 vẫn là đề xuất · **Ngày:** 2026-09-27 · **Quyết định tại:** A-026 (cổng 1.5 của `12-roadmap.md`) · **Liên quan:** mục Yêu cầu năng lực của model — provider chưa chọn và mục Allowlist input của `03-agents.md`, ADR-007, ADR-008, ADR-019, mục Chiến lược ép JSON và xử lý lỗi parse của `07-prompts.md`, A-028 (embedding), A-079, A-080, cổng 4.4 của `12-roadmap.md`
 
 ---
 
@@ -122,12 +122,26 @@ PO gửi danh sách ngắn; người triển khai lập hồ sơ 1, 3, 4, 5 cho 
 1. **`strict` của Groq đòi mọi property nằm trong `required`.** `ClassifyIntentResult` ở mục Output contract — JSON Schema đóng của `07-prompts.md` để `secondary_intent`, `retrieval_query` ngoài `required`, dù cả hai đã cho `null`. Đề xuất: đưa hai trường vào `required` — đúng cho mọi nhánh ép JSON, không riêng Groq. **Chưa áp** — chờ PO.
 2. **Tin nhắn trần WV-15 đẩy đầu vào P1 chạm trần 1.500 token** của mục Định cỡ A-022 của `11-ops.md`: 1.467 theo `o200k`, 1.602 theo `tekken`, chưa cộng khung chat. Hai hướng: hạ WV-15, hoặc nâng trần của `classify_intent`. **Chưa áp** — chờ số đo thật từ `usage` của API.
 
-**Khuyến nghị cho mốc 1: Groq** — `gpt-oss-20b` tier rẻ, `gpt-oss-120b` tier mạnh. Lý do: là ứng viên duy nhất đủ hồ sơ 1, 3, 4, 5 từ nguồn công khai; gói free; `strict` cho cả hai model; mặc định không lưu dữ liệu và có Zero Data Retention. **Dự phòng:** OpenRouter `gpt-4o-mini` cho tier rẻ — ngoại lệ PO đã cho phép — nếu giới hạn TPM của Groq chặn công việc. **Mistral** xét lại khi PO đưa được con số Limits, tên model và bằng chứng đã tắt training. Tier mạnh để bộ eval quyết, đúng chỉ đạo của PO.
+**Khuyến nghị của người triển khai cho mốc 1** (2026-10-02, trước quyết định của PO): Groq — `gpt-oss-20b` tier rẻ, `gpt-oss-120b` tier mạnh — vì là ứng viên duy nhất đủ hồ sơ 1, 3, 4, 5 từ nguồn công khai.
 
-**Điều kiện trước lần gọi đầu, áp cho ứng viên được chọn:** bật Zero Data Retention (Groq) hoặc tắt định tuyến tới provider có huấn luyện (OpenRouter); ghi bằng chứng cấu hình vào tài liệu tham chiếu của ứng viên; chỉ dữ liệu giả — luật của mốc 1.
+## Mốc 1 — quyết định của PO, 2026-10-02
+
+- **Groq là nhà cung cấp duy nhất của mốc 1:** `openai/gpt-oss-20b` cho tier rẻ, `openai/gpt-oss-120b` cho tier mạnh. Tier mạnh vẫn để bộ eval xác nhận.
+- **Không có fallback sang nhà cung cấp khác trong code.** `ai_gateway` có đúng một adapter provider ở mốc 1.
+- **Điều khoản dữ liệu — PO chấp nhận điều 8.1 Services Agreement của Groq thay cho câu "không dùng dữ liệu gửi đi để huấn luyện"** ở mục Yêu cầu năng lực của model — provider chưa chọn của `03-agents.md`. Điều 8.1 chỉ cấp cho Groq "the limited rights that may be reasonably necessary for Groq to deliver the Cloud Services and AI Model Services" (`docs/reference/llm-groq.md`). Chấp nhận này **chỉ cho mốc 1**, dữ liệu giả; mốc 2 xét lại.
+- **Tier rẻ chạy mức suy luận thấp** — `reasoning_effort` thấp nhất mà model nhận, theo đặc tả API của Groq lưu ở `docs/reference/llm-token-count-p1-p2.md`. Tier mạnh: mức mặc định, tới khi bộ eval nói khác.
+- **Đo token và thời lượng thật từ trường `usage` của response** ở mọi lời gọi của Sprint 1 — `llm_usage` (ADR-019) đã có chỗ ghi token. Số đo này quyết hai mục mở: WV-15 so với trần P1, và đủ hạn mức cho buổi UAT hay không.
+- **Trước lần gọi đầu:** bật Zero Data Retention trong Data Controls của Groq và ghi bằng chứng cấu hình vào `docs/reference/llm-groq.md`; chỉ dữ liệu giả, theo `docs/testing/nguoi-thu.md`.
+
+**Điều kiện đảo ngược của mốc 1 — OpenRouter `openai/gpt-4o-mini`:** khi TPM hay TPD của gói Free của Groq chặn việc thử, thì **chuyển hẳn** — không chạy song song, không fallback:
+
+1. lấy đủ hồ sơ 1 — chính sách của OpenRouter, và của OpenAI, Azure cho endpoint này — vào `docs/reference/llm-openrouter.md`;
+2. tắt định tuyến tới provider có huấn luyện trong cài đặt tài khoản OpenRouter, ghi bằng chứng;
+3. chạy lại toàn bộ bộ eval trên model mới;
+4. trong trần chi phí của A-085.
 
 ## Open Questions
 
 - **Danh sách ngắn** ứng viên cho mốc 1 — PO lập, như PO lập danh sách ngắn nhà cung cấp object storage cho S7. ADR này không xếp hạng nhà cung cấp nào. **Thêm 2026-10-02 (A-085, F14):** giai đoạn build chỉ dùng gói free — danh sách ngắn chỉ gồm ứng viên có gói free, và năng lực bắt buộc không hạ. Điều khoản dữ liệu phải đọc cho **chính gói free** của ứng viên.
 - Bốn câu hỏi pháp lý ở mục Context — chờ văn bản gốc (A-080), có thể cần pháp chế trả lời (cùng người với A-079).
-- Tài liệu cho người thử ở Sprint 1, mang luật "không dữ liệu thật", đặt ở đâu — quyết khi chuyển BUILD MODE.
+- ~~Tài liệu cho người thử ở Sprint 1, mang luật "không dữ liệu thật", đặt ở đâu~~ — **PO 2026-10-02: `docs/testing/nguoi-thu.md`**.

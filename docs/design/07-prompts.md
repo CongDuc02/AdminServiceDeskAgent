@@ -1,6 +1,6 @@
 # Prompt Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.4 · **Trạng thái:** Draft chờ duyệt · **v0.2:** đợt sửa A-075 — enum của output contract sinh từ cấu hình lúc gọi (ADR-025), `secondary_intent`, luật phiên bản khi catalog đổi — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.3:** đợt sửa 4 sau Phase 13 — slot `LIST` và `maxLength` điền lúc gọi (AUD-14); ghi chú ID `P1`–`P5` (AUD-22) · **v0.4:** đợt sửa 5 sau Phase 13 — 16 tham chiếu `file.md:dòng` thành tên mục (AUD-17); JSON Schema draft 2020-12 `[CẦN XÁC MINH]` (AUD-21)
+**Phiên bản:** 0.5 · **Trạng thái:** Draft chờ duyệt · **v0.2:** đợt sửa A-075 — enum của output contract sinh từ cấu hình lúc gọi (ADR-025), `secondary_intent`, luật phiên bản khi catalog đổi — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.3:** đợt sửa 4 sau Phase 13 — slot `LIST` và `maxLength` điền lúc gọi (AUD-14); ghi chú ID `P1`–`P5` (AUD-22) · **v0.4:** đợt sửa 5 sau Phase 13 — 16 tham chiếu `file.md:dòng` thành tên mục (AUD-17); JSON Schema draft 2020-12 `[CẦN XÁC MINH]` (AUD-21) · **v0.5:** `ClassifyIntentResult`: `secondary_intent`, `retrieval_query` vào `required`, `null` = không có (PO, 2026-10-02)
 
 > File này chốt prompt nào tồn tại, mỗi prompt được đọc gì, trả về dạng gì và bị chặn thế nào. File này **không** mô tả khung thể thức (nằm trong `template .docx` — ADR-001, D-007), **không** chọn provider/model cụ thể (A-026), **không** thiết kế màn hình duyệt hay cơ chế dừng khi chạm trần (Phase 8).
 
@@ -79,9 +79,11 @@ Hình dạng — `<…>` là chỗ `ai_gateway` điền lúc gọi, không phả
     "confidence": { "type": "string", "enum": ["high", "low"] },
     "retrieval_query": { "type": ["string", "null"], "maxLength": 200, "description": "Chỉ khi intent là OUT_OF_SCOPE hoặc một mã KNOWN_UNSUPPORTED — cụm chủ đề ngắn cho embed_query" }
   },
-  "required": ["intent", "confidence"]
+  "required": ["intent", "secondary_intent", "confidence", "retrieval_query"]
 }
 ```
+
+**Mọi trường đều bắt buộc có mặt; `null` nghĩa là không có** — `secondary_intent: null` là không có nhu cầu thứ hai, `retrieval_query: null` là không cần truy hồi. Sửa 2026-10-02 theo PO: chế độ `strict` của Groq đòi mọi property nằm trong `required` (`docs/reference/llm-groq.md`), và cách viết này đúng cho mọi nhánh ép JSON ở mục 5, không riêng Groq. Trước đó hai trường này nằm ngoài `required`.
 
 `confidence` không quyết định auto-approve; `low` thì graph hỏi lại. `retrieval_query` nay có cả ở mã `KNOWN_UNSUPPORTED`, vì loại đã biết là chưa hỗ trợ vẫn là yêu cầu ngoài phạm vi và cần hướng xử lý thủ công (F1). Cách `route_intent` đọc output này: bảng ánh xạ ở mục `intake_graph` của `03-agents.md`.
 
