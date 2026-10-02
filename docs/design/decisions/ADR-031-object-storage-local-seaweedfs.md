@@ -107,8 +107,6 @@ Toàn bộ số liệu, trích dẫn và cách chạy nằm ở `docs/reference/
 
 ## Open Questions
 
-- **Áp quyết định A-084 vào các file khác** — chưa làm, chờ PO cho phép:
-  - câu chữ ở mục Lưu trữ file và bất biến bản render của `04-data.md`;
-  - mã lỗi mới cho `docx_render` và `pdf_export` ở mục Tool Registry của `03-agents.md`, cùng cạnh vào `halt_for_human`;
-  - mã lý do dừng ở `08-hitl.md`.
-- **Thao tác ghi không chạy trong graph** — `template_version_upload`, `procedure_version_upload` chạy đồng bộ trong `api`, không có `halt_for_human`. Đề xuất cho nhánh "lệch": trả lỗi cho người tải lên, không commit; claim hết lease thì `object_claim_reconcile` dọn. Chờ PO.
+- ~~Áp quyết định A-084 vào các file khác~~ — **đã áp 2026-10-02** (PO duyệt): mục Lưu trữ file và bất biến bản render của `04-data.md`; mã nội bộ `STORAGE_WRITE_CONFLICT` của `docx_render`, `pdf_export` ở `03-agents.md`, `05-api.md`, `10-eval.md`; ánh xạ vào `reason_code` `RENDER_CHECKSUM_MISMATCH` sẵn có ở `08-hitl.md` — không thêm `reason_code`, không đổi DDL hay `openapi.yaml`.
+- ~~Thao tác ghi không chạy trong graph~~ — **PO duyệt 2026-10-02**: trả lỗi, không commit, thành `INTERNAL_ERROR` ở `api`; `object_claim_reconcile` dọn.
+- Không còn câu hỏi mở nào khác.

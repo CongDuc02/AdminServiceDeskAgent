@@ -2432,3 +2432,23 @@ PO duyệt hai commit `151141d`, `4a1b8df` kèm điều kiện. Lần sửa này
 | `13-audit.md` → 0.13 | Phụ lục A.11: `audit_checks.py` thêm khối luật 12 cho nhãn Mermaid, có phép tự kiểm; ghi phần chưa phủ |
 
 **Đã chạy:** `weed server` 4.47 — phép thử T1–T10, bền dữ liệu, credential, `netstat`. `argon2-cffi` 25.1.0 — bộ nhớ đỉnh khi 1 và 4 lần verify đồng thời, sáu cấu hình. `audit_checks.py` bản mới: openapi hợp lệ, 05↔openapi không lệch, luật 12 nhãn Mermaid 0, ID treo không, phiên bản không lệch. Sơ đồ đã sửa của `11-ops.md` render được bằng mermaid-cli 12.0.0.
+
+---
+
+## 2026-10-02 (PO duyệt WV-16, A-084; ràng buộc gói free) — cổng 1.11 Đạt; A-084 `Đã chốt`; A-085 mới
+
+PO: "duyệt", và Render cùng các dịch vụ khác dùng gói free trong suốt giai đoạn build. "Duyệt" được hiểu là bốn việc đang chờ ở báo cáo trước: WV-16, WV-16b, áp A-084 sang các file khác, nhánh "lệch" ngoài graph.
+
+| File | Thay đổi |
+|---|---|
+| `04-data.md` | Mục Lưu trữ file và bất biến bản render: đoạn "Khi lệnh ghi nhận `412`" — đọc lại, so checksum; khớp là ghi thành công; lệch là `STORAGE_WRITE_CONFLICT` |
+| `03-agents.md` | `docx_render`, `pdf_export` thêm mã nội bộ `STORAGE_WRITE_CONFLICT`; cạnh `render_draft` → `halt_for_human` thêm mã này, không thêm cạnh |
+| `08-hitl.md` | Dòng `RENDER_CHECKSUM_MISMATCH`: thêm nguồn `STORAGE_WRITE_CONFLICT` và `at_node` `render_draft`. **Không thêm `reason_code`**: cột này là mã cho người tiếp quản, và cách tiếp quản trùng — khôi phục byte rồi `RETRY` |
+| `05-api.md`, `10-eval.md` | Bảng mã nội bộ của tool và taxonomy failure mode thêm `STORAGE_WRITE_CONFLICT`. Không đổi `error_code`; không đổi `openapi.yaml`, DDL |
+| `decisions/ADR-031-…` | Open Questions: hai câu đã đóng |
+| `09-security.md` | Mục AuthN: tham số `argon2id` làm việc `t=2, m=19456, p=1` và trần 4 lần verify đồng thời (WV-16, WV-16b) |
+| `proposals/sprint1-working-values-a031-a048.md` | WV-16, WV-16b đã duyệt; gói dự kiến là `free` |
+| `docs/reference/render-free-tier.md` | **Mới.** Trích nguyên văn `https://render.com/docs/free`, lấy 2026-10-02 |
+| `proposals/build-phase-free-tier-impact.md` | **Mới, chờ PO quyết.** Mười bốn va chạm F1–F14 giữa gói free và thiết kế. F1 chặn: gói free không có Background Worker hay Cron Job. Ba phương án; khuyến nghị A — một Web Service free chạy cả ba vai qua một entrypoint gộp. Đề xuất cho F3, F4, F5: một môi trường Render, dựng lại DB dưới 30 ngày, xuất bằng chứng UAT trước khi DB hết hạn |
+| `ASSUMPTIONS.md` → 0.41 | A-084 `Đã chốt`. A-048: WV-16, WV-16b. **A-085 mới** — ràng buộc gói free, `Mở` tới khi PO quyết cách xử lý |
+| `12-roadmap.md` → 0.17 | Cổng 1.11 Đạt. **Cổng 1.15 mới** — A-085, chặn S5 của Spike 1 |

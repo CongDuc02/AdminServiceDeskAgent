@@ -1,6 +1,6 @@
 # Đề xuất — giá trị làm việc cho tham số vận hành (A-031) và tham số đăng nhập (A-048), Sprint 1
 
-**Trạng thái:** ✅ PO duyệt 2026-09-27 — WV-01…WV-15, WV-17, WV-18. ⏳ **WV-16 chờ duyệt bản sửa** ở mục 2.1 ·  **Ngày:** 2026-09-27 · **Người đề xuất:** người triển khai (câu 7) · **Cổng:** 1.10 và 1.11 của `12-roadmap.md` · **Nguồn:** A-031, A-048, ADR-016, ADR-021, mục Lưu trữ file và bất biến bản render của `04-data.md`, mục Rate limit của `09-security.md`, mục Định cỡ A-022 của `11-ops.md`, `docs/reference/render-deploys-docker.md`, `docs/reference/argon2-cffi-parameters.md`
+**Trạng thái:** ✅ PO duyệt 2026-09-27 — WV-01…WV-15, WV-17, WV-18; **2026-10-02 — WV-16 bản sửa và WV-16b**. Gói Render của giai đoạn build là **free** (PO, 2026-10-02; A-085) ·  **Ngày:** 2026-09-27 · **Người đề xuất:** người triển khai (câu 7) · **Cổng:** 1.10 và 1.11 của `12-roadmap.md` · **Nguồn:** A-031, A-048, ADR-016, ADR-021, mục Lưu trữ file và bất biến bản render của `04-data.md`, mục Rate limit của `09-security.md`, mục Định cỡ A-022 của `11-ops.md`, `docs/reference/render-deploys-docker.md`, `docs/reference/argon2-cffi-parameters.md`
 
 ---
 
@@ -56,7 +56,7 @@ flowchart LR
 
 | ID | Tham số | Giá trị làm việc | Loại căn cứ | Căn cứ | Thay bằng |
 |---|---|---|---|---|---|
-| WV-16 | Tham số `argon2id`: `time_cost`, `memory_cost`, `parallelism` | ~~3; 65.536 KiB; 4~~ → **2; 19.456 KiB (19 MiB); 1** — bản sửa, chờ duyệt, mục 2.1 | Dẫn xuất | Cấu hình thứ hai trong năm cấu hình của OWASP (`docs/reference/owasp-password-storage-argon2id.md`), chọn sau khi đối chiếu RAM — mục 2.1 | p95 thời lượng verify và RAM còn trống, đo trên Render `dev` ở Sprint 2 — điều kiện đảo ngược của ADR-021 |
+| WV-16 | Tham số `argon2id`: `time_cost`, `memory_cost`, `parallelism` | ~~3; 65.536 KiB; 4~~ → **2; 19.456 KiB (19 MiB); 1** — PO duyệt 2026-10-02, mục 2.1 | Dẫn xuất | Cấu hình thứ hai trong năm cấu hình của OWASP (`docs/reference/owasp-password-storage-argon2id.md`), chọn sau khi đối chiếu RAM — mục 2.1 | p95 thời lượng verify và RAM còn trống, đo trên Render `dev` ở Sprint 2 — điều kiện đảo ngược của ADR-021 |
 | WV-17 | Thời hạn token phiên | **8 giờ, tính tuyệt đối** — không gia hạn trượt | Chọn | Một ngày làm việc: đăng nhập mỗi sáng một lần (NFR-04: người dùng thưa). Đăng xuất không thu hồi token (mục Phiên đăng nhập của `05-api.md`), nên thời hạn chính là cửa sổ tối đa một cookie bị lộ còn dùng được khi nhân viên vẫn `is_active`. Giờ làm việc của tổ chức chưa có | Hành vi dùng thật (A-002) |
 | WV-18 | Xoay vòng session secret | **Theo sự kiện, không theo lịch**, tới hết UAT: khi nghi lộ; khi người giữ secret rời dự án; trước lần đầu dữ liệu nhân viên thật vào hệ thống | Chọn | Không phải điều kiện của cổng 1.11. Ghi vì A-048 đang để "tần suất `TBD`". Mục AuthN của `09-security.md` đã chốt: xoay vòng là việc tay của người vận hành, vì mọi phiên bị đăng xuất | Lịch cố định, sau UAT |
 
@@ -70,7 +70,7 @@ flowchart LR
 
 **Yêu cầu của PO (2026-09-27):** đối chiếu bộ nhớ mỗi lần verify với RAM của gói Render dự kiến. Nếu vài lượt đăng nhập đồng thời có thể làm cạn RAM thì đề xuất tham số thấp hơn, không dưới mức tối thiểu OWASP, kèm căn cứ.
 
-**Gói Render dự kiến: chưa có.** Thiết kế chưa chọn loại instance cho `api` (A-002). Phép đối chiếu dùng loại **nhỏ nhất có trả phí**, `0.5c-512mb` — 512 MB RAM, dưới 1 CPU (`docs/reference/render-instance-compute.md`). Loại `free` cũng 512 MB RAM. Loại kế tiếp là `1c-2g`.
+**Gói Render dự kiến:** ~~chưa có~~ — **`free` trong suốt giai đoạn build** (PO, 2026-10-02; A-085): 512 MB RAM, số CPU không in trên trang giá (`docs/reference/render-instance-compute.md`). Phép đối chiếu dưới đây dùng `0.5c-512mb` — cùng 512 MB RAM, dưới 1 CPU — nên kết luận về RAM áp nguyên cho `free`.
 
 **Bộ nhớ mỗi lần verify — số đo, không phải số suy:** bộ nhớ đỉnh của tiến trình tăng xấp xỉ `m` cho mỗi lần verify đang chạy (mục Bộ nhớ đỉnh và thời lượng khi verify đồng thời của `docs/reference/argon2-cffi-parameters.md`).
 
@@ -94,14 +94,14 @@ Cột "phần của verify" = đỉnh sau khi chạy 4 lần, trừ nền ước
 - **`p=1`** — cả năm cấu hình OWASP đều vậy, và khớp instance dưới 1 CPU.
 - **Không phá gì nếu đổi lần nữa.** Chuỗi hash mang tham số, hasher mới verify được hash cũ (mục Đổi tham số — hash cũ còn verify được không của `docs/reference/argon2-cffi-parameters.md`). Hash lại vẫn là thao tác vận hành (H1).
 
-**Kèm một lựa chọn cho PO — WV-16b, trần số lần verify đồng thời trong một tiến trình `api`: 4.** Rate limit (WV-12) giới hạn **số lần thử theo IP trong một cửa sổ**, không giới hạn **số lần chạy cùng lúc**. Không có trần thì bộ nhớ dành cho verify không có cận trên. Với trần 4, cận trên là 4 × 19 MiB ≈ 76 MiB, bất kể tải. Lần thứ năm chờ. Đây là **thêm một cơ chế**, không chỉ là giá trị — PO duyệt riêng; không duyệt thì WV-16 vẫn đứng được một mình.
+**Kèm một lựa chọn cho PO — WV-16b, trần số lần verify đồng thời trong một tiến trình `api`: 4.** Rate limit (WV-12) giới hạn **số lần thử theo IP trong một cửa sổ**, không giới hạn **số lần chạy cùng lúc**. Không có trần thì bộ nhớ dành cho verify không có cận trên. Với trần 4, cận trên là 4 × 19 MiB ≈ 76 MiB, bất kể tải. Lần thứ năm chờ. Đây là **thêm một cơ chế**, không chỉ là giá trị. **PO duyệt 2026-10-02**; ghi ở mục AuthN của `09-security.md`.
 
 ## 3. Việc áp — đã làm 2026-09-27, trừ phần của WV-16
 
 - **`ASSUMPTIONS.md`:**
   - A-031 và A-048 ghi "giá trị làm việc đã duyệt, chưa hiệu chỉnh" kèm trỏ file này. Trạng thái vẫn `Mở` — hiệu chỉnh mới đóng.
   - A-031 thêm WV-04 và WV-06 vào danh sách tham số.
-- **`12-roadmap.md`:** cổng 1.10 → Đạt (đã áp 2026-09-27). Cổng 1.11 → Đạt sau khi PO duyệt WV-16 bản sửa.
+- **`12-roadmap.md`:** cổng 1.10 → Đạt (đã áp 2026-09-27). Cổng 1.11 → Đạt (2026-10-02).
 - **`06-structure.md`:** không đổi bước kiểm nào. Bước #5 và #11 đã đòi đúng các giá trị này.
 - **Nơi các giá trị sống ở BUILD MODE:** cấu hình của ứng dụng, không phải hằng số trong code — cùng luật với trần budget ở bước kiểm #5.
 - **`CHANGELOG.md`:** một mục.
