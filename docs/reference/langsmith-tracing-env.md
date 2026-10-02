@@ -253,3 +253,42 @@ LANGCHAIN_TRACING=1 (v1)                                -> {"langsmith.tracing_i
 | Mã gọi có tự bật được không | Có — `configure(enabled=True)`, context manager, hay decorator của `langsmith`. Dự án không gọi các API đó; luật import của `06-structure.md` là chỗ chặn | Mục 1 |
 
 **Đầu vào cho bước kiểm khởi động của A-082.** Bốn tên biến ở trên là căn cứ. Phép chặn PO đã duyệt (2026-09-27) rộng hơn: chặn theo **mẫu tên** — bắt đầu bằng `LANGSMITH_` hoặc `LANGCHAIN_` và chứa `TRACING` — bất kể giá trị. Định nghĩa đầy đủ ở dòng A-082 của `docs/design/ASSUMPTIONS.md`.
+
+---
+
+## 6. Đối chiếu với bản do lockfile chốt — 2026-10-02 (cổng 1.13)
+
+`backend/requirements-linux.lock` (sha256 `d4be9633ae7e3848cad096b549d9bd07521175dacc8851ef227a0922560525c5`, ADR-030) chốt **`langsmith` 0.14.3** và **`langchain-core` 1.6.6** — khác 0.14.1 và 1.6.5 mà mục 1–5 mô tả. Theo luật của tài liệu này, lấy lại wheel và so.
+
+- **Wheel**, tải bằng `pip download --no-deps`; hash có trong lock:
+  - `langsmith-0.14.3-py3-none-any.whl` — sha256 `4438b0c5d9ac14d5267d4373d67cfb58f1585c91c501564186b9ce196aad2988`
+  - `langchain_core-1.6.6-py3-none-any.whl` — sha256 `d9a71e312ab7443701238750e04a57aefc037c4f1ec82837c8a1609d9a14a9b1`
+
+| Đoạn đã trích ở mục 1–3, theo bản cũ | Ở bản do lock chốt |
+|---|---|
+| `langsmith/utils.py` dòng 121–142 — điều kiện bật | **Nguyên văn**, dòng 121–142 |
+| `langsmith/utils.py` dòng 418–442 — tên biến, hai tiền tố | **Nguyên văn**, dòng 420–444 |
+| `langsmith/utils.py` dòng 879–890 — địa chỉ gửi | **Nguyên văn**, dòng 837–848 |
+| `langsmith/client.py` dòng 240–305 — chế độ gửi | **Nguyên văn**, dòng 241–306 |
+| `langchain_core/tracers/context.py`, `callbacks/manager.py`, `utils/env.py` | **Cả file giống hệt** |
+
+Phần khác của `langsmith/utils.py` giữa hai bản: cách bọc lỗi HTTP khi `raise_for_status`, và bỏ hai hàm thử nghiệm `get_tracer_agent_environment`, `get_tracer_agent_id`. Cả hai nằm ngoài các đoạn trên.
+
+**Phép thử ở mục 4, chạy lại trên `langsmith` 0.14.3 + `langchain-core` 1.6.6** — cùng script, cùng mười ca:
+
+```text
+không đặt biến nào                                      -> {"langsmith.tracing_is_enabled": false, "langchain_core._tracing_v2_is_enabled": false, "invoke": 2, "connect_attempts": 0, "targets": []}
+LANGSMITH_TRACING=true                                  -> {"langsmith.tracing_is_enabled": true, "langchain_core._tracing_v2_is_enabled": true, "invoke": 2, "connect_attempts": 16, "targets": ["('34.8.121.39', 443)"]}
+LANGCHAIN_TRACING_V2=true                               -> {"langsmith.tracing_is_enabled": true, "langchain_core._tracing_v2_is_enabled": true, "invoke": 2, "connect_attempts": 16, "targets": ["('34.8.121.39', 443)"]}
+LANGSMITH_TRACING_V2=true                               -> {"langsmith.tracing_is_enabled": true, "langchain_core._tracing_v2_is_enabled": true, "invoke": 2, "connect_attempts": 16, "targets": ["('34.8.121.39', 443)"]}
+LANGSMITH_TRACING=True (hoa)                            -> {"langsmith.tracing_is_enabled": false, "langchain_core._tracing_v2_is_enabled": false, "invoke": 2, "connect_attempts": 0, "targets": []}
+LANGSMITH_TRACING=1                                     -> {"langsmith.tracing_is_enabled": false, "langchain_core._tracing_v2_is_enabled": false, "invoke": 2, "connect_attempts": 0, "targets": []}
+LANGSMITH_TRACING_V2=false + LANGSMITH_TRACING=true     -> {"langsmith.tracing_is_enabled": false, "langchain_core._tracing_v2_is_enabled": false, "invoke": 2, "connect_attempts": 0, "targets": []}
+LANGSMITH_OTEL_ENABLED=true, không bật tracing          -> {"langsmith.tracing_is_enabled": false, "langchain_core._tracing_v2_is_enabled": false, "invoke": 2, "connect_attempts": 0, "targets": []}
+LANGSMITH_API_KEY đặt, không bật tracing                -> {"langsmith.tracing_is_enabled": false, "langchain_core._tracing_v2_is_enabled": false, "invoke": 2, "connect_attempts": 0, "targets": []}
+LANGCHAIN_TRACING=1 (v1)                                -> {"langsmith.tracing_is_enabled": false, "langchain_core._tracing_v2_is_enabled": false, "error": "RuntimeError: Tracing using LangChainTracerV1 is no longer supported. Please set the LANGCHAIN_TRACING_V2 environment variable to enable tracing instead.", "connect_attempts": 0, "targets": []}
+```
+
+Kết quả trùng bản cũ ở cả mười ca, chỉ khác địa chỉ IP của máy đích.
+
+**Kết luận:** với bản do lock chốt, mục 5 vẫn đúng nguyên văn. Phép chặn của A-082 — theo mẫu tên biến — không phải đổi. Lock đổi bản `langsmith` hay `langchain-core` lần sau thì làm lại mục này.

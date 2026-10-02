@@ -49,6 +49,11 @@ Công cụ cài bằng `pip` vào một venv Python 3.11.9 trên Windows: `uv` *
 
   Cùng khuôn với bước so type sinh từ `openapi.yaml` (mục Đặc tả `Dockerfile` của `06-structure.md`): cái sinh ra từ nguồn phải trùng cái đã commit. Chạy trên Linux vì đó là nền tảng của image — lệnh khoá đã nhắm Linux, nhưng phép so trên chính nền tảng đích loại thêm mọi khác biệt do máy chạy lệnh.
 - **Sinh lock thật là việc của BUILD MODE** — sau cổng 1.1. ADR này chỉ chốt cách làm.
+- **Bổ sung 2026-10-02, BUILD MODE — chốt khi sinh lock thật (cổng 1.12):**
+  - **Lệnh khoá có `--exclude-newer <mốc UTC>`.** Thiếu cờ này thì bước CI so lock không có nghĩa: phụ thuộc bắc cầu không được ghim, nên mỗi khi một gói ra bản mới, lần sinh lại ra kết quả khác và CI fail dù không ai đổi gì. Mốc thời gian nằm trong chính lệnh ở đầu file lock. **Đổi mốc là một thay đổi có chủ ý** — commit riêng, kèm `CHANGELOG.md`, như đổi một ghim.
+  - **Tên và vị trí:** lock là `backend/requirements-linux.lock`, constraint là `backend/constraints.txt` — cạnh `backend/pyproject.toml`. Lệnh chạy từ thư mục `backend/`, đường dẫn tương đối, để dòng lệnh ở đầu file giống nhau trên mọi máy.
+  - **Python đích 3.11** — bản của các phép thử ADR-030 và A-045. Image nền phải cùng bản minor; đổi bản minor là sinh lại lock.
+  - **Phiên bản `uv`** ghi ở cuối dòng lệnh trong header (`# uv 0.12.19`), vì dòng đầu tiên do `uv` viết cố định.
 
 ## Consequences
 

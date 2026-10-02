@@ -2540,3 +2540,26 @@ PO đồng ý F3, F4, F5, F14 của `proposals/build-phase-free-tier-impact.md`.
 | `12-roadmap.md` → 0.23 | Cổng 1.5 Đạt. Mục mới "Mục mở của Sprint 1": O1-1 WV-15 so với trần P1, O1-2 tier mạnh qua eval. Cổng 4.6 mới: hạn mức Groq đủ cho buổi UAT, dùng số đo thật |
 | `11-ops.md` → 0.16 | Runbook dựng lại PostgreSQL free: lịch theo ngày dương lịch — ngày tạo, +25 dựng lại, +30 hết hạn, +44 bị xoá; kiểm trước Sprint 4 — cổng 4.5, 4.6 |
 | `docs/testing/nguoi-thu.md` | **Mới** — nơi PO chốt. Luật "không nhập dữ liệu thật" và vì sao; chế độ thử nghiệm; những điều người thử sẽ gặp; cách báo lỗi |
+
+---
+
+## 2026-10-02 (BUILD MODE — cổng 1.12, 1.13 Đạt) — lockfile thật; đối chiếu `langsmith` với bản của lock
+
+PO áp diff mục Chế độ làm việc hiện tại, luật 2 và mục Definition of Done của `CLAUDE.md` — BUILD MODE có hiệu lực.
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-030-…` | Bổ sung khi sinh lock thật: lệnh khoá có `--exclude-newer <mốc UTC>` — thiếu nó thì bước CI so lock fail mỗi khi một phụ thuộc bắc cầu ra bản mới; tên và vị trí file; Python đích 3.11; phiên bản `uv` ghi cuối dòng lệnh trong header |
+| `backend/requirements-linux.lock` | **Mới.** `uv` 0.12.19, đích `x86_64-unknown-linux-gnu`, Python 3.11, `--exclude-newer 2026-10-02T00:00:00Z`. 71 gói, 1582 hash |
+| `backend/constraints.txt` | **Mới.** `langgraph-checkpoint==4.2.0` — bản đã kiểm ở A-045 |
+| `backend/pyproject.toml` | Chỉ sửa comment: trỏ lock và constraint |
+| `06-structure.md` → 0.16 | Bước kiểm khởi động **#19**: chặn mọi biến tên bắt đầu bằng `LANGSMITH_`/`LANGCHAIN_` và chứa `TRACING`, bất kể giá trị (A-082). Đặc tả `Dockerfile` ghi tên lock |
+| `docs/reference/langsmith-tracing-env.md` | Mục 6 mới: đối chiếu với `langsmith` 0.14.3, `langchain-core` 1.6.6 — mọi đoạn đã trích còn nguyên văn, phép thử mười ca trùng bản cũ |
+| `ASSUMPTIONS.md` → 0.47 | A-081 `Đã chốt`. A-082: đã đối chiếu với bản của lock; bước #19 đã vào thiết kế, còn code |
+| `12-roadmap.md` → 0.24 | Cổng 1.12, 1.13 Đạt |
+
+**Đã chạy, 2026-10-02:**
+
+- Sinh lại lock trong thư mục sạch bằng đúng lệnh ở đầu file: trùng từng byte — hai lần, trước và sau khi sửa comment của `pyproject.toml`.
+- Container `python:3.11-slim` — Python 3.11.17, x86_64: `pip install --require-hashes --no-deps -r requirements-linux.lock` đạt, `pip check` không lỗi.
+- Lock chốt `langsmith` 0.14.3, `langchain-core` 1.6.6 — **khác** 0.14.1 / 1.6.5 của tài liệu tham chiếu. Không đổi ghim: cả hai là phụ thuộc bắc cầu, và hành vi đã xác minh trùng.
