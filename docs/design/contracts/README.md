@@ -4,7 +4,7 @@ Thư mục này giữ contract dạng khai báo: `openapi.yaml` (API) và `schem
 
 ## `schema.sql` dừng ở trạng thái đóng Phase 6
 
-**`schema.sql` không phải toàn bộ schema đang chạy.** Nó giữ nguyên byte từ lúc Phase 6 đóng, và trùng sha256 với `backend/migrations/schema/0001_initial.sql` (`0ce8dd…`). Từ đó, mỗi thay đổi schema là **một file migration mới** (ADR-017) — `schema.sql` không bị sửa.
+**`schema.sql` không phải toàn bộ schema đang chạy.** Nó giữ nguyên byte từ lúc Phase 6 đóng, và trùng sha256 với `backend/migrations/schema/0001_initial.sql` — `937ca184…` cho file LF trong repo. *Đính chính 2026-10-02:* con số `0ce8dd…` ghi trước đây là sha của bản checkout CRLF trên Windows; `.gitattributes` nay giữ LF cho mọi `*.sql`. Từ đó, mỗi thay đổi schema là **một file migration mới** (ADR-017) — `schema.sql` không bị sửa.
 
 **Schema đang có hiệu lực = `0001` → migration mới nhất**, áp theo thứ tự. Lệch giữa `schema.sql` và migration thì **migration đúng** (mục Thang mức độ và thứ bậc nguồn sự thật của `13-audit.md`).
 
@@ -21,6 +21,7 @@ Không sửa `schema.sql` — kể cả chỉ một dòng chú thích. Sửa th�
 | `0006_waiting_order_indexes.sql` | Index `ix_request_waiting`, `ix_document_awaiting_issue` | Mục Phân trang của `05-api.md`; mục Việc được giao cho Phase 13 của `13-audit.md` |
 | `0007_takeover_and_self_approval.sql` | Bốn `step_kind` mới (`TAKEOVER`, `ISSUE_ORDER`, `REVOKE_INITIATE`, `REVOKE_CONFIRM`); index `ix_approval_step_open_by_kind`; cột `decision_record.takeover_resolution`; khoá idempotency mới của `document_halt` (cột `takeover_step_id`, bỏ `uq_document_halt_once`); bảng mã `reason_code`, `archive_reason`, `event_code` thành `CHECK`; đường vào `ARCHIVED` từ `DRAFT`, `APPROVED` | Mục Bảng mã, mục Tiếp quản sau `halt_for_human`, mục Tách biệt trách nhiệm — D-006 của `08-hitl.md`; AUD-02, AUD-07, AUD-23 của `13-audit.md` |
 | `0008_temporary_permission_grant.sql` | Ba cột `employee_permission_grant.grant_reason`, `approved_by_employee_id`, `expected_revoke_on` và ba `CHECK` cho lần cấp permission tạm | A-078; mục Runbook — cấp và thu hồi permission tạm của `11-ops.md` |
+| `0009_llm_usage_reasoning_tokens.sql` | Cột `llm_usage.reasoning_tokens` và `CHECK` không âm | ADR-035; mục Định cỡ A-022 của `11-ops.md` |
 
 Diễn giải từng bảng, cột và index — kể cả phần do migration thêm — ở mục Bảng chi tiết của `04-data.md`. Ngoài schema, còn hai thư mục migration khác: `backend/migrations/data/` (dữ liệu danh mục) và `backend/migrations/library/` (quyền trên bảng của thư viện checkpointer). Thứ tự áp cả ba thư mục ở mục Migration và checkpointer của `06-structure.md`.
 

@@ -46,3 +46,12 @@ Lý do bằng tính chất hàm, không bằng số liệu: A và D là hai họ
 **C — `PBKDF2`.** Cùng lý do B, và không có tham số bộ nhớ dưới bất kỳ hình thức nào.
 
 **D — `scrypt`.** Không loại vì kém A — cùng họ memory-hard, cùng đáp ứng tiêu chí trên. Loại vì chỉ có một biến thể, không tách được mô hình đe doạ kênh bên và mô hình đe doạ phần cứng thuần như `argon2id` làm được. Là phương án dự phòng hợp lý nếu thư viện `argon2` gặp trở ngại build thật sự trên Render.
+
+## Cập nhật 2026-10-02
+
+Không sửa nội dung trên. Đính chính câu ở mục Consequences — "Thư viện `argon2` cho Python cần biên dịch phần mở rộng gốc (native extension) ở hầu hết bản phân phối":
+
+- Thư viện đã chọn: `argon2-cffi` 25.1.0 — ADR-034.
+- **Trên đích của dự án không phải biên dịch.** `argon2-cffi-bindings` 26.1.0 có wheel dựng sẵn `cp310-abi3-manylinux_2_26_x86_64.manylinux_2_28_x86_64`. Cài trong container `python:3.11-slim` — Debian, glibc 2.41 — bằng `pip install --require-hashes --no-deps`: cài từ wheel, hash và verify với tham số WV-16 đạt.
+- Đổi image nền sang libc khác, hay kiến trúc khác, thì kiểm lại — điều kiện đảo ngược ở ADR-034.
+- Tham số cụ thể của mục Decision ở trên — "TBD (A-048)" — nay là WV-16 và WV-16b (A-048, mục AuthN của `09-security.md`).

@@ -2563,3 +2563,58 @@ PO áp diff mục Chế độ làm việc hiện tại, luật 2 và mục Defin
 - Sinh lại lock trong thư mục sạch bằng đúng lệnh ở đầu file: trùng từng byte — hai lần, trước và sau khi sửa comment của `pyproject.toml`.
 - Container `python:3.11-slim` — Python 3.11.17, x86_64: `pip install --require-hashes --no-deps -r requirements-linux.lock` đạt, `pip check` không lỗi.
 - Lock chốt `langsmith` 0.14.3, `langchain-core` 1.6.6 — **khác** 0.14.1 / 1.6.5 của tài liệu tham chiếu. Không đổi ghim: cả hai là phụ thuộc bắc cầu, và hành vi đã xác minh trùng.
+
+---
+
+## 2026-10-02 (BUILD MODE — hai ADR thư viện, phụ thuộc cứng Sprint 1)
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-034-thu-vien-argon2-cffi.md` | **Mới, `Proposed`.** `argon2-cffi` 25.1.0 dùng trực tiếp. Loại `pwdlib`, `passlib` — cả hai chỉ bọc quanh `argon2-cffi`; loại `hashlib` — Python 3.11 không có argon2. Khoá thử: lock thêm đúng bốn gói, đều có wheel Linux. Cài và chạy với WV-16 trong container Debian: đạt, không biên dịch |
+| `decisions/ADR-035-client-llm-httpx-openai-compatible.md` | **Mới, `Proposed`.** `httpx` 0.28.1 — đã có trong lock — gọi thẳng `chat/completions` dạng OpenAI; `stream: false`, `strict: true`; đảo ngược sang OpenRouter bằng cấu hình. Loại SDK `groq` — trượt tiêu chí đảo ngược; SDK `openai` — thêm `httpx2`, `jiter`; LangChain. Lập luận NFR-08: phản hồi tăng dần đến từ `turn.progress`, không từ streaming token |
+| `docs/reference/llm-groq.md` | Mục mới: tương thích OpenAI, giới hạn streaming với structured outputs, ba schema của đặc tả OpenAPI — `usage`, `reasoning_effort`, `stream` |
+| `docs/reference/llm-openrouter.md` | Mục mới: base URL dạng OpenAI |
+| `12-roadmap.md` → 0.25 | Mục mới "Phụ thuộc cứng trong Sprint 1": D1-1 — adapter `ai_gateway` không bắt đầu khi bước kiểm #19 chưa có code và test đạt (PO) |
+| `ASSUMPTIONS.md` → 0.48 | A-048 trỏ ADR-034; A-026 trỏ ADR-035 |
+
+**Chưa làm, chờ PO duyệt hai ADR:** thêm ghim vào `backend/pyproject.toml`, sinh lại lock; sửa luật import của `06-structure.md` theo ADR-035; bước kiểm tham số `argon2id` đề xuất ở ADR-034.
+
+---
+
+## 2026-10-02 (PO duyệt ADR-034, ADR-035) — ghim mới, lock sinh lại, migration 0009, bước kiểm #20 #21
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-034-…` | `Accepted`. Mục mới "Điều kiện duyệt": đính chính ADR-021; bước kiểm #20, không ngoại lệ theo môi trường, test tự tạo hasher riêng; WV-16b theo tiến trình, `combined_main` chung một trần 4 |
+| `decisions/ADR-021-…` | Mục mới "Cập nhật 2026-10-02" — không biên dịch trên đích; nội dung gốc không sửa |
+| `decisions/ADR-035-…` | `Accepted`, cách đọc "hồ sơ model" được xác nhận. Mục mới "Điều kiện duyệt": hồ sơ model có schema và bước kiểm #21; đổi hồ sơ ghi `CHANGELOG.md` và kích hoạt Regression gate; `reasoning_tokens` vào budget và `llm_usage`; 429 chờ theo `retry-after` chỉ khi còn đủ hạn chót lượt. Kiểm lại `httpx2` từ `METADATA`: nguyên văn dòng 26, sha256 của wheel, dự án có trên PyPI. Thời lượng từ `usage` ghi vào log kỹ thuật, không vào DB |
+| `06-structure.md` → 0.17 | Bước kiểm khởi động **#20** (tham số `argon2id` ≥ WV-16) và **#21** (hồ sơ model hợp schema). Luật import: `httpx` điền vào chỗ `<sdk-llm>` của contract `allowlist-gate`; cây thư mục ghi `providers/` là nơi duy nhất import client gọi provider |
+| `10-eval.md` → 0.8 | Regression gate kích hoạt khi đổi hồ sơ model, kể cả chỉ `reasoning_effort` |
+| `11-ops.md` → 0.17 | Mục Định cỡ A-022: `reasoning_tokens` tính vào budget |
+| `04-data.md` → 0.21 | Cột `llm_usage.reasoning_tokens` |
+| `12-roadmap.md` → 0.26 | Mục mở O1-3: `completion_tokens` đã gồm token suy luận hay chưa; tới khi biết, budget cộng cả hai |
+| `proposals/sprint1-working-values-a031-a048.md` | WV-05: luật 429 |
+| `ASSUMPTIONS.md` → 0.49 | A-048 trỏ ADR-034 `Accepted`; A-026 trỏ ADR-035 `Accepted` |
+| `docs/reference/llm-groq.md` | Mục mới: header giới hạn và 429, có `retry-after` |
+| `backend/migrations/schema/0009_llm_usage_reasoning_tokens.sql` | **Mới.** Cột `reasoning_tokens integer`, `CHECK` không âm. Không `GRANT` mới |
+| `contracts/README.md` | Dòng của migration 0009 |
+| `backend/pyproject.toml` | Ghim `argon2-cffi==25.1.0` (ADR-034), `httpx==0.28.1` (ADR-035); bỏ hai ghi chú "cố ý không có" đã hết đúng |
+| `backend/requirements-linux.lock` | Sinh lại bằng đúng lệnh ở đầu file: 75 gói, 1727 hash — thêm `argon2-cffi`, `argon2-cffi-bindings`, `cffi`, `pycparser`; `httpx` không đổi bản |
+
+**Đã chạy, 2026-10-02:** sinh lại lock trong thư mục sạch — trùng từng byte. Container `python:3.11-slim`: `pip install --require-hashes --no-deps` đạt, `pip check` không lỗi, `argon2id` với WV-16 hash và verify đạt. `check_grants.py --local-migrated` áp `0001` → `0009`: 176 / 68 / **Lệch 0**.
+
+---
+
+## 2026-10-02 (đính chính) — sha256 của `schema.sql` là của bản CRLF; `.gitattributes` giữ LF cho `*.sql`
+
+Phát hiện khi xử lý xuống dòng của file lock. Máy người triển khai đặt `core.autocrlf=true`: một phần file `.sql` trên đĩa là CRLF, dù trong repo là LF.
+
+| File | Thay đổi |
+|---|---|
+| `.gitattributes` | `*.sql text eol=lf` — sha256 của migration là một phần contract: bước kiểm khởi động #1, và `0001_initial.sql` trùng byte với `contracts/schema.sql` |
+| `06-structure.md` → 0.18 | Mục Xác minh contract: dòng đính chính — `0ce8dd…` là sha của bản checkout CRLF trên Windows; file LF trong repo, thứ CI và image thấy, là `937ca18412aff409f2dd429a50b550524994fab73579b12bc23f68bc71e242fd` |
+| `contracts/README.md` | Cùng đính chính |
+
+**Không đổi:** nội dung mọi file `.sql`; quy ước "`0001` trùng byte với `schema.sql`" đúng ở cả hai dạng. `13-audit.md` ghi `0ce8dd…` ở phần kiểm máy của audit đã khép — giữ nguyên làm bản ghi lịch sử.
+
+**Đã chạy trên bản LF:** `check_grants.py --local` 169 / 63 / Lệch 0; `--local-migrated` (`0001` → `0009`) 176 / 68 / Lệch 0; cả hai log `schema.sql sha256: 937ca184…`.

@@ -83,3 +83,21 @@ Bảng ở mục 3, lấy nguyên từ trường `pricing` của API. Không có
 > Free usage limits: If you’re using a free model variant (with an ID ending in :), the following limits apply:
 
 **Đọc cho BO-19:** trang chỉ nêu giới hạn cho biến thể free (ID kết thúc bằng `:free`) và lớp chống DDoS. Con số trong bảng giới hạn free render bằng JavaScript, không có trong HTML đã lấy. Model trả phí như `openai/gpt-4o-mini` không có hạn mức TPM, TPD công bố trên trang này — giới hạn thực tế là credit trong tài khoản.
+
+---
+
+## 6. Base URL dạng OpenAI — thêm 2026-10-02 (ADR-035)
+
+- **Nguồn:** `https://openrouter.ai/docs/quickstart` — sha256 `7a4fdb3d375b3cbc7961a4582e7e94c90e4dec8a45b5f288070b48fd30804c16`; `https://openrouter.ai/docs/api-reference/overview` — sha256 `e7d2fe70a23c6de9627e61a1af6fbc16cb52abe51509c961a86496b90bf2c905`. Lấy ngày 2026-10-02.
+
+Ví dụ dùng SDK OpenAI trên trang quickstart, nguyên văn tới trước `defaultHeaders`:
+
+```javascript
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+ baseURL: 'https://openrouter.ai/api/v1',
+ apiKey: '<OPENROUTER_API_KEY>',
+```
+
+Đường dẫn chat completions xuất hiện trên cả hai trang: `https://openrouter.ai/api/v1/chat/completions`.

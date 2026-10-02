@@ -1,3 +1,6 @@
 # File sinh bằng máy, so từng byte ở CI (ADR-030): giữ LF trên mọi máy, kể cả khi core.autocrlf=true.
 backend/requirements-linux.lock text eol=lf
 backend/constraints.txt text eol=lf
+# Migration và contract DDL: sha256 của chúng là một phần của contract (bước kiểm khởi động #1;
+# 0001_initial.sql trùng byte với contracts/schema.sql). Giữ LF trên mọi máy.
+*.sql text eol=lf
