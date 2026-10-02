@@ -2513,3 +2513,53 @@ PO đồng ý F3, F4, F5, F14 của `proposals/build-phase-free-tier-impact.md`.
 | `13-audit.md` → 0.14 | Trạng thái: "Đã khép — chờ PO duyệt" → "Đã khép — PO xác nhận 2026-10-02" |
 
 `_PLAN.md` do PO quản lý — không sửa.
+
+---
+
+## 2026-10-02 (PO trả lời cổng trước Sprint 1) — 1.1, 1.14 Đạt; hồ sơ danh sách ngắn mốc 1
+
+| File | Thay đổi |
+|---|---|
+| `12-roadmap.md` → 0.22 | Cổng 1.1 Đạt — PO tuyên bố BUILD MODE, có hiệu lực khi PO áp diff `CLAUDE.md`. Cổng 1.14 Đạt — một người, tuần tự, không khung thời gian. Cổng 1.5: danh sách ngắn và hồ sơ, chờ PO chọn. R1-2: hai track nối tiếp |
+| `decisions/ADR-032-…` | Mục mới "Danh sách ngắn của mốc 1": bảng hồ sơ năm ứng viên; GitHub Models loại vì đã ngừng hoạt động; Gemini free loại theo PO; OpenRouter là ngoại lệ trả phí PO cho phép. Khuyến nghị Groq. Hai phát hiện chạm thiết kế, chưa áp: `strict` của Groq đòi mọi property `required`; tin nhắn trần WV-15 đẩy P1 chạm trần 1.500 |
+| `ASSUMPTIONS.md` → 0.45 | A-026: danh sách ngắn, hồ sơ, khuyến nghị. A-031: WV-15 chạm trần P1. A-071 `Đã chốt` |
+| `docs/reference/llm-groq.md`, `llm-mistral.md`, `llm-openrouter.md`, `llm-github-models.md` | **Mới.** Trích nguyên văn điều khoản dữ liệu, structured output, giá, giới hạn — lấy 2026-10-02 |
+| `docs/reference/llm-token-count-p1-p2.md` | **Mới.** Đếm token offline của P1, P2 bằng `o200k_harmony`, `o200k_base`, `tekken_240911`; so với gói Free của Groq và trần A-022. Ghi rõ phần không đo được: khung chat, schema chèn vào prompt, token suy luận |
+
+**Chưa làm, theo chỉ đạo của PO:** cổng 1.12 → 1.13 chạy sau khi PO áp diff `CLAUDE.md`. Cổng 1.6 chờ file mẫu `.docx`.
+
+---
+
+## 2026-10-02 (PO phản hồi c08ca02) — cổng 1.5 Đạt: Groq; `ClassifyIntentResult` bắt buộc mọi trường; tài liệu người thử
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-032-…` | `Accepted` cho mốc 1. Mục mới "Mốc 1 — quyết định của PO": Groq duy nhất, `gpt-oss-20b` tier rẻ, `gpt-oss-120b` tier mạnh; không fallback trong code; PO chấp nhận điều 8.1 Services Agreement của Groq thay câu "không huấn luyện", chỉ cho mốc 1; tier rẻ mức suy luận thấp; đo token và thời lượng từ `usage`; bật Zero Data Retention trước lần gọi đầu. Điều kiện đảo ngược: chuyển hẳn sang OpenRouter `gpt-4o-mini` khi hạn mức Groq chặn việc thử — lấy đủ hồ sơ 1, chạy lại eval. Open Questions: nơi đặt tài liệu người thử đã chốt |
+| `07-prompts.md` → 0.5 | `ClassifyIntentResult`: `secondary_intent`, `retrieval_query` vào `required`; `null` nghĩa là không có. Đúng cho mọi nhánh ép JSON, và là điều kiện của `strict` ở Groq |
+| `ASSUMPTIONS.md` → 0.46 | A-026 `Thu hẹp` — mốc 1 đã chọn. A-085: ngoại lệ trả phí duy nhất là OpenRouter `gpt-4o-mini` khi điều kiện đảo ngược của cổng 1.5 phát ra, trần 5 USD mỗi tháng. A-031: mục mở O1-1 |
+| `12-roadmap.md` → 0.23 | Cổng 1.5 Đạt. Mục mới "Mục mở của Sprint 1": O1-1 WV-15 so với trần P1, O1-2 tier mạnh qua eval. Cổng 4.6 mới: hạn mức Groq đủ cho buổi UAT, dùng số đo thật |
+| `11-ops.md` → 0.16 | Runbook dựng lại PostgreSQL free: lịch theo ngày dương lịch — ngày tạo, +25 dựng lại, +30 hết hạn, +44 bị xoá; kiểm trước Sprint 4 — cổng 4.5, 4.6 |
+| `docs/testing/nguoi-thu.md` | **Mới** — nơi PO chốt. Luật "không nhập dữ liệu thật" và vì sao; chế độ thử nghiệm; những điều người thử sẽ gặp; cách báo lỗi |
+
+---
+
+## 2026-10-02 (BUILD MODE — cổng 1.12, 1.13 Đạt) — lockfile thật; đối chiếu `langsmith` với bản của lock
+
+PO áp diff mục Chế độ làm việc hiện tại, luật 2 và mục Definition of Done của `CLAUDE.md` — BUILD MODE có hiệu lực.
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-030-…` | Bổ sung khi sinh lock thật: lệnh khoá có `--exclude-newer <mốc UTC>` — thiếu nó thì bước CI so lock fail mỗi khi một phụ thuộc bắc cầu ra bản mới; tên và vị trí file; Python đích 3.11; phiên bản `uv` ghi cuối dòng lệnh trong header |
+| `backend/requirements-linux.lock` | **Mới.** `uv` 0.12.19, đích `x86_64-unknown-linux-gnu`, Python 3.11, `--exclude-newer 2026-10-02T00:00:00Z`. 71 gói, 1582 hash |
+| `backend/constraints.txt` | **Mới.** `langgraph-checkpoint==4.2.0` — bản đã kiểm ở A-045 |
+| `backend/pyproject.toml` | Chỉ sửa comment: trỏ lock và constraint |
+| `06-structure.md` → 0.16 | Bước kiểm khởi động **#19**: chặn mọi biến tên bắt đầu bằng `LANGSMITH_`/`LANGCHAIN_` và chứa `TRACING`, bất kể giá trị (A-082). Đặc tả `Dockerfile` ghi tên lock |
+| `docs/reference/langsmith-tracing-env.md` | Mục 6 mới: đối chiếu với `langsmith` 0.14.3, `langchain-core` 1.6.6 — mọi đoạn đã trích còn nguyên văn, phép thử mười ca trùng bản cũ |
+| `ASSUMPTIONS.md` → 0.47 | A-081 `Đã chốt`. A-082: đã đối chiếu với bản của lock; bước #19 đã vào thiết kế, còn code |
+| `12-roadmap.md` → 0.24 | Cổng 1.12, 1.13 Đạt |
+
+**Đã chạy, 2026-10-02:**
+
+- Sinh lại lock trong thư mục sạch bằng đúng lệnh ở đầu file: trùng từng byte — hai lần, trước và sau khi sửa comment của `pyproject.toml`.
+- Container `python:3.11-slim` — Python 3.11.17, x86_64: `pip install --require-hashes --no-deps -r requirements-linux.lock` đạt, `pip check` không lỗi.
+- Lock chốt `langsmith` 0.14.3, `langchain-core` 1.6.6 — **khác** 0.14.1 / 1.6.5 của tài liệu tham chiếu. Không đổi ghim: cả hai là phụ thuộc bắc cầu, và hành vi đã xác minh trùng.

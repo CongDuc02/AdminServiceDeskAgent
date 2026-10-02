@@ -1,0 +1,3 @@
+# Ghim bắt buộc qua constraint — ADR-030. langgraph-checkpoint 4.2.0 là bản đã chạy thật trong bộ kiểm A-045
+# (docs/reference/langgraph-checkpoint-postgres.md). Đổi bản này thì chạy lại phép xác minh của A-045.
+langgraph-checkpoint==4.2.0

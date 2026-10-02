@@ -6,19 +6,19 @@
 
 ## 0. Chế độ làm việc hiện tại
 
-**DESIGN MODE.** Nhiệm vụ là sinh tài liệu thiết kế, **không implement business logic**.
+**BUILD MODE** — từ 2026-10-02 (cổng 1.1 của `docs/design/12-roadmap.md`). Nhiệm vụ là triển khai đúng thiết kế đã chốt trong `docs/design/`.
 
-Được phép sinh (vì đây là _contract_, không phải implementation):
+- Được phép: hàm có thân xử lý, prompt gọi LLM thật, code kết nối DB, test chạy được, Dockerfile và file chạy container hoạt động, cấu hình CI.
 
-- `openapi.yaml`
-- JSON Schema / Pydantic model chỉ chứa field + type + validator khai báo
-- SQL DDL (`CREATE TABLE`, index, constraint)
-- File `.md` tài liệu và Mermaid diagram
-- Cây thư mục rỗng + `__init__.py` + docstring mô tả trách nhiệm module
+#### Luật của BUILD MODE:
 
-Không được phép sinh: hàm có thân xử lý, prompt gọi LLM thật, code kết nối DB, test chạy được, Dockerfile hoạt động. Khi nào chuyển sang BUILD MODE tôi sẽ nói rõ.
+- **Thiết kế là nguồn sự thật.** Cần làm khác thiết kế thì sửa tài liệu thiết kế trước — kèm `CHANGELOG.md`, và ADR nếu là quyết định kiến trúc — rồi mới sửa code. Không để code và tài liệu lệch nhau.
+- **Làm tuần tự theo sprint của `12-roadmap.md`.** Chỉ cổng có cột Chặn là "Khởi động" mới chặn việc bắt đầu một sprint. Cổng chặn AC chỉ chặn nghiệm thu AC đó: sprint vẫn bắt đầu, dùng dữ liệu giả có nhãn cho tới mốc của cổng.
+- **Chỉ dữ liệu giả đánh dấu là giả** cho tới mốc 2 của ADR-032. Hướng dẫn cho người thử: `docs/testing/nguoi-thu.md`.
+- **Gói free** cho Render và mọi dịch vụ khác. Ngoại lệ chỉ theo A-085.
+- Mục 4 và mục 5 vẫn áp — kể cả quy tắc trích dẫn và luật 11 về `CLAUDE.md`.
 
----
+  ***
 
 ## 1. Bối cảnh đề tài
 
@@ -81,7 +81,7 @@ Không được phép sinh: hàm có thân xử lý, prompt gọi LLM thật, co
 ## 4. Luật viết tài liệu
 
 1. **Đọc trước khi viết.** Trước mỗi phase, đọc `docs/design/_PLAN.md`, `docs/design/decisions/*.md` và toàn bộ file của các phase phụ thuộc. Không thiết kế lại thứ đã chốt.
-2. **Một phase = một lần chạy.** Không nhảy sang phase sau. Kết thúc phase thì dừng và báo cáo.
+2. **Một sprint một lần làm, theo thứ tự của `12-roadmap.md`.** Không làm hạng mục của sprint sau. Dừng và báo cáo khi kết thúc sprint, hoặc giữa sprint khi một cổng hay một mục mở cần PO quyết.
 3. **Không có thông tin thì hỏi, không bịa.** Mọi giả định ghi vào `docs/design/ASSUMPTIONS.md` theo dạng `A-xxx | Giả định | Ảnh hưởng nếu sai | Cách xác minh`. Cấm bịa số liệu (số nhân viên, SLA, ngân sách, benchmark, giá token) — nếu cần thì ghi `TBD` kèm mục trong ASSUMPTIONS.
 4. **Mọi quyết định kiến trúc → ADR** tại `docs/design/decisions/ADR-xxx-<slug>.md`: Context · Options · Decision · Consequences · Rejected alternatives. Trong tài liệu chỉ trích dẫn `ADR-xxx`, không lặp lại lập luận.
 5. **Nhất quán là tiêu chí đánh giá.** Tên entity, tên trạng thái, tên agent, tên tool phải giống hệt nhau giữa các phase. Nếu cần đổi, sửa file gốc rồi ghi vào `docs/design/CHANGELOG.md`.
@@ -137,12 +137,11 @@ backend/migrations/
 
 ---
 
-## 7. Definition of Done cho mọi phase
+## 7. Definition of Done cho mọi sprint
 
-- [ ] File đích đã ghi đúng đường dẫn trong `_PLAN.md`
-- [ ] Không mâu thuẫn với phase trước (đã đối chiếu, ghi rõ đã kiểm tra những file nào)
-- [ ] Mọi giả định mới đã vào `ASSUMPTIONS.md`
-- [ ] Mọi quyết định công nghệ mới đã có ADR
-- [ ] Mermaid render được
-- [ ] Cuối file có mục **Open Questions** — nếu trống thì phải nói rõ "không có"
-- [ ] Báo cáo cuối phase: đã tạo file nào, quyết định gì đáng chú ý, cần tôi xác nhận điều gì trước khi sang phase kế
+- [ ] Mọi AC của sprint ở mục Acceptance Criteria của sprint đó trong `docs/design/12-roadmap.md` đạt — chứng minh bằng test chạy được, hoặc bằng chứng ghi trong báo cáo. AC bị cắt theo thứ tự cắt của sprint thì ghi rõ phần đã cắt, không âm thầm hạ chuẩn
+- [ ] Code khớp thiết kế; chỗ thiết kế đổi thì tài liệu đã sửa trước, có `CHANGELOG.md`, có ADR nếu là quyết định kiến trúc
+- [ ] Mọi giả định mới đã vào `ASSUMPTIONS.md`; mọi lựa chọn công nghệ mới đã có ADR
+- [ ] Kiểm contract đạt: `check_grants.py`, so lock của ADR-030, luật import
+- [ ] Tài liệu thiết kế có sửa thì Mermaid render được, và mục **Open Questions** vẫn có — nếu trống thì nói rõ "không có"
+- [ ] Báo cáo cuối sprint: đã làm gì, AC nào đạt và bằng chứng, quyết định gì đáng chú ý, mục mở nào chuyển sang sprint sau, cần tôi xác nhận gì trước cổng của sprint kế

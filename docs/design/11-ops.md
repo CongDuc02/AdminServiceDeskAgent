@@ -1,6 +1,6 @@
 # Ops, Cost & Deployment — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.15 · **Trạng thái:** Draft chờ duyệt — bốn đề xuất diff đã áp; đợt sửa `03-agents.md` cho A-068 đã áp (2026-09-25); lượt GLOSSARY/contract cho Phase 5, 8 đã chạy ở đợt sửa 2, 3 sau Phase 13 · **v0.11:** căn cứ bảo vệ dữ liệu cá nhân — A-080 (AUD-26) · **v0.10:** mục 14 — runbook cấp và thu hồi permission tạm (A-078 `Đã chốt`), mục ngày 2026-09-26 (quyết định PO sau đợt 3b) · **v0.9:** mục 10.4 — trần `chat_session` 46.500 thành giá trị đang hiệu lực, sửa câu về phương án (b') — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.12:** đợt sửa 4 sau Phase 13 — hai dòng chỗ quan sát (AUD-12); runbook object mồ côi, nơi lưu bản ghi eval (AUD-24); nội dung cũ (AUD-11) · **v0.13:** đợt sửa 5 sau Phase 13 — tham chiếu tới mục không tồn tại của `ASSUMPTIONS.md` (AUD-17); W3C Trace Context, quy đổi token `[CẦN XÁC MINH]` (AUD-21) · **v0.14:** sơ đồ migration ở mục Migration: ba nhãn trỏ `06-structure.md` theo tên mục thay số mục — luật 12 (2026-10-02) · **v0.15:** giai đoạn build: một môi trường, Backup & Restore không thử được, runbook dựng lại PostgreSQL free — A-085 (PO, 2026-10-02)
+**Phiên bản:** 0.16 · **Trạng thái:** Draft chờ duyệt — bốn đề xuất diff đã áp; đợt sửa `03-agents.md` cho A-068 đã áp (2026-09-25); lượt GLOSSARY/contract cho Phase 5, 8 đã chạy ở đợt sửa 2, 3 sau Phase 13 · **v0.11:** căn cứ bảo vệ dữ liệu cá nhân — A-080 (AUD-26) · **v0.10:** mục 14 — runbook cấp và thu hồi permission tạm (A-078 `Đã chốt`), mục ngày 2026-09-26 (quyết định PO sau đợt 3b) · **v0.9:** mục 10.4 — trần `chat_session` 46.500 thành giá trị đang hiệu lực, sửa câu về phương án (b') — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.12:** đợt sửa 4 sau Phase 13 — hai dòng chỗ quan sát (AUD-12); runbook object mồ côi, nơi lưu bản ghi eval (AUD-24); nội dung cũ (AUD-11) · **v0.13:** đợt sửa 5 sau Phase 13 — tham chiếu tới mục không tồn tại của `ASSUMPTIONS.md` (AUD-17); W3C Trace Context, quy đổi token `[CẦN XÁC MINH]` (AUD-21) · **v0.14:** sơ đồ migration ở mục Migration: ba nhãn trỏ `06-structure.md` theo tên mục thay số mục — luật 12 (2026-10-02) · **v0.15:** giai đoạn build: một môi trường, Backup & Restore không thử được, runbook dựng lại PostgreSQL free — A-085 (PO, 2026-10-02) · **v0.16:** runbook dựng lại PostgreSQL free: lịch theo ngày thật; kiểm trước Sprint 4 (PO, 2026-10-02)
 
 > File này chốt vận hành trên Render: môi trường dev/staging/prod, cold start, worker nền, cron, migration, backup & restore, observability, dashboard SLA & tồn đọng, mô hình chi phí LLM, ngưỡng cảnh báo & cơ chế cắt chi phí, và định cỡ A-022. File này **không** thiết kế lại state machine, schema DB, endpoint API, hay `halt_for_human` — chỉ tham chiếu và bổ sung phần vận hành chưa phase nào chạm tới. Bốn thay đổi cần chạm phase đã đóng (`06-structure.md`, `04-data.md` ×2, `05-api.md`/`openapi.yaml`) được viết thành **đề xuất diff riêng**, duyệt từng cái một — **cả bốn đã áp**, PO duyệt lần lượt 2026-09-16 và 2026-09-25 — xem mục 13.
 
@@ -410,6 +410,20 @@ Bốn thay đổi chạm phase đã đóng, viết thành đề xuất riêng, d
 **Vì sao:** Postgres free hết hạn 30 ngày sau khi tạo, rồi bị xoá sau 14 ngày ân hạn; mỗi workspace chỉ có một DB free hoạt động (`docs/reference/render-free-tier.md`). Render gửi email khi DB sắp hết hạn — theo cùng nguồn.
 
 **Khi nào:** khi DB hiện hành được **25 ngày** tuổi, hoặc sớm hơn nếu một buổi thử sắp tới sẽ vượt qua ngày hết hạn. 25 là chọn — chừa năm ngày cho trục trặc. Không làm trong buổi thử nào đang diễn ra.
+
+**Lịch theo ngày thật — PO, 2026-10-02.** Không đếm tuổi DB theo trí nhớ. Mỗi lần dựng, ghi vào nhật ký vận hành bốn ngày dương lịch, tính từ ngày tạo DB:
+
+| Mốc | Cách tính | Việc |
+|---|---|---|
+| Ngày tạo | Ngày DB free được tạo | Ghi vào nhật ký |
+| Ngày dựng lại | Ngày tạo + 25 | Chạy runbook này — đặt lịch nhắc theo ngày này |
+| Ngày hết hạn | Ngày tạo + 30 | DB không truy cập được nữa (`docs/reference/render-free-tier.md`) |
+| Ngày bị xoá | Ngày hết hạn + 14 | Render xoá DB cùng dữ liệu |
+
+**Kiểm trước Sprint 4 — PO, 2026-10-02:**
+
+- Ngày UAT nằm **trước** ngày dựng lại của DB hiện hành, và còn đủ thời gian để xuất bằng chứng trước ngày hết hạn — cổng 4.5 của `12-roadmap.md`. Không thì dựng lại DB **trước** buổi UAT, không phải giữa chừng.
+- Hạn mức gói Free của Groq đủ cho số người thử cùng lúc của buổi UAT — cổng 4.6 của `12-roadmap.md`, dùng số đo `usage` thật.
 
 **Điều kiện cần — chưa xác minh:** CI phải kết nối được tới Postgres free từ ngoài Render — ADR-022 vốn đã cần điều này để migrate. Gói free có cho kết nối từ ngoài hay không `[CẦN XÁC MINH]` (F11); S0 và S1 của Spike 1 trả lời.
 

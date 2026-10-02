@@ -4,7 +4,8 @@ version = "0.1.0"
 description = "BO-19 Admin Service Desk Agent — backend rỗng DESIGN MODE"
 requires-python = ">=3.11"
 # Nguồn sự thật DUY NHẤT cho phụ thuộc Python của backend (đợt sửa 2b sau Phase 13, AUD-25).
-# Không có requirements.txt. Lockfile chốt ở BUILD MODE (mục Đặc tả Dockerfile của 06-structure.md).
+# Không có requirements.txt. Lockfile: requirements-linux.lock, sinh bằng đúng lệnh ở đầu file đó, ghim
+# langgraph-checkpoint qua constraints.txt (ADR-030). Sửa danh sách dưới đây thì sinh lại lock.
 #
 # Cố ý KHÔNG có:
 #   - thư viện hash mật khẩu: ADR-021 chọn argon2id; tên và phiên bản thư viện [CẦN XÁC MINH], chọn ở BUILD MODE.
