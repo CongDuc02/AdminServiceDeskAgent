@@ -4,3 +4,15 @@ backend/constraints.txt text eol=lf
 # Migration và contract DDL: sha256 của chúng là một phần của contract (bước kiểm khởi động #1;
 # 0001_initial.sql trùng byte với contracts/schema.sql). Giữ LF trên mọi máy.
 *.sql text eol=lf
+# Contract (docs/design/contracts/): openapi.yaml là nguồn sinh type; schema.sql trùng byte với 0001 (ADR-017).
+docs/design/contracts/** text eol=lf
+# Type sinh từ openapi.yaml, commit và CI so với bản sinh lại (mục Đặc tả Dockerfile của 06-structure.md).
+frontend/src/api/generated/** text eol=lf
+# File nhị phân sẽ được tính checksum: mẫu .docx (ADR-001, ADR-003), font của manifest (ADR-015), bản render PDF.
+# Đánh dấu binary để git không bao giờ đổi byte hay xuống dòng của chúng.
+*.docx binary
+*.pdf binary
+*.ttf binary
+*.otf binary
+# Script chạy trong container (ADR-033): shebang và lệnh hỏng nếu có CR.
+*.sh text eol=lf
