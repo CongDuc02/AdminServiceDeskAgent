@@ -4,7 +4,7 @@ Thư mục này giữ contract dạng khai báo: `openapi.yaml` (API) và `schem
 
 ## `schema.sql` dừng ở trạng thái đóng Phase 6
 
-**`schema.sql` không phải toàn bộ schema đang chạy.** Nó giữ nguyên byte từ lúc Phase 6 đóng, và trùng sha256 với `backend/migrations/schema/0001_initial.sql` (`0ce8dd…`). Từ đó, mỗi thay đổi schema là **một file migration mới** (ADR-017) — `schema.sql` không bị sửa.
+**`schema.sql` không phải toàn bộ schema đang chạy.** Nó giữ nguyên byte từ lúc Phase 6 đóng, và trùng sha256 với `backend/migrations/schema/0001_initial.sql` — `937ca184…` cho file LF trong repo. *Đính chính 2026-10-02:* con số `0ce8dd…` ghi trước đây là sha của bản checkout CRLF trên Windows; `.gitattributes` nay giữ LF cho mọi `*.sql`. Từ đó, mỗi thay đổi schema là **một file migration mới** (ADR-017) — `schema.sql` không bị sửa.
 
 **Schema đang có hiệu lực = `0001` → migration mới nhất**, áp theo thứ tự. Lệch giữa `schema.sql` và migration thì **migration đúng** (mục Thang mức độ và thứ bậc nguồn sự thật của `13-audit.md`).
 

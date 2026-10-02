@@ -2602,3 +2602,19 @@ PO áp diff mục Chế độ làm việc hiện tại, luật 2 và mục Defin
 | `backend/requirements-linux.lock` | Sinh lại bằng đúng lệnh ở đầu file: 75 gói, 1727 hash — thêm `argon2-cffi`, `argon2-cffi-bindings`, `cffi`, `pycparser`; `httpx` không đổi bản |
 
 **Đã chạy, 2026-10-02:** sinh lại lock trong thư mục sạch — trùng từng byte. Container `python:3.11-slim`: `pip install --require-hashes --no-deps` đạt, `pip check` không lỗi, `argon2id` với WV-16 hash và verify đạt. `check_grants.py --local-migrated` áp `0001` → `0009`: 176 / 68 / **Lệch 0**.
+
+---
+
+## 2026-10-02 (đính chính) — sha256 của `schema.sql` là của bản CRLF; `.gitattributes` giữ LF cho `*.sql`
+
+Phát hiện khi xử lý xuống dòng của file lock. Máy người triển khai đặt `core.autocrlf=true`: một phần file `.sql` trên đĩa là CRLF, dù trong repo là LF.
+
+| File | Thay đổi |
+|---|---|
+| `.gitattributes` | `*.sql text eol=lf` — sha256 của migration là một phần contract: bước kiểm khởi động #1, và `0001_initial.sql` trùng byte với `contracts/schema.sql` |
+| `06-structure.md` → 0.18 | Mục Xác minh contract: dòng đính chính — `0ce8dd…` là sha của bản checkout CRLF trên Windows; file LF trong repo, thứ CI và image thấy, là `937ca18412aff409f2dd429a50b550524994fab73579b12bc23f68bc71e242fd` |
+| `contracts/README.md` | Cùng đính chính |
+
+**Không đổi:** nội dung mọi file `.sql`; quy ước "`0001` trùng byte với `schema.sql`" đúng ở cả hai dạng. `13-audit.md` ghi `0ce8dd…` ở phần kiểm máy của audit đã khép — giữ nguyên làm bản ghi lịch sử.
+
+**Đã chạy trên bản LF:** `check_grants.py --local` 169 / 63 / Lệch 0; `--local-migrated` (`0001` → `0009`) 176 / 68 / Lệch 0; cả hai log `schema.sql sha256: 937ca184…`.
