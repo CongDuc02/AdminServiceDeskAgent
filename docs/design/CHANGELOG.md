@@ -2467,3 +2467,22 @@ PO báo Docker Desktop chạy bình thường. Đã kiểm: Docker Desktop 4.85.
 | `decisions/ADR-031-…` | Ghi chú: ràng buộc "chạy native trên Windows" không còn bắt buộc; quyết định không đổi |
 | `ASSUMPTIONS.md` | A-072: hệ quả (3) hết hiệu lực |
 | `proposals/build-phase-free-tier-impact.md` | Mục mới 3.1: C và B dạng Docker; loại biến thể "`worker` thành Web Service free thứ hai". Khuyến nghị sửa: A trên Render, cộng B dạng Docker ở local — ba container từ một image, đúng topology production |
+
+---
+
+## 2026-10-02 (ADR-033) — topology của giai đoạn build trên gói free
+
+PO đồng ý khuyến nghị F1. Cổng 1.15 đạt vế `worker` và Cron; F3, F4, F5, F14 vẫn chờ PO.
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-033-topology-giai-doan-build-goi-free.md` | **Mới, `Accepted`.** Local: ba container `api`, `worker`, `cron` từ cùng image, cộng PostgreSQL có `vector` và SeaweedFS. Render free: một Web Service chạy `combined_main`, chỉ ở `dev`, một job và một lần chuyển đổi một lúc, mỗi thao tác cron chạy một lần ngay khi thức. Một nguồn lịch cron. Loại: B một mình, C, D, E (lịch ngoài gọi endpoint), F (trả phí) |
+| `06-structure.md` | Mục Tiến trình: hai entrypoint mới `combined_main`, `cron_scheduler_main`; đoạn giai đoạn build. Mục Tắt tiến trình êm: dòng `combined_main`. Mục Bước kiểm khởi động: **#18** — `combined_main` chỉ chạy ở `dev`, chạy hợp mọi bước |
+| `backend/src/bo19/entrypoints/combined_main.py`, `cron_scheduler_main.py` | **Mới** — chỉ docstring, đúng DESIGN MODE |
+| `12-roadmap.md` | Cổng 1.15: vế `worker` và Cron Đạt; vế còn lại chặn Sprint 2, không chặn S5. S5 đo trên Web Service free bằng `combined_main`. R1-3 nhắc topology local |
+| `ASSUMPTIONS.md` | A-085: F1 quyết bằng ADR-033. A-032: vế Background Worker không thử được trên Render trong giai đoạn build |
+| `proposals/build-phase-free-tier-impact.md` | F1 đã quyết |
+
+**Đã kiểm khi viết ADR:** cả bảy thao tác cron ở bản kê Cron Job của `03-agents.md` chạy theo điều kiện "tới hạn" hay "cũ hơn N" so với mốc lưu trong DB — lần chạy khi service thức bù được lần lỡ. Luật import của `06-structure.md` đặt ở cấp package `bo19.entrypoints`, nên hai module mới nằm trong luật.
+
+**Chưa sửa:** `.claude/commands/spike.md`, bước S5 vẫn ghi "Deploy Background Worker" — file lệnh của PO, không có trong git; diff đề xuất ở báo cáo.

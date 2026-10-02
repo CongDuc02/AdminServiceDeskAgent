@@ -1,0 +1,1 @@
+"""Bộ hẹn giờ cron ở local (ADR-033) — tới lịch thì chạy cron_main <thao tác> thành một tiến trình con mới, đọc lịch từ một nguồn cấu hình duy nhất (06-structure.md mục Tiến trình) — composition root, không ai import entrypoints."""

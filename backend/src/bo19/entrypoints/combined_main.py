@@ -1,0 +1,1 @@
+"""Entrypoint gộp cho Render gói free (ADR-033) — api, vòng poll job và bộ hẹn giờ cron trong một tiến trình; chỉ chạy ở BO19_ENVIRONMENT = dev (bước kiểm khởi động #18, 06-structure.md mục Tiến trình) — composition root, không ai import entrypoints."""
