@@ -1,6 +1,6 @@
 # Project Structure — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.11 · **Trạng thái:** Đã duyệt ở vòng duyệt Phase 6 · **v0.2:** Open Questions sau các phép B1 → B4; mục 9.4 về bộ kiểm trong repo; `tools/` trong cây gốc — mục ngày 2026-09-13 (lần 9) của `CHANGELOG.md` · **v0.3:** Open Questions sau phép bổ sung — mục ngày 2026-09-14 · **v0.4:** thêm bước kiểm khởi động #16–17 (ADR-023, Phase 11) — quyết định của PO khi duyệt đề xuất diff riêng, không phải một hệ quả của luật 5 (đổi tên cho nhất quán) trong `CLAUDE.md`; mục ngày 2026-09-16 của `CHANGELOG.md` · **v0.5:** làm rõ #15/#17 dùng chung một lần đọc `operating_mode`, #17 chỉ áp dụng ngoài `prod` và tự vệ khi thiếu `BO19_ENVIRONMENT`, nhắc mô hình chạy hết-rồi-gom — cùng mục ngày 2026-09-16 · **v0.6:** đợt sửa 2 sau Phase 13 — cron và `ops/` thêm năm thao tác vận hành mới (AUD-08); `endpoint_ops/` không đếm số; tuyến `/config/request-types` hết "từ chối mọi người" (AUD-05); không có tuyến cho đổi `operating_mode` là có chủ đích (câu 6b); skeleton khớp cây ở mục 3 (AUD-16); số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.7:** tuyến `/takeover` và phần tiếp quản của `DocumentReviewPage` (AUD-02 (d)) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.8:** thư viện token phiên và log — ADR-028, ADR-029 — mục ngày 2026-09-26 (quyết định PO sau đợt 3) · **v0.9:** Open Questions 7 đã giải — mục ngày 2026-09-26 (đợt sửa 3b) · **v0.10:** đợt sửa 4 sau Phase 13 — ba chế độ của `check_grants.py`, con trỏ cũ (AUD-11) · **v0.11:** dòng cài phụ thuộc Python của đặc tả `Dockerfile` theo ADR-030 (2026-09-27)
+**Phiên bản:** 0.15 · **Trạng thái:** Đã duyệt ở vòng duyệt Phase 6 · **v0.2:** Open Questions sau các phép B1 → B4; mục 9.4 về bộ kiểm trong repo; `tools/` trong cây gốc — mục ngày 2026-09-13 (lần 9) của `CHANGELOG.md` · **v0.3:** Open Questions sau phép bổ sung — mục ngày 2026-09-14 · **v0.4:** thêm bước kiểm khởi động #16–17 (ADR-023, Phase 11) — quyết định của PO khi duyệt đề xuất diff riêng, không phải một hệ quả của luật 5 (đổi tên cho nhất quán) trong `CLAUDE.md`; mục ngày 2026-09-16 của `CHANGELOG.md` · **v0.5:** làm rõ #15/#17 dùng chung một lần đọc `operating_mode`, #17 chỉ áp dụng ngoài `prod` và tự vệ khi thiếu `BO19_ENVIRONMENT`, nhắc mô hình chạy hết-rồi-gom — cùng mục ngày 2026-09-16 · **v0.6:** đợt sửa 2 sau Phase 13 — cron và `ops/` thêm năm thao tác vận hành mới (AUD-08); `endpoint_ops/` không đếm số; tuyến `/config/request-types` hết "từ chối mọi người" (AUD-05); không có tuyến cho đổi `operating_mode` là có chủ đích (câu 6b); skeleton khớp cây ở mục 3 (AUD-16); số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.7:** tuyến `/takeover` và phần tiếp quản của `DocumentReviewPage` (AUD-02 (d)) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.8:** thư viện token phiên và log — ADR-028, ADR-029 — mục ngày 2026-09-26 (quyết định PO sau đợt 3) · **v0.9:** Open Questions 7 đã giải — mục ngày 2026-09-26 (đợt sửa 3b) · **v0.10:** đợt sửa 4 sau Phase 13 — ba chế độ của `check_grants.py`, con trỏ cũ (AUD-11) · **v0.11:** dòng cài phụ thuộc Python của đặc tả `Dockerfile` theo ADR-030 (2026-09-27) · **v0.12:** bước kiểm khởi động #13 ghi giá trị múi giờ đã chốt (A-041, 2026-09-27) · **v0.13:** A-055 `Đã chốt` — hướng 1, danh sách miễn `audit_event` (2026-09-27) · **v0.14:** Docker Desktop đã chạy được trên máy người triển khai (2026-10-02) · **v0.15:** entrypoint `combined_main`, `cron_scheduler_main`; bước kiểm #18 — ADR-033 (2026-10-02)
 
 > File này chốt cây thư mục của backend và frontend, luật "được import gì, cấm import gì" kèm **thứ gì chặn vi phạm**, entrypoint và cách chạy trên Render, bước kiểm khởi động, trình tự migration so với checkpointer, và kết quả xác minh contract DDL. File này **không** chứa implementation (DESIGN MODE — mục Chế độ làm việc hiện tại của `CLAUDE.md`). Hai khối `.importlinter` và `Dockerfile` bên dưới là **đặc tả**, không phải file. File này cũng **không** thiết kế màn hình tiếp quản hay quy tắc hiển thị theo độ nhạy (Phase 8), AuthZ chi tiết và quản lý secret (Phase 9), và **không** định cỡ tham số vận hành (Phase 11).
 
@@ -95,7 +95,7 @@ backend/
     │   │   ├── audit.py      # ghi audit_event trong cùng giao dịch
     │   │   ├── transition.py # ĐIỂM GHI DUY NHẤT của cột status: status, status_changed_at, row_version trong một câu UPDATE (mục 4.2)
     │   │   └── enqueue.py    # enqueue job trong giao dịch của thao tác gọi nó (ADR-004, ADR-010)
-    │   ├── jobs/             # giành, gia hạn lease, kết thúc job cho queue_worker — không sinh audit_event, chờ A-055
+    │   ├── jobs/             # giành, gia hạn lease, kết thúc job cho queue_worker — không sinh audit_event, thuộc danh sách miễn (A-055)
     │   ├── storage/          # giao thức ghi một lần (mục Lưu trữ file và bất biến bản render của 04-data.md); NƠI DUY NHẤT ghi stored_object, stored_object_commit
     │   ├── rendering/
     │   │   ├── docx_fill.py  # điền bảng giá trị biến vào .docx; watermark theo operating_mode đã ghim
@@ -144,7 +144,7 @@ backend/
     │   ├── turns/            # bộ giám sát lượt: task lượt tách khỏi request (ADR-016)
     │   └── sse/              # chuyển tiếp stream lượt; stream tín hiệu dùng try_acquire
     ├── startup/              # bước kiểm khởi động — mục 7
-    └── entrypoints/          # api_main, worker_main, cron_main, migrate_main — composition root; không ai import entrypoints
+    └── entrypoints/          # api_main, worker_main, cron_main, migrate_main; combined_main, cron_scheduler_main (ADR-033) — composition root; không ai import entrypoints
 ```
 
 Thư mục `tests/` thuộc BUILD MODE; ở phase này chỉ ghi hai nhóm đã có chủ: test đối chiếu `api/schemas` với `openapi.yaml`, và test canary checkpoint của Phase 10.
@@ -358,6 +358,10 @@ Chiều phụ thuộc trùng component diagram của `02-architecture.md`, cộn
 | `python -m bo19.entrypoints.worker_main` | Background Worker — Docker Command | Vòng poll job: `render_document`, `resume_document_graph`, `finalize_issue`, `checkpoint_purge`, `procedure_ingest`, `notification_send` |
 | `python -m bo19.entrypoints.cron_main <thao tác>` | Một Cron Job cho mỗi thao tác — Docker Command | `expire_request`, `object_claim_reconcile`, `rate_limit_window_sweep`, `chat_session_idle_close`, `needs_info_reminder`, `document_retention_archive`, `draft_render_sweep` — hai tên cuối chưa chạy được khi A-010 còn mở; `[Should]` quét SLA, nhả `HELD`, hoàn tất `room_booking` |
 | `python -m bo19.entrypoints.migrate_main` | **Không phải service runtime** — chạy trong ngữ cảnh chỉ giữ credential `bo19_migrator` (ADR-017, A-060) | Mục 8 |
+| `python -m bo19.entrypoints.combined_main` | **Chỉ giai đoạn build, Render gói free** — Web Service duy nhất (ADR-033) | `api`, vòng poll job và bộ hẹn giờ cron trong **một** tiến trình; gọi thẳng hàm của từng thao tác cron, không sinh tiến trình con. Một job, một lần chuyển đổi một lúc. Chỉ chạy ở `BO19_ENVIRONMENT = dev` (#18) |
+| `python -m bo19.entrypoints.cron_scheduler_main` | Không phải service Render — container `cron` ở local (ADR-033) | Tới lịch thì chạy `cron_main <thao tác>` thành một tiến trình con mới, như Render Cron Job. Lịch đọc từ một nguồn cấu hình duy nhất, dùng chung với `combined_main` và với cấu hình Cron Job khi lên gói trả phí |
+
+**Giai đoạn build (ADR-033, A-085):** gói free của Render không có Background Worker hay Cron Job. Ở local, ba container `api`, `worker`, `cron` chạy từ cùng image, đúng ba dòng đầu của bảng — trong đó container `cron` chạy `cron_scheduler_main`. Trên Render free, một Web Service chạy `combined_main`. Lên gói trả phí: Render chuyển sang ba dòng đầu, không sửa code.
 
 Theo nguồn đã ghim của Render: cron job dựa trên Docker chạy lệnh khởi động của image, ghi đè được bằng Docker Command; một bản build mới "does not affect in-progress runs (only future runs)" (`docs/reference/render-deploys-docker.md`).
 
@@ -404,6 +408,7 @@ Lý do và ràng buộc cấu hình ở ADR-016. Mốc thời gian lấy từ ng
 | `api` | Ngừng nhận kết nối mới → đóng mọi stream tín hiệu (client nối lại sang instance mới) → chờ task lượt đang chạy xong → tới hạn drain thì huỷ task còn lại, cố ghi tin nhắn agent mang mã khuôn lỗi cho từng task với timeout ngắn → thoát mã 0 |
 | `worker` | Ngừng giành job mới → chờ job đang chạy trong hạn drain → job chưa xong thì huỷ tiến trình chuyển đổi đang chạy và trả job về hàng đợi (thả lease). Việc giao job ít nhất một lần của ADR-004 và idempotency của từng tool làm lần chạy lại an toàn → thoát mã 0 |
 | cron | Không cần xử lý riêng: lần chạy đang dở không bị bản build mới ảnh hưởng |
+| `combined_main` (ADR-033) | Làm cả việc của `api` lẫn việc của `worker` ở hai dòng trên, trong cùng shutdown delay; bộ hẹn giờ cron dừng ngay. Ràng buộc của bước kiểm #11 không đổi |
 
 ---
 
@@ -427,11 +432,12 @@ Chạy trước khi tiến trình phục vụ request hay giành job đầu tiê
 | 10 | Root logger có đúng một handler, là handler mask của `observability` | ✔ | ✔ | ✔ | **Chặn** | NFR-05 |
 | 11 | Ràng buộc cấu hình: hạn chót lượt cộng biên không dài hơn shutdown delay (`api`); lease của `stored_object` dài hơn timeout của lớp tool chạm `object_storage` (`worker`) | ✔ | ✔ | — | **Chặn** | ADR-016, mục Lưu trữ file và bất biến bản render của `04-data.md` |
 | 12 | Secret ký `bo19_session` có mặt | ✔ | — | — | **Chặn** | ADR-013 |
-| 13 | Múi giờ của tổ chức có trong cấu hình | ✔ | ✔ | ✔ | **Chặn** — `issued_date` và kỳ đánh số phụ thuộc nó | A-041 |
+| 13 | Múi giờ của tổ chức có trong cấu hình — giá trị `Asia/Ho_Chi_Minh` (A-041 `Đã chốt`) | ✔ | ✔ | ✔ | **Chặn** — `issued_date` và kỳ đánh số phụ thuộc nó | A-041 |
 | 14 | `object_storage` với tới được | ✔ | ✔ | — | Cảnh báo — sự cố tạm thời không được làm tiến trình khởi động lại liên tục; thao tác hỏng lúc dùng trả `FILE_UNAVAILABLE` hoặc job thử lại | ADR-014 |
 | 15 | `operating_mode` hiện hành — **một lần đọc, dùng chung với bước #17** (không đọc lại) | ✔ | ✔ | — | Ghi log — chưa có dòng nào là `NON_PRODUCTION`. Tự bước này không chặn gì; giá trị nó đọc còn là đầu vào của #17 | D-009 |
 | 16 | Biến môi trường `BO19_ENVIRONMENT` có mặt, giá trị ∈ `{dev, staging, prod}` | ✔ | ✔ | ✔ | **Chặn** — thiếu biến này không được mặc định thành `prod` (fail-closed) | ADR-023 |
 | 17 | **Chỉ khi `BO19_ENVIRONMENT ≠ prod`:** `operating_mode` hiện hành (dùng chung giá trị đã đọc ở #15) phải là `NON_PRODUCTION`. Với `BO19_ENVIRONMENT = prod`, điều kiện không kích hoạt — **luôn qua**, bất kể `operating_mode` đang là gì (một `prod` mới dựng, chưa có dòng `operating_mode_change` nào, vẫn ở `NON_PRODUCTION` theo D-009, và vẫn khởi động được). Nếu `BO19_ENVIRONMENT` không đọc được (đã bị #16 bắt riêng), bước này **tự bỏ qua phần so khớp** — không crash, không báo trùng mã với #16 | ✔ | ✔ | — | **Chặn** khi lệch (chỉ áp dụng ngoài `prod`) | ADR-023 |
+| 18 | **Chỉ `combined_main`:** `BO19_ENVIRONMENT = dev`. `combined_main` chạy **hợp** mọi bước có ✔ ở bất kỳ cột nào của bảng này, cộng bước này | — | — | — | **Chặn** — topology gộp không bao giờ tới `staging` hay `prod` | ADR-033 |
 
 **Mô hình chạy — nhắc lại cho rõ, không phải quy tắc mới:** câu mở đầu mục này đã nói *"ghi **danh sách** mã trượt vào log rồi thoát"* — số nhiều, tức mọi bước kiểm chạy tới hết rồi mới gom kết quả, **không** dừng ở bước trượt đầu tiên. Vì vậy #17 luôn chạy dù #16 đã trượt, và phải tự vệ theo đúng mô tả ở dòng #17.
 
@@ -474,6 +480,7 @@ GRANT SELECT ON checkpoint_migrations TO bo19_app;
 | PostgreSQL | **16.2** — `PostgreSQL 16.2 on x86_64-pc-mingw64`, bản build Windows |
 | pgvector | **0.6.2** |
 | Cách dựng | Gói Python `pgserver` 0.1.4 trong một venv của scratchpad. **Không qua Docker** như chỉ thị: Docker Desktop trên máy không khởi động được — engine WSL không đọc được đĩa dữ liệu của chính nó — và sửa đĩa đó là thao tác phá huỷ trên dữ liệu Docker của anh, nên không làm |
+| Cập nhật 2026-10-02 | Trạng thái Docker ở dòng trên là của lần chạy Phase 6. Nay: Docker Desktop 4.85.0, engine 29.6.2 `linux/amd64` trên WSL2; `docker run --rm hello-world` đạt (kiểm 2026-10-02). Kết quả kiểm contract ở mục này không đổi — nó không phụ thuộc Docker |
 | Thư viện | `psycopg` 3.3.5 · `langgraph-checkpoint-postgres` 3.1.2 · `langgraph-checkpoint` 4.2.0 |
 | `schema.sql` đã áp | sha256 `0ce8ddeeb0fda9df246733af1670c0dd2f70c9dea18d4220149c8a5e05f63e82` — bản cuối của Phase 6, có hai thay đổi của ADR-019 và ADR-015 |
 | Ngày chạy | 2026-09-13 |
@@ -766,7 +773,7 @@ Mọi mục có owner và hạn ở `ASSUMPTIONS.md`. Mục này gom những gì
 
 **Phát hiện, đã ghi vào `ASSUMPTIONS.md`**
 
-5. **Giành, gia hạn lease và kết thúc job là ghi `postgresql`** mà không phải thao tác nghiệp vụ nào. Đặt ở `tool_layer.jobs` để không mở rộng danh sách ngoại lệ đóng; tạm **không** sinh `audit_event` — một lệch có tên khỏi chữ của luật. Trường hợp thứ ba của A-055.
+5. **Giành, gia hạn lease và kết thúc job là ghi `postgresql`** mà không phải thao tác nghiệp vụ nào. Đặt ở `tool_layer.jobs` để không mở rộng danh sách ngoại lệ đóng; **không** sinh `audit_event` — thuộc danh sách miễn của A-055 (`Đã chốt` 2026-09-27, mục Tool Registry của `03-agents.md`).
 6. **`llm_usage` còn hai cột `text` không có `CHECK` hình dạng** — `prompt_module_version`, `trace_id` (ADR-019). Thêm `CHECK` cần định dạng của `trace_id`, chưa phase nào chốt. **Giải một nửa:** `trace_id` có `CHECK` UUID v4 (ADR-024, migration `0004`); `prompt_module_version` vẫn chưa có.
 7. ~~**Chưa có thao tác nào có tên đóng `chat_session` vì nhàn rỗi** (`close_reason = IDLE_TIMEOUT`), dù `04-data.md` và `03-agents.md` đều nói phiên đóng khi nhàn rỗi. Không đặt tên ở đây — cùng cụm A-010, A-038, owner Phase 8.~~ **Giải:** tên `chat_session_idle_close` (đợt sửa 2), thiết kế ở mục Đóng phiên nhàn rỗi của `08-hitl.md` (đợt sửa 3b). Thời hạn vẫn chờ A-010; quan hệ với `request` đang `NEEDS_INFO` vẫn chờ A-038.
 8. **Hàm kiểm đủ điều kiện xử lý** có một lối nạp dữ liệu duy nhất ở `tool_layer.checks`, dùng chung cho `check_completeness`, `request_submit`, `request_slot_confirm` và `RequestDetail`. Lối nạp đó không có tên tool ở mục Tool Registry của `03-agents.md` — nó chỉ đọc, như `review_readiness_check`. Ghi lại để Phase 13 không coi là thiếu.

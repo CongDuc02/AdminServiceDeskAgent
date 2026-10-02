@@ -1,6 +1,6 @@
 # HITL & Approval Workflow — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.5 · **Trạng thái:** Draft chờ duyệt · **v0.3:** đợt sửa 3 sau Phase 13, lượt sửa có phép của PO — viết lại phần sai (AUD-06), giao bốn việc thiếu (AUD-02: ba bảng mã, thao tác tiếp quản), cạnh `SUBMITTED → REJECTED` gắn vào tiếp quản (AUD-07), phép xác định "chỉ còn một người đủ quyền" và đường thoát tự duyệt cho thu hồi (AUD-23 (e)(f)); sửa theo AUD-01, AUD-05, AUD-08, AUD-11, AUD-17 phần nằm trong file này. Chi tiết ở mục ngày 2026-09-26 (đợt sửa 3) của `CHANGELOG.md` · **v0.4:** quyết định PO khi nhận đợt 3 — ADR-027 `Accepted`, A-044 `Đã chốt`; ca K3, K4 ở `10-eval.md`; A-078 cho người vắng dài ngày · **v0.5:** đợt sửa 3b — việc (g)–(j) của AUD-23: hiển thị khoảng hoàn tất phát hành, đóng phiên nhàn rỗi, giao diện ca `HR_PROFILE` sai, giao diện nhãn phá huỷ
+**Phiên bản:** 0.7 · **Trạng thái:** Draft chờ duyệt · **v0.3:** đợt sửa 3 sau Phase 13, lượt sửa có phép của PO — viết lại phần sai (AUD-06), giao bốn việc thiếu (AUD-02: ba bảng mã, thao tác tiếp quản), cạnh `SUBMITTED → REJECTED` gắn vào tiếp quản (AUD-07), phép xác định "chỉ còn một người đủ quyền" và đường thoát tự duyệt cho thu hồi (AUD-23 (e)(f)); sửa theo AUD-01, AUD-05, AUD-08, AUD-11, AUD-17 phần nằm trong file này. Chi tiết ở mục ngày 2026-09-26 (đợt sửa 3) của `CHANGELOG.md` · **v0.4:** quyết định PO khi nhận đợt 3 — ADR-027 `Accepted`, A-044 `Đã chốt`; ca K3, K4 ở `10-eval.md`; A-078 cho người vắng dài ngày · **v0.5:** đợt sửa 3b — việc (g)–(j) của AUD-23: hiển thị khoảng hoàn tất phát hành, đóng phiên nhàn rỗi, giao diện ca `HR_PROFILE` sai, giao diện nhãn phá huỷ · **v0.6:** A-055 `Đã chốt` — hướng 1, danh sách miễn `audit_event` (2026-09-27) · **v0.7:** A-084 — `PUT` nhận `412`: mã nội bộ `STORAGE_WRITE_CONFLICT` (PO, 2026-10-02)
 
 > File này chốt luồng người duyệt: hàng đợi, thứ tự, tách biệt trách nhiệm, yêu cầu sửa, định tuyến ký, duyệt dấu, thu hồi, dừng có kiểm soát và tiếp quản, bảng mã. File này **không** thiết kế AuthZ chi tiết hay rate limit (`09-security.md`), không định cỡ trần (`11-ops.md`), không viết prompt (`07-prompts.md`).
 
@@ -320,7 +320,7 @@ Mã của người tiếp quản, không phải nguyên văn mã lỗi của too
 | `REVIEW_NOT_READY` | `check_review_readiness` | `VARIABLE_MISSING`, `PLACEHOLDER_VALUE`, `WRONG_SOURCE`, `FRAME_TEXT_IN_VARIABLE`, `SEAL_UNDETERMINED` | Không |
 | `MAX_ROUNDS_EXCEEDED` | `route_review` | Chạm trần `R` | Không |
 | `NO_ELIGIBLE_SIGNER` | `route_signing` | `signing_route` | Có — sau khi cấp `document.sign` |
-| `RENDER_CHECKSUM_MISMATCH` | `route_signing`, `finalize_issue` | `render_integrity_check` | Có ở `route_signing` — sau khi khôi phục byte |
+| `RENDER_CHECKSUM_MISMATCH` | `route_signing`, `finalize_issue`, `render_draft` | `render_integrity_check`; `docx_render`, `pdf_export` `STORAGE_WRITE_CONFLICT` (A-084) | Có ở `route_signing` — sau khi khôi phục byte. Có ở `render_draft` — sau khi khôi phục byte, hoặc sau khi `object_claim_reconcile` dọn object lạ |
 | `RENDER_OBJECT_MISSING` | `route_signing`, `finalize_issue` | `render_integrity_check` | Như trên |
 | `CONTENT_HASH_MISMATCH` | `finalize_issue` | Kiểm `approved_content_hash` trượt — INV-01 | Không lối ra nào (A-077) |
 | `ISSUE_RETRIES_EXHAUSTED` | `finalize_issue` | Hết lượt retry trong `finalize_issue` sau khi đã có số | — |
@@ -363,7 +363,7 @@ Mọi thao tác ghi của `tool_layer` sinh `audit_event` trong **cùng giao d�
 
 | Nhóm | Sự kiện | `severity` |
 |---|---|---|
-| Hội thoại | `request_open`. Có ghi cho từng tin nhắn chat hay không — A-055 | `INFO` |
+| Hội thoại | `request_open`. **Không** ghi cho từng tin nhắn chat hay lần mở phiên — danh sách miễn của A-055 ở mục Tool Registry của `03-agents.md` | `INFO` |
 | Slot | `request_slots_write`, `request_slot_confirm` | `INFO` |
 | Duyệt | `APPROVED`, `CHANGES_REQUESTED`, `REJECTED` — mã lý do ở `decision_record_text`, không ở `audit_event` | `INFO`; `WARNING` nếu tự duyệt |
 | Ký, dấu, phát hành | `SIGNED`, `SEALED`, `ISSUE_ORDERED` → `ISSUED` hoặc `VOIDED`, `REVOKE_INITIATED`, `REVOKE_CONFIRMED` | `INFO`; `WARNING` nếu tự duyệt |
@@ -414,7 +414,7 @@ Cron Job của `queue_worker`, tên đặt ở mục Thao tác vận hành của
 1. `chat_session` → `CLOSED`, `close_reason = IDLE_TIMEOUT`, ghi `closed_at` — bằng `UPDATE` có điều kiện: `status = 'OPEN'` **và** `last_message_at` vẫn cũ hơn mốc cắt. Một tin nhắn tới giữa lúc chọn và lúc ghi làm câu `UPDATE` khớp 0 dòng: phiên được bỏ qua, không đóng nhầm.
 2. `graph_thread` của phiên → `ENDED`.
 3. Enqueue `checkpoint_purge`.
-4. `audit_event`, tác nhân `SYSTEM` — theo luật chung "mọi thao tác ghi sinh `audit_event`", trừ khi A-055 quyết khác.
+4. `audit_event`, tác nhân `SYSTEM` — `chat_session_idle_close` **không** thuộc danh sách miễn của A-055: dòng này là bằng chứng hệ thống đã khởi động việc xoá checkpoint.
 
 **Idempotent và không tranh với `expire_request`.** Cả hai đóng phiên bằng `UPDATE` có điều kiện `status = 'OPEN'`: ai tới trước thắng, người sau khớp 0 dòng và không làm gì. `close_reason` là của người thắng.
 

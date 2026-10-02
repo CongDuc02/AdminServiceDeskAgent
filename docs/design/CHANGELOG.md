@@ -2369,3 +2369,147 @@ PO duyệt ADR-030, duyệt phép chặn của A-082 theo mẫu tên biến, và
 | `13-audit.md` → 0.12 | `grep` xác nhận `CLAUDE.md` đã đổi: AUD-09 Đóng; AUD-03 hết ghi chú; AUD-26 chỉ còn vế bản gốc pháp lý. **24 Đóng, 3 Mở** (AUD-07, AUD-24, AUD-26) |
 
 Tiến trình `pip-compile` của phép thử ADR-030 đã tắt theo lệnh PO; kết luận của ADR không dựa vào nó.
+
+---
+
+## 2026-09-27 (sẵn sàng Sprint 1 — mục 9, 10) — A-041 `Đã chốt`; hạn A-011, A-020, A-040, A-047 khớp roadmap
+
+PO duyệt mục 10 của bảng sẵn sàng cổng Sprint 1 và chốt múi giờ.
+
+| File | Thay đổi |
+|---|---|
+| `ASSUMPTIONS.md` → 0.38 | A-041 `Đã chốt`: `Asia/Ho_Chi_Minh` — kiểm bằng `zoneinfo` cùng `tzdata` 2026.4: UTC+07:00 cả ngày 15/01 lẫn 15/07/2026, `dst()` bằng 0. Hạn A-011 → cổng 3.3, A-020 → cổng 4.2 (thay "Trước grooming F1"). Hạn A-040, A-047 → cổng 2.10 mới (thay "Trước khi bắt đầu build") |
+| `12-roadmap.md` | Cổng 1.9 Đạt. Cổng 2.10 mới: role của PostgreSQL managed trên Render, `check_grants.py --app-dsn` đạt trên Render `dev` — A-040, A-047 |
+| `06-structure.md` | Bước kiểm khởi động #13 ghi giá trị múi giờ đã chốt |
+| `04-data.md` | Open Questions: A-041 đã chốt |
+
+---
+
+## 2026-09-27 (sẵn sàng Sprint 1 — mục 9 và đề xuất chờ duyệt) — ADR-031, ADR-032 nháp; A-072 `Thu hẹp`; A-084
+
+Theo lệnh PO: ADR object storage local có phép thử giao thức ghi; đề xuất (chưa chốt) cho A-031, A-048, A-055, A-026; checklist dữ liệu tổ chức cho A-058, A-009, A-013, A-071.
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-031-object-storage-local-seaweedfs.md` | **Mới, `Proposed`.** Local dùng SeaweedFS 4.47 `weed mini`, bind `127.0.0.1`, bắt buộc credential, bucket bật versioning. Luật adapter ở mọi môi trường: mọi `PUT` mang `If-None-Match: *`. Loại: moto (mất dữ liệu khi khởi động lại; gắn khoá sau khi ghi lỗi), rclone (`If-None-Match` không chặn ghi đè; báo 200 cho lệnh ghi hỏng; không versioning), MinIO (`410 Gone`, archived), adapter ghi đĩa, bucket nhà cung cấp thật |
+| `docs/reference/object-storage-local-s3.md` | **Mới.** Phép thử T1–T10 cộng bền dữ liệu, credential, cổng mạng trên ba sản phẩm; trích wiki SeaweedFS, thông báo `410` của MinIO nguyên văn, sha256 của bản tải về |
+| `decisions/ADR-032-nha-cung-cap-llm-hai-tier.md` | **Mới, `Proposed` — nháp.** Một nhà cung cấp cho hai tier; hai mốc chọn theo loại dữ liệu đi ra. Vế chuyển dữ liệu ra nước ngoài: bốn câu hỏi `[CẦN XÁC MINH]`. Không xếp hạng nhà cung cấp nào |
+| `docs/reference/argon2-cffi-parameters.md` | **Mới.** Tham số mặc định của `argon2-cffi` 25.1.0 trích từ mã nguồn; đo verify trên máy người triển khai; phép thử đổi tham số không phá hash cũ |
+| `proposals/sprint1-working-values-a031-a048.md` | **Mới, chờ duyệt.** WV-01…WV-18, nhãn "chưa hiệu chỉnh", mỗi giá trị kèm loại căn cứ |
+| `proposals/a055-audit-event-scope.md` | **Mới, chờ duyệt.** Khuyến nghị hướng 1 — thu hẹp luật, danh sách miễn đóng |
+| `proposals/sprint1-org-data-checklist.md` | **Mới, chờ duyệt.** Checklist dữ liệu tổ chức; đánh giá mốc: giữ trước Sprint 1 cho giấy phép font và A-071; mốc giữa Sprint 1 cho mẫu, font, định dạng số, `contract_type`; cột CSV sang cổng trước Sprint 3 |
+| `ASSUMPTIONS.md` → 0.39 | A-072 `Thu hẹp`. A-084 mới — xử lý `412` ở adapter, `Mở`. A-024 thêm kiểm contract. A-031, A-048, A-055, A-026, A-058, A-009, A-013, A-071 trỏ đề xuất chờ duyệt |
+| `12-roadmap.md` | Cổng 1.3, 1.4, 1.5, 1.10, 1.11 trỏ ADR và đề xuất; Open Questions: A-072 `Thu hẹp`, A-071 chưa có dòng cổng |
+
+**Đã chạy, 2026-09-27, không file nào của phép thử vào repo:**
+
+- SeaweedFS 4.47, rclone v1.75.1: tải bản Windows từ GitHub Releases, checksum khớp file đi kèm. moto 5.2.3 cài bằng `pip`. `boto3`/`botocore` 1.37.3 — bản ghim của `backend/pyproject.toml`.
+- MinIO: `https://dl.min.io/…/minio.exe` trả `410 Gone`; GitHub API `archived: true`.
+- `argon2-cffi` 25.1.0: verify 20 lần, trung vị 424,5 ms trên máy người triển khai.
+
+---
+
+## 2026-10-02 (PO duyệt đợt sẵn sàng Sprint 1) — ADR-031 `Accepted`; A-055 `Đã chốt`; A-084 hướng của PO; mốc giữa Sprint 1; luật 12 trong nhãn Mermaid
+
+PO duyệt hai commit `151141d`, `4a1b8df` kèm điều kiện. Lần sửa này làm đủ năm việc PO giao.
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-031-…` | `Proposed` → `Accepted`. Điều kiện của PO — cổng `33646`: là gRPC worker của admin trong `weed mini`, bind mọi giao diện, không cờ nào tắt (mã nguồn tag 4.47). **Đổi lệnh sang `weed server`**: không có admin, mọi cổng ở `127.0.0.1`, `-master.telemetry=false`, `-master.volumeSizeLimitMB=64 -volume.max=200`. Thêm quyết định A-084 vào mục Decision. `weed mini` vào Rejected alternatives |
+| `docs/reference/object-storage-local-s3.md` | Mục mới "Cổng 33646 là gì, và cách tắt": trích `admin.go`, `mini.go`; kết quả `weed server` — T1–T10 giống `weed mini`, bền qua `taskkill /F`, credential bắt buộc; telemetry mặc định bật |
+| `ASSUMPTIONS.md` → 0.40 | A-055 `Đã chốt` (hướng 1). A-072 `Đã chốt`. A-084 `Thu hẹp`: `412` → đọc lại, so checksum; khớp là ghi thành công, lệch là dừng chờ tiếp quản — chưa áp vào `04-data.md`, `03-agents.md`, `08-hitl.md`. A-031: WV-01…15 đã duyệt. A-048: WV-17, 18 đã duyệt, WV-16 bản sửa chờ duyệt. A-026: vế hai mốc. Hạn A-058, A-009, A-013, A-071 theo mốc mới. Sửa bốn con trỏ theo số mục (luật 12), một trong đó có từ đợt A-082 |
+| `03-agents.md` | Đầu mục Tool Registry: luật `audit_event` và danh sách miễn đóng (A-055); ba lớp timeout trỏ WV-07…09 |
+| `GLOSSARY.md` | Định nghĩa `audit_event` thêm vế "tải bản văn bản ra khỏi hệ thống" |
+| `08-hitl.md`, `05-api.md`, `06-structure.md`, `09-security.md` | Bỏ các câu "chờ A-055"; `09-security.md` mục 6.4 đổi tên thành "thuộc danh sách miễn của A-055" |
+| `12-roadmap.md` → 0.15 | Cổng 1.3, 1.4, 1.10 Đạt. 1.5 chỉ mốc 1. 1.6 chỉ còn bộ font và giấy phép. 1.7, 1.8 gạch, thành mốc M1.1, M1.2 ở mục mới "Mốc giữa Sprint 1". Cổng 1.14 cho A-071. Cổng 3.8 cho cột CSV. S5 và R1-4 theo mốc mới |
+| `00-domain.md` | Hạn A-009 và mẫu `.docx` trỏ mốc M1.2, M1.1 |
+| `decisions/ADR-032-…` | Vế hai mốc: PO duyệt. Điều kiện: mốc 2 đổi nhà cung cấp thì chạy lại toàn bộ bộ eval của `10-eval.md` trước khi nhận dữ liệu thật. Điều 1, 4 vẫn đề xuất |
+| `proposals/sprint1-working-values-a031-a048.md` | Đã duyệt trừ WV-16. WV-16 bản sửa: `t=2, m=19456, p=1` (OWASP 2), kèm mục đối chiếu RAM và lựa chọn WV-16b — trần 4 lần verify đồng thời |
+| `docs/reference/owasp-password-storage-argon2id.md`, `docs/reference/render-instance-compute.md` | **Mới.** Trích mục Argon2id của OWASP; bảng CPU/RAM loại instance của Render |
+| `docs/reference/argon2-cffi-parameters.md` | Mục mới: bộ nhớ đỉnh và thời lượng khi verify đồng thời, sáu cấu hình |
+| `proposals/a055-…`, `proposals/sprint1-org-data-checklist.md` | Đã áp. Checklist ghi một chỗ sửa khi áp: bộ font đi cùng giấy phép ở cổng 1.6, không đi theo mẫu |
+| `11-ops.md` | Sơ đồ migration: ba nhãn trỏ `06-structure.md` theo tên mục |
+| `13-audit.md` → 0.13 | Phụ lục A.11: `audit_checks.py` thêm khối luật 12 cho nhãn Mermaid, có phép tự kiểm; ghi phần chưa phủ |
+
+**Đã chạy:** `weed server` 4.47 — phép thử T1–T10, bền dữ liệu, credential, `netstat`. `argon2-cffi` 25.1.0 — bộ nhớ đỉnh khi 1 và 4 lần verify đồng thời, sáu cấu hình. `audit_checks.py` bản mới: openapi hợp lệ, 05↔openapi không lệch, luật 12 nhãn Mermaid 0, ID treo không, phiên bản không lệch. Sơ đồ đã sửa của `11-ops.md` render được bằng mermaid-cli 12.0.0.
+
+---
+
+## 2026-10-02 (PO duyệt WV-16, A-084; ràng buộc gói free) — cổng 1.11 Đạt; A-084 `Đã chốt`; A-085 mới
+
+PO: "duyệt", và Render cùng các dịch vụ khác dùng gói free trong suốt giai đoạn build. "Duyệt" được hiểu là bốn việc đang chờ ở báo cáo trước: WV-16, WV-16b, áp A-084 sang các file khác, nhánh "lệch" ngoài graph.
+
+| File | Thay đổi |
+|---|---|
+| `04-data.md` | Mục Lưu trữ file và bất biến bản render: đoạn "Khi lệnh ghi nhận `412`" — đọc lại, so checksum; khớp là ghi thành công; lệch là `STORAGE_WRITE_CONFLICT` |
+| `03-agents.md` | `docx_render`, `pdf_export` thêm mã nội bộ `STORAGE_WRITE_CONFLICT`; cạnh `render_draft` → `halt_for_human` thêm mã này, không thêm cạnh |
+| `08-hitl.md` | Dòng `RENDER_CHECKSUM_MISMATCH`: thêm nguồn `STORAGE_WRITE_CONFLICT` và `at_node` `render_draft`. **Không thêm `reason_code`**: cột này là mã cho người tiếp quản, và cách tiếp quản trùng — khôi phục byte rồi `RETRY` |
+| `05-api.md`, `10-eval.md` | Bảng mã nội bộ của tool và taxonomy failure mode thêm `STORAGE_WRITE_CONFLICT`. Không đổi `error_code`; không đổi `openapi.yaml`, DDL |
+| `decisions/ADR-031-…` | Open Questions: hai câu đã đóng |
+| `09-security.md` | Mục AuthN: tham số `argon2id` làm việc `t=2, m=19456, p=1` và trần 4 lần verify đồng thời (WV-16, WV-16b) |
+| `proposals/sprint1-working-values-a031-a048.md` | WV-16, WV-16b đã duyệt; gói dự kiến là `free` |
+| `docs/reference/render-free-tier.md` | **Mới.** Trích nguyên văn `https://render.com/docs/free`, lấy 2026-10-02 |
+| `proposals/build-phase-free-tier-impact.md` | **Mới, chờ PO quyết.** Mười bốn va chạm F1–F14 giữa gói free và thiết kế. F1 chặn: gói free không có Background Worker hay Cron Job. Ba phương án; khuyến nghị A — một Web Service free chạy cả ba vai qua một entrypoint gộp. Đề xuất cho F3, F4, F5: một môi trường Render, dựng lại DB dưới 30 ngày, xuất bằng chứng UAT trước khi DB hết hạn |
+| `ASSUMPTIONS.md` → 0.41 | A-084 `Đã chốt`. A-048: WV-16, WV-16b. **A-085 mới** — ràng buộc gói free, `Mở` tới khi PO quyết cách xử lý |
+| `12-roadmap.md` → 0.17 | Cổng 1.11 Đạt. **Cổng 1.15 mới** — A-085, chặn S5 của Spike 1 |
+
+---
+
+## 2026-10-02 (Docker Desktop chạy được) — R1-3 thu hẹp; khuyến nghị F1 sửa
+
+PO báo Docker Desktop chạy bình thường. Đã kiểm: Docker Desktop 4.85.0, engine 29.6.2 `linux/amd64` trên WSL2, `docker run --rm hello-world` đạt.
+
+| File | Thay đổi |
+|---|---|
+| `06-structure.md` | Mục Xác minh contract: thêm dòng cập nhật — trạng thái Docker cũ là của lần chạy Phase 6 |
+| `12-roadmap.md` | R1-3 thu hẹp: local chạy được chính image Linux; còn khác proxy, IP client, giới hạn gói free |
+| `decisions/ADR-030-…` | Ghi chú: vế Docker của ràng buộc 1 hết hiệu lực; quyết định không đổi |
+| `decisions/ADR-031-…` | Ghi chú: ràng buộc "chạy native trên Windows" không còn bắt buộc; quyết định không đổi |
+| `ASSUMPTIONS.md` | A-072: hệ quả (3) hết hiệu lực |
+| `proposals/build-phase-free-tier-impact.md` | Mục mới 3.1: C và B dạng Docker; loại biến thể "`worker` thành Web Service free thứ hai". Khuyến nghị sửa: A trên Render, cộng B dạng Docker ở local — ba container từ một image, đúng topology production |
+
+---
+
+## 2026-10-02 (ADR-033) — topology của giai đoạn build trên gói free
+
+PO đồng ý khuyến nghị F1. Cổng 1.15 đạt vế `worker` và Cron; F3, F4, F5, F14 vẫn chờ PO.
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-033-topology-giai-doan-build-goi-free.md` | **Mới, `Accepted`.** Local: ba container `api`, `worker`, `cron` từ cùng image, cộng PostgreSQL có `vector` và SeaweedFS. Render free: một Web Service chạy `combined_main`, chỉ ở `dev`, một job và một lần chuyển đổi một lúc, mỗi thao tác cron chạy một lần ngay khi thức. Một nguồn lịch cron. Loại: B một mình, C, D, E (lịch ngoài gọi endpoint), F (trả phí) |
+| `06-structure.md` | Mục Tiến trình: hai entrypoint mới `combined_main`, `cron_scheduler_main`; đoạn giai đoạn build. Mục Tắt tiến trình êm: dòng `combined_main`. Mục Bước kiểm khởi động: **#18** — `combined_main` chỉ chạy ở `dev`, chạy hợp mọi bước |
+| `backend/src/bo19/entrypoints/combined_main.py`, `cron_scheduler_main.py` | **Mới** — chỉ docstring, đúng DESIGN MODE |
+| `12-roadmap.md` | Cổng 1.15: vế `worker` và Cron Đạt; vế còn lại chặn Sprint 2, không chặn S5. S5 đo trên Web Service free bằng `combined_main`. R1-3 nhắc topology local |
+| `ASSUMPTIONS.md` | A-085: F1 quyết bằng ADR-033. A-032: vế Background Worker không thử được trên Render trong giai đoạn build |
+| `proposals/build-phase-free-tier-impact.md` | F1 đã quyết |
+
+**Đã kiểm khi viết ADR:** cả bảy thao tác cron ở bản kê Cron Job của `03-agents.md` chạy theo điều kiện "tới hạn" hay "cũ hơn N" so với mốc lưu trong DB — lần chạy khi service thức bù được lần lỡ. Luật import của `06-structure.md` đặt ở cấp package `bo19.entrypoints`, nên hai module mới nằm trong luật.
+
+**Chưa sửa:** `.claude/commands/spike.md`, bước S5 vẫn ghi "Deploy Background Worker" — file lệnh của PO, không có trong git; diff đề xuất ở báo cáo.
+
+---
+
+## 2026-10-02 (cổng 1.15 Đạt) — F3, F4, F5, F14 của giai đoạn build trên gói free
+
+PO đồng ý F3, F4, F5, F14 của `proposals/build-phase-free-tier-impact.md`. A-085 `Đã chốt`.
+
+| File | Thay đổi |
+|---|---|
+| `12-roadmap.md` → 0.20 | Cổng 1.15 Đạt. **Cổng 2.11 mới:** runbook dựng lại PostgreSQL free chạy trọn một lần trên Render. **Cổng 4.5 mới:** buổi UAT nằm trọn trong vòng đời một DB free, kèm kế hoạch xuất bằng chứng trước khi DB hết hạn. Sprint 4: ghi chú giai đoạn build — `staging` đọc là môi trường Render duy nhất; deliverable môi trường UAT; **R4-3** — dữ liệu trên Render là tạm, Backup & Restore không thử được, rủi ro chấp nhận. Nhãn Mermaid của Sprint 4 |
+| `11-ops.md` → 0.15 | Mục Môi trường Render: một môi trường trong giai đoạn build. Mục Backup & Restore: không thử được trên Render cho tới khi trả phí. **Mục 17 mới:** runbook dựng lại PostgreSQL free — khi DB 25 ngày tuổi, 11 bước |
+| `ASSUMPTIONS.md` → 0.44 | A-085 `Đã chốt`. Ghi chú gói free ở A-002, A-024, A-026, A-028, A-040, A-047, A-066 — danh sách ngắn chỉ gồm gói free, yêu cầu bắt buộc không hạ |
+| `decisions/ADR-032-…` | Open Questions: danh sách ngắn chỉ gồm gói free; đọc điều khoản dữ liệu của chính gói free |
+| `proposals/build-phase-free-tier-impact.md` | Đã quyết hết |
+
+**Lựa chọn của người triển khai, ghi rõ:** mốc 25 ngày của runbook là chọn, chừa năm ngày cho trục trặc. Runbook cần CI kết nối được tới Postgres free từ ngoài Render — ADR-022 vốn cần điều này; gói free có cho hay không `[CẦN XÁC MINH]`, S0 và S1 của Spike 1 trả lời.
+
+---
+
+## 2026-10-02 (cổng 1.2 Đạt) — PO xác nhận Phase 13 đã khép
+
+| File | Thay đổi |
+|---|---|
+| `12-roadmap.md` → 0.21 | Cổng 1.2 gạch, Đạt. Ghi ba AUD còn mở và nơi theo dõi: AUD-07 (A-053), AUD-24 (A-079), AUD-26 (A-080) |
+| `13-audit.md` → 0.14 | Trạng thái: "Đã khép — chờ PO duyệt" → "Đã khép — PO xác nhận 2026-10-02" |
+
+`_PLAN.md` do PO quản lý — không sửa.
