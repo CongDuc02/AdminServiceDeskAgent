@@ -2563,3 +2563,18 @@ PO áp diff mục Chế độ làm việc hiện tại, luật 2 và mục Defin
 - Sinh lại lock trong thư mục sạch bằng đúng lệnh ở đầu file: trùng từng byte — hai lần, trước và sau khi sửa comment của `pyproject.toml`.
 - Container `python:3.11-slim` — Python 3.11.17, x86_64: `pip install --require-hashes --no-deps -r requirements-linux.lock` đạt, `pip check` không lỗi.
 - Lock chốt `langsmith` 0.14.3, `langchain-core` 1.6.6 — **khác** 0.14.1 / 1.6.5 của tài liệu tham chiếu. Không đổi ghim: cả hai là phụ thuộc bắc cầu, và hành vi đã xác minh trùng.
+
+---
+
+## 2026-10-02 (BUILD MODE — hai ADR thư viện, phụ thuộc cứng Sprint 1)
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-034-thu-vien-argon2-cffi.md` | **Mới, `Proposed`.** `argon2-cffi` 25.1.0 dùng trực tiếp. Loại `pwdlib`, `passlib` — cả hai chỉ bọc quanh `argon2-cffi`; loại `hashlib` — Python 3.11 không có argon2. Khoá thử: lock thêm đúng bốn gói, đều có wheel Linux. Cài và chạy với WV-16 trong container Debian: đạt, không biên dịch |
+| `decisions/ADR-035-client-llm-httpx-openai-compatible.md` | **Mới, `Proposed`.** `httpx` 0.28.1 — đã có trong lock — gọi thẳng `chat/completions` dạng OpenAI; `stream: false`, `strict: true`; đảo ngược sang OpenRouter bằng cấu hình. Loại SDK `groq` — trượt tiêu chí đảo ngược; SDK `openai` — thêm `httpx2`, `jiter`; LangChain. Lập luận NFR-08: phản hồi tăng dần đến từ `turn.progress`, không từ streaming token |
+| `docs/reference/llm-groq.md` | Mục mới: tương thích OpenAI, giới hạn streaming với structured outputs, ba schema của đặc tả OpenAPI — `usage`, `reasoning_effort`, `stream` |
+| `docs/reference/llm-openrouter.md` | Mục mới: base URL dạng OpenAI |
+| `12-roadmap.md` → 0.25 | Mục mới "Phụ thuộc cứng trong Sprint 1": D1-1 — adapter `ai_gateway` không bắt đầu khi bước kiểm #19 chưa có code và test đạt (PO) |
+| `ASSUMPTIONS.md` → 0.48 | A-048 trỏ ADR-034; A-026 trỏ ADR-035 |
+
+**Chưa làm, chờ PO duyệt hai ADR:** thêm ghim vào `backend/pyproject.toml`, sinh lại lock; sửa luật import của `06-structure.md` theo ADR-035; bước kiểm tham số `argon2id` đề xuất ở ADR-034.

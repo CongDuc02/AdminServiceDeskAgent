@@ -133,3 +133,73 @@ Bảng trên trang, dựng lại cho hai model liên quan — chuỗi ô theo th
 **Bảng này là của gói Free.** Trang có hai tab, "Free Plan Limits" và "Developer Plan Limits", và chỉ một bảng được render sẵn trong HTML. Trong HTML, nút "Free Plan Limits" mang class của tab đang chọn (`bg-black … text-white`), nút kia không. Câu "Note that the limits shown below are the base limits for the Developer plan" đứng trước hai tab và **trái** với tab đang chọn. Người triển khai đọc theo tab đang chọn — đây là suy luận từ HTML, không phải câu chữ của trang. **Xác nhận** trên trang Limits của tài khoản Groq khi PO tạo key, và ghi con số đó vào đây.
 
 Giới hạn đặt ở cấp **organization**, theo từng model. Hai model có hàng riêng — chúng có dùng chung hạn mức với nhau hay không, trang không nói: `[CẦN XÁC MINH]`.
+
+---
+
+## 6. Tương thích API dạng OpenAI, streaming, và `usage` — thêm 2026-10-02 (ADR-035)
+
+- **Nguồn:** `https://console.groq.com/docs/openai` — sha256 `bbd699241946fd652e1b738659ad303c0de483f52722a889aa6ddfcccfe7111f`; trang `https://console.groq.com/docs/structured-outputs` ở mục 3; đặc tả OpenAPI nhúng trong `https://console.groq.com/docs/rate-limits` ở mục 5. Lấy ngày 2026-10-02.
+
+### 6a. Tương thích OpenAI
+
+> We designed Groq API to be mostly compatible with OpenAI's client libraries, making it easy to
+> configure your existing applications to run on Groq and try our inference speed.
+>
+> We also have our own Groq Python and Groq TypeScript libraries that we encourage you to use.
+>
+> ## Configuring OpenAI to Use Groq API
+>
+> To start using Groq with OpenAI's client libraries, pass your Groq API key to the api_key parameter
+> and change the base_url to https://api.groq.com/openai/v1:
+>
+> PythonJavaScript
+>
+> Python
+>
+> import os
+> import openai
+>
+> client = openai.OpenAI(
+> base_url="https://api.groq.com/openai/v1",
+> api_key=os.environ.get("GROQ_API_KEY")
+> )
+
+> ## Currently Unsupported OpenAI Features
+>
+> Note that although Groq API is mostly OpenAI compatible, there are a few features we don't support just yet:
+>
+> ## Text Completions
+>
+> The following fields are currently not supported and will result in a 400 error (yikes) if they are supplied:
+>
+> logprobs
+>
+> logit_bias
+>
+> top_logprobs
+>
+> messages[].name
+>
+> If N is supplied, it must be equal to 1.
+>
+> ## Temperature
+>
+> If you set a temperature value of 0, it will be converted to 1e-8. If you run into any issues, please try setting the value to a float32 > 0 and <= 2.
+
+### 6b. Structured outputs và streaming
+
+> Streaming and tool use are not currently supported with Structured Outputs.
+
+### 6c. Đặc tả OpenAPI — ba schema liên quan, chép nguyên chuỗi JSON
+
+```json
+"CompletionUsage":{"description":"Usage statistics for the completion request.","properties":{"completion_time":{"description":"Time spent generating tokens","type":"number"},"completion_tokens":{"description":"Number of tokens in the generated completion.","type":"integer"},"completion_tokens_details":{"description":"Breakdown of tokens in the completion.","nullable":true,"properties":{"reasoning_tokens":{"description":"Number of tokens used for reasoning (for reasoning models).","type":"integer"}},"required":["reasoning_tokens"],"type":"object"},"prompt_time":{"description":"Time spent processing input tokens","type":"number"},"prompt_tokens":{"description":"Number of tokens in the prompt.","type":"integer"},"prompt_tokens_details":{"description":"Breakdown of tokens in the prompt.","nullable":true,"properties":{"cached_tokens":{"description":"Number of tokens that were cached and reused.","type":"integer"}},"required":["cached_tokens"],"type":"object"},"queue_time":{"description":"Time the requests was spent queued","type":"number"},"total_time":{"description":"completion time and prompt time combined","type":"number"},"total_tokens":{"description":"Total number of tokens used in the request (prompt + completion).","type":"integer"}},"required":["prompt_tokens","completion_tokens","total_tokens"],"type":"object"}
+```
+
+```json
+"reasoning_effort":{"description":"qwen3 models support `none` to disable reasoning and `default` or null\\nto use the model default.\\n\\nqwen/qwen3.8-27b additionally supports `low`, `medium`, and `high`.\\nIts default is `none`; `high` selects the model's native `xhigh` mode.\\n\\nopenai/gpt-oss-20b and openai/gpt-oss-120b support 'low', 'medium', or 'high'.\\n'medium' is the default value.\\n\\nValues outside a model's supported set are rejected with a 400.\\n","enum":["none","default","minimal","low","medium","high","xhigh","max"],"nullable":true,"type":"string"}
+```
+
+```json
+"stream":{"default":false,"description":"If set, partial message deltas will be sent. Tokens will be sent as data-only [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format) as they become available, with the stream terminated by a `data: [DONE]` message. [Example code](/docs/text-chat#streaming-a-chat-completion).\\n","nullable":true,"type":"boolean"}
+```
