@@ -1,6 +1,6 @@
 # Ops, Cost & Deployment — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.13 · **Trạng thái:** Draft chờ duyệt — bốn đề xuất diff đã áp; đợt sửa `03-agents.md` cho A-068 đã áp (2026-09-25); lượt GLOSSARY/contract cho Phase 5, 8 đã chạy ở đợt sửa 2, 3 sau Phase 13 · **v0.11:** căn cứ bảo vệ dữ liệu cá nhân — A-080 (AUD-26) · **v0.10:** mục 14 — runbook cấp và thu hồi permission tạm (A-078 `Đã chốt`), mục ngày 2026-09-26 (quyết định PO sau đợt 3b) · **v0.9:** mục 10.4 — trần `chat_session` 46.500 thành giá trị đang hiệu lực, sửa câu về phương án (b') — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.12:** đợt sửa 4 sau Phase 13 — hai dòng chỗ quan sát (AUD-12); runbook object mồ côi, nơi lưu bản ghi eval (AUD-24); nội dung cũ (AUD-11) · **v0.13:** đợt sửa 5 sau Phase 13 — tham chiếu tới mục không tồn tại của `ASSUMPTIONS.md` (AUD-17); W3C Trace Context, quy đổi token `[CẦN XÁC MINH]` (AUD-21)
+**Phiên bản:** 0.14 · **Trạng thái:** Draft chờ duyệt — bốn đề xuất diff đã áp; đợt sửa `03-agents.md` cho A-068 đã áp (2026-09-25); lượt GLOSSARY/contract cho Phase 5, 8 đã chạy ở đợt sửa 2, 3 sau Phase 13 · **v0.11:** căn cứ bảo vệ dữ liệu cá nhân — A-080 (AUD-26) · **v0.10:** mục 14 — runbook cấp và thu hồi permission tạm (A-078 `Đã chốt`), mục ngày 2026-09-26 (quyết định PO sau đợt 3b) · **v0.9:** mục 10.4 — trần `chat_session` 46.500 thành giá trị đang hiệu lực, sửa câu về phương án (b') — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.12:** đợt sửa 4 sau Phase 13 — hai dòng chỗ quan sát (AUD-12); runbook object mồ côi, nơi lưu bản ghi eval (AUD-24); nội dung cũ (AUD-11) · **v0.13:** đợt sửa 5 sau Phase 13 — tham chiếu tới mục không tồn tại của `ASSUMPTIONS.md` (AUD-17); W3C Trace Context, quy đổi token `[CẦN XÁC MINH]` (AUD-21) · **v0.14:** sơ đồ migration ở mục Migration: ba nhãn trỏ `06-structure.md` theo tên mục thay số mục — luật 12 (2026-10-02)
 
 > File này chốt vận hành trên Render: môi trường dev/staging/prod, cold start, worker nền, cron, migration, backup & restore, observability, dashboard SLA & tồn đọng, mô hình chi phí LLM, ngưỡng cảnh báo & cơ chế cắt chi phí, và định cỡ A-022. File này **không** thiết kế lại state machine, schema DB, endpoint API, hay `halt_for_human` — chỉ tham chiếu và bổ sung phần vận hành chưa phase nào chạm tới. Bốn thay đổi cần chạm phase đã đóng (`06-structure.md`, `04-data.md` ×2, `05-api.md`/`openapi.yaml`) được viết thành **đề xuất diff riêng**, duyệt từng cái một — **cả bốn đã áp**, PO duyệt lần lượt 2026-09-16 và 2026-09-25 — xem mục 13.
 
@@ -99,13 +99,13 @@ sequenceDiagram
     participant Render as Render
 
     Dev->>CI: Merge / trigger deploy
-    CI->>CI: Build image (Dockerfile, muc 6.2 cua 06-structure.md)
-    CI->>DB: Chay bo19_migrator - 4 buoc migration (muc 8 cua 06-structure.md)
+    CI->>CI: Build image (muc Dac ta Dockerfile cua 06-structure.md)
+    CI->>DB: Chay bo19_migrator - 4 buoc migration (muc Migration va checkpointer cua 06-structure.md)
     alt Migration hong
         CI-->>Dev: Dung, khong trigger deploy
     else Migration dat
         CI->>Render: Trigger deploy image da build (Web Service, Background Worker, Cron Job)
-        Render->>Render: Buoc kiem khoi dong tren tung tien trinh (muc 7 cua 06-structure.md)
+        Render->>Render: Buoc kiem khoi dong tren tung tien trinh (muc Buoc kiem khoi dong cua 06-structure.md)
     end
 ```
 

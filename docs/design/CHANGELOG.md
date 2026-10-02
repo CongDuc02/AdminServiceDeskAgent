@@ -2406,3 +2406,29 @@ Theo lệnh PO: ADR object storage local có phép thử giao thức ghi; đề 
 - SeaweedFS 4.47, rclone v1.75.1: tải bản Windows từ GitHub Releases, checksum khớp file đi kèm. moto 5.2.3 cài bằng `pip`. `boto3`/`botocore` 1.37.3 — bản ghim của `backend/pyproject.toml`.
 - MinIO: `https://dl.min.io/…/minio.exe` trả `410 Gone`; GitHub API `archived: true`.
 - `argon2-cffi` 25.1.0: verify 20 lần, trung vị 424,5 ms trên máy người triển khai.
+
+---
+
+## 2026-10-02 (PO duyệt đợt sẵn sàng Sprint 1) — ADR-031 `Accepted`; A-055 `Đã chốt`; A-084 hướng của PO; mốc giữa Sprint 1; luật 12 trong nhãn Mermaid
+
+PO duyệt hai commit `151141d`, `4a1b8df` kèm điều kiện. Lần sửa này làm đủ năm việc PO giao.
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-031-…` | `Proposed` → `Accepted`. Điều kiện của PO — cổng `33646`: là gRPC worker của admin trong `weed mini`, bind mọi giao diện, không cờ nào tắt (mã nguồn tag 4.47). **Đổi lệnh sang `weed server`**: không có admin, mọi cổng ở `127.0.0.1`, `-master.telemetry=false`, `-master.volumeSizeLimitMB=64 -volume.max=200`. Thêm quyết định A-084 vào mục Decision. `weed mini` vào Rejected alternatives |
+| `docs/reference/object-storage-local-s3.md` | Mục mới "Cổng 33646 là gì, và cách tắt": trích `admin.go`, `mini.go`; kết quả `weed server` — T1–T10 giống `weed mini`, bền qua `taskkill /F`, credential bắt buộc; telemetry mặc định bật |
+| `ASSUMPTIONS.md` → 0.40 | A-055 `Đã chốt` (hướng 1). A-072 `Đã chốt`. A-084 `Thu hẹp`: `412` → đọc lại, so checksum; khớp là ghi thành công, lệch là dừng chờ tiếp quản — chưa áp vào `04-data.md`, `03-agents.md`, `08-hitl.md`. A-031: WV-01…15 đã duyệt. A-048: WV-17, 18 đã duyệt, WV-16 bản sửa chờ duyệt. A-026: vế hai mốc. Hạn A-058, A-009, A-013, A-071 theo mốc mới. Sửa bốn con trỏ theo số mục (luật 12), một trong đó có từ đợt A-082 |
+| `03-agents.md` | Đầu mục Tool Registry: luật `audit_event` và danh sách miễn đóng (A-055); ba lớp timeout trỏ WV-07…09 |
+| `GLOSSARY.md` | Định nghĩa `audit_event` thêm vế "tải bản văn bản ra khỏi hệ thống" |
+| `08-hitl.md`, `05-api.md`, `06-structure.md`, `09-security.md` | Bỏ các câu "chờ A-055"; `09-security.md` mục 6.4 đổi tên thành "thuộc danh sách miễn của A-055" |
+| `12-roadmap.md` → 0.15 | Cổng 1.3, 1.4, 1.10 Đạt. 1.5 chỉ mốc 1. 1.6 chỉ còn bộ font và giấy phép. 1.7, 1.8 gạch, thành mốc M1.1, M1.2 ở mục mới "Mốc giữa Sprint 1". Cổng 1.14 cho A-071. Cổng 3.8 cho cột CSV. S5 và R1-4 theo mốc mới |
+| `00-domain.md` | Hạn A-009 và mẫu `.docx` trỏ mốc M1.2, M1.1 |
+| `decisions/ADR-032-…` | Vế hai mốc: PO duyệt. Điều kiện: mốc 2 đổi nhà cung cấp thì chạy lại toàn bộ bộ eval của `10-eval.md` trước khi nhận dữ liệu thật. Điều 1, 4 vẫn đề xuất |
+| `proposals/sprint1-working-values-a031-a048.md` | Đã duyệt trừ WV-16. WV-16 bản sửa: `t=2, m=19456, p=1` (OWASP 2), kèm mục đối chiếu RAM và lựa chọn WV-16b — trần 4 lần verify đồng thời |
+| `docs/reference/owasp-password-storage-argon2id.md`, `docs/reference/render-instance-compute.md` | **Mới.** Trích mục Argon2id của OWASP; bảng CPU/RAM loại instance của Render |
+| `docs/reference/argon2-cffi-parameters.md` | Mục mới: bộ nhớ đỉnh và thời lượng khi verify đồng thời, sáu cấu hình |
+| `proposals/a055-…`, `proposals/sprint1-org-data-checklist.md` | Đã áp. Checklist ghi một chỗ sửa khi áp: bộ font đi cùng giấy phép ở cổng 1.6, không đi theo mẫu |
+| `11-ops.md` | Sơ đồ migration: ba nhãn trỏ `06-structure.md` theo tên mục |
+| `13-audit.md` → 0.13 | Phụ lục A.11: `audit_checks.py` thêm khối luật 12 cho nhãn Mermaid, có phép tự kiểm; ghi phần chưa phủ |
+
+**Đã chạy:** `weed server` 4.47 — phép thử T1–T10, bền dữ liệu, credential, `netstat`. `argon2-cffi` 25.1.0 — bộ nhớ đỉnh khi 1 và 4 lần verify đồng thời, sáu cấu hình. `audit_checks.py` bản mới: openapi hợp lệ, 05↔openapi không lệch, luật 12 nhãn Mermaid 0, ID treo không, phiên bản không lệch. Sơ đồ đã sửa của `11-ops.md` render được bằng mermaid-cli 12.0.0.

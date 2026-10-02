@@ -1,6 +1,6 @@
 # ADR-032 — Nhà cung cấp LLM cho hai tier: một nhà cung cấp, chọn theo hai mốc dữ liệu
 
-**Trạng thái:** Proposed — **nháp**, chưa chọn nhà cung cấp nào · **Ngày:** 2026-09-27 · **Quyết định tại:** A-026 (cổng 1.5 của `12-roadmap.md`) · **Liên quan:** mục Yêu cầu năng lực của model — provider chưa chọn và mục Allowlist input của `03-agents.md`, ADR-007, ADR-008, ADR-019, mục Chiến lược ép JSON và xử lý lỗi parse của `07-prompts.md`, A-028 (embedding), A-079, A-080, cổng 4.4 của `12-roadmap.md`
+**Trạng thái:** Proposed — chưa chọn nhà cung cấp nào. **Vế hai mốc (điều 2, 3 của mục Decision): PO duyệt 2026-09-27, kèm điều kiện eval ở điều 3.** Điều 1 và điều 4 vẫn là đề xuất · **Ngày:** 2026-09-27 · **Quyết định tại:** A-026 (cổng 1.5 của `12-roadmap.md`) · **Liên quan:** mục Yêu cầu năng lực của model — provider chưa chọn và mục Allowlist input của `03-agents.md`, ADR-007, ADR-008, ADR-019, mục Chiến lược ép JSON và xử lý lỗi parse của `07-prompts.md`, A-028 (embedding), A-079, A-080, cổng 4.4 của `12-roadmap.md`
 
 ---
 
@@ -68,7 +68,11 @@ Bảng dưới chỉ chứa điều suy ra được từ hình dạng phương �
 
      Mốc này không đợi A-080, vì — theo suy luận ở câu hỏi 4 — không có dữ liệu cá nhân nào rời hệ thống.
    - **Mốc 2 — trước lần đầu dữ liệu nhân viên thật vào hệ thống: nhà cung cấp cho `staging` và `prod`.** Cùng điều kiện kích hoạt với cổng 4.4 — "hạn sớm hơn nếu dữ liệu cá nhân thật được nạp trước cổng này". Điều kiện: A-080 đã có văn bản gốc và bốn câu hỏi đã có trả lời; đủ năm hồ sơ; bộ eval đạt trên chính nhà cung cấp này.
-3. **Mốc 2 được phép chọn nhà cung cấp khác mốc 1.** Cái giá: chạy lại toàn bộ bộ eval trên nhà cung cấp mới, và viết adapter mới trong `ai_gateway`. Prompt module không đổi (đường vòng của A-026).
+3. **Mốc 2 được phép chọn nhà cung cấp khác mốc 1 — kèm điều kiện của PO (2026-09-27):** nếu mốc 2 chọn nhà cung cấp **khác** mốc 1, thì **trước khi hệ thống nhận dữ liệu thật**, chạy lại **toàn bộ** bộ eval của `10-eval.md` trên nhà cung cấp mới:
+   - mọi bộ ở mục Golden dataset — bộ eval hành vi 37 ca, canary suite, bộ đo retrieval nếu đã có dữ liệu để chạy, ca kiểm cơ chế graph;
+   - chạy theo mục Offline eval, và phải qua mục Regression gate — đổi provider vốn đã là một điều kiện kích hoạt ở đó.
+
+   Không chạy đủ hoặc không qua thì không nhận dữ liệu thật: mốc 2 chưa đạt. Cái giá còn lại: viết adapter mới trong `ai_gateway`. Prompt module không đổi (đường vòng của A-026).
 4. **Embedding (A-028) ngoài phạm vi ADR này.** Retrieval vào ở Sprint 2. Cùng khung hai mốc áp được cho embedding khi tới lúc.
 
 ## Consequences

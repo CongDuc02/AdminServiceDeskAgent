@@ -1,6 +1,6 @@
-# ADR-031 — `object_storage` chạy local bằng SeaweedFS `weed mini`, adapter luôn ghi có điều kiện
+# ADR-031 — `object_storage` chạy local bằng SeaweedFS `weed server`, adapter luôn ghi có điều kiện
 
-**Trạng thái:** Proposed · **Ngày:** 2026-09-27 · **Quyết định tại:** A-072 (cổng 1.4 của `12-roadmap.md`) · **Liên quan:** ADR-003 (interface S3-compatible, bất biến ở tầng ứng dụng), A-024 (nhà cung cấp thật, yêu cầu T2), A-059 (thời lượng upload), mục Lưu trữ file và bất biến bản render của `04-data.md`, mục Xác minh contract của `06-structure.md`, `docs/reference/object-storage-local-s3.md`
+**Trạng thái:** Accepted · **Ngày:** 2026-09-27 · **Duyệt:** PO, 2026-09-27 — duyệt có điều kiện: xác định cổng `33646` và tắt được hay chặn được. Điều kiện đã đạt: cổng thuộc admin của `weed mini`, tắt bằng cách dùng `weed server` (mục Decision). Kèm quyết định A-084 · **Quyết định tại:** A-072 (cổng 1.4 của `12-roadmap.md`) · **Liên quan:** ADR-003 (interface S3-compatible, bất biến ở tầng ứng dụng), A-024 (nhà cung cấp thật, yêu cầu T2), A-059 (thời lượng upload), mục Lưu trữ file và bất biến bản render của `04-data.md`, mục Xác minh contract của `06-structure.md`, `docs/reference/object-storage-local-s3.md`
 
 ---
 
@@ -18,7 +18,7 @@ Năm ràng buộc, theo thứ tự loại phương án:
 
 ## Options
 
-- **A — SeaweedFS `weed mini`**, binary Windows, thư mục dữ liệu trên đĩa local.
+- **A — SeaweedFS**, binary Windows, thư mục dữ liệu trên đĩa local. Thử bằng hai lệnh: `weed mini` và `weed server`.
 - **B — `moto_server`**, thư viện giả lập dịch vụ của AWS cho Python.
 - **C — `rclone serve s3`**, phục vụ một thư mục local qua giao thức S3.
 - **D — MinIO**, bản community.
@@ -38,20 +38,32 @@ Toàn bộ số liệu, trích dẫn và cách chạy nằm ở `docs/reference/
 | 3 — versioning, khoá đối tượng | Đạt, kể cả gắn khoá sau khi ghi (T9) | Versioning đạt; gắn khoá sau khi ghi lỗi (T9) | Không có (`NotImplemented`) | — |
 | 4 — bền qua `taskkill /F` | Đạt | **Trượt**: mất toàn bộ bucket | Không thử | — |
 | 5 — credential | Đạt với `-s3.config` | Không thử | Không thử | — |
+| Chỉ nghe trên `127.0.0.1` | `weed server`: đạt. `weed mini`: **trượt** — `33646` nghe mọi giao diện | Không thử | Không thử | — |
 
 ## Decision
 
-**Đề xuất A — SeaweedFS, lệnh `weed mini`, bản 4.47, cho môi trường local.**
+**Chọn A — SeaweedFS bản 4.47, lệnh `weed server`, cho môi trường local.**
 
 - **Ghim bản:** SeaweedFS **4.47**, file `windows_amd64.zip` của bản phát hành, sha256 ghi ở tài liệu tham chiếu. Đổi bản thì chạy lại bộ phép thử của tài liệu tham chiếu trước khi dùng.
 - **Không vào image, không lên Render.** Chỉ là công cụ trên máy người triển khai. `dev`, `staging`, `prod` dùng nhà cung cấp của A-024.
-- **Cấu hình local:**
-  - `-ip=127.0.0.1 -ip.bind=127.0.0.1` — mặc định bind `0.0.0.0`.
-  - `-admin.ui=false`.
+- **Lệnh và cấu hình local** — đúng lệnh đã chạy ở mục Cổng 33646 là gì, và cách tắt của `docs/reference/object-storage-local-s3.md`:
+
+  ```text
+  weed server -dir=<thư mục cố định> -ip=127.0.0.1 -ip.bind=127.0.0.1 -filer -s3 -s3.config=<file identity> -master.telemetry=false -master.volumeSizeLimitMB=64 -volume.max=200
+  ```
+
+  - **`weed server`, không phải `weed mini`.** `weed mini` luôn chạy thành phần admin, và giữ cổng gRPC worker của admin (`33646`) trên **mọi giao diện**, bỏ qua `-ip.bind`. Không có cờ nào tắt được: `-admin.ui=false` chỉ tắt giao diện. `weed server` không có admin — lượt chạy thử không mở cổng nào ngoài `127.0.0.1`. Căn cứ mã nguồn và số đo: cùng mục của tài liệu tham chiếu.
+  - `-ip=127.0.0.1 -ip.bind=127.0.0.1` — không bind ra mạng.
+  - `-master.telemetry=false` — mặc định là **bật**, gửi thống kê ẩn danh tới máy chủ của SeaweedFS. Công cụ local của dự án không gửi gì ra ngoài.
   - `-s3.config=<file identity>` với đúng một identity cho `tool_layer`. File identity nằm ngoài repo, như mọi secret.
+  - `-master.volumeSizeLimitMB=64 -volume.max=200` — thiếu hai cờ này thì từ bucket thứ hai trở đi `PUT` hỏng vì hết volume. Hai giá trị là chọn; dự án chỉ cần một bucket, còn bộ phép thử tạo nhiều bucket.
   - Thư mục dữ liệu cố định, không phải thư mục tạm.
-- **Bucket local bật versioning.** Không bật khoá đối tượng khi chưa có quyết định của A-024. Lý do: khoá đối tượng chỉ bật được **lúc tạo bucket** (trích ở tài liệu tham chiếu, mục 2.2), và thời hạn giữ gắn với A-010, chưa có giá trị. Local chỉ có dữ liệu giả, nên tạo lại bucket khi A-024 chọn khoá đối tượng là việc rẻ.
-- **Luật của adapter, áp ở mọi môi trường — không riêng local:** **mọi** lệnh `PUT` lên `object_storage` mang `If-None-Match: *`. T8 cho thấy thiếu header thì cả ba sản phẩm đều để bị đè: bảo vệ nằm ở header mà adapter gửi, không ở sản phẩm. Hành vi khi nhận `412 PreconditionFailed` **chưa được thiết kế** — A-084.
+- **Bucket local bật versioning.** Không bật khoá đối tượng khi chưa có quyết định của A-024. Lý do: khoá đối tượng chỉ bật được **lúc tạo bucket** (trích ở mục Khoá đối tượng — trang `S3-Object-Lock-and-Retention` của `docs/reference/object-storage-local-s3.md`), và thời hạn giữ gắn với A-010, chưa có giá trị. Local chỉ có dữ liệu giả, nên tạo lại bucket khi A-024 chọn khoá đối tượng là việc rẻ.
+- **Luật của adapter, áp ở mọi môi trường — không riêng local:** **mọi** lệnh `PUT` lên `object_storage` mang `If-None-Match: *`. T8 cho thấy thiếu header thì cả ba sản phẩm đều để bị đè: bảo vệ nằm ở header mà adapter gửi, không ở sản phẩm.
+- **Khi `PUT` nhận `412 PreconditionFailed` — quyết định của PO, A-084:** **không** trả job về hàng đợi. Người giữ claim đọc object đang có trên storage, tính checksum, so với checksum của đúng chuỗi byte mình vừa gửi:
+  - **Khớp** → coi là ghi thành công. Đây là ca lần ghi trước của chính người giữ claim đã tới storage, còn response thì bị mất — lệnh `PUT` được gửi lại. Đi tiếp tới bước commit của giao thức ghi một lần.
+  - **Lệch** → không commit, **dừng chờ tiếp quản**, khôi phục byte theo cơ chế tầng lưu trữ của A-024. Byte trên storage là của người khác — theo phân tích ở A-084, là lệnh ghi trễ của một claim cũ.
+  - Checksum tính trên **byte đọc lại**, cùng cách tính với checksum mà bước commit ghi vào `stored_object_commit` — không dựa vào trường nào storage tự trả về.
 - **Bộ phép thử thành kiểm contract ở BUILD MODE.** Script của tài liệu tham chiếu viết lại thành một kiểm trong `tools/contract-checks/`, chạy được trên mọi endpoint S3: local ở Sprint 1, và nhà cung cấp của A-024 trước cổng 2.5. Kết quả trên nhà cung cấp thật là căn cứ đóng yêu cầu T2 của A-024 — thay cho việc đọc tài liệu của nhà cung cấp.
 
 ## Consequences
@@ -65,11 +77,13 @@ Toàn bộ số liệu, trích dẫn và cách chạy nằm ở `docs/reference/
 
 **Tiêu cực và cái phải chấp nhận**
 
+- **Nhánh "lệch" của 412 mở thêm một đường vào `halt_for_human`** ở chỗ trước đây chỉ có lỗi render. Tên mã lỗi của tool, dòng trong bảng mã lý do dừng, và câu chữ ở mục Lưu trữ file và bất biến bản render của `04-data.md` **chưa ghi** — PO giới hạn lần sửa này ở A-084 và ADR này. Mục Open Questions.
 - **Local không phải nhà cung cấp thật.** Ngữ nghĩa ghi có điều kiện mới được chứng minh trên SeaweedFS 4.47, chưa trên nhà cung cấp của A-024 — hệ quả (2) của A-072 **vẫn còn** tới khi kiểm contract chạy trên nhà cung cấp đó (cổng 2.5).
-- **`weed mini` chạy nhiều thành phần** mà dự án không dùng: WebDAV, Iceberg, Lance, và các cổng nội bộ. Kể cả khi bind `127.0.0.1`, **một cổng vẫn nghe trên mọi giao diện** (`0.0.0.0:33646`, tài liệu tham chiếu mục 3.3). Chưa xác định thành phần nào mở cổng đó. Trước khi dùng thật: tìm cờ tắt nó, hoặc chặn bằng firewall của máy. Chỉ có dữ liệu giả, nhưng credential của identity vẫn là secret.
+- **`weed server` vẫn mở những cổng dự án không dùng** — trong lượt thử có `8181` và `9101`, trùng cổng mặc định của Iceberg và Lance mà `weed help mini` in ra. Tất cả ở `127.0.0.1`. Không tìm cách tắt từng cổng: chúng không ra khỏi máy.
 - Binary tải về là biến thể "30GB" (`weed version`). Ý nghĩa của biến thể với dự án: không có, ở quy mô dữ liệu thử. Không kiểm thêm.
 - Thêm một công cụ vào môi trường người triển khai. Giấy phép Apache-2.0 theo `LICENSE` ở tag 4.47. Công cụ không được phân phối trong image, nên nghĩa vụ phân phối không phát sinh.
-- **Wiki của SeaweedFS không gắn phiên bản.** Kết luận của ADR dựa trên phép thử trên binary, không dựa trên wiki.
+- **Wiki của SeaweedFS không gắn phiên bản.** Kết luận của ADR dựa trên phép thử trên binary và mã nguồn ở tag `4.47`, không dựa trên wiki.
+- **Các lượt thử `weed mini` hôm 2026-09-27 chạy với telemetry bật** — có thể đã gửi thống kê ẩn danh của cụm thử ra ngoài. Không có dữ liệu dự án trong đó; ghi ra cho đủ.
 
 **Điều kiện đảo ngược**
 
@@ -78,6 +92,8 @@ Toàn bộ số liệu, trích dẫn và cách chạy nằm ở `docs/reference/
 - Nhà cung cấp của A-024 có bộ giả lập local chạy native trên Windows và đạt bộ phép thử → xét thay, vì local gần môi trường thật hơn.
 
 ## Rejected alternatives
+
+**`weed mini` — cùng sản phẩm, lệnh khác.** Loại vì cổng `33646`: bind mọi giao diện, không tắt được bằng cờ nào. Các phép thử T1–T10 của nó vẫn là căn cứ, vì kết quả trùng với `weed server`.
 
 **B — `moto_server`.** Mất toàn bộ dữ liệu khi tiến trình dừng (ràng buộc 4): sau `taskkill /F` và khởi động lại, bucket trả `NoSuchBucket`. Gắn khoá đối tượng sau khi ghi (T9) lỗi ở cả hai lượt chạy. moto vẫn có thể có chỗ trong **test** ở BUILD MODE, nơi dữ liệu sống trong một phiên chạy. ADR này không quyết chuyện đó.
 
@@ -91,5 +107,8 @@ Toàn bộ số liệu, trích dẫn và cách chạy nằm ở `docs/reference/
 
 ## Open Questions
 
-- **A-084** — adapter xử lý thế nào khi `PUT` nhận `412 PreconditionFailed`. Phải có trước khi viết module lưu trữ của `tool_layer` ở Sprint 1.
-- Thành phần nào của `weed mini` mở `0.0.0.0:33646`, và tắt nó bằng cờ nào — người triển khai, lần chạy đầu ở BUILD MODE.
+- **Áp quyết định A-084 vào các file khác** — chưa làm, chờ PO cho phép:
+  - câu chữ ở mục Lưu trữ file và bất biến bản render của `04-data.md`;
+  - mã lỗi mới cho `docx_render` và `pdf_export` ở mục Tool Registry của `03-agents.md`, cùng cạnh vào `halt_for_human`;
+  - mã lý do dừng ở `08-hitl.md`.
+- **Thao tác ghi không chạy trong graph** — `template_version_upload`, `procedure_version_upload` chạy đồng bộ trong `api`, không có `halt_for_human`. Đề xuất cho nhánh "lệch": trả lỗi cho người tải lên, không commit; claim hết lease thì `object_claim_reconcile` dọn. Chờ PO.

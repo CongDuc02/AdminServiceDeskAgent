@@ -1,6 +1,6 @@
 # Đề xuất — A-055: `audit_event` ghi cho thao tác nào
 
-**Trạng thái:** ⏳ Chờ PO duyệt — chưa áp vào file nào · **Ngày:** 2026-09-27 · **Người đề xuất:** người triển khai · **Cổng:** 1.3 của `12-roadmap.md` — chặn khởi động, vì luật này quyết mọi thao tác của `tool_layer` · **Nguồn:** A-055, đầu mục Tool Registry của `03-agents.md`, dòng `audit_event` ở mục Entity của `GLOSSARY.md`, mục Audit log của `08-hitl.md`, mục Rate limit của `09-security.md`, mục Thao tác của `tool_layer` được đặt tên ở Phase 5 của `05-api.md`
+**Trạng thái:** ✅ Đã áp — 2026-09-27, PO chọn hướng 1 · Xem mục Tool Registry của `03-agents.md`, mục ngày 2026-09-27 (A-055, A-084 …) của `CHANGELOG.md` · **Ngày:** 2026-09-27 · **Người đề xuất:** người triển khai · **Cổng:** 1.3 của `12-roadmap.md` — chặn khởi động, vì luật này quyết mọi thao tác của `tool_layer` · **Nguồn:** A-055, đầu mục Tool Registry của `03-agents.md`, dòng `audit_event` ở mục Entity của `GLOSSARY.md`, mục Audit log của `08-hitl.md`, mục Rate limit của `09-security.md`, mục Thao tác của `tool_layer` được đặt tên ở Phase 5 của `05-api.md`
 
 ---
 

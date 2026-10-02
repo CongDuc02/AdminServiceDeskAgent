@@ -148,6 +148,70 @@ hasher moi verify hash cu: True
 check_needs_rehash: True
 ```
 
+### 4c. Bộ nhớ đỉnh và thời lượng khi verify đồng thời
+
+Mỗi cấu hình một tiến trình con: hash một lần, đọc `PeakWorkingSetSize` (`K32GetProcessMemoryInfo`), rồi chạy N lần verify **đồng thời** trên N luồng, đọc lại. Sáu cấu hình: mặc định của thư viện và năm cấu hình OWASP (`docs/reference/owasp-password-storage-argon2id.md`). Script:
+
+```python
+"""Đo bộ nhớ đỉnh và thời lượng khi N lần verify argon2id chạy đồng thời, mỗi cấu hình một tiến trình con."""
+import ctypes, ctypes.wintypes as wt, json, statistics, subprocess, sys, threading, time
+
+def peak_ws_mib():
+    class PMC(ctypes.Structure):
+        _fields_ = [('cb', wt.DWORD), ('PageFaultCount', wt.DWORD), ('PeakWorkingSetSize', ctypes.c_size_t),
+                    ('WorkingSetSize', ctypes.c_size_t), ('QuotaPeakPagedPoolUsage', ctypes.c_size_t),
+                    ('QuotaPagedPoolUsage', ctypes.c_size_t), ('QuotaPeakNonPagedPoolUsage', ctypes.c_size_t),
+                    ('QuotaNonPagedPoolUsage', ctypes.c_size_t), ('PagefileUsage', ctypes.c_size_t),
+                    ('PeakPagefileUsage', ctypes.c_size_t)]
+    c = PMC(); c.cb = ctypes.sizeof(PMC)
+    k = ctypes.WinDLL('kernel32', use_last_error=True)
+    k.GetCurrentProcess.restype = wt.HANDLE
+    k.K32GetProcessMemoryInfo.argtypes = [wt.HANDLE, ctypes.POINTER(PMC), wt.DWORD]
+    k.K32GetProcessMemoryInfo.restype = wt.BOOL
+    assert k.K32GetProcessMemoryInfo(k.GetCurrentProcess(), ctypes.byref(c), c.cb)
+    return c.PeakWorkingSetSize / 2**20
+
+if len(sys.argv) > 1:
+    t, m, p, n = map(int, sys.argv[1:5])
+    from argon2 import PasswordHasher
+    ph = PasswordHasher(time_cost=t, memory_cost=m, parallelism=p)
+    h = ph.hash("mk")
+    base = peak_ws_mib()
+    durs = []
+    def w():
+        s = time.perf_counter(); ph.verify(h, "mk"); durs.append(time.perf_counter() - s)
+    th = [threading.Thread(target=w) for _ in range(n)]
+    s0 = time.perf_counter(); [x.start() for x in th]; [x.join() for x in th]; wall = time.perf_counter() - s0
+    print(json.dumps({'t': t, 'm_KiB': m, 'p': p, 'dong_thoi': n, 'peak_truoc_MiB': round(base, 1),
+                      'peak_sau_MiB': round(peak_ws_mib(), 1), 'wall_ms': round(wall * 1000),
+                      'verify_ms_max': round(max(durs) * 1000)}))
+    sys.exit()
+
+cfgs = [(3, 65536, 4), (1, 47104, 1), (2, 19456, 1), (3, 12288, 1), (4, 9216, 1), (5, 7168, 1)]
+for t, m, p in cfgs:
+    for n in (1, 4):
+        print(subprocess.run([sys.executable, __file__, str(t), str(m), str(p), str(n)], capture_output=True, text=True).stdout.strip())
+```
+
+Kết quả:
+
+```text
+{"t": 3, "m_KiB": 65536, "p": 4, "dong_thoi": 1, "peak_truoc_MiB": 82.8, "peak_sau_MiB": 82.8, "wall_ms": 226, "verify_ms_max": 224}
+{"t": 3, "m_KiB": 65536, "p": 4, "dong_thoi": 4, "peak_truoc_MiB": 82.6, "peak_sau_MiB": 274.9, "wall_ms": 879, "verify_ms_max": 866}
+{"t": 1, "m_KiB": 47104, "p": 1, "dong_thoi": 1, "peak_truoc_MiB": 64.4, "peak_sau_MiB": 64.6, "wall_ms": 215, "verify_ms_max": 210}
+{"t": 1, "m_KiB": 47104, "p": 1, "dong_thoi": 4, "peak_truoc_MiB": 64.5, "peak_sau_MiB": 199.4, "wall_ms": 413, "verify_ms_max": 408}
+{"t": 2, "m_KiB": 19456, "p": 1, "dong_thoi": 1, "peak_truoc_MiB": 37.5, "peak_sau_MiB": 37.7, "wall_ms": 114, "verify_ms_max": 110}
+{"t": 2, "m_KiB": 19456, "p": 1, "dong_thoi": 4, "peak_truoc_MiB": 37.5, "peak_sau_MiB": 94.8, "wall_ms": 245, "verify_ms_max": 230}
+{"t": 3, "m_KiB": 12288, "p": 1, "dong_thoi": 1, "peak_truoc_MiB": 30.5, "peak_sau_MiB": 30.6, "wall_ms": 56, "verify_ms_max": 53}
+{"t": 3, "m_KiB": 12288, "p": 1, "dong_thoi": 4, "peak_truoc_MiB": 30.6, "peak_sau_MiB": 66.8, "wall_ms": 135, "verify_ms_max": 131}
+{"t": 4, "m_KiB": 9216, "p": 1, "dong_thoi": 1, "peak_truoc_MiB": 27.5, "peak_sau_MiB": 27.7, "wall_ms": 54, "verify_ms_max": 51}
+{"t": 4, "m_KiB": 9216, "p": 1, "dong_thoi": 4, "peak_truoc_MiB": 27.4, "peak_sau_MiB": 54.7, "wall_ms": 122, "verify_ms_max": 116}
+{"t": 5, "m_KiB": 7168, "p": 1, "dong_thoi": 1, "peak_truoc_MiB": 25.5, "peak_sau_MiB": 25.7, "wall_ms": 55, "verify_ms_max": 52}
+{"t": 5, "m_KiB": 7168, "p": 1, "dong_thoi": 4, "peak_truoc_MiB": 25.6, "peak_sau_MiB": 46.9, "wall_ms": 121, "verify_ms_max": 117}
+```
+
+Cách đọc: `peak_truoc_MiB` đã gồm một lần hash, nên với N = 4, `peak_sau − peak_truoc` là **ba** lần verify chồng lên lần đã tính. Ví dụ mặc định: 274,9 − 82,8 = 192,1 MiB ≈ 3 × 64 MiB. **Bộ nhớ đỉnh tăng xấp xỉ `m` cho mỗi lần verify đang chạy.** Bốn lần verify chạy chồng nhau thật: nếu tuần tự, đỉnh đã không tăng.
+
 **Không suy ra được thời lượng trên Render.** Một lần đo, 20 mẫu, trên máy tính cá nhân đang chạy việc khác. Số CPU và RAM của instance Render chưa biết (A-002), mà `parallelism = 4` nghĩa là bốn luồng tính song song.
 
 ## 5. Kết luận cho A-048 — với đúng bản trên
@@ -157,4 +221,5 @@ check_needs_rehash: True
 | Mặc định của thư viện | `argon2id`, `time_cost=3`, `memory_cost=65536` KiB, `parallelism=4`, salt 16 byte, hash 32 byte | Mục 1, mục 2 |
 | Chuỗi hash có mang tham số không | Có — `m=65536,t=3,p=4` nằm trong chuỗi mã hoá | Mục 4 |
 | Đổi tham số có làm hash cũ hết verify được không | **Không.** Một `PasswordHasher(time_cost=2, memory_cost=32768, parallelism=1)` verify đúng hash tạo bằng `RFC_9106_LOW_MEMORY`; `check_needs_rehash` trả `True` | Mục 4b |
+| Bộ nhớ một lần verify đang chạy | Xấp xỉ `m`. Mặc định, 4 lần đồng thời: đỉnh 274,9 MiB; nền ước tính 82,8 − 64 = 18,8 MiB, nên phần của verify khoảng 256 MiB | Mục 4c |
 | Ứng dụng có hash lại được khi đăng nhập không | **Không**, vì `bo19_app` chỉ đọc `employee_credential`. Hash lại là thao tác vận hành, như đặt lại mật khẩu | A-048 H1; mục 3 |

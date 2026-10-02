@@ -1,6 +1,6 @@
 # GLOSSARY — BO-19 Admin Service Desk Agent
 
-**Phiên bản:** 0.25 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5, vòng duyệt Phase 5, Phase 6, Phase 9, Phase 12, đợt sửa A-068, A-073, A-075, đợt sửa 2 và đợt sửa 3 sau Phase 13 · **v0.24:** đợt sửa 4 sau Phase 13 — ba con trỏ cũ (AUD-11) · **v0.25:** đợt sửa 5 sau Phase 13 — định nghĩa Product Owner
+**Phiên bản:** 0.26 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5, vòng duyệt Phase 5, Phase 6, Phase 9, Phase 12, đợt sửa A-068, A-073, A-075, đợt sửa 2 và đợt sửa 3 sau Phase 13 · **v0.24:** đợt sửa 4 sau Phase 13 — ba con trỏ cũ (AUD-11) · **v0.25:** đợt sửa 5 sau Phase 13 — định nghĩa Product Owner · **v0.26:** A-055 `Đã chốt` — hướng 1, danh sách miễn `audit_event` (2026-09-27)
 
 > Đây là danh sách tên chuẩn. Từ Phase 1 trở đi, mọi tài liệu, diagram, DDL, endpoint và prompt phải dùng **đúng** các định danh trong file này. Muốn đổi tên thì sửa file này trước, rồi ghi vào [`CHANGELOG.md`](./CHANGELOG.md).
 
@@ -27,7 +27,7 @@
 | `room_booking` | Lượt đặt phòng | `[Should]` Artifact của một `request` loại `ROOM_BOOKING`, có máy trạng thái riêng |
 | `approval_step` | Bước duyệt | Một lần một người được yêu cầu duyệt, ký hoặc duyệt dấu. Mang cờ `self_approved` và `self_approval_reason` khi rơi vào đường thoát ở mục Tách biệt trách nhiệm của `00-domain.md` |
 | `permission` | Quyền | Đơn vị phân quyền nhỏ nhất, dạng `entity.action`. Vai trò chỉ là gói permission |
-| `audit_event` | Sự kiện kiểm toán | Bản ghi bất biến về một hành động có ảnh hưởng nghiệp vụ. Có mức `severity` |
+| `audit_event` | Sự kiện kiểm toán | Bản ghi bất biến về một hành động có ảnh hưởng nghiệp vụ, hoặc về một lần tải bản văn bản ra khỏi hệ thống. Có mức `severity`. Thao tác nào sinh: luật ở đầu mục Tool Registry của `03-agents.md` (A-055) |
 | `delegation` | Uỷ quyền | Cho phép một người hành động thay người khác trong một khoảng thời gian. **Hai cách dùng:** uỷ quyền khi vắng mặt cho người duyệt `[Should]`, và uỷ quyền lập hộ ở EC-IL-01. Vế lập hộ **cắt khỏi Sprint đầu** — lập hộ trong Sprint đầu chỉ qua `request.create_on_behalf` (AUD-15 của `13-audit.md`, quyết định PO 2026-09-26). Thiết kế `delegation` giữ nguyên |
 | `chat_session` | Phiên hội thoại | Một cuộc chat của nhân viên với `intake_agent`. Sinh được 0..n `request` nối tiếp (EC-CV-01, EC-CV-02). Thêm ở Phase 3 |
 | `chat_message` | Tin nhắn | Một lượt trong `chat_session`. Văn bản tin nhắn xếp `RES` vì mang được mọi thứ; bị xoá khi `request` gắn với nó `EXPIRED` (A-014). Thêm ở Phase 3 |

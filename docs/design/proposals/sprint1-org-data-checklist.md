@@ -1,6 +1,6 @@
 # Đề xuất — dữ liệu cần lấy từ tổ chức cho A-058, A-009, A-013, A-071, và cổng nào dời được vào giữa Sprint 1
 
-**Trạng thái:** ⏳ Chờ PO duyệt — chưa áp vào `12-roadmap.md` · **Ngày:** 2026-09-27 · **Người đề xuất:** người triển khai · **Nguồn:** cổng 1.6–1.8 của `12-roadmap.md`, mục Rủi ro chính của Sprint 1 (R1-4), A-058, A-009, A-013, A-071, mục Slot schema và mục Cấp số văn bản của `00-domain.md`, `contracts/schema.sql` (`employee`, `document_register_format`, `template_version`), ADR-015
+**Trạng thái:** ✅ Đã áp — 2026-09-27, PO đồng ý · **Sửa khi áp:** bộ font đi cùng giấy phép ở cổng 1.6 trước Sprint 1, không đi theo mẫu ở mốc giữa Sprint 1 — không xét giấy phép được khi chưa biết font nào. Mục 2 dưới đây giữ nguyên bản đề xuất; bản đã áp ở mục Mốc giữa Sprint 1 của `12-roadmap.md` · **Ngày:** 2026-09-27 · **Người đề xuất:** người triển khai · **Nguồn:** cổng 1.6–1.8 của `12-roadmap.md`, mục Rủi ro chính của Sprint 1 (R1-4), A-058, A-009, A-013, A-071, mục Slot schema và mục Cấp số văn bản của `00-domain.md`, `contracts/schema.sql` (`employee`, `document_register_format`, `template_version`), ADR-015
 
 ---
 

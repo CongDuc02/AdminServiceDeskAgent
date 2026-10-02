@@ -1,6 +1,6 @@
 # Consistency Audit — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.12 · **Trạng thái:** Đã khép — chờ PO duyệt (mục 8) · **Ngày chạy:** 2026-09-26 · **v0.2:** theo chỉ đạo của PO khi nhận kết quả — tách AUD-02 thành AUD-02 (Chặn) và AUD-23 (Cao); quét lại AUD-11 bằng `grep`, thêm vị trí còn sót và AUD-24 phát hiện trong lượt quét; bảng so sánh hai phương án của AUD-01; ghi ba quyết định của PO và bảng quyết định cho năm câu còn lại ở Open Questions. ID các AUD cũ giữ nguyên · **v0.3:** ghi quyết định của PO vòng ba — AUD-01 chọn (A) kèm hai điều kiện; nhận AUD-24 kèm hạn; xác nhận lượt sửa `08-hitl.md` ở đợt 3; ADR-026 đã viết (`Proposed`); việc (f) của AUD-23 dời từ đợt 1 sang đợt 3 vì phụ thuộc việc (e) · **v0.4:** ghi quyết định của PO vòng bốn — câu 3, câu 5, câu 6, hai index, hạn AUD-24, ADR-026 `Accepted`; câu 7 hoãn tới trước đợt 4; thêm **AUD-25** (phụ thuộc Python của skeleton trái ADR), tìm thấy khi làm migration `0006` · **v0.5:** quyết định của PO vòng năm — AUD-07 gắn `SUBMITTED → REJECTED` vào thao tác tiếp quản (đợt 3); AUD-25 sửa theo ADR thành đợt 2b; xác nhận xoá router `health` khớp câu 6a · **v0.6:** ghi tiến độ đợt sửa 3 — mục 7.1; ba việc PO cần duyệt từ đợt 3 ở mục Chờ PO chốt · **v0.7:** quyết định của PO khi nhận đợt 3 — mục Đã quyết; tiến độ đợt 3b ở mục 7.2 · **v0.8:** thêm **AUD-26** (căn cứ bảo vệ dữ liệu cá nhân đã cũ — PO phát hiện, đã sửa) và **AUD-27** (ngữ nghĩa `x-bo19-permission` không khai — xếp vào đợt 4); quyết định PO sau đợt 3b · **v0.9:** câu 7 đã quyết; tiến độ đợt 4 ở mục 7.4; phụ lục A.10 · **v0.10:** quyết định PO sau đợt 4; phân loại dòng còn lại của AUD-11; đợt 5 (mục 7.5); khép audit — trạng thái cuối từng AUD ở mục 8, kiểm máy toàn bộ ở phụ lục A.11 · **v0.11:** AUD-12 Đóng — hai dòng chỗ quan sát đã vào `_PLAN.md`; `CLAUDE.md` chưa đổi trên đĩa nên AUD-09, AUD-26 giữ Mở; kiểm khép chạy lại ngày 2026-09-27 · **v0.12:** `CLAUDE.md` đã sửa (commit `408d0d8`) — AUD-09 Đóng; AUD-26 còn vế bản gốc; 24 Đóng, 3 Mở
+**Phiên bản:** 0.13 · **Trạng thái:** Đã khép — chờ PO duyệt (mục 8) · **Ngày chạy:** 2026-09-26 · **v0.2:** theo chỉ đạo của PO khi nhận kết quả — tách AUD-02 thành AUD-02 (Chặn) và AUD-23 (Cao); quét lại AUD-11 bằng `grep`, thêm vị trí còn sót và AUD-24 phát hiện trong lượt quét; bảng so sánh hai phương án của AUD-01; ghi ba quyết định của PO và bảng quyết định cho năm câu còn lại ở Open Questions. ID các AUD cũ giữ nguyên · **v0.3:** ghi quyết định của PO vòng ba — AUD-01 chọn (A) kèm hai điều kiện; nhận AUD-24 kèm hạn; xác nhận lượt sửa `08-hitl.md` ở đợt 3; ADR-026 đã viết (`Proposed`); việc (f) của AUD-23 dời từ đợt 1 sang đợt 3 vì phụ thuộc việc (e) · **v0.4:** ghi quyết định của PO vòng bốn — câu 3, câu 5, câu 6, hai index, hạn AUD-24, ADR-026 `Accepted`; câu 7 hoãn tới trước đợt 4; thêm **AUD-25** (phụ thuộc Python của skeleton trái ADR), tìm thấy khi làm migration `0006` · **v0.5:** quyết định của PO vòng năm — AUD-07 gắn `SUBMITTED → REJECTED` vào thao tác tiếp quản (đợt 3); AUD-25 sửa theo ADR thành đợt 2b; xác nhận xoá router `health` khớp câu 6a · **v0.6:** ghi tiến độ đợt sửa 3 — mục 7.1; ba việc PO cần duyệt từ đợt 3 ở mục Chờ PO chốt · **v0.7:** quyết định của PO khi nhận đợt 3 — mục Đã quyết; tiến độ đợt 3b ở mục 7.2 · **v0.8:** thêm **AUD-26** (căn cứ bảo vệ dữ liệu cá nhân đã cũ — PO phát hiện, đã sửa) và **AUD-27** (ngữ nghĩa `x-bo19-permission` không khai — xếp vào đợt 4); quyết định PO sau đợt 3b · **v0.9:** câu 7 đã quyết; tiến độ đợt 4 ở mục 7.4; phụ lục A.10 · **v0.10:** quyết định PO sau đợt 4; phân loại dòng còn lại của AUD-11; đợt 5 (mục 7.5); khép audit — trạng thái cuối từng AUD ở mục 8, kiểm máy toàn bộ ở phụ lục A.11 · **v0.11:** AUD-12 Đóng — hai dòng chỗ quan sát đã vào `_PLAN.md`; `CLAUDE.md` chưa đổi trên đĩa nên AUD-09, AUD-26 giữ Mở; kiểm khép chạy lại ngày 2026-09-27 · **v0.12:** `CLAUDE.md` đã sửa (commit `408d0d8`) — AUD-09 Đóng; AUD-26 còn vế bản gốc; 24 Đóng, 3 Mở · **v0.13:** phụ lục A.11 — bộ kiểm luật 12 quét cả nhãn Mermaid (2026-10-02)
 
 > File này đối chiếu toàn bộ `docs/design/` với nhau và với phần repo mà tài liệu dựa vào (`backend/migrations/`, cây thư mục backend, `tools/contract-checks/`). Kết quả là bảng lỗi `AUD-xx` kèm thứ tự sửa đề xuất. File này **chỉ báo cáo**: không sửa file nào khác, ngoài một mục mới trong `CHANGELOG.md`. Nó **không** quyết thay PO những chỗ cần quyết định, **không** thêm giả định, ADR hay tên mới, và **không** mở lại quyết định đã chốt.
 
@@ -1225,6 +1225,41 @@ for f in glob.glob(D + '*.md') + glob.glob(D + 'decisions/*.md') + glob.glob(D +
     lr += [(f, x) for x in re.findall(r'mục \d+(?:\.\d+)*[a-z]? (?:của|trong|ở) `[^`]+\.(?:md|yaml|sql)`', s)]
     lr += [(f, x) for x in re.findall(r'`[0-9A-Za-z_./-]+\.(?:md|yaml|sql)` mục \d+(?:\.\d+)*(?! lần)', s)]
 print('[luật 12] tài liệu:', len(lr), lr[:10])
+
+
+# Luật 12 trong nhãn sơ đồ Mermaid — thêm 2026-10-02 theo PO. Nhãn Mermaid thường viết không dấu
+# ("muc 6.2 cua 06-structure.md"), nên các regex có dấu ở trên không bắt được. Bỏ dấu rồi mới so.
+import unicodedata
+
+
+def khong_dau(x):
+    x = x.replace('đ', 'd').replace('Đ', 'D')
+    return ''.join(ch for ch in unicodedata.normalize('NFD', x) if unicodedata.category(ch) != 'Mn')
+
+
+MMD_RE = re.compile(r'muc \d+(?:\.\d+)*[a-z]? (?:cua|trong|o) `?([0-9A-Za-z_./-]+\.(?:md|yaml|sql))`?', re.I)
+
+
+def luat12_mermaid(path, text):
+    out = []
+    for blk in re.findall(r'```mermaid\n(.*?)```', text, re.S):
+        for m in MMD_RE.finditer(khong_dau(blk)):
+            if os.path.basename(m.group(1)) != os.path.basename(path):
+                out.append((path, m.group(0)))
+    return out
+
+
+lm = []
+for f in glob.glob(D + '*.md') + glob.glob(D + 'decisions/*.md') + glob.glob(D + 'proposals/*.md') + glob.glob(D + 'contracts/*.md'):
+    if f.endswith(('CHANGELOG.md', '13-audit.md')):
+        continue
+    lm += luat12_mermaid(f, rd(f))
+print('[luật 12] nhãn Mermaid:', len(lm), lm[:10])
+# Tự kiểm: chuỗi vi phạm cũ của 11-ops.md (trước 2026-10-02) phải bị bắt.
+_mau = ('```mermaid\nsequenceDiagram\n'
+        '    CI->>CI: Build image (Dockerfile, muc 6.2 cua 06-structure.md)\n'
+        '    X->>Y: Thay doi (muc 8.1 cua 11-ops.md)\n```\n')
+assert len(luat12_mermaid('docs/design/11-ops.md', _mau)) == 1, 'bộ kiểm nhãn Mermaid không bắt được mẫu vi phạm'
 code = []
 for f in glob.glob('backend/**/*', recursive=True) + glob.glob('frontend/**/*', recursive=True):
     if os.path.isfile(f) and f.endswith(('.py', '.ts', '.tsx', '.js', '.sql', '.toml')):
@@ -1279,3 +1314,5 @@ for f in glob.glob(D + '*.md') + glob.glob(D + 'decisions/*.md') + glob.glob(D +
     treo |= {(x, os.path.basename(f)) for x in re.findall(r'\bADR-\d{3}\b', s) if x not in adr}
 print('[ID treo]', sorted(treo) or 'không')
 ````
+
+**Bổ sung 2026-10-02 (theo PO):** khối "Luật 12 trong nhãn sơ đồ Mermaid" — bỏ dấu tiếng Việt rồi tìm `muc <số> cua|trong|o <file>` trong mọi khối Mermaid của `docs/design/`, `decisions/`, `proposals/`, `contracts/`; bỏ qua khi file đích là chính file chứa sơ đồ. Có phép tự kiểm: chuỗi vi phạm cũ của `11-ops.md` phải bị bắt. Chạy trên `11-ops.md` ở commit trước khi sửa: bắt đủ 3 nhãn. **Chưa phủ, ghi ra:** dạng "mục <số> của tài liệu tham chiếu" hay "của đề xuất" không nêu tên file; và khối luật 12 ở mức văn bản không quét `proposals/` — các đề xuất đã áp từ trước còn trỏ theo số, như `CHANGELOG.md`, coi là bản ghi lịch sử.

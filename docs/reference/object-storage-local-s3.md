@@ -126,7 +126,7 @@ Một script Python dùng đúng `boto3` của dự án, `addressing_style = pat
 
 Cách khởi động từng sản phẩm:
 
-- **SeaweedFS:** `weed mini -dir=<thư mục> -admin.ui=false -s3.config=<file identity>` — một identity `bo19_dev`, `actions: [Admin, Read, Write]`. Lượt đầu chạy không có `-s3.config`; kết quả T1–T9 giống hệt lượt có credential.
+- **SeaweedFS:** `weed mini -dir=<thư mục> -admin.ui=false -s3.config=<file identity>` — một identity `bo19_dev`, `actions: [Admin, Read, Write]`. Lượt đầu chạy không có `-s3.config`; kết quả T1–T9 giống hệt lượt có credential. Cấu hình ADR-031 chọn là `weed server`, ở mục 3.4.
 - **rclone:** `rclone serve s3 --addr 127.0.0.1:8334 --auth-key <ak>,<sk> <thư mục>`.
 - **moto:** `moto_server -p 8335`.
 
@@ -168,9 +168,66 @@ rclone không thử mục này vì đã trượt T2 và T4.
 `weed help mini` in giá trị mặc định: `-ip.bind` là `0.0.0.0`. Chạy lại với `-ip=127.0.0.1 -ip.bind=127.0.0.1 -admin.ui=false -s3.config=…`, rồi liệt kê cổng đang nghe của tiến trình bằng `netstat -ano`:
 
 - `127.0.0.1`: 7333, 8181, 8333, 8888, 9101, 9333, 9340, 18333, 18888, 19333, 19340, 23646.
-- **Vẫn nghe trên mọi giao diện:** `0.0.0.0:33646` và `[::]:33646` — dù `-admin.ui=false`. Chưa xác định thành phần nào mở cổng này.
+- **Vẫn nghe trên mọi giao diện:** `0.0.0.0:33646` và `[::]:33646` — dù `-admin.ui=false`.
 
 T1–T9 chạy lại trên cấu hình này: kết quả giống hệt bảng ở mục 3.1.
+
+### 3.4 Cổng 33646 là gì, và cách tắt
+
+**Là cổng gRPC cho worker của thành phần admin.** Mã nguồn ở tag `4.47`, lấy bằng `curl` từ `https://raw.githubusercontent.com/seaweedfs/seaweedfs/4.47/weed/command/<file>`:
+
+`weed/command/admin.go`, dòng 285–288:
+
+```go
+	// Set default gRPC port if not specified
+	if *a.grpcPort == 0 {
+		*a.grpcPort = *a.port + 10000
+	}
+```
+
+`weed/command/mini.go`, dòng 948–960:
+
+```go
+	// Every other service binds within a moment of this check, but the admin
+	// waits for all of them first. The admin gRPC port sits inside the Linux
+	// ephemeral range, so during that gap one of the cluster's own outgoing
+	// connections can take it and the admin then dies on bind. Hold a listener
+	// from here and hand it to the admin instead of re-binding later. Clear
+	// first: an in-process rerun would otherwise inherit the closed listener
+	// of the previous run and only find out inside Serve.
+	miniAdminOptions.workerGrpcListener = nil
+	if listener, err := net.Listen("tcp", fmt.Sprintf(":%d", *miniAdminOptions.grpcPort)); err != nil {
+		glog.Warningf("Could not reserve Admin gRPC port %d: %v", *miniAdminOptions.grpcPort, err)
+	} else {
+		miniAdminOptions.workerGrpcListener = listener
+	}
+```
+
+`weed/command/mini.go`, dòng 1669–1669:
+
+```go
+		if err := startAdminServer(ctx, adminOptions, *miniEnableAdminUI, icebergPort, lancePort, urlPrefix); err != nil {
+```
+
+Ba điều đọc được từ mã:
+
+- Cổng mặc định là cổng HTTP của admin cộng 10000: 23646 + 10000 = 33646.
+- `weed mini` giữ trước cổng này bằng `net.Listen("tcp", ":<cổng>")` — địa chỉ rỗng, tức **mọi giao diện**, bất kể `-ip.bind`.
+- `-admin.ui` chỉ là một tham số truyền vào `startAdminServer`. Admin server và cổng gRPC của nó vẫn chạy. Trong danh sách cờ bool của `weed mini` không có cờ nào tắt hẳn admin.
+
+**Cách tắt: dùng `weed server` thay cho `weed mini`.** `weed help server` không có cờ nào của admin, và trong lượt chạy dưới đây không có cổng 23646 hay 33646 nào mở. Lệnh đã chạy:
+
+```text
+weed server -dir=<thư mục> -ip=127.0.0.1 -ip.bind=127.0.0.1 -filer -s3 -s3.config=<file identity> -master.telemetry=false -master.volumeSizeLimitMB=64 -volume.max=200
+```
+
+- **Cổng đang nghe của tiến trình** (`netstat -ano`): 8080, 8181, 8333, 8888, 9101, 9333, 18080, 18333, 18888, 19333 — **tất cả ở `127.0.0.1`**, không còn 33646.
+- **T1–T9:** giống hệt bảng ở mục 3.1. **T10:** ghi lại sau delete marker thành công; lệnh ghi trễ của claim cũ bị từ chối `PreconditionFailed`; byte hiện hành `claim-2`.
+- **Credential:** access key lạ bị trả `InvalidAccessKeyId` 403.
+- **Bền dữ liệu:** ghi một object, `taskkill /F`, khởi động lại cùng lệnh và cùng thư mục, đọc lại — byte khớp.
+- **`-master.volumeSizeLimitMB=64 -volume.max=200` là bắt buộc trên máy này.** Lần chạy đầu không có hai cờ này: từ bucket thứ hai trở đi, `PUT` trả `InternalError` 500, log ghi `create 7 volume, created 0: Not enough data nodes found!`. Mỗi bucket là một collection; `weed mini` tự thu nhỏ volume theo dung lượng đĩa (`weed help mini`), `weed server` thì không. Hai giá trị là chọn, không có căn cứ đo.
+
+**Telemetry.** Cả `weed mini` lẫn `weed server` có cờ `-master.telemetry`, mặc định **bật**, gửi "anonymous cluster statistics" tới `-master.telemetry.url`, mặc định `https://telemetry.seaweedfs.com/api/collect` (`weed help server`; `mini.go` dòng 439–440). Các lượt chạy `weed mini` ở mục 3.1–3.3 **không** tắt cờ này. Lượt `weed server` ở trên có `-master.telemetry=false`.
 
 ## 4. Kết luận — với đúng các bản trên
 

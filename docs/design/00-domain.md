@@ -1,6 +1,6 @@
 # Phase 0 — Domain Discovery
 
-**Dự án:** BO-19 — Admin Service Desk Agent · **Phiên bản:** 0.16 · **Trạng thái:** Draft chờ duyệt · **v0.12:** đợt sửa 2 sau Phase 13 — `APPROVED` của `request` nghĩa là đã ký (AUD-01); vế `delegation` của lập hộ cắt khỏi Sprint đầu (AUD-15); kiểu của `beneficiary_employee_id` (AUD-20) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.13:** đợt sửa 3 — cạnh `SUBMITTED → REJECTED` có thao tác đi qua, thêm `request CHANGES_REQUESTED → REJECTED`, `document DRAFT → ARCHIVED`, `APPROVED → ARCHIVED` qua thao tác tiếp quản (AUD-07, AUD-02 (d)); phần Phase 8 của D-006 đã làm (AUD-23 (e)) · **v0.14:** căn cứ bảo vệ dữ liệu cá nhân đổi sang Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP (AUD-26, A-080) — mục ngày 2026-09-26 (AUD-26) · **v0.15:** đợt sửa 4 sau Phase 13 — hạn của A-009 và mẫu `.docx` trỏ cổng 1.7, 1.6 của `12-roadmap.md`; con trỏ cũ (AUD-11) · **v0.16:** đợt sửa 5 sau Phase 13 — hai `TBD` của catalog trỏ A-002, ngưỡng EC-RB-04 trỏ A-012
+**Dự án:** BO-19 — Admin Service Desk Agent · **Phiên bản:** 0.17 · **Trạng thái:** Draft chờ duyệt · **v0.12:** đợt sửa 2 sau Phase 13 — `APPROVED` của `request` nghĩa là đã ký (AUD-01); vế `delegation` của lập hộ cắt khỏi Sprint đầu (AUD-15); kiểu của `beneficiary_employee_id` (AUD-20) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.13:** đợt sửa 3 — cạnh `SUBMITTED → REJECTED` có thao tác đi qua, thêm `request CHANGES_REQUESTED → REJECTED`, `document DRAFT → ARCHIVED`, `APPROVED → ARCHIVED` qua thao tác tiếp quản (AUD-07, AUD-02 (d)); phần Phase 8 của D-006 đã làm (AUD-23 (e)) · **v0.14:** căn cứ bảo vệ dữ liệu cá nhân đổi sang Luật Bảo vệ dữ liệu cá nhân năm 2025 và Nghị định 356/2025/NĐ-CP (AUD-26, A-080) — mục ngày 2026-09-26 (AUD-26) · **v0.15:** đợt sửa 4 sau Phase 13 — hạn của A-009 và mẫu `.docx` trỏ cổng 1.7, 1.6 của `12-roadmap.md`; con trỏ cũ (AUD-11) · **v0.16:** đợt sửa 5 sau Phase 13 — hai `TBD` của catalog trỏ A-002, ngưỡng EC-RB-04 trỏ A-012 · **v0.17:** hạn A-009 và mẫu `.docx` theo mốc giữa Sprint 1 của `12-roadmap.md` (2026-09-27)
 
 > File này chốt **từ vựng nghiệp vụ**: có những loại yêu cầu nào, mỗi loại cần dữ liệu gì, văn bản đi qua những trạng thái nào, ai được làm gì. Từ Phase 1 trở đi mọi tài liệu phải dùng đúng tên ở đây và ở [`GLOSSARY.md`](./GLOSSARY.md). File này **không** chọn công nghệ, **không** thiết kế API, **không** định nghĩa agent hay tool.
 
@@ -334,7 +334,7 @@ Ràng buộc nghiệp vụ; cơ chế thực thi ở mục Sổ số văn bản 
 - **Chống trùng số:** việc cấp số phải là thao tác nguyên tử trên sổ. Hai yêu cầu phát hành đồng thời không bao giờ nhận cùng một số.
 - **Chống lỗ hổng số:** nếu giao dịch phát hành thất bại **sau** khi đã cấp số, số đó được đánh dấu `VOIDED` kèm lý do và **không bao giờ tái sử dụng**. Sổ ưu tiên tính giải trình được hơn tính liên tục của dãy số.
 - **Định dạng số: cấu hình được, không hardcode.** Ký hiệu văn bản chứa phần viết tắt tên cơ quan nên khác nhau theo từng tổ chức — hardcode là sai trong **mọi** trường hợp, không chỉ trường hợp chưa biết giá trị. Vì vậy Phase 4 thiết kế `document_register` với định dạng số cấu hình được **ngay từ đầu**, không chờ ai xác nhận. Đây là yêu cầu gốc, không phải chi phí phát sinh (ADR-001).
-- **Giá trị định dạng cụ thể:** `TBD` (A-009), do Product Owner xác minh — hạn ở cổng 1.7 của `12-roadmap.md` (A-009; hạn "trước Phase 4" cũ đã đổi ở vòng duyệt Phase 6).
+- **Giá trị định dạng cụ thể:** `TBD` (A-009), do Product Owner xác minh — hạn ở mốc M1.2 của `12-roadmap.md` — trước lần chạy AC-1.1 (A-009; hạn "trước Phase 4" cũ đã đổi ở vòng duyệt Phase 6).
 - **Chu kỳ:** giả định đánh số theo năm và reset đầu năm (A-009).
 
 ### 6.1 Thể thức văn bản — ai chịu trách nhiệm
@@ -343,8 +343,8 @@ Thể thức **không** do agent sinh và **không** thuộc Phase 7. Khung th�
 
 | Việc | Owner | Mốc |
 |---|---|---|
-| Xác minh định dạng số và ký hiệu văn bản | Product Owner | Cổng 1.7 của `12-roadmap.md` (A-009) |
-| Chuẩn bị mẫu `.docx` đúng thể thức | Product Owner | Cổng 1.6 của `12-roadmap.md` (A-058) |
+| Xác minh định dạng số và ký hiệu văn bản | Product Owner | Mốc M1.2 của `12-roadmap.md` (A-009) |
+| Chuẩn bị mẫu `.docx` đúng thể thức | Product Owner | Mốc M1.1 của `12-roadmap.md`; bộ font và giấy phép ở cổng 1.6 (A-058) |
 | Nghiệm thu thể thức của văn bản phát hành | **Không có ai** — đây là câu trả lời cuối, không phải khoảng trống chờ lấp | Không có. Hệ quả: hệ thống chạy ở **chế độ phi sản xuất**, mục 6.2 (A-018, D-009) |
 
 **Quy tắc trích dẫn pháp lý:** cấm viết số điều, khoản, điểm hay phụ lục của Nghị định 30/2020/NĐ-CP **từ trí nhớ**. Chỉ trích dẫn khi văn bản gốc đã có trong `docs/reference/`. Chưa có thì ghi `[CẦN XÁC MINH]` và chỉ mô tả ở mức nguyên tắc. Áp dụng cho mọi phase.
@@ -533,7 +533,7 @@ Mỗi loại yêu cầu có tối thiểu 2 ca ở chiều thứ hai. Toàn bộ
 | D-005 | Mô hình hoá theo permission chứ không role cứng. `document.issue` và `document.apply_seal` tách rời | Anh chốt, 2026-09-11 |
 | D-006 | Căn cứ chặn của tách biệt trách nhiệm là `beneficiary_employee_id == approver_employee_id`, **không** phải người tạo yêu cầu — nhập hộ rồi duyệt là hợp lệ. Không giả định tổ chức có hai người duyệt: có đường thoát tự duyệt nhưng bắt buộc lý do, cờ `self_approved`, audit mức `WARNING`, hiện trên dashboard. Cấm mọi phương án tự động bỏ qua kiểm tra. Chi tiết ở Phase 8 | Anh chốt, 2026-09-11 |
 | D-007 | Khung thể thức nằm trong template `.docx` do người soạn; agent chỉ điền biến; prompt Phase 7 chỉ sinh nội dung tự do. Thể thức không thuộc phạm vi Phase 7 → **ADR-001** | Anh chốt, 2026-09-11 |
-| D-008 | Phase 4 thiết kế `document_register` với định dạng số **cấu hình được ngay từ đầu**. Owner xác minh: định dạng số trước Phase 4, mẫu `.docx` trước Phase 7. *Cập nhật (đợt sửa 4 sau Phase 13), không đổi quyết định: hai hạn nay ở cổng 1.7 và 1.6 của `12-roadmap.md`.* Nghiệm thu thể thức chưa có người có thẩm quyền — ghi nhận ở NFR-03 của PRD là không có người đảm nhận, cấm bịa owner. Cấm trích dẫn điều khoản ND 30/2020 từ trí nhớ. A-009 giữ mức rủi ro cao, mitigation là HITL, residual risk ghi rõ ở mục 6.1 | Anh chốt, 2026-09-11 |
+| D-008 | Phase 4 thiết kế `document_register` với định dạng số **cấu hình được ngay từ đầu**. Owner xác minh: định dạng số trước Phase 4, mẫu `.docx` trước Phase 7. *Cập nhật (đợt sửa 4 sau Phase 13), không đổi quyết định: hai hạn nay ở cổng 1.7 và 1.6 của `12-roadmap.md` — *cập nhật 2026-09-27:* mốc M1.2 và M1.1, font và giấy phép ở cổng 1.6.* Nghiệm thu thể thức chưa có người có thẩm quyền — ghi nhận ở NFR-03 của PRD là không có người đảm nhận, cấm bịa owner. Cấm trích dẫn điều khoản ND 30/2020 từ trí nhớ. A-009 giữ mức rủi ro cao, mitigation là HITL, residual risk ghi rõ ở mục 6.1 | Anh chốt, 2026-09-11 |
 | D-009 | Không có ai nghiệm thu thể thức — câu trả lời cuối, A-018 đóng ở trạng thái `Mở` vĩnh viễn cho tới khi có người. Hệ quả: hệ thống chỉ chạy ở **chế độ phi sản xuất** (watermark không gỡ được · dải số `TRIAL` riêng · không đóng dấu thật). Tháo chế độ là quyết định có người ký, không phải cờ cấu hình. Vào NFR ở Phase 1 | Anh chốt, 2026-09-11 |
 | D-010 | `document` được render **tại thời điểm `request` chuyển sang `SUBMITTED`** — đủ hai biên: không bao giờ **trước** `SUBMITTED`, và không hoãn tới sau đó. *Không trước:* yêu cầu chưa đủ điều kiện xử lý theo định nghĩa ở PRD F1, render sẽ tạo ra đúng thứ ADR-001 muốn tránh — một artifact trông như văn bản thật nhưng không phải; và mỗi lần sửa slot phải render lại, tốn token cho thứ chưa chắc được gửi. *Không hoãn tới `IN_REVIEW`:* `IN_REVIEW` không phải trạng thái do hệ thống điều khiển — nó phụ thuộc việc có người mở hàng đợi hay không, nên yêu cầu gửi chiều thứ Sáu sẽ không có văn bản tới sáng thứ Hai mà không vì bất kỳ lý do kỹ thuật nào. Văn bản tồn tại trước khi có người nhận xử lý là **điều mong muốn**: cán bộ mở hàng đợi là thấy bản nháp sẵn. Hệ quả: ở `EXPIRED` **không tồn tại file nháp nào**. Tính năng cho nhân viên xem trước, nếu cần, là một feature riêng có tên và ở mức `[Could]`, **không** phải hệ quả ngầm của việc render sớm | Anh chốt, 2026-09-11 |
 
@@ -564,5 +564,5 @@ Những thứ còn chưa xác minh đều là **giả định có cách xác min
 | Mã | Chưa có gì | Ai gỡ |
 |---|---|---|
 | A-002 | Số liệu vận hành thật — không có baseline cho metric ở mục Goals & metrics của PRD | Product Owner, phỏng vấn phòng hành chính |
-| A-009 | Giá trị định dạng số và ký hiệu văn bản | Product Owner, cổng 1.7 của `12-roadmap.md` |
+| A-009 | Giá trị định dạng số và ký hiệu văn bản | Product Owner, mốc M1.2 của `12-roadmap.md` |
 | A-018 | Người nghiệm thu thể thức — đã trả lời là không có; cách thay thế là xin văn bản mẫu thật để đối chiếu ngược | Product Owner |

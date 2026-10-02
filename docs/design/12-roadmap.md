@@ -1,6 +1,6 @@
 # Roadmap — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.14 · **Trạng thái:** Đã duyệt (PO, 2026-09-25) · **v0.2:** vòng duyệt Phase 12 — đối chiếu đủ `07-prompts.md`, `09-security.md` và mọi endpoint của `openapi.yaml`; tiêu chí loại yêu cầu thứ ba; owner nợ Phase 8 về Product Owner — mục ngày 2026-09-25 (vòng duyệt Phase 12) của `CHANGELOG.md` · **v0.3:** thứ tự cắt của Sprint 1 và phần an ninh không được cắt (R1-2), cổng 2.8, Open Questions sau khi PO trả lời — mục ngày 2026-09-25 (duyệt Phase 12) của `CHANGELOG.md` · **v0.4:** đợt sửa A-068, A-073, A-075 — cổng 2.3 và 3.6 đạt, AC của F6 thêm biện pháp bù của A-076, tiêu chí T6 bỏ — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.5:** ma trận truy vết dùng ID `AC-Fx.y` (AUD-19); lập hộ Sprint đầu chỉ qua `request.create_on_behalf` (AUD-15) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.6:** tiếp quản sau `halt_for_human` vào Sprint 2 — deliverable, AC-2.11, hai endpoint; A-044 đề xuất đóng, A-077 mới (AUD-02) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.7:** A-044 `Đã chốt`; A-078 vào cổng 2.2; ca kiểm cơ chế K3, K4 — mục ngày 2026-09-26 (quyết định PO sau đợt 3) · **v0.8:** A-079 vào cổng 4.4 — mục ngày 2026-09-26 (đợt sửa 3b) · **v0.9:** đợt sửa 4 sau Phase 13 — cổng 1.12, 1.13 (A-081, A-082); owner cổng 1.10, 1.11 theo câu 7; nội dung cũ (AUD-11) · **v0.10:** cổng 2.9 (A-010); A-030 ở AC-2.1 — mục ngày 2026-09-26 (đợt sửa 5) · **v0.11:** cổng 1.12 trỏ ADR-030, cổng 1.13 trỏ tài liệu tham chiếu `langsmith` (2026-09-27) · **v0.12:** cổng 1.12: ADR-030 `Accepted` (2026-09-27) · **v0.13:** cổng 1.9 đạt (A-041); cổng 2.10 mới — A-040, A-047 (2026-09-27) · **v0.14:** cổng 1.3, 1.4, 1.5, 1.10, 1.11 trỏ ADR-031, ADR-032 và đề xuất chờ PO duyệt (2026-09-27)
+**Phiên bản:** 0.15 · **Trạng thái:** Đã duyệt (PO, 2026-09-25) · **v0.2:** vòng duyệt Phase 12 — đối chiếu đủ `07-prompts.md`, `09-security.md` và mọi endpoint của `openapi.yaml`; tiêu chí loại yêu cầu thứ ba; owner nợ Phase 8 về Product Owner — mục ngày 2026-09-25 (vòng duyệt Phase 12) của `CHANGELOG.md` · **v0.3:** thứ tự cắt của Sprint 1 và phần an ninh không được cắt (R1-2), cổng 2.8, Open Questions sau khi PO trả lời — mục ngày 2026-09-25 (duyệt Phase 12) của `CHANGELOG.md` · **v0.4:** đợt sửa A-068, A-073, A-075 — cổng 2.3 và 3.6 đạt, AC của F6 thêm biện pháp bù của A-076, tiêu chí T6 bỏ — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.5:** ma trận truy vết dùng ID `AC-Fx.y` (AUD-19); lập hộ Sprint đầu chỉ qua `request.create_on_behalf` (AUD-15) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.6:** tiếp quản sau `halt_for_human` vào Sprint 2 — deliverable, AC-2.11, hai endpoint; A-044 đề xuất đóng, A-077 mới (AUD-02) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.7:** A-044 `Đã chốt`; A-078 vào cổng 2.2; ca kiểm cơ chế K3, K4 — mục ngày 2026-09-26 (quyết định PO sau đợt 3) · **v0.8:** A-079 vào cổng 4.4 — mục ngày 2026-09-26 (đợt sửa 3b) · **v0.9:** đợt sửa 4 sau Phase 13 — cổng 1.12, 1.13 (A-081, A-082); owner cổng 1.10, 1.11 theo câu 7; nội dung cũ (AUD-11) · **v0.10:** cổng 2.9 (A-010); A-030 ở AC-2.1 — mục ngày 2026-09-26 (đợt sửa 5) · **v0.11:** cổng 1.12 trỏ ADR-030, cổng 1.13 trỏ tài liệu tham chiếu `langsmith` (2026-09-27) · **v0.12:** cổng 1.12: ADR-030 `Accepted` (2026-09-27) · **v0.13:** cổng 1.9 đạt (A-041); cổng 2.10 mới — A-040, A-047 (2026-09-27) · **v0.14:** cổng 1.3, 1.4, 1.5, 1.10, 1.11 trỏ ADR-031, ADR-032 và đề xuất chờ PO duyệt (2026-09-27) · **v0.15:** cổng 1.3, 1.4, 1.10 Đạt; 1.5 chỉ mốc 1 (ADR-032); 1.6 chỉ còn font và giấy phép; 1.7, 1.8 thành mốc giữa Sprint 1 (mục 3.1); cổng 1.14 cho A-071; cổng 3.8 cho cột CSV (2026-09-27)
 
 > File này xếp phạm vi Must của PRD thành các sprint có thứ tự, mỗi sprint có Objective, Deliverable, Dependency, Acceptance Criteria và rủi ro chính, kèm các cổng phải qua trước từng sprint. File này **không** khai lại mức MoSCoW (nguồn duy nhất: mục Scope & priority của `01-prd.md`), **không** đặt ngày hay ước lượng khối lượng (A-071), **không** thiết kế lại bất cứ thứ gì đã chốt, và **không** giải hộ các giả định của phase khác — chỉ đặt chúng vào đúng cổng.
 
@@ -70,19 +70,31 @@ flowchart LR
 |---|---|---|---|---|
 | 1.1 | Anh tuyên bố chuyển sang BUILD MODE | Mục Chế độ làm việc hiện tại của `CLAUDE.md` | Anh | Khởi động |
 | 1.2 | Phase 13 (Consistency Audit) xong và các lỗi nó tìm thấy đã có quyết định sửa hay không. Code bám vào tên; sửa tên sau khi có code đắt hơn nhiều | `_PLAN.md` | Anh | Khởi động |
-| 1.3 | A-055 có quyết định: `audit_event` ghi cho thao tác nào | Hạn gốc của A-055: "trước khi viết code của `tool_layer`". Đề xuất chờ duyệt: `proposals/a055-audit-event-scope.md` | Product Owner | Khởi động |
-| 1.4 | Có quyết định và ADR cho object storage chạy local | A-072; ADR-031 (`Proposed`) | Người triển khai | Khởi động |
-| 1.5 | Chọn nhà cung cấp và model cho hai tier | A-026 — hạn gốc "trước khi viết adapter provider của `ai_gateway`"; ADR-032 nháp (`Proposed`) đề xuất cổng này chỉ đòi mốc 1 — nhà cung cấp cho dữ liệu giả | Product Owner | AC — AC-1.1 cần lời gọi LLM thật |
-| 1.6 | Mẫu `tpl_work_confirmation` `.docx` đúng thể thức, bộ font nó dùng, và quyền phân phối font trong image | A-058, mục Thể thức văn bản của `00-domain.md` | Product Owner | AC — không có mẫu thì không render; thiếu font thì `worker` không khởi động (bước kiểm khởi động #7) |
-| 1.7 | Giá trị định dạng số và ký hiệu cho sổ, kể cả dải `TRIAL` | A-009 — hạn gốc "trước lần cấp số đầu tiên, kể cả số dải `TRIAL`" | Product Owner | AC — cấp số ở AC-1.2 |
-| 1.8 | Giá trị `contract_type` và các cột CSV hồ sơ nhân viên | A-013 | Product Owner | AC — `contract_type` là slot bắt buộc của `WORK_CONFIRMATION` |
+| ~~1.3~~ | A-055 có quyết định: `audit_event` ghi cho thao tác nào — **Đạt 2026-09-27: hướng 1**, danh sách miễn ở mục Tool Registry của `03-agents.md` | A-055 `Đã chốt`; `proposals/a055-audit-event-scope.md` | — | — |
+| ~~1.4~~ | Có quyết định và ADR cho object storage chạy local — **Đạt 2026-09-27: ADR-031 `Accepted`**, SeaweedFS `weed server` | A-072 `Đã chốt`; ADR-031 | — | — |
+| 1.5 | Chọn nhà cung cấp và model cho hai tier — **chỉ mốc 1**: nhà cung cấp cho `dev` và local, dữ liệu giả. Mốc 2 — trước lần đầu dữ liệu nhân viên thật — không thuộc cổng này | A-026; ADR-032 — vế hai mốc PO duyệt 2026-09-27; danh sách ngắn do PO gửi | Product Owner | AC — AC-1.1 cần lời gọi LLM thật |
+| 1.6 | **Bộ font** mà mẫu `.docx` của tổ chức dùng, và **quyền phân phối từng font trong image** — văn bản giấy phép gốc trong `docs/reference/`. Mẫu `.docx` tách sang mốc M1.1 | A-058 (c); mục Thể thức văn bản của `00-domain.md` | Product Owner | Khởi động của S5 — S5 là lần đầu font vào image, trong Sprint 1. Track build chạy native, không bị chặn |
+| ~~1.7~~ | Giá trị định dạng số và ký hiệu cho sổ — **chuyển thành mốc M1.2 giữa Sprint 1** (PO, 2026-09-27) | A-009 | — | — |
+| ~~1.8~~ | Giá trị `contract_type` và các cột CSV hồ sơ nhân viên — **tách:** giá trị `contract_type` thành mốc M1.1; cột CSV sang cổng 3.8 (PO, 2026-09-27) | A-013 | — | — |
 | ~~1.9~~ | Múi giờ của tổ chức — **Đạt 2026-09-27: `Asia/Ho_Chi_Minh`** | A-041 `Đã chốt` | — | — |
-| 1.10 | Giá trị làm việc cho tham số vận hành chưa định cỡ — số lần retry, hạn chót lượt, ba lớp timeout, ngưỡng và độ dài cửa sổ rate limit đăng nhập. Được mang nhãn "chưa hiệu chỉnh", không được vắng | A-031; bước kiểm khởi động #5, #11; mục Rate limit của `09-security.md`. Đề xuất chờ duyệt: `proposals/sprint1-working-values-a031-a048.md` | Product Owner — người triển khai đề xuất giá trị làm việc (câu 7) | AC |
-| 1.11 | Giá trị làm việc cho tham số `argon2id` và thời hạn token phiên, nhãn "chưa hiệu chỉnh" | A-048, ADR-021. Đề xuất chờ duyệt: `proposals/sprint1-working-values-a031-a048.md` | Product Owner — người triển khai đề xuất giá trị làm việc (câu 7) | AC — đăng nhập ở AC-1.1 |
+| ~~1.10~~ | Giá trị làm việc cho tham số vận hành chưa định cỡ — **Đạt 2026-09-27**: WV-01…WV-15, nhãn "chưa hiệu chỉnh" | A-031; `proposals/sprint1-working-values-a031-a048.md` | — | — |
+| 1.11 | Giá trị làm việc cho tham số `argon2id` và thời hạn token phiên, nhãn "chưa hiệu chỉnh" — thời hạn token (WV-17) **đã duyệt**; `argon2id` (WV-16) chờ duyệt bản sửa sau khi đối chiếu RAM | A-048, ADR-021; `proposals/sprint1-working-values-a031-a048.md` | Product Owner | AC — đăng nhập ở AC-1.1 |
 | 1.12 | Lockfile ghim cả phụ thuộc bắc cầu, gồm `langgraph-checkpoint` đúng bản đã kiểm | A-081; ADR-030 (`Accepted`) | Người triển khai | Khởi động — image và CI cài từ lockfile |
 | 1.13 | Hành vi mặc định của `langsmith` đã xác minh — xong cho bản 0.14.1, đối chiếu lại với bản do lockfile chốt; bước kiểm khởi động từ chối chạy khi biến bật tracing được đặt | A-082; `docs/reference/langsmith-tracing-env.md` | Người triển khai | Khởi động — trước lần đầu hệ thống gọi provider thật |
+| 1.14 | Độ dài sprint, năng lực đội triển khai, ngày bắt đầu Sprint 1 | A-071 | Product Owner | Khởi động — grooming Sprint 1 |
 
 Trần token và trần số vòng **không** nằm ở đây — đã có giá trị khởi tạo ở mục Định cỡ A-022 của `11-ops.md`.
+
+### 3.1 Mốc giữa Sprint 1 — dữ liệu giả tới mốc
+
+Thêm 2026-09-27 (PO). Các mục dưới đây **không chặn khởi động Sprint 1**. Track build dùng dữ liệu giả **có nhãn giả** cho tới mốc — cùng luật "dữ liệu giả đánh dấu là giả" của AC-1.1. R1-4 giữ nguyên: AC-1.1 không đạt được bằng dữ liệu giả, nên mọi mốc dưới đây phải xong **trước lần chạy AC-1.1**. Checklist dữ liệu cần lấy: `proposals/sprint1-org-data-checklist.md`.
+
+| # | Điều kiện | Nguồn | Muộn nhất | Dữ liệu giả tới lúc đó | Đổi sang dữ liệu thật bằng |
+|---|---|---|---|---|---|
+| M1.1 | Mẫu `tpl_work_confirmation` `.docx` đúng thể thức, kèm các biến thể câu chữ theo `contract_type` và cho người đã nghỉ việc; **và** giá trị `contract_type` của tổ chức cùng ánh xạ sang ba giá trị đang có | A-058 (a), A-013 (a); mục Thể thức văn bản của `00-domain.md` | Trước S5 và trước lần chạy AC-1.1, cái nào tới trước | Mẫu giữ chỗ do người triển khai dựng, đủ biến, qua đúng phép kiểm lúc tải lên; **chỉ dùng font thuộc bộ đã qua cổng 1.6**. `employee` giả dùng ba giá trị đang có trong `ck_employee_contract_type` | Mẫu: tải một phiên bản template mới rồi kích hoạt — không đổi migration schema. `contract_type`: nếu giá trị thật khác ba giá trị hiện có, cần migration đổi `CHECK` |
+| M1.2 | Giá trị định dạng số và ký hiệu cho sổ, kể cả dải `TRIAL` | A-009 | Trước lần chạy AC-1.1 | Một dòng `document_register_format` dải `TRIAL` có nhãn giả | Thêm một dòng `document_register_format` với `effective_from` mới — bảng chỉ thêm, không sửa dòng cũ |
+
+Font của mẫu thật ở M1.1 phải nằm trong bộ font đã qua cổng 1.6. Mẫu thật dùng một font ngoài bộ đó thì quay về cổng 1.6 cho font đó — chốt tải lên (`TEMPLATE_FONTS_INVALID`, ADR-015) bắt được ca này.
 
 ---
 
@@ -117,7 +129,7 @@ Bảng bước, giả định cần đóng và luật riêng ở `.claude/comman
 | S0 — cổng | **Việc đầu tiên của Sprint 1**, trước mọi mã của `bo19.persistence` và `migrate_main`. Trượt thì áp luật "S0 là cổng" của `spike.md` cho **cả** track build ở tầng dữ liệu — rủi ro R1-1 |
 | S1, S2 | Sau S0. S2 dùng lại `bo19.startup` bước #1, #2 của track build — một mã, không viết hai lần. S1 chạy `check_grants.py --app-dsn` trên Render |
 | S3, S4 | Sau S2. Kết quả S4 là căn cứ cho hạn chót lượt (A-031) mà track build đang dùng giá trị tạm |
-| S5 | Sau khi có mẫu và font (cổng 1.6) |
+| S5 | Sau cổng 1.6 — font và giấy phép — và mốc M1.1 — mẫu thật |
 | S6 | Cần khoảng 50 đoạn văn bản hành chính tiếng Việt thật — nguồn do PO cấp |
 | S7 | Cần danh sách ngắn nhà cung cấp do PO duyệt; spike không tự chọn nhà cung cấp |
 
@@ -169,7 +181,7 @@ Bảng bước, giả định cần đóng và luật riêng ở `.claude/comman
   | `stored_file_fetch` có kiểm quyền và checksum, không URL công khai (AC-1.3) | Đường tải file là đường rò template và bản render (mục Chống lộ template mật của `09-security.md`) |
   | Ba kiểm an ninh của `validate_free_content` (AC-1.11) | Nằm trên đường tới bản render; trượt không có chúng là nội dung LLM chèn cú pháp vào `.docx` |
 - **R1-3 — Local khác image Linux.** Mục Xác minh contract của `06-structure.md` ghi máy triển khai chạy PostgreSQL bản Windows và Docker Desktop không khởi động được. Font, `soffice`, object storage local và IP client đều có thể khác Render. AC-1.1 đạt ở local **không** chứng minh lát cắt đạt trên Render — đó là AC-2.1.
-- **R1-4 — Đầu vào của PO về muộn** (cổng 1.5–1.9). Chúng chặn AC, không chặn khởi động; nhưng AC-1.1 không đạt được bằng dữ liệu giả thay cho mẫu `.docx` hay định dạng số thật.
+- **R1-4 — Đầu vào của PO về muộn** (cổng 1.5, 1.6, 1.11; mốc M1.1, M1.2). Chúng chặn AC, không chặn khởi động — trừ cổng 1.6 chặn S5; nhưng AC-1.1 không đạt được bằng dữ liệu giả thay cho mẫu `.docx` hay định dạng số thật.
 
 ---
 
@@ -242,6 +254,7 @@ Bảng bước, giả định cần đóng và luật riêng ở `.claude/comman
 | 3.5 | PO chọn loại yêu cầu thứ ba theo tiêu chí ở mục 8, và có mẫu của nó | A-074 | AC-3.2 |
 | 3.6 | ~~Output contract của P1 `classify_intent` nhận được mã `request_type` mới mà không sửa code~~ **Đã đạt** — ADR-025, áp 2026-09-25 | A-075 | — |
 | 3.7 | Chọn embedding model | A-028; A-073 | AC-3.7 — nhánh có kho của nhóm J |
+| 3.8 | Các cột CSV hồ sơ nhân viên: dòng tiêu đề, encoding, định dạng ngày, ánh xạ sang cột của `employee` — dời từ cổng 1.8 (PO, 2026-09-27) | A-013 (b) | AC-3.4 — Sprint 1 nạp `employee` bằng data migration, không qua CSV |
 
 ### 6.2 Deliverable
 
@@ -455,5 +468,5 @@ Mọi mục có owner và hạn ở `ASSUMPTIONS.md`. Mục này gom những gì
 2. **`rate_limit_window` — PO chốt quyền theo cột của `04-data.md` là chuẩn.** Đề xuất migration `0005` cùng phần sửa `check_grants.py` ở `docs/design/proposals/migration-0005-rate-limit-window-column-grant.md` — **đã áp** 2026-09-25.
 3. **Ký tự lạ trong `07-prompts.md` — đã sửa** thành "sinh lại" theo phép của PO (2026-09-25).
 4. **Owner và hạn của nợ Phase 8 trong `ASSUMPTIONS.md` — PO chấp nhận** (2026-09-25): owner là Product Owner, hạn là cổng sprint ở mục 10.
-5. **A-071 — vẫn mở, trước grooming Sprint 1; chưa có dòng trong bảng cổng trước Sprint 1** (đề xuất thêm ở `proposals/sprint1-org-data-checklist.md`). **A-072 — `Thu hẹp`**, ADR-031 `Proposed` chờ duyệt (2026-09-27).
+5. **A-071 — vẫn mở, cổng 1.14** (thêm 2026-09-27). **A-072 — `Đã chốt`**, ADR-031 `Accepted` (2026-09-27).
 6. **Tên "Sprint đầu" dễ đọc lẫn với Sprint 1.** Đã có định nghĩa ở `GLOSSARY.md`; đổi hẳn tên, nếu cần, là việc của Phase 13.

@@ -1,6 +1,6 @@
 # Security & Guardrails — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.7 · **Trạng thái:** Draft chờ duyệt · **v0.3:** đợt sửa 3b sau Phase 13 — thêm mục 13, quyền của chủ thể dữ liệu ở mức nghĩa vụ (AUD-24 của `13-audit.md`); không sửa mục nào khác · **v0.4:** căn cứ bảo vệ dữ liệu cá nhân đổi sang Luật 2025 và Nghị định 356/2025/NĐ-CP (AUD-26); thời hạn thực hiện quyền của chủ thể · **v0.5:** đợt sửa 4 — dòng A-082 ở mục Mô hình mối đe doạ; `audit.read_all` ở mục Row-level theo phòng ban (AUD-24); nội dung cũ (AUD-11, AUD-22) · **v0.6:** đợt sửa 5 sau Phase 13 — tham chiếu theo tên mục (AUD-17); tính chất `argon2id` `[CẦN XÁC MINH]` (AUD-21) · **v0.7:** dòng A-082 ở mục Mô hình mối đe doạ trỏ tài liệu tham chiếu `langsmith` (2026-09-27)
+**Phiên bản:** 0.8 · **Trạng thái:** Draft chờ duyệt · **v0.3:** đợt sửa 3b sau Phase 13 — thêm mục 13, quyền của chủ thể dữ liệu ở mức nghĩa vụ (AUD-24 của `13-audit.md`); không sửa mục nào khác · **v0.4:** căn cứ bảo vệ dữ liệu cá nhân đổi sang Luật 2025 và Nghị định 356/2025/NĐ-CP (AUD-26); thời hạn thực hiện quyền của chủ thể · **v0.5:** đợt sửa 4 — dòng A-082 ở mục Mô hình mối đe doạ; `audit.read_all` ở mục Row-level theo phòng ban (AUD-24); nội dung cũ (AUD-11, AUD-22) · **v0.6:** đợt sửa 5 sau Phase 13 — tham chiếu theo tên mục (AUD-17); tính chất `argon2id` `[CẦN XÁC MINH]` (AUD-21) · **v0.7:** dòng A-082 ở mục Mô hình mối đe doạ trỏ tài liệu tham chiếu `langsmith` (2026-09-27) · **v0.8:** A-055 `Đã chốt` — hướng 1, danh sách miễn `audit_event` (2026-09-27)
 
 > File này chốt AuthN/AuthZ, rate limit, PII masking và hiển thị theo `slot_sensitivity`, phòng thủ prompt injection, output validation trước khi render, bảo vệ template gốc, và secret management trên Render. File này **không** thiết kế màn hình (Phase 8 đã đóng phần của nó), **không** định cỡ tham số vận hành bằng số liệu tải thật (Phase 11), và **không** lặp lại lập luận đã có ở ADR-001, ADR-007, ADR-008, ADR-013.
 
@@ -146,9 +146,9 @@ Vế permission của A-043 xong; vế phòng ban (`department_scope`) đã có 
 
 `queue_worker` cron xoá dòng có `window_start` cũ hơn N cửa sổ (giá trị TBD, A-031) — cùng khuôn với `expire_request`, `checkpoint_purge`.
 
-### 6.4 Không sinh `audit_event` — xếp nhóm, không tự giải A-055
+### 6.4 Không sinh `audit_event` — thuộc danh sách miễn của A-055
 
-Tăng bộ đếm và dọn cửa sổ **không** sinh `audit_event`. Đây là **sổ sách kỹ thuật**, cùng họ với `llm_usage` và với việc "giành, gia hạn lease, kết thúc job" của `queue_worker` mà A-055 đã xếp là ngoại lệ ở vòng duyệt Phase 6 ("trường hợp thứ ba"): sinh `audit_event` cho mỗi lần tăng bộ đếm làm loãng nhật ký nghiệp vụ đúng như hệ quả thứ nhất mà A-055 đã nêu, và một lần thử đăng nhập sai — kể cả của kẻ tấn công — không phải "hành động có ảnh hưởng nghiệp vụ" theo định nghĩa `audit_event` ở `GLOSSARY.md`. Không tự giải A-055 ở đây; thêm **A-055 trường hợp thứ tư** trong `ASSUMPTIONS.md`, cùng cách trường hợp thứ ba đã được ghi.
+Tăng bộ đếm và dọn cửa sổ **không** sinh `audit_event`. Đây là **sổ sách kỹ thuật**, cùng họ với `llm_usage` và với việc "giành, gia hạn lease, kết thúc job" của `queue_worker` mà A-055 đã xếp là ngoại lệ ở vòng duyệt Phase 6 ("trường hợp thứ ba"): sinh `audit_event` cho mỗi lần tăng bộ đếm làm loãng nhật ký nghiệp vụ đúng như hệ quả thứ nhất mà A-055 đã nêu, và một lần thử đăng nhập sai — kể cả của kẻ tấn công — không phải "hành động có ảnh hưởng nghiệp vụ" theo định nghĩa `audit_event` ở `GLOSSARY.md`. Phase 9 không tự giải A-055 mà thêm **A-055 trường hợp thứ tư** trong `ASSUMPTIONS.md`. **Cập nhật 2026-09-27:** A-055 `Đã chốt` theo hướng 1 — tăng bộ đếm và `rate_limit_window_sweep` nằm trong danh sách miễn ở mục Tool Registry của `03-agents.md`; không còn là lệch khỏi luật.
 
 ### 6.5 Ngưỡng — chưa định cỡ
 
