@@ -1,6 +1,6 @@
 # Roadmap — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.19 · **Trạng thái:** Đã duyệt (PO, 2026-09-25) · **v0.2:** vòng duyệt Phase 12 — đối chiếu đủ `07-prompts.md`, `09-security.md` và mọi endpoint của `openapi.yaml`; tiêu chí loại yêu cầu thứ ba; owner nợ Phase 8 về Product Owner — mục ngày 2026-09-25 (vòng duyệt Phase 12) của `CHANGELOG.md` · **v0.3:** thứ tự cắt của Sprint 1 và phần an ninh không được cắt (R1-2), cổng 2.8, Open Questions sau khi PO trả lời — mục ngày 2026-09-25 (duyệt Phase 12) của `CHANGELOG.md` · **v0.4:** đợt sửa A-068, A-073, A-075 — cổng 2.3 và 3.6 đạt, AC của F6 thêm biện pháp bù của A-076, tiêu chí T6 bỏ — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.5:** ma trận truy vết dùng ID `AC-Fx.y` (AUD-19); lập hộ Sprint đầu chỉ qua `request.create_on_behalf` (AUD-15) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.6:** tiếp quản sau `halt_for_human` vào Sprint 2 — deliverable, AC-2.11, hai endpoint; A-044 đề xuất đóng, A-077 mới (AUD-02) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.7:** A-044 `Đã chốt`; A-078 vào cổng 2.2; ca kiểm cơ chế K3, K4 — mục ngày 2026-09-26 (quyết định PO sau đợt 3) · **v0.8:** A-079 vào cổng 4.4 — mục ngày 2026-09-26 (đợt sửa 3b) · **v0.9:** đợt sửa 4 sau Phase 13 — cổng 1.12, 1.13 (A-081, A-082); owner cổng 1.10, 1.11 theo câu 7; nội dung cũ (AUD-11) · **v0.10:** cổng 2.9 (A-010); A-030 ở AC-2.1 — mục ngày 2026-09-26 (đợt sửa 5) · **v0.11:** cổng 1.12 trỏ ADR-030, cổng 1.13 trỏ tài liệu tham chiếu `langsmith` (2026-09-27) · **v0.12:** cổng 1.12: ADR-030 `Accepted` (2026-09-27) · **v0.13:** cổng 1.9 đạt (A-041); cổng 2.10 mới — A-040, A-047 (2026-09-27) · **v0.14:** cổng 1.3, 1.4, 1.5, 1.10, 1.11 trỏ ADR-031, ADR-032 và đề xuất chờ PO duyệt (2026-09-27) · **v0.15:** cổng 1.3, 1.4, 1.10 Đạt; 1.5 chỉ mốc 1 (ADR-032); 1.6 chỉ còn font và giấy phép; 1.7, 1.8 thành mốc giữa Sprint 1 (mục 3.1); cổng 1.14 cho A-071; cổng 3.8 cho cột CSV (2026-09-27) · **v0.16:** cổng 1.11 Đạt (2026-10-02) · **v0.17:** cổng 1.15 — A-085, gói free (2026-10-02) · **v0.18:** R1-3 thu hẹp — Docker Desktop chạy được (2026-10-02) · **v0.19:** cổng 1.15 — vế `worker` và Cron Đạt (ADR-033); S5 đo trên Web Service free (2026-10-02)
+**Phiên bản:** 0.20 · **Trạng thái:** Đã duyệt (PO, 2026-09-25) · **v0.2:** vòng duyệt Phase 12 — đối chiếu đủ `07-prompts.md`, `09-security.md` và mọi endpoint của `openapi.yaml`; tiêu chí loại yêu cầu thứ ba; owner nợ Phase 8 về Product Owner — mục ngày 2026-09-25 (vòng duyệt Phase 12) của `CHANGELOG.md` · **v0.3:** thứ tự cắt của Sprint 1 và phần an ninh không được cắt (R1-2), cổng 2.8, Open Questions sau khi PO trả lời — mục ngày 2026-09-25 (duyệt Phase 12) của `CHANGELOG.md` · **v0.4:** đợt sửa A-068, A-073, A-075 — cổng 2.3 và 3.6 đạt, AC của F6 thêm biện pháp bù của A-076, tiêu chí T6 bỏ — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.5:** ma trận truy vết dùng ID `AC-Fx.y` (AUD-19); lập hộ Sprint đầu chỉ qua `request.create_on_behalf` (AUD-15) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.6:** tiếp quản sau `halt_for_human` vào Sprint 2 — deliverable, AC-2.11, hai endpoint; A-044 đề xuất đóng, A-077 mới (AUD-02) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.7:** A-044 `Đã chốt`; A-078 vào cổng 2.2; ca kiểm cơ chế K3, K4 — mục ngày 2026-09-26 (quyết định PO sau đợt 3) · **v0.8:** A-079 vào cổng 4.4 — mục ngày 2026-09-26 (đợt sửa 3b) · **v0.9:** đợt sửa 4 sau Phase 13 — cổng 1.12, 1.13 (A-081, A-082); owner cổng 1.10, 1.11 theo câu 7; nội dung cũ (AUD-11) · **v0.10:** cổng 2.9 (A-010); A-030 ở AC-2.1 — mục ngày 2026-09-26 (đợt sửa 5) · **v0.11:** cổng 1.12 trỏ ADR-030, cổng 1.13 trỏ tài liệu tham chiếu `langsmith` (2026-09-27) · **v0.12:** cổng 1.12: ADR-030 `Accepted` (2026-09-27) · **v0.13:** cổng 1.9 đạt (A-041); cổng 2.10 mới — A-040, A-047 (2026-09-27) · **v0.14:** cổng 1.3, 1.4, 1.5, 1.10, 1.11 trỏ ADR-031, ADR-032 và đề xuất chờ PO duyệt (2026-09-27) · **v0.15:** cổng 1.3, 1.4, 1.10 Đạt; 1.5 chỉ mốc 1 (ADR-032); 1.6 chỉ còn font và giấy phép; 1.7, 1.8 thành mốc giữa Sprint 1 (mục 3.1); cổng 1.14 cho A-071; cổng 3.8 cho cột CSV (2026-09-27) · **v0.16:** cổng 1.11 Đạt (2026-10-02) · **v0.17:** cổng 1.15 — A-085, gói free (2026-10-02) · **v0.18:** R1-3 thu hẹp — Docker Desktop chạy được (2026-10-02) · **v0.19:** cổng 1.15 — vế `worker` và Cron Đạt (ADR-033); S5 đo trên Web Service free (2026-10-02) · **v0.20:** cổng 1.15 Đạt; cổng 2.11, 4.5 mới; Sprint 4 theo một môi trường; R4-3 (PO, 2026-10-02)
 
 > File này xếp phạm vi Must của PRD thành các sprint có thứ tự, mỗi sprint có Objective, Deliverable, Dependency, Acceptance Criteria và rủi ro chính, kèm các cổng phải qua trước từng sprint. File này **không** khai lại mức MoSCoW (nguồn duy nhất: mục Scope & priority của `01-prd.md`), **không** đặt ngày hay ước lượng khối lượng (A-071), **không** thiết kế lại bất cứ thứ gì đã chốt, và **không** giải hộ các giả định của phase khác — chỉ đặt chúng vào đúng cổng.
 
@@ -43,7 +43,7 @@ flowchart LR
     G3{Cong truoc Sprint 3}
     SP3[Sprint 3 - INTRODUCTION_LETTER, F6, nhap ho, F4 day du]
     G4{Cong truoc Sprint 4}
-    SP4[Sprint 4 - san sang UAT tren staging]
+    SP4[Sprint 4 - san sang UAT tren moi truong Render cua giai doan build]
     UAT([Buoi UAT - nghiem thu Sprint dau])
     POST[Sau UAT - hang muc Should va Could]
     PROD([Milestone san xuat - chan boi A-018])
@@ -60,7 +60,7 @@ flowchart LR
 | Sprint 1 | Một nhân viên đi trọn hành trình của `WORK_CONFIRMATION` trên máy local; Render được đo, chưa được dùng | F1, F2, F3, F4 — đường chính; NFR-01, NFR-03, NFR-05 |
 | Sprint 2 | Mọi nhánh lệch khỏi đường chính của `WORK_CONFIRMATION` đều có đích; lát cắt chạy trên Render `dev` | F1, F2, F3 — nhánh lỗi, sửa, hết hạn; NFR-06 |
 | Sprint 3 | Loại thứ hai, nhập hộ, và thêm loại thứ ba không cần sửa code | F1, F2 cho `INTRODUCTION_LETTER`; F6; F4 đầy đủ; NFR-02 |
-| Sprint 4 | Bằng chứng nghiệm thu trên `staging`, đổi `operating_mode` có khoá môi trường, buổi UAT | NFR-03, NFR-07; mục Definition of Done của `01-prd.md` |
+| Sprint 4 | Bằng chứng nghiệm thu trên môi trường Render của buổi UAT — trong giai đoạn build là môi trường duy nhất (A-085), đổi `operating_mode` có khoá môi trường, buổi UAT | NFR-03, NFR-07; mục Definition of Done của `01-prd.md` |
 
 ---
 
@@ -82,7 +82,7 @@ flowchart LR
 | 1.12 | Lockfile ghim cả phụ thuộc bắc cầu, gồm `langgraph-checkpoint` đúng bản đã kiểm | A-081; ADR-030 (`Accepted`) | Người triển khai | Khởi động — image và CI cài từ lockfile |
 | 1.13 | Hành vi mặc định của `langsmith` đã xác minh — xong cho bản 0.14.1, đối chiếu lại với bản do lockfile chốt; bước kiểm khởi động từ chối chạy khi biến bật tracing được đặt | A-082; `docs/reference/langsmith-tracing-env.md` | Người triển khai | Khởi động — trước lần đầu hệ thống gọi provider thật |
 | 1.14 | Độ dài sprint, năng lực đội triển khai, ngày bắt đầu Sprint 1 | A-071 | Product Owner | Khởi động — grooming Sprint 1 |
-| 1.15 | Cách chạy `worker` và Cron khi chỉ có gói free — **vế này Đạt 2026-10-02: ADR-033** (local ba container; Render free một Web Service `combined_main`). **Còn:** một môi trường, chu kỳ dựng lại DB free dưới 30 ngày, không backup (F3–F5); danh sách ngắn chỉ gồm gói free (F14) | A-085; ADR-033; `proposals/build-phase-free-tier-impact.md` | Product Owner | S5 của Spike 1 — vế còn lại chặn Sprint 2, không chặn S5 |
+| ~~1.15~~ | Cách chạy `worker` và Cron khi chỉ có gói free; một môi trường; DB free sống dưới 30 ngày; không backup; danh sách ngắn chỉ gồm gói free — **Đạt 2026-10-02**: ADR-033 cho `worker` và Cron; F3, F4, F5, F14 PO đồng ý | A-085 `Đã chốt`; ADR-033; `proposals/build-phase-free-tier-impact.md` | — | — |
 
 Trần token và trần số vòng **không** nằm ở đây — đã có giá trị khởi tạo ở mục Định cỡ A-022 của `11-ops.md`.
 
@@ -204,6 +204,7 @@ Bảng bước, giả định cần đóng và luật riêng ở `.claude/comman
 | 2.8 | Nếu Sprint 1 đã cắt bậc 3, 6 hoặc 7 ở R1-2: các hạng mục đó đã có | R1-2 | Khởi động — trước lần đầu hệ thống nhận request từ ngoài máy người triển khai |
 | 2.9 | Thời hạn đóng phiên nhàn rỗi có giá trị làm việc | A-010 | `chat_session_idle_close` |
 | 2.10 | Role của PostgreSQL managed trên Render: role runtime không sở hữu bảng, migrate bằng role khác, role tạo được extension `vector`; `check_grants.py --app-dsn` đạt trên Render `dev` | A-040, A-047 | AC-2.1 |
+| 2.11 | Runbook dựng lại PostgreSQL free (mục Runbook — dựng lại PostgreSQL free của giai đoạn build, `11-ops.md`) đã chạy trọn một lần trên Render, kể cả `check_grants.py --app-dsn` đạt trên DB mới | A-085 (F3) | AC-2.1 |
 
 ### 5.2 Deliverable
 
@@ -290,6 +291,8 @@ Bảng bước, giả định cần đóng và luật riêng ở `.claude/comman
 
 ## 7. Sprint 4 — sẵn sàng UAT trên `staging`
 
+**Giai đoạn build (A-085, F4 — PO 2026-10-02):** gói free chỉ cho một Postgres mỗi workspace, nên Render chỉ có **một** môi trường — `BO19_ENVIRONMENT = dev`, chạy `combined_main` (ADR-033). Mọi chỗ ghi `staging` trong Sprint 4 đọc là môi trường đó. `staging` riêng theo mục Môi trường Render của `11-ops.md` có khi lên gói trả phí. AC-4.6 vẫn kiểm được: điều kiện của nó là `BO19_ENVIRONMENT ≠ prod`.
+
 **Objective.** Có bằng chứng cho từng điều của mục Definition of Done của `01-prd.md`, trên `staging`; đổi `operating_mode` là một hành động có người chịu trách nhiệm và bị khoá theo môi trường; chạy buổi UAT.
 
 ### 7.1 Cổng trước Sprint 4
@@ -300,10 +303,11 @@ Bảng bước, giả định cần đóng và luật riêng ở `.claude/comman
 | 4.2 | Ba con số của buổi UAT: số người, số ca kịch bản, ai chấm | A-020 | AC-4.3 |
 | 4.3 | Ngưỡng metric Cảnh báo đã chốt **trước** khi đo | A-019 | AC-4.3 |
 | 4.4 | Quyền của chủ thể dữ liệu: ba chỗ hở có quyết định. **Hạn sớm hơn nếu** dữ liệu cá nhân thật được nạp trước cổng này — khi đó là điều kiện của lần nạp đó | A-079; mục Quyền của chủ thể dữ liệu — ở mức nghĩa vụ của `09-security.md` | Nạp dữ liệu cá nhân thật |
+| 4.5 | Buổi UAT nằm trọn trong vòng đời của **một** DB free: ngày UAT, ngày DB hiện hành hết hạn, và kế hoạch xuất bằng chứng — dữ liệu cho M1–M8, `audit_event` của buổi UAT — **trước** khi DB hết hạn. Postgres free không có backup, nên không có đường lấy lại | A-085 (F3, F5) | AC-4.1, AC-4.3, AC-4.5 |
 
 ### 7.2 Deliverable
 
-- Môi trường `staging` theo mục Môi trường Render của `11-ops.md`.
+- Môi trường cho UAT: trong giai đoạn build là môi trường Render duy nhất (A-085); `staging` riêng theo mục Môi trường Render của `11-ops.md` khi lên gói trả phí.
 - **Đổi `operating_mode` — ADR-020 và lớp 3 của ADR-023:** `POST /operating-mode/transitions` với `operating_mode_transition`; từ chối chuyển sang `PRODUCTION` khi `BO19_ENVIRONMENT ≠ prod` bằng `operating_mode_transition_reject`, mã `ENVIRONMENT_NOT_ALLOWED`, `audit_event` mức `WARNING`; `GET /operating-mode/transitions`. Ba lớp của ADR-023 đủ mặt từ đây — lớp 1 và lớp 2 đã có từ Sprint 1.
 - Regression gate trong CI theo mục Regression gate của `10-eval.md`: nhóm tương đương Bất biến chặn merge, nhóm tương đương Cảnh báo chỉ ghi.
 - Log schema và bốn điểm đo mới của mục Log schema của `11-ops.md`; alert cứng của mục Alert của `11-ops.md`.
@@ -325,6 +329,7 @@ AC-4.1 → AC-4.5 cùng đạt là **Sprint đầu done** theo mục Definition 
 ### 7.4 Rủi ro chính
 
 - **R4-1 — A-023 là đường găng không thuộc đội kỹ thuật.** Ba trong bốn metric Bất biến không chấm được khi chưa có đáp án chuẩn; không có cách kỹ thuật nào rút ngắn việc duyệt 37 ca.
+- **R4-3 — Dữ liệu trên Render là tạm (A-085, F3, F5).** Postgres free hết hạn sau 30 ngày và không có backup; mỗi chu kỳ dựng lại xoá sạch dữ liệu. Backup & Restore của `11-ops.md` không thử được trên Render cho tới khi lên gói trả phí — **rủi ro chấp nhận**, PO 2026-10-02. Bằng chứng nghiệm thu chỉ còn nếu đã được xuất theo cổng 4.5.
 - **R4-2 — RISK-03 vẫn vô hình.** Buổi UAT đo được M3 nhưng không đo được việc nhân viên bỏ hệ thống quay lại email; đó là M7, chỉ đo được sau milestone sản xuất.
 
 ---

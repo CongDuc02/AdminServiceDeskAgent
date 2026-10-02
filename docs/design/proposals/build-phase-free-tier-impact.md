@@ -1,6 +1,6 @@
 # Đề xuất — giai đoạn build chỉ dùng gói free: va chạm với thiết kế, và phương án
 
-**Trạng thái:** ✅ F1 — PO đồng ý khuyến nghị ở mục 3.1, 2026-10-02: ADR-033 `Accepted`. ⏳ F3, F4, F5, F14 chờ PO · **Ngày:** 2026-10-02 · **Người đề xuất:** người triển khai · **Nguồn:** quyết định của PO 2026-10-02 (A-085); `docs/reference/render-free-tier.md`; `docs/reference/render-deploys-docker.md`; `docs/reference/render-instance-compute.md`; mục Entrypoint và deploy trên Render của `06-structure.md`; mục Môi trường Render và mục Backup & Restore của `11-ops.md`; ADR-004, ADR-005, ADR-015, ADR-022, ADR-023
+**Trạng thái:** ✅ Đã quyết hết — F1: ADR-033 `Accepted`; F3, F4, F5, F14: PO đồng ý 2026-10-02. Đã áp vào `12-roadmap.md`, `11-ops.md`, `ASSUMPTIONS.md`, ADR-032 · **Ngày:** 2026-10-02 · **Người đề xuất:** người triển khai · **Nguồn:** quyết định của PO 2026-10-02 (A-085); `docs/reference/render-free-tier.md`; `docs/reference/render-deploys-docker.md`; `docs/reference/render-instance-compute.md`; mục Entrypoint và deploy trên Render của `06-structure.md`; mục Môi trường Render và mục Backup & Restore của `11-ops.md`; ADR-004, ADR-005, ADR-015, ADR-022, ADR-023
 
 ---
 

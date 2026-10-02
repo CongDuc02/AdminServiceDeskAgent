@@ -103,6 +103,6 @@ Bảng dưới chỉ chứa điều suy ra được từ hình dạng phương �
 
 ## Open Questions
 
-- **Danh sách ngắn** ứng viên cho mốc 1 — PO lập, như PO lập danh sách ngắn nhà cung cấp object storage cho S7. ADR này không xếp hạng nhà cung cấp nào.
+- **Danh sách ngắn** ứng viên cho mốc 1 — PO lập, như PO lập danh sách ngắn nhà cung cấp object storage cho S7. ADR này không xếp hạng nhà cung cấp nào. **Thêm 2026-10-02 (A-085, F14):** giai đoạn build chỉ dùng gói free — danh sách ngắn chỉ gồm ứng viên có gói free, và năng lực bắt buộc không hạ. Điều khoản dữ liệu phải đọc cho **chính gói free** của ứng viên.
 - Bốn câu hỏi pháp lý ở mục Context — chờ văn bản gốc (A-080), có thể cần pháp chế trả lời (cùng người với A-079).
 - Tài liệu cho người thử ở Sprint 1, mang luật "không dữ liệu thật", đặt ở đâu — quyết khi chuyển BUILD MODE.

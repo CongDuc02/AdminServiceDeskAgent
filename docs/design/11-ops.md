@@ -1,6 +1,6 @@
 # Ops, Cost & Deployment — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.14 · **Trạng thái:** Draft chờ duyệt — bốn đề xuất diff đã áp; đợt sửa `03-agents.md` cho A-068 đã áp (2026-09-25); lượt GLOSSARY/contract cho Phase 5, 8 đã chạy ở đợt sửa 2, 3 sau Phase 13 · **v0.11:** căn cứ bảo vệ dữ liệu cá nhân — A-080 (AUD-26) · **v0.10:** mục 14 — runbook cấp và thu hồi permission tạm (A-078 `Đã chốt`), mục ngày 2026-09-26 (quyết định PO sau đợt 3b) · **v0.9:** mục 10.4 — trần `chat_session` 46.500 thành giá trị đang hiệu lực, sửa câu về phương án (b') — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.12:** đợt sửa 4 sau Phase 13 — hai dòng chỗ quan sát (AUD-12); runbook object mồ côi, nơi lưu bản ghi eval (AUD-24); nội dung cũ (AUD-11) · **v0.13:** đợt sửa 5 sau Phase 13 — tham chiếu tới mục không tồn tại của `ASSUMPTIONS.md` (AUD-17); W3C Trace Context, quy đổi token `[CẦN XÁC MINH]` (AUD-21) · **v0.14:** sơ đồ migration ở mục Migration: ba nhãn trỏ `06-structure.md` theo tên mục thay số mục — luật 12 (2026-10-02)
+**Phiên bản:** 0.15 · **Trạng thái:** Draft chờ duyệt — bốn đề xuất diff đã áp; đợt sửa `03-agents.md` cho A-068 đã áp (2026-09-25); lượt GLOSSARY/contract cho Phase 5, 8 đã chạy ở đợt sửa 2, 3 sau Phase 13 · **v0.11:** căn cứ bảo vệ dữ liệu cá nhân — A-080 (AUD-26) · **v0.10:** mục 14 — runbook cấp và thu hồi permission tạm (A-078 `Đã chốt`), mục ngày 2026-09-26 (quyết định PO sau đợt 3b) · **v0.9:** mục 10.4 — trần `chat_session` 46.500 thành giá trị đang hiệu lực, sửa câu về phương án (b') — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.12:** đợt sửa 4 sau Phase 13 — hai dòng chỗ quan sát (AUD-12); runbook object mồ côi, nơi lưu bản ghi eval (AUD-24); nội dung cũ (AUD-11) · **v0.13:** đợt sửa 5 sau Phase 13 — tham chiếu tới mục không tồn tại của `ASSUMPTIONS.md` (AUD-17); W3C Trace Context, quy đổi token `[CẦN XÁC MINH]` (AUD-21) · **v0.14:** sơ đồ migration ở mục Migration: ba nhãn trỏ `06-structure.md` theo tên mục thay số mục — luật 12 (2026-10-02) · **v0.15:** giai đoạn build: một môi trường, Backup & Restore không thử được, runbook dựng lại PostgreSQL free — A-085 (PO, 2026-10-02)
 
 > File này chốt vận hành trên Render: môi trường dev/staging/prod, cold start, worker nền, cron, migration, backup & restore, observability, dashboard SLA & tồn đọng, mô hình chi phí LLM, ngưỡng cảnh báo & cơ chế cắt chi phí, và định cỡ A-022. File này **không** thiết kế lại state machine, schema DB, endpoint API, hay `halt_for_human` — chỉ tham chiếu và bổ sung phần vận hành chưa phase nào chạm tới. Bốn thay đổi cần chạm phase đã đóng (`06-structure.md`, `04-data.md` ×2, `05-api.md`/`openapi.yaml`) được viết thành **đề xuất diff riêng**, duyệt từng cái một — **cả bốn đã áp**, PO duyệt lần lượt 2026-09-16 và 2026-09-25 — xem mục 13.
 
@@ -23,6 +23,8 @@ Bảng ánh xạ đơn vị triển khai đã chốt ở mục Ánh xạ sang đ
 | `prod` | Vận hành thật | Instance riêng | Bucket/namespace riêng | Toàn bộ người dùng cuối |
 
 Ba môi trường **không chia sẻ** database hay object storage — mỗi môi trường tự chạy migration riêng (mục 4).
+
+**Giai đoạn build (A-085, F4 — PO 2026-10-02):** Render chỉ có **một** môi trường, `dev`, vì gói free chỉ cho một Postgres mỗi workspace. Nó chạy `combined_main` trên một Web Service free (ADR-033), và là nơi chạy cả buổi UAT của Sprint 4. Bảng trên áp khi lên gói trả phí.
 
 ### 1.2 `operating_mode` không phải môi trường deploy — ba lớp ràng buộc (ADR-023)
 
@@ -116,6 +118,8 @@ sequenceDiagram
 ## 5. Backup & Restore
 
 Đất trống hoàn toàn trước phase này. Thiết kế từ đầu, giữ nguyên tắc không bịa số.
+
+**Giai đoạn build (A-085, F5 — PO 2026-10-02):** Postgres free *"don't support any form of backups"* (`docs/reference/render-free-tier.md`). Mục này **không thử được trên Render** cho tới khi lên gói trả phí, kể cả diễn tập khôi phục ở mục 5.4 — rủi ro chấp nhận, R4-3 của `12-roadmap.md`. Thiết kế của mục này giữ nguyên.
 
 ### 5.1 Nguyên tắc
 
@@ -400,6 +404,30 @@ Bốn thay đổi chạm phase đã đóng, viết thành đề xuất riêng, d
 - **Không chứa dữ liệu cá nhân thật:** bộ eval dùng ca soạn sẵn; UAT dùng dữ liệu giả (quyết định PO về AUD-24). Chạy eval trên dữ liệu thật thì bản ghi thành dữ liệu cá nhân — cùng điều kiện với A-079.
 
 ---
+
+## 17. Runbook — dựng lại PostgreSQL free của giai đoạn build *(A-085, F3 — PO 2026-10-02)*
+
+**Vì sao:** Postgres free hết hạn 30 ngày sau khi tạo, rồi bị xoá sau 14 ngày ân hạn; mỗi workspace chỉ có một DB free hoạt động (`docs/reference/render-free-tier.md`). Render gửi email khi DB sắp hết hạn — theo cùng nguồn.
+
+**Khi nào:** khi DB hiện hành được **25 ngày** tuổi, hoặc sớm hơn nếu một buổi thử sắp tới sẽ vượt qua ngày hết hạn. 25 là chọn — chừa năm ngày cho trục trặc. Không làm trong buổi thử nào đang diễn ra.
+
+**Điều kiện cần — chưa xác minh:** CI phải kết nối được tới Postgres free từ ngoài Render — ADR-022 vốn đã cần điều này để migrate. Gói free có cho kết nối từ ngoài hay không `[CẦN XÁC MINH]` (F11); S0 và S1 của Spike 1 trả lời.
+
+| Bước | Việc | Ai |
+|---|---|---|
+| 1 | Xuất những gì cần giữ. Dữ liệu giả thì không cần gì; trong thời gian có UAT thì theo cổng 4.5 của `12-roadmap.md`. Kết quả eval đã có nơi lưu riêng (mục 16) | Người triển khai |
+| 2 | Báo người thử: hệ thống gián đoạn, mọi yêu cầu và văn bản thử sẽ mất | Người triển khai |
+| 3 | Dừng Web Service, để không còn lệnh ghi nào vào DB cũ | Người triển khai |
+| 4 | Xoá DB free cũ — gói free chỉ cho một DB hoạt động | Người triển khai |
+| 5 | Tạo DB free mới; tạo role và extension `vector` đúng như kết quả S0 của Spike 1 (A-040, A-047) | Người triển khai |
+| 6 | Cập nhật secret kết nối ở CI (ADR-022) và biến môi trường của Web Service | Người triển khai |
+| 7 | CI chạy `migrate_main` đủ bốn bước của mục Migration và checkpointer của `06-structure.md`, kể cả data migration; rồi thao tác vận hành seed bằng `bo19_migrator` — `employee` giả, `employee_credential`, `employee_role`, quyền cấp lẻ | CI |
+| 8 | `check_grants.py --app-dsn` trên DB mới: `Lệch: 0` | CI |
+| 9 | Bật lại Web Service; mọi bước kiểm khởi động của `combined_main` qua, kể cả #18 | Người triển khai |
+| 10 | `object_storage`: object của chu kỳ trước thành mồ côi, vì DB trỏ tới chúng đã mất. Dùng một bucket hoặc tiền tố mới cho mỗi chu kỳ, hoặc dọn theo mục 15 | Người triển khai |
+| 11 | Ghi ngày tạo DB mới vào nhật ký vận hành — mốc tính chu kỳ sau | Người triển khai |
+
+**Mất gì ở mỗi chu kỳ:** mọi `request`, `document`, checkpoint của LangGraph, `audit_event`, sổ số dải `TRIAL`. Văn bản đang chờ duyệt ở chu kỳ trước không resume được. Chấp nhận trong giai đoạn build vì dữ liệu là giả; với buổi UAT thì cổng 4.5 bảo đảm bằng chứng đã được xuất.
 
 ## Open Questions
 

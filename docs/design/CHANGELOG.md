@@ -2486,3 +2486,19 @@ PO đồng ý khuyến nghị F1. Cổng 1.15 đạt vế `worker` và Cron; F3,
 **Đã kiểm khi viết ADR:** cả bảy thao tác cron ở bản kê Cron Job của `03-agents.md` chạy theo điều kiện "tới hạn" hay "cũ hơn N" so với mốc lưu trong DB — lần chạy khi service thức bù được lần lỡ. Luật import của `06-structure.md` đặt ở cấp package `bo19.entrypoints`, nên hai module mới nằm trong luật.
 
 **Chưa sửa:** `.claude/commands/spike.md`, bước S5 vẫn ghi "Deploy Background Worker" — file lệnh của PO, không có trong git; diff đề xuất ở báo cáo.
+
+---
+
+## 2026-10-02 (cổng 1.15 Đạt) — F3, F4, F5, F14 của giai đoạn build trên gói free
+
+PO đồng ý F3, F4, F5, F14 của `proposals/build-phase-free-tier-impact.md`. A-085 `Đã chốt`.
+
+| File | Thay đổi |
+|---|---|
+| `12-roadmap.md` → 0.20 | Cổng 1.15 Đạt. **Cổng 2.11 mới:** runbook dựng lại PostgreSQL free chạy trọn một lần trên Render. **Cổng 4.5 mới:** buổi UAT nằm trọn trong vòng đời một DB free, kèm kế hoạch xuất bằng chứng trước khi DB hết hạn. Sprint 4: ghi chú giai đoạn build — `staging` đọc là môi trường Render duy nhất; deliverable môi trường UAT; **R4-3** — dữ liệu trên Render là tạm, Backup & Restore không thử được, rủi ro chấp nhận. Nhãn Mermaid của Sprint 4 |
+| `11-ops.md` → 0.15 | Mục Môi trường Render: một môi trường trong giai đoạn build. Mục Backup & Restore: không thử được trên Render cho tới khi trả phí. **Mục 17 mới:** runbook dựng lại PostgreSQL free — khi DB 25 ngày tuổi, 11 bước |
+| `ASSUMPTIONS.md` → 0.44 | A-085 `Đã chốt`. Ghi chú gói free ở A-002, A-024, A-026, A-028, A-040, A-047, A-066 — danh sách ngắn chỉ gồm gói free, yêu cầu bắt buộc không hạ |
+| `decisions/ADR-032-…` | Open Questions: danh sách ngắn chỉ gồm gói free; đọc điều khoản dữ liệu của chính gói free |
+| `proposals/build-phase-free-tier-impact.md` | Đã quyết hết |
+
+**Lựa chọn của người triển khai, ghi rõ:** mốc 25 ngày của runbook là chọn, chừa năm ngày cho trục trặc. Runbook cần CI kết nối được tới Postgres free từ ngoài Render — ADR-022 vốn cần điều này; gói free có cho hay không `[CẦN XÁC MINH]`, S0 và S1 của Spike 1 trả lời.
