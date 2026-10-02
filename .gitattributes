@@ -14,3 +14,5 @@ frontend/src/api/generated/** text eol=lf
 *.pdf binary
 *.ttf binary
 *.otf binary
+# Script chạy trong container (ADR-033): shebang và lệnh hỏng nếu có CR.
+*.sh text eol=lf

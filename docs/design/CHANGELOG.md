@@ -2644,3 +2644,20 @@ Phát hiện khi xử lý xuống dòng của file lock. Máy người triển k
 Không thêm luật cho `backend/migrations/**/__init__.py`: sổ `schema_migration` chỉ băm file `.sql`. Checkout lại `docs/design/contracts/README.md` và `openapi.yaml` — trước đó là CRLF trên đĩa.
 
 **Đã chạy lại:** bộ kiểm thiết kế — `openapi.yaml` hợp lệ, 05↔openapi không lệch; `check_grants.py --local` và `--local-migrated` — Lệch 0, `schema.sql` sha256 `937ca184…`; lock sinh lại trùng từng byte.
+
+---
+
+## 2026-10-02 (PO duyệt nhánh `design/sprint1-429-o13-eol`, kèm ba sửa nhỏ)
+
+| File | Thay đổi |
+|---|---|
+| `11-ops.md` → 0.19 | 429 trong job: `retry-after` vượt **WV-19 — 120 giây** — thì coi là hết hạn mức theo ngày, job `FAILED` ngay với `PROVIDER_RATE_LIMITED`. Mã con của lỗi 5xx, timeout, mạng đổi tên thành `PROVIDER_CALL_FAILED` |
+| `decisions/ADR-035-…` | Điều kiện 5: ngưỡng WV-19; xác nhận hai mã con không vào `error_code`, không đổi `openapi.yaml` |
+| `08-hitl.md` → 0.9 | Dòng `PROVIDER_UNAVAILABLE`: `PROVIDER_CALL_FAILED` thay `PROVIDER_ERROR` |
+| `GLOSSARY.md` → 0.27 | Enum mới `provider_failure_subcode`: `PROVIDER_RATE_LIMITED`, `PROVIDER_CALL_FAILED` — chỉ trong payload `audit_event` và log kỹ thuật |
+| `proposals/sprint1-working-values-a031-a048.md` | WV-19, nhãn "chưa hiệu chỉnh" |
+| `.gitattributes` | `*.sh text eol=lf` — script chạy trong container (ADR-033) |
+
+**Đổi tên `PROVIDER_ERROR` → `PROVIDER_CALL_FAILED` cho mã con:** mục ngay trước dùng `PROVIDER_ERROR` cho mã con "5xx, timeout, lỗi mạng" — trùng tên với một giá trị **đã có** của `llm_usage.outcome` (ADR-019, `0001_initial.sql`), nơi nó nghĩa là "mọi lỗi gọi provider", gồm cả 429. Một tên hai nghĩa trái luật 5 của `CLAUDE.md`. `llm_usage.outcome` không đổi.
+
+**Căn cứ của WV-19:** RPM, TPM của Groq tính theo phút; RPD, TPD tính theo ngày (`docs/reference/llm-groq.md`). 429 do giới hạn theo phút không bắt chờ quá cỡ 60 giây; 120 giây là hai lần cửa sổ đó, cùng bậc với lần backoff dài nhất của job. Ví dụ "10 phút" của PO không chọn, vì không giới hạn nào của Groq nằm giữa "theo phút" và "theo ngày" — chờ thêm chỉ trì hoãn một job sẽ hỏng.

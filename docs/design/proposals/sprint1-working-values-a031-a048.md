@@ -49,6 +49,7 @@ flowchart LR
 | WV-13 | Dọn `rate_limit_window`: số cửa sổ giữ lại; chu kỳ cron | **2 cửa sổ; mỗi giờ** | Chọn | Kiểm ngưỡng chỉ đọc cửa sổ hiện tại. Giữ thêm một cửa sổ để còn dấu vết khi xem log | — | — |
 | WV-14 | `limit` phân trang: mặc định; trần | **20; 100** | Chọn | Danh sách của Sprint 1 là hàng đợi và "yêu cầu của tôi". Trần chặn chi phí một truy vấn | — | Kích thước hàng đợi thật (A-002) |
 | WV-15 | Độ dài tối đa một tin nhắn chat | **2.000 ký tự** | Chọn | Tin nhắn là input chính của `extract_slots`, và trần một lời gọi là 3.500 token (mục Định cỡ A-022 của `11-ops.md`). Tỷ lệ ký tự trên token của tiếng Việt tuỳ tokenizer của provider — chưa biết (A-026) | — | Kiểm lại ngay khi chọn provider: 2.000 ký tự phải còn chỗ trong 3.500 token cùng phần khung của prompt |
+| WV-19 | Ngưỡng `retry-after` của 429 trong job: vượt thì coi là hết hạn mức theo ngày, không chờ | **120 s** | Chọn — PO duyệt 2026-10-02 | RPM, TPM của Groq tính theo phút, RPD, TPD tính theo ngày (`docs/reference/llm-groq.md`). 120 s là hai lần cửa sổ một phút, cùng bậc với lần backoff dài nhất của job (`base` 10 s × 2^4). Lượt chat không cần ngưỡng này: WV-02 đã chặn trên mọi lần chờ (ADR-035) | — | `retry-after` thật trong log của các lần 429 — mã con `PROVIDER_RATE_LIMITED` |
 
 **WV-04, WV-05 và WV-06 là tham số mới.** A-031 hiện ghi "số lần retry gọi model" nhưng không ghi timeout của một lời gọi model. Timeout ba lớp tool không phủ lời gọi model, vì lời gọi model đi qua `ai_gateway`, không qua `tool_layer`. Nếu PO duyệt, dòng A-031 thêm hai tham số này.
 

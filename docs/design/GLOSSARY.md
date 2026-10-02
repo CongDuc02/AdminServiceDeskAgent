@@ -1,6 +1,6 @@
 # GLOSSARY — BO-19 Admin Service Desk Agent
 
-**Phiên bản:** 0.26 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5, vòng duyệt Phase 5, Phase 6, Phase 9, Phase 12, đợt sửa A-068, A-073, A-075, đợt sửa 2 và đợt sửa 3 sau Phase 13 · **v0.24:** đợt sửa 4 sau Phase 13 — ba con trỏ cũ (AUD-11) · **v0.25:** đợt sửa 5 sau Phase 13 — định nghĩa Product Owner · **v0.26:** A-055 `Đã chốt` — hướng 1, danh sách miễn `audit_event` (2026-09-27)
+**Phiên bản:** 0.27 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5, vòng duyệt Phase 5, Phase 6, Phase 9, Phase 12, đợt sửa A-068, A-073, A-075, đợt sửa 2 và đợt sửa 3 sau Phase 13 · **v0.24:** đợt sửa 4 sau Phase 13 — ba con trỏ cũ (AUD-11) · **v0.25:** đợt sửa 5 sau Phase 13 — định nghĩa Product Owner · **v0.26:** A-055 `Đã chốt` — hướng 1, danh sách miễn `audit_event` (2026-09-27) · **v0.27:** enum `provider_failure_subcode` (ADR-035, 2026-10-02)
 
 > Đây là danh sách tên chuẩn. Từ Phase 1 trở đi, mọi tài liệu, diagram, DDL, endpoint và prompt phải dùng **đúng** các định danh trong file này. Muốn đổi tên thì sửa file này trước, rồi ghi vào [`CHANGELOG.md`](./CHANGELOG.md).
 
@@ -179,6 +179,10 @@ Là thuộc tính của **dữ liệu**, không suy ra từ tên trường hay t
 3. Lần thử chuyển `operating_mode` bị chặn bởi luật môi trường, qua `operating_mode_transition_reject` (ADR-023).
 
 Thêm ca mới vào danh sách này là một quyết định có ADR, không phải một phép suy. *Ca 2 không có trong câu định nghĩa mà ADR-023 đề xuất. Nhưng ADR-023 không nói gì về việc thu hồi mức `WARNING` của ADR-020, nên ca 2 được giữ.*
+
+**`provider_failure_subcode` — mã con khi lời gọi provider LLM hỏng** *(thêm 2026-10-02, ADR-035)*
+
+`PROVIDER_RATE_LIMITED` (provider trả 429) · `PROVIDER_CALL_FAILED` (5xx, timeout, lỗi mạng). **Chỉ** nằm trong payload `audit_event` và log kỹ thuật — **không** thuộc danh mục `error_code` đóng của `05-api.md`, **không** có trong `openapi.yaml`. Trên `llm_usage`, cả hai cùng mang `outcome` = `PROVIDER_ERROR`; mã con tách hai nguyên nhân mà `outcome` gộp. Khi `document_graph` dừng vì hết lượt, `reason_code` là `PROVIDER_UNAVAILABLE` (mục Bảng mã của `08-hitl.md`) và mã con đi kèm trong `audit_event` của lần dừng.
 
 **`document_register_entry_status` — trạng thái dòng sổ văn bản**
 
