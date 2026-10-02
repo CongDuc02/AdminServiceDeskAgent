@@ -65,6 +65,8 @@ Công cụ cài bằng `pip` vào một venv Python 3.11.9 trên Windows: `uv` *
 - Lock chỉ đúng cho một nền tảng. Người triển khai chạy local trên Windows không cài bằng lock này — cài từ `pyproject.toml`, hoặc sinh một lock thứ hai cho Windows. Test local và image có thể lệch nhau ở phụ thuộc có điều kiện theo nền tảng (`uvloop`, `colorama`).
 - Kiến trúc CPU của instance Render — x86_64 hay khác — `[CẦN XÁC MINH]` theo tài liệu Render. Phép thử ở trên giả định x86_64.
 
+**Cập nhật 2026-10-02 — vế Docker của ràng buộc 1 không còn đúng.** Docker Desktop 4.85.0, engine 29.6.2 `linux/amd64` trên WSL2; `docker run --rm hello-world` đạt (kiểm 2026-10-02). Quyết định **không đổi**: A sinh được lock cho Linux mà không cần Docker; B chạy trong container thì đúng nền tảng, nhưng thêm một bước khởi container mỗi lần khoá mà A không cần; và phép so cuối cùng vẫn là bước CI trên Linux. Lý do loại B ở mục Rejected alternatives còn đứng nhờ vế "không có tuỳ chọn chọn nền tảng đích"; vế "người triển khai không tái lập được lock ở local" hết hiệu lực.
+
 **Điều kiện đảo ngược**
 
 - Cần image cho hơn một nền tảng — xét C, vì một lock cho nhiều nền tảng là việc của định dạng đó; cần thử trước.

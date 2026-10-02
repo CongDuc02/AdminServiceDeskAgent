@@ -50,6 +50,21 @@ Mọi giới hạn dưới đây trích từ `docs/reference/render-free-tier.md
 
 **Cái giá của A:** LibreOffice và `api` chung 512 MB — S5 phải đo bộ nhớ chuyển đổi trên chính Web Service free, không phải Background Worker. A **không** sửa được F3, F4, F5.
 
+### 3.1 Cập nhật 2026-10-02 — Docker Desktop chạy được
+
+Docker Desktop 4.85.0, engine 29.6.2 `linux/amd64` trên WSL2; `docker run --rm hello-world` đạt (kiểm 2026-10-02). **Image không phải vấn đề**: `api`, `worker`, `cron` vốn dùng chung một image (ADR-015). Vấn đề là gói free của Render không có loại service để chạy container `worker` và `cron`. Docker chạy được ở local đổi hai phương án:
+
+- **C, dạng Docker** — container `worker` và `cron` chạy trên máy người triển khai, cùng image với Render, nối vào Postgres free. Giờ dựng được. Vẫn còn hai điểm yếu: job chỉ chạy khi máy bật — nhân viên gửi yêu cầu lúc máy tắt thì không có bản render; và Postgres free có cho kết nối từ ngoài Render hay không vẫn `[CẦN XÁC MINH]` (F11).
+- **B, dạng Docker** — toàn bộ giai đoạn build chạy local trong Docker, **đúng topology production**: ba container từ một image, cộng PostgreSQL và SeaweedFS. Gần Render hơn nhiều so với chạy native (R1-3 thu hẹp), nhưng vẫn không thấy proxy, SIGTERM, ngủ khi rảnh của Render.
+- **Biến thể đã cân nhắc — container `worker` thành Web Service free thứ hai.** Loại: service đó cũng ngủ sau 15 phút không có traffic vào, mà worker không nhận request nào; hai service chạy liên tục vượt 750 giờ mỗi workspace mỗi tháng; Web Service free không nhận traffic mạng riêng; và vẫn không có chỗ cho `cron`.
+
+**Khuyến nghị sửa: A trên Render, cộng B dạng Docker ở local.**
+
+- **Local — track build hằng ngày:** ba container từ một image, đúng topology production. Lỗi do tách tiến trình — ví dụ job chỉ chạy được khi chung tiến trình với `api` — lộ ra ở đây, trước khi lên gói trả phí.
+- **Render free — từ Sprint 2:** một Web Service chạy entrypoint gộp (A), để thấy những gì chỉ Render mới có.
+
+Như vậy entrypoint gộp chỉ dùng trên Render free; code và topology production được thử hằng ngày ở local. Bỏ C: một hệ thống đã deploy mà job phụ thuộc máy cá nhân bật hay tắt là điểm hỏng khó thấy.
+
 ## 4. F3, F4, F5 — một môi trường, DB sống tối đa 30 ngày, không backup
 
 Đề xuất cho giai đoạn build:
@@ -61,7 +76,7 @@ Mọi giới hạn dưới đây trích từ `docs/reference/render-free-tier.md
 
 ## 5. Cần PO quyết
 
-1. **F1:** chọn A, B hay C. Theo khuyến nghị A thì người triển khai viết ADR-033 — topology của giai đoạn build.
+1. **F1:** chọn A, B hay C. Khuyến nghị đã sửa ở mục 3.1: A trên Render, cộng B dạng Docker ở local. Theo khuyến nghị thì người triển khai viết ADR-033 — topology của giai đoạn build.
 2. **F4:** chấp nhận một môi trường Render duy nhất trong giai đoạn build.
 3. **F3, F5:** chấp nhận chu kỳ dựng lại DB dưới 30 ngày, và xuất bằng chứng UAT trước khi DB hết hạn.
 4. **F14:** danh sách ngắn của A-024, A-026 — và A-028 khi tới lúc — chỉ gồm ứng viên có gói free. Yêu cầu bắt buộc **không hạ**: gói free nào không đáp ứng thì không vào danh sách.

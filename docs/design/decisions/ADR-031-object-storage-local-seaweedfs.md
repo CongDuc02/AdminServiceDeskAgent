@@ -11,7 +11,7 @@ Sprint 1 chạy end-to-end trên máy local (quyết định PO, 2026-09-25). `o
 Năm ràng buộc, theo thứ tự loại phương án:
 
 1. **Một adapter.** Giao thức ghi một lần ở mục Lưu trữ file và bất biến bản render của `04-data.md` phải chạy trên đúng đường mã mà Render dùng. Nếu không, AC về bản render bất biến của Sprint 1 chứng minh sai đường — hệ quả (1) của A-072.
-2. **Chạy native trên Windows.** Docker Desktop trên máy người triển khai không khởi động được (mục Xác minh contract của `06-structure.md`).
+2. **Chạy native trên Windows.** Docker Desktop trên máy người triển khai không khởi động được (mục Xác minh contract của `06-structure.md`). **Cập nhật 2026-10-02:** Docker Desktop 4.85.0, engine 29.6.2 `linux/amd64` trên WSL2; `docker run --rm hello-world` đạt (kiểm 2026-10-02) — ràng buộc này **không còn bắt buộc**. Quyết định không đổi: SeaweedFS đạt mọi phép thử khi chạy native, và cũng chạy được trong container nếu muốn. Sản phẩm chỉ phát hành dạng container chưa được thử; chỉ xét lại nếu SeaweedFS trượt một điều kiện đảo ngược.
 3. **Có ít nhất một cơ chế của yêu cầu T2** (A-024): ghi có điều kiện, khoá đối tượng hoặc versioning. Thiếu cả ba thì ca "lệnh ghi treo quá lease rồi đè" không có đường mã để thử ở local.
 4. **Dữ liệu bền qua khởi động lại tiến trình.** Hành trình của AC-1.1 dừng ở `interrupt` chờ người duyệt, có khi hàng giờ, rồi resume từ checkpointer. Khoá object và checksum đã commit nằm ở `postgresql`. Object mất khi storage khởi động lại thì `render_integrity_check` dừng văn bản — một lỗi giả, do môi trường.
 5. **Bắt buộc credential**, như môi trường thật. Adapter đọc credential theo cùng một cách ở mọi môi trường (mục Secret management trên Render của `09-security.md`).

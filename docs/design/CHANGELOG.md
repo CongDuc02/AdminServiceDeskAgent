@@ -2452,3 +2452,18 @@ PO: "duyệt", và Render cùng các dịch vụ khác dùng gói free trong su�
 | `proposals/build-phase-free-tier-impact.md` | **Mới, chờ PO quyết.** Mười bốn va chạm F1–F14 giữa gói free và thiết kế. F1 chặn: gói free không có Background Worker hay Cron Job. Ba phương án; khuyến nghị A — một Web Service free chạy cả ba vai qua một entrypoint gộp. Đề xuất cho F3, F4, F5: một môi trường Render, dựng lại DB dưới 30 ngày, xuất bằng chứng UAT trước khi DB hết hạn |
 | `ASSUMPTIONS.md` → 0.41 | A-084 `Đã chốt`. A-048: WV-16, WV-16b. **A-085 mới** — ràng buộc gói free, `Mở` tới khi PO quyết cách xử lý |
 | `12-roadmap.md` → 0.17 | Cổng 1.11 Đạt. **Cổng 1.15 mới** — A-085, chặn S5 của Spike 1 |
+
+---
+
+## 2026-10-02 (Docker Desktop chạy được) — R1-3 thu hẹp; khuyến nghị F1 sửa
+
+PO báo Docker Desktop chạy bình thường. Đã kiểm: Docker Desktop 4.85.0, engine 29.6.2 `linux/amd64` trên WSL2, `docker run --rm hello-world` đạt.
+
+| File | Thay đổi |
+|---|---|
+| `06-structure.md` | Mục Xác minh contract: thêm dòng cập nhật — trạng thái Docker cũ là của lần chạy Phase 6 |
+| `12-roadmap.md` | R1-3 thu hẹp: local chạy được chính image Linux; còn khác proxy, IP client, giới hạn gói free |
+| `decisions/ADR-030-…` | Ghi chú: vế Docker của ràng buộc 1 hết hiệu lực; quyết định không đổi |
+| `decisions/ADR-031-…` | Ghi chú: ràng buộc "chạy native trên Windows" không còn bắt buộc; quyết định không đổi |
+| `ASSUMPTIONS.md` | A-072: hệ quả (3) hết hiệu lực |
+| `proposals/build-phase-free-tier-impact.md` | Mục mới 3.1: C và B dạng Docker; loại biến thể "`worker` thành Web Service free thứ hai". Khuyến nghị sửa: A trên Render, cộng B dạng Docker ở local — ba container từ một image, đúng topology production |
