@@ -2502,3 +2502,14 @@ PO đồng ý F3, F4, F5, F14 của `proposals/build-phase-free-tier-impact.md`.
 | `proposals/build-phase-free-tier-impact.md` | Đã quyết hết |
 
 **Lựa chọn của người triển khai, ghi rõ:** mốc 25 ngày của runbook là chọn, chừa năm ngày cho trục trặc. Runbook cần CI kết nối được tới Postgres free từ ngoài Render — ADR-022 vốn cần điều này; gói free có cho hay không `[CẦN XÁC MINH]`, S0 và S1 của Spike 1 trả lời.
+
+---
+
+## 2026-10-02 (cổng 1.2 Đạt) — PO xác nhận Phase 13 đã khép
+
+| File | Thay đổi |
+|---|---|
+| `12-roadmap.md` → 0.21 | Cổng 1.2 gạch, Đạt. Ghi ba AUD còn mở và nơi theo dõi: AUD-07 (A-053), AUD-24 (A-079), AUD-26 (A-080) |
+| `13-audit.md` → 0.14 | Trạng thái: "Đã khép — chờ PO duyệt" → "Đã khép — PO xác nhận 2026-10-02" |
+
+`_PLAN.md` do PO quản lý — không sửa.
