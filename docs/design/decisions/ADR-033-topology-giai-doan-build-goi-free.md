@@ -1,6 +1,6 @@
 # ADR-033 — Topology của giai đoạn build: local ba container theo topology production; Render free một Web Service chạy entrypoint gộp
 
-**Trạng thái:** Accepted · **Ngày:** 2026-10-02 · **Duyệt:** PO, 2026-10-02 — đồng ý khuyến nghị F1 ở mục 3.1 của `proposals/build-phase-free-tier-impact.md` · **Quyết định tại:** A-085, cổng 1.15 của `12-roadmap.md` — vế `worker` và Cron · **Liên quan:** ADR-004 (hàng đợi bằng bảng job), ADR-005 (orchestrator trong tiến trình), ADR-015 (một image), ADR-016 (lượt chat tách khỏi kết nối), ADR-022 (migrate qua CI), ADR-023 (môi trường khoá `operating_mode`), ADR-031 (object storage local), mục Entrypoint và deploy trên Render, mục Tắt tiến trình êm và mục Bước kiểm khởi động của `06-structure.md`, `docs/reference/render-free-tier.md`
+**Trạng thái:** Accepted · **Ngày:** 2026-10-02 · **Duyệt:** PO, 2026-10-02 — đồng ý khuyến nghị F1 ở mục Cập nhật 2026-10-02 — Docker Desktop chạy được của `proposals/build-phase-free-tier-impact.md` · **Quyết định tại:** A-085, cổng 1.15 của `12-roadmap.md` — vế `worker` và Cron · **Liên quan:** ADR-004 (hàng đợi bằng bảng job), ADR-005 (orchestrator trong tiến trình), ADR-015 (một image), ADR-016 (lượt chat tách khỏi kết nối), ADR-022 (migrate qua CI), ADR-023 (môi trường khoá `operating_mode`), ADR-031 (object storage local), mục Entrypoint và deploy trên Render, mục Tắt tiến trình êm và mục Bước kiểm khởi động của `06-structure.md`, `docs/reference/render-free-tier.md`
 
 ---
 
