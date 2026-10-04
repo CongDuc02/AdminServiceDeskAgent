@@ -2853,3 +2853,16 @@ PO duyệt tên cột sổ `filename`, `kind`, `sha256`, `applied_at`; chọn d�
 `role_secrets.py generate`, `internal-dsn` đã chạy trên `.env` của repo cho DB chu kỳ 2 — chỉ in tên biến; verifier ở file tạm ngoài repo, chờ PO chạy `step0.sh`.
 
 **Sửa `tools/db-bootstrap/step0.sh`:** Git Bash của PO đặt `TMP=/tmp` — docker, chương trình Windows, không mở được `/tmp/...` khi `MSYS_NO_PATHCONV=1`. Đổi đường dẫn file verifier sang dạng Windows bằng `cygpath -w` trước khi đưa cho `--env-file`. Lần chạy hỏng dừng ở `docker run`, chưa kết nối DB. Thử lại trên container PostgreSQL 18.2 với `TMP=/tmp`: đạt.
+
+---
+
+## 2026-10-04 — S2: bước 0 chu kỳ 2 đạt trên Render
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-postgres-s2-step0.md` | **Mới.** Hai lần chạy `step0.sh`; phát hiện tên database sai trong `.env`; xác nhận bằng `bo19_app` — output nguyên văn, host và tên database che |
+| `tools/db-bootstrap/role_secrets.py` | `retarget` — ghi lại host, database của hai DSN, giữ credential; thay `.env` thử lại khi Windows từ chối trong chốc lát |
+| `tools/db-bootstrap/README.md` | `retarget`; `BO19_RENDER_DB_NAME` là tên Render đặt |
+| `11-ops.md` → 0.27 | Chu kỳ 2: bước 4–5 đạt, bước 6–8 chưa — cổng 2.11 chưa đạt; runbook bước 5 ghi rõ tên database có hậu tố |
+
+**Kết quả:** PostgreSQL 18.6, SSL, `vector` 0.8.1; `bo19_migrator`, `bo19_app` có `LOGIN`, không superuser, không `CREATEROLE`, `CREATEDB`; chỉ `bo19_migrator` có `CREATE` trên `public`; 0 bảng. Output `step0.sh` lần đạt: PO báo đạt, không gửi output — bằng chứng là phép kiểm bằng `bo19_app`.

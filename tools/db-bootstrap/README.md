@@ -6,7 +6,7 @@ Không phải mã ứng dụng: nằm ngoài `backend/`, không vào image.
 
 | File | Việc |
 |---|---|
-| `role_secrets.py` | `generate`: đọc `BO19_RENDER_EXTERNAL_HOST`, `BO19_RENDER_DB_NAME` từ `.env` của repo — không đọc credential `bo19_admin`, và dừng nếu `.env` của repo còn `BO19_RENDER_ADMIN_DSN`; sinh mật khẩu mới cho hai role, ghi `BO19_RENDER_MIGRATOR_DSN`, `BO19_RENDER_APP_DSN` vào `.env` (thay tại chỗ), ghi SCRAM-SHA-256 verifier ra file tạm **ngoài repo**. `internal-dsn`: ghi `BO19_RENDER_APP_INTERNAL_DSN` — credential `bo19_app` trên host nội bộ, giá trị cho `BO19_DATABASE_URL` của Web Service. Không in giá trị bí mật nào |
+| `role_secrets.py` | `generate`: đọc `BO19_RENDER_EXTERNAL_HOST`, `BO19_RENDER_DB_NAME` từ `.env` của repo — không đọc credential `bo19_admin`, và dừng nếu `.env` của repo còn `BO19_RENDER_ADMIN_DSN`; sinh mật khẩu mới cho hai role, ghi `BO19_RENDER_MIGRATOR_DSN`, `BO19_RENDER_APP_DSN` vào `.env` (thay tại chỗ), ghi SCRAM-SHA-256 verifier ra file tạm **ngoài repo**. `retarget`: ghi lại host và database của hai DSN theo `.env`, **giữ credential** — khi `BO19_RENDER_EXTERNAL_HOST` hay `BO19_RENDER_DB_NAME` sai lúc `generate` mà bước 0 đã chạy. `internal-dsn`: ghi `BO19_RENDER_APP_INTERNAL_DSN` — credential `bo19_app` trên host nội bộ, giá trị cho `BO19_DATABASE_URL` của Web Service. Không in giá trị bí mật nào |
 | `step0.sql` | Bước 0. Dừng nếu máy chủ không phải PostgreSQL 18. Verifier đọc bằng `\getenv`, không echo; thiếu hay sai dạng thì dừng trước `CREATE ROLE` |
 | `step0.sh` | Chạy `step0.sql` bằng `psql` trong image ghim của ADR-033, `--single-transaction`, `ON_ERROR_STOP`. DSN của `bo19_admin` đọc từ `~/.bo19/admin.env` — file ngoài repo; nằm trong repo thì dừng — vào biến môi trường. Đạt thì xoá file verifier |
 
@@ -18,7 +18,7 @@ Chạy từ gốc repo, trong Git Bash. Cần Docker Desktop đang chạy.
 
 1. **PO** tạo DB free mới trên Render — **PostgreSQL Version 18** (ADR-033). Rồi:
    - **External Database URL** vào file **ngoài repo** `~/.bo19/admin.env`, dòng `BO19_RENDER_ADMIN_DSN=`. Người triển khai không đọc, không ghi file này (PO, 2026-10-04).
-   - `.env` của repo: **xoá** dòng `BO19_RENDER_ADMIN_DSN` nếu còn; thêm ba giá trị không bí mật — `BO19_RENDER_EXTERNAL_HOST=` (host:cổng của URL ngoài), `BO19_RENDER_DB_NAME=`, `BO19_RENDER_INTERNAL_HOST=` (host của URL nội bộ ở trang Info của DB — `docs/reference/render-web-service-health-checks.md`). Không user, không mật khẩu.
+   - `.env` của repo: **xoá** dòng `BO19_RENDER_ADMIN_DSN` nếu còn; thêm ba giá trị không bí mật — `BO19_RENDER_EXTERNAL_HOST=` (host:cổng của URL ngoài), `BO19_RENDER_DB_NAME=` (tên database **Render đặt**, có hậu tố — chép từ trang Info, không đoán), `BO19_RENDER_INTERNAL_HOST=` (host của URL nội bộ ở trang Info của DB — `docs/reference/render-web-service-health-checks.md`). Không user, không mật khẩu.
 2. **Người triển khai** sinh mật khẩu và verifier — `.env` chỉ được ghi, không in:
 
    ```bash
