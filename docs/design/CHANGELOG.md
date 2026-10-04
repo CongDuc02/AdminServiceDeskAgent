@@ -2988,3 +2988,9 @@ Chưa đo trên Render. A-025, A-050 chưa đổi.
 **Đính chính:** mục ngay trên ghi sai "tối đa 1.041 ms" cho cả sáu lượt đối chứng; số đúng trên 18 cặp là **4.237 ms** (lượt 2), 1.041 ms chỉ là lượt 1. Đã sửa tại chỗ. Số sai do tôi mới in tóm tắt hai lượt khi viết.
 
 **Ngưỡng — `I = 5 s`:** không thấy gom đệm nếu event đầu tới ≤ 2 s và mọi cặp lệch ≤ 0.5 s; có gom đệm nếu event đầu tới ≥ 5 s hoặc ≥ 1 cặp lệch ≥ 2.5 s; còn lại không kết luận. Nền local 4.237 ms nên 0.5 s cao hơn 118 lần. 2 s, 0.5 s, 2.5 s là chọn, không suy từ nền local.
+
+**Phép thử âm của workflow (S3):**
+
+- Push 1 — `dbe5546`, thêm `.github/workflows/spike-s3-probe.yml`, không đổi `run.json`: sau 20 s `GET /actions/runs?branch=spike/s3-do` trả `total_count = 0`.
+- `GET /actions/workflows` trả `total_count = 0` — workflow chỉ nằm ở nhánh `spike/s3-do` **không** hiện ở danh sách này. Vì vậy "0 lượt chạy" chỉ cho biết push thường không kích hoạt gì; **chưa** chứng minh file workflow hợp lệ. Việc đó chờ lượt chạy vô hại.
+- `GET /actions/secrets` trả `total_count = 0` — chưa có repo secret nào.
