@@ -2947,3 +2947,28 @@ Chưa chạy phép đo nào. A-050, A-025 chưa đổi.
 | `.claude/commands/spike.md` — PO cho phép | Dòng S2: mục mở đánh thức có một lần đo; vẫn mở |
 
 **Chưa đủ điều kiện:** chưa xác nhận không có request trong 15 phút trước lần gọi, chưa có giờ gọi. Một lần đo, mạng nhà PO.
+
+---
+
+## 2026-10-04 — S3: bước 1–4 — tài liệu, endpoint đo, probe, đối chứng local; kế hoạch chỉnh theo PO
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-request-timeout-streaming.md` | Mới. Tài liệu Render không nêu giới hạn thời gian request, thời gian im lặng tối đa, hay việc proxy gom đệm response stream. Bài blog của Render nêu "100 minutes" — nguồn thứ cấp, không dùng để đóng A-025 |
+| `docs/reference/github-actions-workflow-dispatch.md` | Mới. `workflow_dispatch` chỉ chạy khi file workflow đã có trên nhánh mặc định |
+| `backend/src/bo19/entrypoints/api_main.py` | Khối `SPIKE S3`: `make_spike_router`, `_mount_spike`, hai dòng trong `main()`; `/api/_spike/{sse,sleep,commit}` |
+| `backend/tests/test_spike_probes.py` | Mới — 14 test |
+| `tools/render-probes/probe.py`, `README.md` | Mới. `.gitignore`: `tools/render-probes/out/` |
+
+**Chỉnh kế hoạch — PO duyệt 2026-10-04:**
+
+- Đường dẫn là `/api/_spike/*`, không phải `/_spike/*`: luật 404 của mục Phục vụ tĩnh và luật 404 của `06-structure.md` trả `index.html` cho GET lạ ngoài `/api`.
+- Bước 8 (runner GitHub Actions) dùng trigger `push` có cổng tường minh, không dùng `workflow_dispatch` — tài liệu GitHub đòi file workflow ở nhánh mặc định. Chưa viết workflow.
+- Kiểm bản đang chạy bằng `/api/_spike/commit` (biến `RENDER_GIT_COMMIT`), probe dừng nếu sai commit.
+- Render đang deploy từ `main`; để đo phải đổi sang `spike/s3-do`, bước 7 đổi lại về `main`. PO tự đổi trên dashboard.
+- Trần SSE giữ 60 phút; không cắt thì ghi "≥ 60 phút".
+- Thêm cờ `kind=comment` và `accel=no` vào `/sse` — cho ca (c) và biến thể `X-Accel-Buffering` của bước 7, để không phải deploy lại.
+
+**Đối chứng local (bước 4):** container dựng từ `Dockerfile` S2, nối DB Render bằng `bo19_app`; `STARTUP_OK`. Sáu lượt probe — hai biến thể `Accept-Encoding`, bốn ca — khoảng nhận lệch khoảng gửi tối đa 1.041 ms, event đầu sau 5–7 ms, không `Content-Encoding`. Client ngắt: SSE trả chỗ ngay (`cancelled`), `/sleep` thấy trong ≤ 1 s (`client_gone`). 429 có thật qua mạng. Log không có token, không có header. 39 test đạt, 5 bỏ qua (cần superuser PostgreSQL). **Hai lỗi của probe do đối chứng bắt:** `time.monotonic()` trên Windows nhảy bước ~15.6 ms; `bunched_pairs` đếm nhầm cặp `tick`/`end` gửi cách nhau 0.6 ms — đã sửa.
+
+Chưa đo trên Render. A-025, A-050 chưa đổi.
