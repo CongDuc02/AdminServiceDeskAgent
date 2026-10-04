@@ -1,6 +1,6 @@
 # Project Structure — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.18 · **Trạng thái:** Đã duyệt ở vòng duyệt Phase 6 · **v0.2:** Open Questions sau các phép B1 → B4; mục 9.4 về bộ kiểm trong repo; `tools/` trong cây gốc — mục ngày 2026-09-13 (lần 9) của `CHANGELOG.md` · **v0.3:** Open Questions sau phép bổ sung — mục ngày 2026-09-14 · **v0.4:** thêm bước kiểm khởi động #16–17 (ADR-023, Phase 11) — quyết định của PO khi duyệt đề xuất diff riêng, không phải một hệ quả của luật 5 (đổi tên cho nhất quán) trong `CLAUDE.md`; mục ngày 2026-09-16 của `CHANGELOG.md` · **v0.5:** làm rõ #15/#17 dùng chung một lần đọc `operating_mode`, #17 chỉ áp dụng ngoài `prod` và tự vệ khi thiếu `BO19_ENVIRONMENT`, nhắc mô hình chạy hết-rồi-gom — cùng mục ngày 2026-09-16 · **v0.6:** đợt sửa 2 sau Phase 13 — cron và `ops/` thêm năm thao tác vận hành mới (AUD-08); `endpoint_ops/` không đếm số; tuyến `/config/request-types` hết "từ chối mọi người" (AUD-05); không có tuyến cho đổi `operating_mode` là có chủ đích (câu 6b); skeleton khớp cây ở mục 3 (AUD-16); số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.7:** tuyến `/takeover` và phần tiếp quản của `DocumentReviewPage` (AUD-02 (d)) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.8:** thư viện token phiên và log — ADR-028, ADR-029 — mục ngày 2026-09-26 (quyết định PO sau đợt 3) · **v0.9:** Open Questions 7 đã giải — mục ngày 2026-09-26 (đợt sửa 3b) · **v0.10:** đợt sửa 4 sau Phase 13 — ba chế độ của `check_grants.py`, con trỏ cũ (AUD-11) · **v0.11:** dòng cài phụ thuộc Python của đặc tả `Dockerfile` theo ADR-030 (2026-09-27) · **v0.12:** bước kiểm khởi động #13 ghi giá trị múi giờ đã chốt (A-041, 2026-09-27) · **v0.13:** A-055 `Đã chốt` — hướng 1, danh sách miễn `audit_event` (2026-09-27) · **v0.14:** Docker Desktop đã chạy được trên máy người triển khai (2026-10-02) · **v0.15:** entrypoint `combined_main`, `cron_scheduler_main`; bước kiểm #18 — ADR-033 (2026-10-02) · **v0.16:** bước kiểm khởi động #19 — chặn biến tracing của `langsmith` theo mẫu tên (A-082); tên lockfile trong đặc tả `Dockerfile` (2026-10-02) · **v0.17:** bước kiểm khởi động #20 (tham số `argon2id`, ADR-034), #21 (hồ sơ model, ADR-035); luật import điền `httpx` (2026-10-02) · **v0.18:** đính chính sha256 của `schema.sql` — bản LF trong repo (2026-10-02)
+**Phiên bản:** 0.20 · **Trạng thái:** Đã duyệt ở vòng duyệt Phase 6 · **v0.2:** Open Questions sau các phép B1 → B4; mục 9.4 về bộ kiểm trong repo; `tools/` trong cây gốc — mục ngày 2026-09-13 (lần 9) của `CHANGELOG.md` · **v0.3:** Open Questions sau phép bổ sung — mục ngày 2026-09-14 · **v0.4:** thêm bước kiểm khởi động #16–17 (ADR-023, Phase 11) — quyết định của PO khi duyệt đề xuất diff riêng, không phải một hệ quả của luật 5 (đổi tên cho nhất quán) trong `CLAUDE.md`; mục ngày 2026-09-16 của `CHANGELOG.md` · **v0.5:** làm rõ #15/#17 dùng chung một lần đọc `operating_mode`, #17 chỉ áp dụng ngoài `prod` và tự vệ khi thiếu `BO19_ENVIRONMENT`, nhắc mô hình chạy hết-rồi-gom — cùng mục ngày 2026-09-16 · **v0.6:** đợt sửa 2 sau Phase 13 — cron và `ops/` thêm năm thao tác vận hành mới (AUD-08); `endpoint_ops/` không đếm số; tuyến `/config/request-types` hết "từ chối mọi người" (AUD-05); không có tuyến cho đổi `operating_mode` là có chủ đích (câu 6b); skeleton khớp cây ở mục 3 (AUD-16); số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.7:** tuyến `/takeover` và phần tiếp quản của `DocumentReviewPage` (AUD-02 (d)) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.8:** thư viện token phiên và log — ADR-028, ADR-029 — mục ngày 2026-09-26 (quyết định PO sau đợt 3) · **v0.9:** Open Questions 7 đã giải — mục ngày 2026-09-26 (đợt sửa 3b) · **v0.10:** đợt sửa 4 sau Phase 13 — ba chế độ của `check_grants.py`, con trỏ cũ (AUD-11) · **v0.11:** dòng cài phụ thuộc Python của đặc tả `Dockerfile` theo ADR-030 (2026-09-27) · **v0.12:** bước kiểm khởi động #13 ghi giá trị múi giờ đã chốt (A-041, 2026-09-27) · **v0.13:** A-055 `Đã chốt` — hướng 1, danh sách miễn `audit_event` (2026-09-27) · **v0.14:** Docker Desktop đã chạy được trên máy người triển khai (2026-10-02) · **v0.15:** entrypoint `combined_main`, `cron_scheduler_main`; bước kiểm #18 — ADR-033 (2026-10-02) · **v0.16:** bước kiểm khởi động #19 — chặn biến tracing của `langsmith` theo mẫu tên (A-082); tên lockfile trong đặc tả `Dockerfile` (2026-10-02) · **v0.17:** bước kiểm khởi động #20 (tham số `argon2id`, ADR-034), #21 (hồ sơ model, ADR-035); luật import điền `httpx` (2026-10-02) · **v0.18:** đính chính sha256 của `schema.sql` — bản LF trong repo (2026-10-02) · **v0.19:** bước 0 của migration: `GRANT CREATE ON SCHEMA public`, chạy bằng `bo19_admin`; kiểm contract trên PostgreSQL 18 (2026-10-04) · **v0.20:** cây gốc thêm `.github/workflows/`, `docs/testing/`; luật trình chạy: file không có câu SQL thực thi thì dừng; bước 3 ngoài sổ (2026-10-04)
 
 > File này chốt cây thư mục của backend và frontend, luật "được import gì, cấm import gì" kèm **thứ gì chặn vi phạm**, entrypoint và cách chạy trên Render, bước kiểm khởi động, trình tự migration so với checkpointer, và kết quả xác minh contract DDL. File này **không** chứa implementation (DESIGN MODE — mục Chế độ làm việc hiện tại của `CLAUDE.md`). Hai khối `.importlinter` và `Dockerfile` bên dưới là **đặc tả**, không phải file. File này cũng **không** thiết kế màn hình tiếp quản hay quy tắc hiển thị theo độ nhạy (Phase 8), AuthZ chi tiết và quản lý secret (Phase 9), và **không** định cỡ tham số vận hành (Phase 11).
 
@@ -52,10 +52,13 @@ Ba package không phải thành phần: `bo19.domain` (enum, bảng chuyển tr�
 ├── backend/                  # package bo19 — mục 3
 ├── frontend/                 # SPA React — mục 10
 ├── fonts/                    # bộ font của A-058, kèm giấy phép từng font — đưa vào image
+├── .github/
+│   └── workflows/            # CI. Hiện chỉ có s1-ci-connect-probe.yml — thử kết nối của Spike 1, xoá sau S1
 ├── tools/
 │   └── contract-checks/      # bộ kiểm quyền của contract DDL — không phải mã ứng dụng, không vào image (mục 9.4)
 ├── docs/
 │   ├── reference/            # nguồn gốc được phép trích
+│   ├── testing/              # hướng dẫn cho người thử — nguoi-thu.md (ADR-032)
 │   └── design/               # tài liệu thiết kế; contracts/ là nguồn của mã
 └── Dockerfile                # một image cho mọi tiến trình — mục 6.2, ADR-015
 ```
@@ -454,11 +457,13 @@ Lập luận ở ADR-017; bằng chứng chạy thật ở mục 9. Bảng dư�
 
 | Bước | Việc | Role | Giao dịch |
 |---|---|---|---|
-| 0 | `CREATE EXTENSION vector` | Role có quyền tạo extension — local là superuser; Render: A-040 vế (3) | — |
+| 0 | `CREATE EXTENSION vector`; `GRANT CREATE ON SCHEMA public TO bo19_migrator`; `CREATE EXTENSION btree_gist` **chỉ khi** A-046 chốt là cần. Tạo `bo19_migrator`, `bo19_app` nếu chưa có | Local: superuser. **Render: user mặc định `bo19_admin`, do PO** — A-040 vế (3), S0 (`docs/reference/render-postgres-s0.md`); không chạy ở CI (ADR-022) | — |
 | 1 | `migrations/schema/*.sql` theo thứ tự | `bo19_migrator` | Mỗi file một giao dịch |
 | 2 | `setup()` của `langgraph-checkpoint-postgres` đã ghim | `bo19_migrator` | Autocommit — trong giao dịch thì hỏng |
 | 3 | `migrations/library/checkpointer_grants.sql` — chạy lại sau mỗi lần nâng thư viện | `bo19_migrator` | Một giao dịch |
 | 4 | `migrations/data/*.sql` theo thứ tự | `bo19_migrator` | Mỗi file một giao dịch |
+
+**Luật của trình chạy — thêm 2026-10-04 (ADR-017):** file của bước 1, 3, 4 **không có câu SQL thực thi được** — chỉ chú thích hay khoảng trắng — thì dừng, không coi là đạt. Bước 3 nằm ngoài sổ `schema_migration` và chạy lại được; sổ chỉ ghi bước 1 và bước 4.
 
 Nội dung `migrations/library/checkpointer_grants.sql` — DDL, là contract; đã chạy thử:
 
@@ -529,6 +534,16 @@ Bộ kiểm có chỗ trong repo từ vòng duyệt Phase 6: `tools/contract-che
 - **Ba chế độ.** `--local` dựng PostgreSQL tạm, áp `schema.sql`, chạy `setup()` của checkpointer rồi kiểm. `--local-migrated` như `--local` nhưng áp lần lượt mọi file ở `backend/migrations/schema/` thay cho `schema.sql` (thêm ở vòng duyệt Phase 12). `--app-dsn` **chỉ kiểm** trên một cơ sở dữ liệu đã migrate — chế độ dành cho Render. Mọi phép thử dùng `WHERE false` hoặc giao dịch rollback; `TRUNCATE` chỉ kiểm bằng `has_table_privilege`.
 - **Thêm so với script đầu:** kiểm độ phủ — mọi bảng trong `public` phải thuộc đúng một nhóm quyền, nên một bảng mới chưa được xếp nhóm sẽ bị tính là lệch.
 - **Lần chạy từ repo ở vòng duyệt Phase 6**, chế độ `--local`, cùng `schema.sql` sha256 `0ce8dd…`: 49 bảng — 45 của `schema.sql` cộng 4 của thư viện; **169** từ chối đúng; **63** cho phép đúng; **0** lệch; sáu kiểm thêm đạt; mã thoát `0`. Hai con số chính trùng khít lần chạy ở mục 9.2.
+- **Chạy lại trên PostgreSQL 18 — 2026-10-04.** Render là 18.6, pgvector 0.8.1 (S0). Bộ kiểm có thêm `--server-dsn` để chạy trên một server có sẵn thay cho `pgserver`, và phần dựng local nay giống Render: database thuộc superuser, `bo19_migrator` nhận `CREATE` trên `public` ở bước 0.
+
+  | Môi trường | Chế độ | Từ chối đúng | Cho phép đúng | Lệch |
+  |---|---|---|---|---|
+  | `pgserver` — PostgreSQL 16.2, pgvector 0.6.2 | `--local` | 169 | 63 | 0 |
+  | `pgserver` — PostgreSQL 16.2, pgvector 0.6.2 | `--local-migrated` | 176 | 68 | 0 |
+  | Container `pgvector/pgvector:0.8.1-pg18` (`sha256:508c5290cda481d4f5f846446a26e9c1b804766828a394a5861de1b348a18b4c`) — PostgreSQL 18.2, pgvector 0.8.1 | `--local` | 169 | 63 | 0 |
+  | Cùng container | `--local-migrated` | 176 | 68 | 0 |
+
+  Cả bốn lượt: chủ schema `public` là `pg_database_owner`; `bo19_migrator` tạo `vector` bị từ chối — kể cả trên pgvector 0.8.1, trong khi trên Render user mặc định tạo được. Bản minor local 18.2 khác Render 18.6.
 - **Phải chạy lại** sau mỗi lần `schema.sql` đổi, sau mỗi lần nâng thư viện checkpointer, và trên Render ngay khi có môi trường đầu tiên — cùng lượt A-040, A-047.
 
 ---

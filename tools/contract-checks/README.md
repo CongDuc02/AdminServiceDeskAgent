@@ -28,8 +28,14 @@ python -m venv .venv
 # Local, áp đủ backend/migrations/schema/*.sql theo thứ tự thay cho schema.sql, rồi kiểm.
 .venv/bin/python check_grants.py --local-migrated
 
+# Như hai lệnh trên, nhưng trên một PostgreSQL có sẵn thay cho pgserver — cùng bản với Render.
+# Server phải mới, chỉ dùng cho phép kiểm này, bind 127.0.0.1:
+#   docker run -d --name bo19-pg18 -p 127.0.0.1:55432:5432 -e POSTGRES_HOST_AUTH_METHOD=trust pgvector/pgvector:0.8.1-pg18
+.venv/bin/python check_grants.py --local-migrated --server-dsn "postgresql://postgres@127.0.0.1:55432/postgres"
+
 # Cơ sở dữ liệu có sẵn, đã migrate (ví dụ Render): chỉ kiểm, không áp gì.
-.venv/bin/python check_grants.py --app-dsn "<dsn của bo19_app>" --migrator-role bo19_migrator
+.venv/bin/python check_grants.py --app-dsn env:BO19_RENDER_APP_DSN --migrator-role bo19_migrator
+# env:TÊN — đọc DSN từ biến môi trường; đừng đặt DSN thật trên dòng lệnh (lộ qua danh sách tiến trình)
 ```
 
 **`--local` hay `--local-migrated`.** `--local` kiểm đúng contract `schema.sql`. `--local-migrated` kiểm toàn bộ schema mà runtime sẽ thấy, gồm bảng và quyền của migration sau `schema.sql` — chạy nó mỗi khi thêm hay sửa một file trong `backend/migrations/schema/`. Nó **không** thay `migrate_main`: không có sổ `schema_migration`, không chạy data migration, không kiểm sha256.
@@ -47,3 +53,17 @@ Mọi phép thử dùng `WHERE false` hoặc giao dịch rollback: PostgreSQL ki
 - **Kiểm phủ định và kiểm khẳng định** cho sáu nhóm quyền, từng cột với nhóm sửa theo cột, cộng bảng của checkpointer.
 - **Kiểm thêm:** `bo19_app` không sở hữu bảng nào; giao dịch `READ ONLY` chặn cả lệnh có quyền; số chiều embedding đọc từ catalog.
 - **Chỉ ở `--local`:** `bo19_app` ghi và xoá được checkpoint; `bo19_app` gọi `setup()` bị từ chối; `bo19_migrator` có tự tạo được extension `vector` không — dòng thông tin cho A-040 vế (3).
+
+## Kỳ vọng đọc từ đâu — không có bản chép cứng
+
+*Thêm 2026-10-04, sau sự cố file grant rỗng ở S1 (`docs/reference/render-postgres-s1.md`).*
+
+| Kỳ vọng | Đọc từ |
+|---|---|
+| Nhóm quyền theo bảng — gồm hai nhóm của migration sau `schema.sql` | Bảng nhóm quyền ở mục "Hai role, và bất biến bằng quyền" của `docs/design/04-data.md` |
+| Cột của nhóm sửa theo cột | Câu `GRANT UPDATE (...) ON t TO bo19_app` trong file SQL được áp — `04-data.md` giao danh sách cột cho `schema.sql` |
+| Bảng của checkpointer, câu `GRANT` của bước 3 | `backend/migrations/library/checkpointer_grants.sql` |
+| Số chiều embedding | `vector(N)` của `procedure_chunk_embedding_v1` trong DDL |
+| Tên sổ `schema_migration` | Hằng, có lý do — chưa có file DDL nào định nghĩa sổ; ADR-017 |
+
+File SQL sẽ áp mà không có câu thực thi được thì bộ kiểm dừng với mã 2 — cùng luật với trình chạy migration (ADR-017).

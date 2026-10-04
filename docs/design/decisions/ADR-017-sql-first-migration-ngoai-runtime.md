@@ -80,3 +80,11 @@
 **C — Alembic với migration viết tay.** Không sai. Loại cho Sprint đầu vì mọi migration vẫn là SQL viết tay, nên công cụ không bớt được việc. Trong khi đó mô hình giao dịch và sổ riêng của nó phải được dung hoà với bước `setup()` không giao dịch của thư viện checkpointer, và với hai loại migration schema và data. Mô hình giao dịch của Alembic `[CẦN XÁC MINH]` — tài liệu chưa có trong `docs/reference/`.
 
 **D — Migration lúc ứng dụng khởi động.** Loại vì tiến trình runtime khi đó phải giữ credential `bo19_migrator` — đúng thứ mục "Migration chạy ở đâu" cấm. Thêm vào đó, nhiều instance khởi động cùng lúc sẽ tranh nhau chạy migration.
+
+## Cập nhật 2026-10-04 — sau S1 của Spike 1
+
+Không đổi quyết định. Ba luật viết rõ ra, theo PO:
+
+- **File không có câu SQL thực thi được thì trình chạy dừng, không coi là đạt.** Áp cho mọi file của bước 1, 3, 4. "Thực thi được" là còn nội dung sau khi bỏ chú thích `--`, `/* */` và khoảng trắng. Nguồn: sự cố ở S1 — `checkpointer_grants.sql` chỉ có chú thích, bước 3 "đạt" mà không cấp gì (`docs/reference/render-postgres-s1.md`).
+- **Bước 3 nằm ngoài sổ `schema_migration`, và chạy lại được.** Nó chỉ gồm `GRANT` — idempotent — và phải chạy lại sau mỗi lần nâng thư viện checkpointer, nên không phải migration bất biến. Sổ chỉ ghi file của bước 1 và bước 4. S1 xác nhận: Render và local chưa có sổ — chưa có `migrate_main` — nên bản rỗng của file grant không bị ghi vào đâu.
+- **Bước 0 trên Render chạy bằng user mặc định, do PO**, không ở CI — ADR-022, cập nhật 2026-10-04.

@@ -45,3 +45,11 @@ ADR-017 đã chốt: migration chạy bằng `bo19_migrator`, một role không 
 ## Rejected alternatives
 
 **B — Render one-off Job/Shell.** Gọn hơn về mặt hạ tầng (không cần CI pipeline riêng nếu tổ chức chưa có), nhưng đặt cược vào một hành vi Render chưa xác minh đúng vào chỗ nhạy cảm nhất của thiết kế bảo mật (ranh giới credential `bo19_migrator`/`bo19_app`). Nếu A-060 gốc sau này được xác minh là "an toàn" (one-off không dùng chung biến môi trường), phương án B vẫn có thể được cân nhắc lại như một tối ưu vận hành — nhưng đó là một quyết định mới, cần ADR riêng, không phải đảo ADR này.
+
+## Cập nhật 2026-10-04 — bước 0 không chạy ở CI
+
+Không đổi quyết định A. Bổ sung sau S0 (`docs/reference/render-postgres-s0.md`):
+
+- Trên Render, database thuộc user mặc định `bo19_admin`, không thuộc `bo19_migrator`. `bo19_migrator` không tạo được extension, và không có quyền `CREATE` trên `public` cho tới khi được cấp.
+- **Bước 0** của mục Migration và checkpointer của `06-structure.md` — `CREATE EXTENSION`, `GRANT CREATE ON SCHEMA public`, tạo `bo19_migrator` và `bo19_app` — chạy **bằng `bo19_admin`, do PO**, một lần cho mỗi database, theo runbook dựng lại PostgreSQL free ở `11-ops.md`. **Không** đưa `bo19_admin` vào CI.
+- CI vẫn chạy bước 1–4 bằng `bo19_migrator` như mục Decision. Ranh giới tin cậy gồm cả `bo19_admin` — đoạn "Giới hạn — nói thẳng" ở mục Hai role, và bất biến bằng quyền của `04-data.md`.
