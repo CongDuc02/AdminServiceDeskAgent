@@ -2969,6 +2969,22 @@ Chưa chạy phép đo nào. A-050, A-025 chưa đổi.
 - Trần SSE giữ 60 phút; không cắt thì ghi "≥ 60 phút".
 - Thêm cờ `kind=comment` và `accel=no` vào `/sse` — cho ca (c) và biến thể `X-Accel-Buffering` của bước 7, để không phải deploy lại.
 
-**Đối chứng local (bước 4):** container dựng từ `Dockerfile` S2, nối DB Render bằng `bo19_app`; `STARTUP_OK`. Sáu lượt probe — hai biến thể `Accept-Encoding`, bốn ca — khoảng nhận lệch khoảng gửi tối đa 1.041 ms, event đầu sau 5–7 ms, không `Content-Encoding`. Client ngắt: SSE trả chỗ ngay (`cancelled`), `/sleep` thấy trong ≤ 1 s (`client_gone`). 429 có thật qua mạng. Log không có token, không có header. 39 test đạt, 5 bỏ qua (cần superuser PostgreSQL). **Hai lỗi của probe do đối chứng bắt:** `time.monotonic()` trên Windows nhảy bước ~15.6 ms; `bunched_pairs` đếm nhầm cặp `tick`/`end` gửi cách nhau 0.6 ms — đã sửa.
+**Đối chứng local (bước 4):** container dựng từ `Dockerfile` S2, nối DB Render bằng `bo19_app`; `STARTUP_OK`. Sáu lượt probe — hai biến thể `Accept-Encoding`, bốn ca — lệch lớn nhất giữa khoảng nhận và khoảng gửi 4.237 ms trên 18 cặp event (lượt 2; bốn lượt còn lại có cặp: 0.493 ms, 0.838 ms, 1.041 ms), event đầu sau 3.627–8.486 ms, không `Content-Encoding`. Client ngắt: SSE trả chỗ ngay (`cancelled`), `/sleep` thấy trong ≤ 1 s (`client_gone`). 429 có thật qua mạng. Log không có token, không có header. 39 test đạt, 5 bỏ qua (cần superuser PostgreSQL). **Hai lỗi của probe do đối chứng bắt:** `time.monotonic()` trên Windows nhảy bước ~15.6 ms; `bunched_pairs` đếm nhầm cặp `tick`/`end` gửi cách nhau 0.6 ms — đã sửa.
 
 Chưa đo trên Render. A-025, A-050 chưa đổi.
+
+---
+
+## 2026-10-04 — S3: chuẩn bị bước 6 — ngưỡng, 429, test hết hạn, workflow
+
+| File | Thay đổi |
+|---|---|
+| `tools/render-probes/README.md` | Nhiễu nền local; **ngưỡng kết luận gom đệm đặt trước khi đo Render**; quy trình đo A-025 (thang `sleep`, dừng chia đôi khi `hi − lo` ≤ `max(15 s, 10% · lo)`, ca dài hai lần có/không `keepwarm`); ca (b); runner |
+| `tools/render-probes/probe.py` | Gặp 429 chờ 10 s rồi thử lại, ghi `busy_retries`, không tính là điểm dữ liệu; bỏ cuộc thì mã thoát 6; `--emit` in `RESULT_JSON`; `--busy-wait-s` |
+| `backend/tests/test_spike_probes.py` | Thêm test chỗ thử tự hết hạn — 15 test đạt |
+| `.github/workflows/spike-s3-probe.yml` | Mới: trigger `push` lên `spike/s3-do` **và** `paths: tools/render-probes/run.json`; `concurrency` một nhóm; job 345 phút; `actions/checkout` ghim theo sha |
+| `docs/reference/github-actions-push-trigger.md` | Mới: `push`, `paths`, `concurrency`, thời lượng job, secret, `checkout`; ghi rõ hai điều tài liệu không nói thẳng |
+
+**Đính chính:** mục ngay trên ghi sai "tối đa 1.041 ms" cho cả sáu lượt đối chứng; số đúng trên 18 cặp là **4.237 ms** (lượt 2), 1.041 ms chỉ là lượt 1. Đã sửa tại chỗ. Số sai do tôi mới in tóm tắt hai lượt khi viết.
+
+**Ngưỡng — `I = 5 s`:** không thấy gom đệm nếu event đầu tới ≤ 2 s và mọi cặp lệch ≤ 0.5 s; có gom đệm nếu event đầu tới ≥ 5 s hoặc ≥ 1 cặp lệch ≥ 2.5 s; còn lại không kết luận. Nền local 4.237 ms nên 0.5 s cao hơn 118 lần. 2 s, 0.5 s, 2.5 s là chọn, không suy từ nền local.

@@ -164,5 +164,47 @@ class MotKetNoi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((await c.get("/api/_spike/sse?interval=0&max=0.2", headers=HDR)).status_code, 200)
 
 
+class ChoTuHetHan(unittest.IsolatedAsyncioTestCase):
+    """Chỗ thử bị giữ mà không ai trả — generator của SSE chưa từng chạy vì client đi trước response.start — phải tự hết hạn."""
+
+    @staticmethod
+    async def asgi_get(app, path_qs: str, send_fails: bool) -> int | None:
+        path, _, qs = path_qs.partition("?")
+        scope = {
+            "type": "http", "asgi": {"version": "3.0", "spec_version": "2.4"}, "http_version": "1.1", "method": "GET", "scheme": "http",
+            "path": path, "raw_path": path.encode(), "query_string": qs.encode(), "root_path": "",
+            "headers": [(b"x-bo19-spike-token", TOKEN.encode())], "server": ("t", 80), "client": ("c", 1),
+        }
+        status: list[int] = []
+        never = asyncio.Event()
+
+        async def receive():
+            await never.wait()
+
+        async def send(msg):
+            if msg["type"] == "http.response.start":
+                status.append(msg["status"])
+                if send_fails:
+                    raise OSError("client đã đi")
+
+        try:
+            await app(scope, receive, send)
+        except Exception:  # noqa: BLE001 — ClientDisconnect / OSError: chỉ cần trạng thái của chỗ thử
+            pass
+        return status[0] if status else None
+
+    async def test_cho_khong_ai_tra_thi_tu_het_han(self):
+        old = api_main.SPIKE_SLOT_GRACE_S
+        api_main.SPIKE_SLOT_GRACE_S = 0.0  # hạn của chỗ = max của chính request
+        try:
+            app = make_app(ENV_ON)
+            await self.asgi_get(app, "/api/_spike/sse?interval=0&max=0.4", send_fails=True)
+            self.assertEqual(await self.asgi_get(app, "/api/_spike/sleep?s=0", False), 429)  # chỗ vẫn bị giữ: generator chưa chạy nên không có finally
+            await asyncio.sleep(0.5)
+            self.assertEqual(await self.asgi_get(app, "/api/_spike/sleep?s=0", False), 200)  # đã tự hết hạn
+        finally:
+            api_main.SPIKE_SLOT_GRACE_S = old
+
+
 if __name__ == "__main__":
     unittest.main()

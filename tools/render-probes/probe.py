@@ -24,7 +24,9 @@ không kết luận "gom đệm" hay "cắt". Trước khi đo, probe hỏi /com
 Giới hạn của probe: http.client chỉ nói HTTP/1.1, không HTTP/2 như trình duyệt; stdlib không giải nén được `br` — gặp `br` thì vẫn
 ghi thời điểm và cỡ từng chunk nhưng không đọc được nội dung event.
 
-Mã thoát: 0 xong · 2 spec hỏng hoặc tổng thời lượng vượt trần · 3 sai commit · 4 endpoint spike không mở (404) · 5 không nối được.
+Gặp 429 (chỗ thử đang bị giữ) probe chờ rồi thử lại, ghi vào busy_retries; lần 429 không bao giờ là điểm dữ liệu.
+
+Mã thoát: 0 xong · 2 spec hỏng hoặc tổng thời lượng vượt trần · 3 sai commit · 4 endpoint spike không mở (404) · 5 không nối được · 6 có lượt bỏ cuộc vì 429 (không có dữ liệu).
 """
 from __future__ import annotations
 
@@ -169,7 +171,7 @@ def plan(run: dict) -> tuple[str, float, bool]:
     return f"{PREFIX}/sse?{q}", float(run["max"]), True
 
 
-def measure(t: Target, run: dict, idx: int, boot_before: float | None) -> dict:
+def attempt(t: Target, run: dict, idx: int, boot_before: float | None) -> dict:
     path, dur, sse = plan(run)
     enc = run.get("enc", "none")
     rec: dict = {
@@ -191,6 +193,10 @@ def measure(t: Target, run: dict, idx: int, boot_before: float | None) -> dict:
         rec["status"] = resp.status
         rec["http_version"] = {10: "HTTP/1.0", 11: "HTTP/1.1"}.get(resp.version, str(resp.version))
         rec["response_headers"] = [[k, t.scrub(v)] for k, v in resp.getheaders()]
+        if resp.status == 429:  # chỗ thử đang bị giữ — không phải điểm dữ liệu, measure() sẽ chờ rồi thử lại
+            resp.read()
+            rec["ended"] = "busy"
+            return rec
         dec, decodable = decoder_for(resp.getheader("Content-Encoding", ""))
         rec["body_decodable"] = decodable
         buf = b""
@@ -242,6 +248,26 @@ def measure(t: Target, run: dict, idx: int, boot_before: float | None) -> dict:
     return rec
 
 
+def measure(t: Target, run: dict, idx: int, boot_before: float | None, busy_wait_s: float) -> dict:
+    """Một lượt đo. Gặp 429 thì chờ 10 s rồi thử lại tới busy_wait_s; mỗi lần chờ ghi vào busy_retries, không phải điểm dữ liệu."""
+    retries: list[dict] = []
+    t0 = time.perf_counter()
+    while True:
+        rec = attempt(t, run, idx, boot_before)
+        if rec["ended"] != "busy":
+            break
+        waited = time.perf_counter() - t0
+        retries.append({"utc": utc(), "waited_s": round(waited, 3)})
+        print(f"[run {idx}] 429 SPIKE_BUSY — đã chờ {waited:.0f} s; không tính là điểm dữ liệu", flush=True)
+        if waited + 10 > busy_wait_s:
+            rec["ended"] = "busy_gave_up"
+            rec["summary"] = summarize(rec)
+            break
+        time.sleep(10)
+    rec["busy_retries"] = retries
+    return rec
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="S3 của Spike 1 — đo từ ngoài Render")
     ap.add_argument("--spec")
@@ -254,6 +280,8 @@ def main() -> int:
     ap.add_argument("--expect-commit")
     ap.add_argument("--label", default="manual")
     ap.add_argument("--out", default=str(Path(__file__).resolve().parent / "out"))
+    ap.add_argument("--busy-wait-s", type=float, default=120.0, help="gặp 429 thì chờ tối đa chừng này giây (thử lại mỗi 10 s)")
+    ap.add_argument("--emit", action="store_true", help="in mỗi kết quả thành một dòng RESULT_JSON — cho log của CI")
     ap.add_argument("--max-total-minutes", type=float, default=330.0, help="trần tổng thời lượng một lần chạy; job của GitHub-hosted tối đa 360 phút")
     a = ap.parse_args()
 
@@ -304,18 +332,22 @@ def main() -> int:
         "commit": got or None, "branch": info.get("branch"), "commit_checked": bool(expect), "boot_epoch": boot,
         "clock_skew_estimate_s": round(info["server_epoch"] - (t0 + t1) / 2, 6), "commit_rtt_s": round(t1 - t0, 6),
     }
-    print(f"commit={got[:12] or '(không có)'} branch={meta['branch']} kiểm_commit={meta['commit_checked']} client={meta['client']} runs={len(spec['runs'])}", flush=True)
+    print(f"commit={got[:12] or '(không có)'} branch={meta['branch']} kiểm_commit={meta['commit_checked']} client={meta['client']} runs={len(spec['runs'])} python={meta['python']} boot_epoch={boot}", flush=True)
 
     rc = 0
     for i, run in enumerate(spec["runs"], 1):
-        rec = measure(t, run, i, boot)
+        rec = measure(t, run, i, boot, a.busy_wait_s)
         rec["meta"] = meta
         f = out / f"{i:02d}-{rec['case']}-{rec['enc']}.json"
         f.write_text(json.dumps(rec, indent=1, ensure_ascii=False), encoding="utf-8")
+        if a.emit:
+            print("RESULT_JSON " + json.dumps(rec, separators=(",", ":"), ensure_ascii=False), flush=True)
         s = rec["summary"]
         print(f"[run {i}] {rec['case']} enc={rec['enc']} status={rec.get('status')} ended={rec['ended']} elapsed={rec['elapsed_s']}s "
               f"events={s['events']} chunks={s['chunks']} bunched={s['bunched_pairs']} restarted={rec.get('after', {}).get('restarted')} -> {f.name}", flush=True)
         boot = (rec.get("after") or {}).get("boot_epoch") or boot
+        if rec["ended"] == "busy_gave_up":
+            rc = 6  # lượt này không có dữ liệu; các lượt sau vẫn chạy
     return rc
 
 
