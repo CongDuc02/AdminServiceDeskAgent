@@ -2994,3 +2994,14 @@ Chưa đo trên Render. A-025, A-050 chưa đổi.
 - Push 1 — `dbe5546`, thêm `.github/workflows/spike-s3-probe.yml`, không đổi `run.json`: sau 20 s `GET /actions/runs?branch=spike/s3-do` trả `total_count = 0`.
 - `GET /actions/workflows` trả `total_count = 0` — workflow chỉ nằm ở nhánh `spike/s3-do` **không** hiện ở danh sách này. Vì vậy "0 lượt chạy" chỉ cho biết push thường không kích hoạt gì; **chưa** chứng minh file workflow hợp lệ. Việc đó chờ lượt chạy vô hại.
 - `GET /actions/secrets` trả `total_count = 0` — chưa có repo secret nào.
+
+---
+
+## 2026-10-04 — S3: ngưỡng gom đệm chỉnh trước khi đo Render; workflow kiểm secret rỗng
+
+| File | Thay đổi |
+|---|---|
+| `tools/render-probes/README.md` | PO sửa ngưỡng: **một** cặp lệch ≥ 2.5 s đơn lẻ là "không kết luận" và chạy lại; "có gom đệm" khi ≥ 2 cặp trong một lượt, hoặc một cặp lặp lại ở lượt chạy lại. Các mốc khác giữ (event đầu ≥ 5 s; 2 s; 0.5 s) |
+| `.github/workflows/spike-s3-probe.yml` | Bước đầu kiểm hai secret; rỗng hoặc chưa tạo thì job đỏ ngay, chỉ báo **tên** secret thiếu, không in giá trị |
+
+Render đang chạy `8fdd1bbc725ca5a586eb91238b294933990525a6` trên nhánh `spike/s3-do` — kiểm từ máy local bằng `/api/_spike/commit`, `boot_epoch` 1791125091.52. `.env`: hai dòng `BO19_SPIKE_*` không nháy, không `\r`, không khoảng trắng thừa. Repo công khai (`private: false` theo API) — không cần ước quota phút Actions.

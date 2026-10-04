@@ -24,6 +24,20 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
           persist-credentials: false
+      - name: Kiểm secret — rỗng thì dừng ngay
+        env:
+          BO19_SPIKE_BASE_URL: ${{ secrets.BO19_SPIKE_BASE_URL }}
+          BO19_SPIKE_TOKEN: ${{ secrets.BO19_SPIKE_TOKEN }}
+        run: |
+          # Chỉ báo tên secret thiếu, không bao giờ in giá trị.
+          MISSING=""
+          [ -z "$BO19_SPIKE_BASE_URL" ] && MISSING="$MISSING BO19_SPIKE_BASE_URL"
+          [ -z "$BO19_SPIKE_TOKEN" ] && MISSING="$MISSING BO19_SPIKE_TOKEN"
+          if [ -n "$MISSING" ]; then
+            echo "::error title=Thiếu repo secret::Rỗng hoặc chưa tạo:$MISSING — không chạy probe. Tạo secret rồi push lại run.json."
+            exit 1
+          fi
+          echo "secret có đủ hai giá trị (không in)"
       - name: Probe
         env:
           BO19_SPIKE_BASE_URL: ${{ secrets.BO19_SPIKE_BASE_URL }}

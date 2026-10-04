@@ -47,9 +47,10 @@ Mẫu nhỏ và là loopback: đây là nền của phần mềm hai đầu, **k
 | Kết luận | Điều kiện — cả hai biến thể `enc` |
 |---|---|
 | **Không thấy gom đệm** | `open` tới sau ≤ 2 s **và** mọi cặp `|recv_gap − send_gap|` ≤ 0.5 s (= 0.1 · I; 118 lần nền local) |
-| **Có gom đệm** | `open` tới sau ≥ 5 s (= I) dù máy chủ gửi ngay, **hoặc** ≥ 1 cặp có `|recv_gap − send_gap|` ≥ 2.5 s (= 0.5 · I; một event bị giữ lại thường kéo theo một cặp dồn, tức `bunched_pairs` ≥ 1) |
-| **Không kết luận** | Mọi trường hợp còn lại — ghi số, không gán nhãn |
+| **Có gom đệm** | `open` tới sau ≥ 5 s (= I) dù máy chủ gửi ngay, **hoặc** ≥ **2** cặp có `|recv_gap − send_gap|` ≥ 2.5 s (= 0.5 · I) trong **cùng một lượt**, **hoặc** một cặp như vậy xuất hiện lại ở lượt chạy lại |
+| **Không kết luận** | Mọi trường hợp còn lại — gồm **một cặp lệch ≥ 2.5 s đơn lẻ** trong một lượt: ghi số, **chạy lại** lượt đó; không gán nhãn |
 
+- Một cặp lệch ≥ 2.5 s đơn lẻ có thể là một đợt trễ mạng, không phải gom đệm — vì vậy cần hai cặp hoặc một lần lặp lại. Sửa ngưỡng này (PO, 2026-10-04) trước khi có số đo Render nào.
 - Một kết luận cần hai lượt (mỗi biến thể `enc` một lượt) cùng chiều. Lệch nhau thì lặp lại; vẫn lệch thì ghi cả hai.
 - `body_decodable = false` (ví dụ `br`): áp cùng ngưỡng lên thời điểm của từng chunk (`chunks[].t`) thay cho event; ghi rõ.
 - Nếu gom đệm: đo thêm biến thể `accel=no` (`X-Accel-Buffering: no`), cùng ngưỡng.
