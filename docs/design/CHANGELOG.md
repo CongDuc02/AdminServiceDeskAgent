@@ -2762,3 +2762,38 @@ Chạy theo kế hoạch PO duyệt cùng năm mặc định. Output nguyên vă
 | `tools/contract-checks/README.md` | Cách chạy test |
 
 **Đã chạy:** 5/5 test đạt. Bộ kiểm thật không đổi số: `pgserver` 16.2 `--local` 169 / 63 / Lệch 0, `--local-migrated` 176 / 68 / Lệch 0; Render `--app-dsn` 176 / 68 / Lệch 0.
+
+---
+
+## 2026-10-04 — chuẩn bị S2 theo PO
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-web-service-health-checks.md` | **Mới.** Health check, cổng, auto-deploy, deploy hỏng, URL nội bộ Postgres — trích nguyên văn |
+| `06-structure.md` → 0.22 | Bước kiểm #2 mở rộng: không sở hữu database, không sở hữu `public`, không `CREATEROLE`, `CREATEDB`, không superuser. Cột sổ `schema_migration`. `backend/tests/`, `unittest` |
+| `11-ops.md` → 0.23 | `BO19_DATABASE_URL`: host nội bộ cộng credential `bo19_app`, `sslmode=require`; không dán URL nội bộ Render hiển thị |
+| `09-security.md` → 0.11 | Bảng secret: dòng `bo19_app` trỏ `BO19_DATABASE_URL` |
+| `.claude/commands/spike.md` — file lệnh của PO, PO cho phép sửa | Dòng S2: bỏ pre-deploy (ADR-022); lệch có chủ ý `api_main` so với ADR-033; ba lần deploy A, B, C; Auto-Deploy Off; không credential `bo19_migrator` |
+
+---
+
+## 2026-10-04 — S2: code, image, chạy thử local
+
+| File | Thay đổi |
+|---|---|
+| `Dockerfile` | **Mới.** Giai đoạn 2 của đặc tả: `python:3.11-slim` ghim digest, user `bo19` không đặc quyền, `pip install --require-hashes --no-deps -r requirements-linux.lock`, `CMD python -m bo19.entrypoints.api_main` |
+| `.dockerignore` | **Mới.** Chặn `.env`, `.env.*`, `.git`, `docs/`, `tools/`, `.claude/`, `.github/`, `frontend/`, `backend/tests/` |
+| `backend/src/bo19/config/settings.py` | **Mới.** `BO19_DATABASE_URL`, `PORT`; repr không lộ DSN |
+| `backend/src/bo19/persistence/probe.py` | **Mới.** `write_probe` — giao dịch thường, luôn rollback, chỉ nhận `WHERE false`; `role_facts`; `read_ledger` |
+| `backend/src/bo19/startup/checks.py` | **Mới.** Bước kiểm #1 — sổ `schema_migration` so với migration trong image; #2 bản mở rộng. Chạy tới hết rồi gom mã trượt |
+| `backend/src/bo19/entrypoints/api_main.py` | Bản S2: bước kiểm #1, #2, rồi `GET /healthz`; trượt thì ghi mã và thoát 1; lỗi kết nối chỉ ghi lớp lỗi và SQLSTATE |
+| `backend/tests/test_startup_checks.py` | **Mới.** 20 test `unittest` — 18 thuần, 2 tích hợp trên PostgreSQL 18 khi có `BO19_TEST_PG_SUPERUSER_DSN` |
+| `06-structure.md` → 0.23 | Đặc tả `Dockerfile`: sửa đường dẫn lock, ghi digest image nền |
+
+**Đã chạy, 2026-10-04:**
+
+- 20/20 test đạt, gồm hai test tích hợp trên container `pgvector/pgvector:0.8.1-pg18@sha256:508c5290…`: role giống user mặc định Render trượt đủ `CREATEROLE`, `CREATEDB`, `OWNS_DATABASE`, `OWNS_SCHEMA_PUBLIC`, `OWNS_TABLES`, `AUDIT_EVENT_WRITABLE`; role giống `bo19_app` đạt.
+- `docker build`: đạt. Trong image: `uid=999(bo19)`, không có `.env`; `fastapi` 0.115.12, `uvicorn` 0.34.2, `psycopg` 3.3.5.
+- Chạy image, thiếu `BO19_DATABASE_URL`: `STARTUP_FAIL CONFIG_DATABASE_URL_MISSING`, mã 1.
+- Chạy image, `bo19_app` trên Render qua URL ngoài — bản thử trước của deploy A: chỉ `STARTUP_01_LEDGER_MISSING`, mã 1; bước #2 đạt.
+- Chạy image trên PostgreSQL 18 local có sổ giả lập: `GET /healthz` 200; `SIGTERM` → mã 0.
