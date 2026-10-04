@@ -2866,3 +2866,14 @@ PO duyệt tên cột sổ `filename`, `kind`, `sha256`, `applied_at`; chọn d�
 | `11-ops.md` → 0.27 | Chu kỳ 2: bước 4–5 đạt, bước 6–8 chưa — cổng 2.11 chưa đạt; runbook bước 5 ghi rõ tên database có hậu tố |
 
 **Kết quả:** PostgreSQL 18.6, SSL, `vector` 0.8.1; `bo19_migrator`, `bo19_app` có `LOGIN`, không superuser, không `CREATEROLE`, `CREATEDB`; chỉ `bo19_migrator` có `CREATE` trên `public`; 0 bảng. Output `step0.sh` lần đạt: PO báo đạt, không gửi output — bằng chứng là phép kiểm bằng `bo19_app`.
+
+---
+
+## 2026-10-04 — S2: deploy A trên Render
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-web-service-s2.md` | **Mới.** Cấu hình Web Service; deploy A — log nguyên văn, đọc kết quả, phần chưa đo |
+| `.claude/commands/spike.md` — PO cho phép | Dòng S2: #16 chưa có trong image S2, không đặt `BO19_ENVIRONMENT`; kết quả A |
+
+**Kết quả A:** `Deploy failed`; `STARTUP_01_LEDGER_MISSING`, `STARTUP_02_PROBE_ERROR:42P01`, thoát mã 1; Render chạy lại một lần sau 5 giây, cùng kết quả. **Chưa đo:** mốc chuyển sang `Deploy failed`.
