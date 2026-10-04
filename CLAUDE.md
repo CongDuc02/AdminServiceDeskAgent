@@ -18,6 +18,15 @@
 - **Gói free** cho Render và mọi dịch vụ khác. Ngoại lệ chỉ theo A-085.
 - Mục 4 và mục 5 vẫn áp — kể cả quy tắc trích dẫn và luật 11 về `CLAUDE.md`.
 
+#### Luật thao tác — repo, secret, phạm vi (PO, 2026-10-04):
+
+- **Merge và push chỉ khi PO cho phép, từng lần.** Merge bằng `--no-ff`. Cho phép lần trước không có giá trị cho lần sau.
+- **Commit, merge, PR không ghi công Claude** — không `Co-Authored-By`, không dòng "Generated with".
+- **`.env` của repo:** công cụ được ghi; người triển khai không đọc lại nội dung, không in giá trị — chỉ báo tên biến.
+- **Credential không trên dòng lệnh**, không trong log, báo cáo hay file nào trong repo: truyền qua stdin hoặc biến môi trường đọc từ file. Mỗi role một biến; tiến trình runtime chỉ đọc biến của `bo19_app`.
+- **`~/.bo19/admin.env` — credential `bo19_admin` — chỉ PO giữ:** người triển khai không đọc, không ghi. Mục Secret management trên Render của `09-security.md`.
+- **Việc ngoài kế hoạch đã duyệt thì dừng và hỏi**, kèm phương án mặc định; không tự mở rộng.
+- **Tài liệu sản phẩm bên ngoài lấy bằng `curl` vào `docs/reference/` trước khi dựa vào** — ghi URL, ngày lấy, sha256; không dùng công cụ tóm tắt web. Bổ sung cho quy tắc trích dẫn ở mục 5.
   ***
 
 ## 1. Bối cảnh đề tài
