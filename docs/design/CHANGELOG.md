@@ -2851,4 +2851,5 @@ PO duyệt tên cột sổ `filename`, `kind`, `sha256`, `applied_at`; chọn d�
 | `11-ops.md` → 0.26 | Nhật ký chu kỳ 2: tạo 2026-10-04, dựng lại 2026-10-29, hết hạn 2026-11-03, bị xoá 2026-11-17 — PO gửi ngày tạo và ngày hết hạn |
 
 `role_secrets.py generate`, `internal-dsn` đã chạy trên `.env` của repo cho DB chu kỳ 2 — chỉ in tên biến; verifier ở file tạm ngoài repo, chờ PO chạy `step0.sh`.
-| `tools/db-bootstrap/step0.sh` | Sửa: Git Bash của PO đặt `TMP=/tmp` — docker, chương trình Windows, không mở được `/tmp/...` khi `MSYS_NO_PATHCONV=1`. Đổi đường dẫn file verifier sang dạng Windows bằng `cygpath -w` trước khi đưa cho `--env-file`. Lần chạy hỏng dừng ở `docker run`, chưa kết nối DB. Thử lại trên container PostgreSQL 18.2 với `TMP=/tmp`: đạt |
+
+**Sửa `tools/db-bootstrap/step0.sh`:** Git Bash của PO đặt `TMP=/tmp` — docker, chương trình Windows, không mở được `/tmp/...` khi `MSYS_NO_PATHCONV=1`. Đổi đường dẫn file verifier sang dạng Windows bằng `cygpath -w` trước khi đưa cho `--env-file`. Lần chạy hỏng dừng ở `docker run`, chưa kết nối DB. Thử lại trên container PostgreSQL 18.2 với `TMP=/tmp`: đạt.
