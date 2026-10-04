@@ -260,6 +260,32 @@ def verdict(events: list[dict], interval: float, state: str) -> str:
     return "không kết luận" + part
 
 
+PHU_MAX_ERR_FRACTION = 0.2  # tiêu chí phụ: mọi cặp lệch ≤ 0.2 · I (= 1.0 s ở I = 5 s)
+
+
+def verdict_phu(events: list[dict], interval: float, state: str) -> str:
+    """Tiêu chí PHỤ cho A-050 (PO, 2026-10-04) — báo song song với `verdict`, không thay nó. Đặt SAU khi đã thấy dữ liệu local
+    (lệch lớn nhất 0.6083 s) và TRƯỚC khi có số đo nào trên runner. "Có gom đệm" giữ nguyên như ngưỡng gốc; chỉ nới mốc "không thấy" từ
+    0.1 · I lên 0.2 · I. Cần thêm: không cặp nào dồn (nhận < nửa khoảng gửi)."""
+    errs = [abs(x) for x in pair_errors(events)]
+    first = events[0]["t"] if events else None
+    if first is None:
+        return "không có event"
+    if state == "interrupted" and len(errs) < MIN_PAIRS_INTERRUPTED:
+        return f"gián đoạn — không áp ngưỡng ({len(errs)} cặp < {MIN_PAIRS_INTERRUPTED})"
+    part = " [dữ liệu một phần: lượt gián đoạn]" if state == "interrupted" else ""
+    ev = [e for e in events if e.get("server_epoch") is not None and e.get("name") != "end"]
+    bunched = sum(1 for a, b in zip(ev, ev[1:]) if (b["server_epoch"] - a["server_epoch"]) >= 0.1 and (b["t"] - a["t"]) < 0.5 * (b["server_epoch"] - a["server_epoch"]))
+    big = sum(1 for e in errs if e >= 0.5 * interval)
+    if first >= interval or big >= 2:
+        return "có gom đệm" + part
+    if big == 1:
+        return "không kết luận — một cặp lệch ≥ 0.5·I đơn lẻ: chạy lại" + part
+    if first <= 2.0 and bunched == 0 and all(e <= PHU_MAX_ERR_FRACTION * interval for e in errs):
+        return "không thấy gom đệm" + part
+    return "không kết luận" + part
+
+
 def classify(rec: dict) -> str:
     """completed · cut · restart · cut_unverified · busy_gave_up. `restart` (boot_epoch đổi) KHÔNG phải điểm cắt."""
     if rec["ended"] in ("end_event", "completed"):
@@ -304,8 +330,9 @@ def summarize_journal(path: Path) -> dict:
            "last_event_t": j["events"][-1]["t"] if j["events"] else None, "summary": summarize({"events": j["events"], "chunks": j["chunks"]})}
     if case in ("sse-events", "sse-comment") and interval:
         out["verdict"] = verdict(j["events"], float(interval), state)
+        out["verdict_phu"] = verdict_phu(j["events"], float(interval), state)
     else:
-        out["verdict"] = "không áp ngưỡng gom đệm cho ca này"
+        out["verdict"] = out["verdict_phu"] = "không áp ngưỡng gom đệm cho ca này"
     return out
 
 
@@ -434,8 +461,10 @@ def measure(t: Target, run: dict, idx: int, boot_before: float | None, busy_wait
     rec["busy_retries"] = retries
     rec["classification"] = classify(rec)
     iv = (rec["params"] or {}).get("interval")
-    rec["verdict"] = verdict(rec["events"], float(iv), "complete") if rec["case"] in ("sse-events", "sse-comment") and iv else None
-    j.write({"type": "final", "classification": rec["classification"], "verdict": rec["verdict"], "summary": rec["summary"]})
+    sse_iv = rec["case"] in ("sse-events", "sse-comment") and iv
+    rec["verdict"] = verdict(rec["events"], float(iv), "complete") if sse_iv else None
+    rec["verdict_phu"] = verdict_phu(rec["events"], float(iv), "complete") if sse_iv else None
+    j.write({"type": "final", "classification": rec["classification"], "verdict": rec["verdict"], "verdict_phu": rec["verdict_phu"], "summary": rec["summary"]})
     return rec
 
 
@@ -520,7 +549,12 @@ def main() -> int:
     print(f"commit={got[:12] or '(không có)'} branch={meta['branch']} kiểm_commit={meta['commit_checked']} client={meta['client']} runs={len(spec['runs'])} python={meta['python']} boot_epoch={boot}", flush=True)
 
     rc = 0
+    cut_ladders: set[str] = set()  # thang bị cắt ở một nấc: bỏ các nấc cao hơn cùng thang, không chia đôi (PO, 2026-10-04)
     for i, run in enumerate(spec["runs"], 1):
+        ladder = run.get("ladder")
+        if ladder and ladder in cut_ladders:
+            print(f"[run {i}] SKIPPED {run['case']} — một nấc thấp hơn của thang '{ladder}' đã bị cắt; không chạy nấc cao hơn", flush=True)
+            continue
         stem = f"{i:02d}-{run['case']}-{run.get('enc', 'none')}"
         j = Journal(out / f"{stem}.jsonl", t.host, echo=a.emit)
         j.write({"type": "meta", **meta})
@@ -536,8 +570,10 @@ def main() -> int:
         s = rec["summary"]
         print(f"[run {i}] {rec['case']} enc={rec['enc']} status={rec.get('status')} ended={rec['ended']} elapsed={rec['elapsed_s']}s "
               f"events={s['events']} chunks={s['chunks']} bunched={s['bunched_pairs']} restarted={rec.get('after', {}).get('restarted')} "
-              f"edge={rec.get('edge')} class={rec['classification']} verdict={rec['verdict']} -> {f.name}", flush=True)
+              f"edge={rec.get('edge')} class={rec['classification']} verdict={rec['verdict']} phu={rec['verdict_phu']} -> {f.name}", flush=True)
         boot = (rec.get("after") or {}).get("boot_epoch") or boot
+        if ladder and rec["classification"] in ("cut", "cut_unverified"):
+            cut_ladders.add(ladder)  # restart KHÔNG phải điểm cắt: không dừng thang
         if rec["ended"] == "busy_gave_up":
             rc = 6  # lượt này không có dữ liệu; các lượt sau vẫn chạy
     return rc

@@ -114,6 +114,12 @@ class _Handler(BaseHTTPRequestHandler):
                     time.sleep(0.1)
             except OSError:
                 pass
+        elif self.path.startswith("/api/_spike/sse") and "interval=0&max=60" in self.path:
+            # mô phỏng một kết nối bị cắt: một event `open` rồi đóng, không có event `end`
+            self._common("text/event-stream")
+            d = {"seq": 0, "server_epoch": time.time(), "note": HOST}
+            self.wfile.write(f"event: open\ndata: {json.dumps(d)}\n\n".encode())
+            self.wfile.flush()
         elif self.path.startswith("/api/_spike/sse"):
             self._common("text/event-stream")
             for i, name in enumerate(("open", "tick", "end")):
@@ -256,6 +262,65 @@ class Nguong(unittest.TestCase):
 
     def test_gian_doan_du_cap_van_gan_nhan_mot_phan(self):
         self.assertEqual(probe.verdict(_ev(70), 5.0, "interrupted"), "không thấy gom đệm [dữ liệu một phần: lượt gián đoạn]")
+
+
+class Thang(unittest.TestCase):
+    """Một thang bị cắt ở nấc nào thì bỏ các nấc cao hơn cùng thang — không chia đôi; thang khác vẫn chạy."""
+
+    def test_dung_o_nac_bi_cat_dau_tien(self):
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            with tempfile.TemporaryDirectory() as d:
+                spec_f = Path(d) / "run.json"
+                spec_f.write_text(json.dumps({"label": "thang", "expect_commit": "abc1234", "runs": [
+                    {"case": "sse-silent", "max": 30, "enc": "none", "ladder": "silent"},   # hoàn tất
+                    {"case": "sse-silent", "max": 60, "enc": "none", "ladder": "silent"},   # bị cắt
+                    {"case": "sse-silent", "max": 120, "enc": "none", "ladder": "silent"},  # phải bị bỏ qua
+                    {"case": "sleep", "s": 0, "enc": "none", "ladder": "sleep"},            # thang khác: vẫn chạy
+                ]}), encoding="utf-8")
+                env = {**os.environ, "BO19_SPIKE_BASE_URL": f"http://localhost:{srv.server_port}", "BO19_SPIKE_TOKEN": "tok"}
+                r = subprocess.run([sys.executable, str(PROBE), "--spec", str(spec_f), "--out", str(Path(d) / "out")],
+                                   env=env, capture_output=True, text=True, encoding="utf-8", timeout=60)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                names = sorted(f.name for f in (Path(d) / "out").rglob("*.json"))
+                self.assertEqual(names, ["01-sse-silent-none.json", "02-sse-silent-none.json", "04-sleep-none.json"])
+                recs = {f.name: json.loads(f.read_text(encoding="utf-8")) for f in (Path(d) / "out").rglob("*.json")}
+                self.assertEqual(recs["01-sse-silent-none.json"]["classification"], "completed")
+                self.assertEqual(recs["02-sse-silent-none.json"]["classification"], "cut")
+                self.assertEqual(recs["04-sleep-none.json"]["classification"], "completed")
+                self.assertIn("[run 3] SKIPPED", r.stdout)
+        finally:
+            srv.shutdown()
+            srv.server_close()
+
+
+class TieuChiPhu(unittest.TestCase):
+    """Tiêu chí phụ (PO, 2026-10-04): nới mốc "không thấy" từ 0.1·I lên 0.2·I; "có gom đệm" giữ nguyên."""
+
+    def test_ba_luot_local_da_do(self):
+        # lệch lớn nhất 0.540 / 0.608 s: gốc không kết luận, phụ không thấy gom đệm
+        for j in (0.540, 0.608):
+            ev = _ev(100, jitter={50: j})
+            self.assertEqual(probe.verdict(ev, 5.0, "complete"), "không kết luận")
+            self.assertEqual(probe.verdict_phu(ev, 5.0, "complete"), "không thấy gom đệm")
+
+    def test_tren_mot_giay_van_khong_ket_luan(self):
+        ev = _ev(100, jitter={50: 1.2})
+        self.assertEqual(probe.verdict_phu(ev, 5.0, "complete"), "không kết luận")
+
+    def test_gom_dem_giu_nguyen(self):
+        self.assertEqual(probe.verdict_phu(_ev(100, jitter={10: 3.0}), 5.0, "complete"), "có gom đệm")
+        self.assertEqual(probe.verdict_phu(_ev(100, first=5.0), 5.0, "complete"), "có gom đệm")
+
+    def test_event_dau_den_muon_van_khong_thay(self):
+        self.assertEqual(probe.verdict_phu(_ev(100, first=3.0), 5.0, "complete"), "không kết luận")
+
+    def test_cap_don_le_ge_2_5_chay_lai(self):
+        self.assertTrue(probe.verdict_phu(_ev(100, jitter={99: 2.6}), 5.0, "complete").startswith("không kết luận — một cặp"))
+
+    def test_gian_doan_chua_du_cap(self):
+        self.assertTrue(probe.verdict_phu(_ev(30), 5.0, "interrupted").startswith("gián đoạn — không áp ngưỡng"))
 
 
 class Edge(unittest.TestCase):

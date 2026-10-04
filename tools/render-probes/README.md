@@ -87,3 +87,25 @@ Mẫu nhỏ và là loopback: đây là nền của phần mềm hai đầu, **k
 `run.json` mang `label`, `expect_commit` (commit Render đang chạy — **không** phải commit của lần push, vì Render chỉ deploy commit người ta bấm), `keepwarm_s` (tuỳ chọn) và `runs`. Tổng thời lượng ước tính ≤ 330 phút, dưới trần 360 phút của job. Nhiều vòng thì chia nhiều push; `concurrency` chỉ cho một lượt chạy, một lượt chờ — chờ lượt trước xong rồi mới push tiếp.
 
 Secret của repo: `BO19_SPIKE_BASE_URL`, `BO19_SPIKE_TOKEN` — PO tạo, xoá ở bước 7. Kết quả in thành các dòng `JOURNAL` (từng sự kiện) và `RESULT_JSON` (kết quả cuối của lượt) trong log của job.
+
+## Thu hẹp S3 — PO, 2026-10-04
+
+**Mục "Quy trình đo A-025" ở trên được thu hẹp**; phần còn lại của nó (thang dài, chia đôi, ca ≥ 15 phút, `keepwarm`, chạy lại ≥ 2 lần) **không chạy — không quyết định nào cần**. Còn chạy trên runner, rồi dừng đo:
+
+1. `sse-events`, `interval=5`, `max=600`, `enc=none` và `enc=browser` — điểm nhìn thứ hai cho A-050. Báo theo **cả** ngưỡng gốc **và** tiêu chí phụ dưới đây.
+2. `sse-silent`, `max` = 30, 60, 120, 300 s, `enc=none`. Dừng ở nấc bị cắt đầu tiên; không chia đôi (`"ladder": "silent"` trong spec).
+3. `sleep`, `s` = 30, 60, 120, `enc=none`. Dừng ở nấc bị cắt đầu tiên; không chia đôi (`"ladder": "sleep"`).
+
+Mỗi nấc chạy **một** lần. Một nấc có `boot_epoch` đổi trong lượt là `restart`, không phải điểm cắt và không dừng thang. Tổng thời lượng ước tính: 1920 s đo + 9 × 60 s dự phòng = 2460 s ≈ 41 phút, trong một job.
+
+## Tiêu chí phụ cho A-050 — đặt trước khi đo trên runner, 2026-10-04
+
+Ba lượt local (`short-2` `none`, `short-2` `browser`, `short-3` `none`) cho lệch lớn nhất 0.540 s, 0.352 s, 0.608 s — hai trong ba vượt mốc 0.5 s của ngưỡng gốc, trong khi `bunched_pairs` = 0 và không cặp nào ≥ 2.5 s. Mốc 0.5 s nằm trong vùng nhiễu của đường mạng nhà. **Tiêu chí phụ được đặt sau khi đã thấy dữ liệu local** — ghi rõ, và không thay ngưỡng gốc: mọi lượt được báo theo cả hai, cạnh nhau.
+
+| Kết luận (phụ) | Điều kiện |
+|---|---|
+| **Không thấy gom đệm** | `open` tới sau ≤ 2 s **và** không cặp nào dồn (`bunched_pairs` = 0: nhận cách nhau < nửa khoảng gửi) **và** mọi cặp `|recv_gap − send_gap|` ≤ **1.0 s** (= 0.2 · I) |
+| **Có gom đệm** | Như ngưỡng gốc: `open` tới sau ≥ I, **hoặc** ≥ 2 cặp lệch ≥ 2.5 s trong một lượt, **hoặc** một cặp như vậy lặp lại |
+| **Không kết luận** | Còn lại, gồm một cặp lệch ≥ 2.5 s đơn lẻ (chạy lại) |
+
+Chỉ khác ngưỡng gốc ở mốc "không thấy": 0.1 · I → 0.2 · I, cộng điều kiện `bunched_pairs` = 0. Mốc 1.0 s là **chọn**: 1.6 lần lệch lớn nhất đã thấy ở local; không suy từ lý thuyết. Áp ngược cho ba lượt local, cả ba là "không thấy gom đệm" theo tiêu chí phụ, hai trong ba là "không kết luận" theo ngưỡng gốc. Trong `probe.py`: `verdict` (gốc) và `verdict_phu`.
