@@ -337,4 +337,13 @@ Theo `docs/reference/render-free-tier.md`, Web Service free ngủ sau 15 phút k
 | Deploy hỏng có giữ bản đang chạy | **Có** — 60 / 60 `curl` `200` suốt C |
 | Thiếu sổ → #1 chặn | Đạt — A |
 | Credential sai → không phục vụ | Đạt — C |
-| Thời gian đánh thức | Chưa đo được |
+| Thời gian đánh thức | Một lần đo: 22.478055 s — điều kiện "không request 15 phút trước" chưa xác nhận; mục 9 |
+
+## 9. Đánh thức — lần đo thứ hai, PO gửi trước khi đóng phiên 2026-10-04
+
+```text
+{"status":"ok"}
+http=200 time=22.478055s
+```
+
+Lệnh như mục 4. **Đọc:** 22.478055 s — chậm hơn hẳn mọi lần gọi instance đang thức (0.16–1.36 s ở mục 4, 5, 7), nên nhiều khả năng instance đã ngủ và phải thức lại. `docs/reference/render-free-tier.md` nói việc thức lại "takes about one minute"; số đo thấp hơn. **Chưa đủ điều kiện của cách đo đã duyệt:** chưa xác nhận trong log Render không có request nào trong 15 phút trước lần gọi, và chưa ghi giờ gọi. Một lần đo, từ mạng nhà PO — không phải phân phối.
