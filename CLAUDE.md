@@ -133,6 +133,7 @@ backend/migrations/
   schema/                # DDL sau Phase 6: 0001_initial.sql = schema.sql, rồi 0002, 0003, … (ADR-017)
   data/                  # dữ liệu danh mục nạp bằng data migration
   library/               # quyền trên bảng của thư viện checkpointer
+  ledger/                # schema_migration.sql — DDL sổ migration; migrate_main áp mỗi lần chạy, trước bước 1; không đánh số, không ghi vào sổ (ADR-017)
 ```
 
 ---
