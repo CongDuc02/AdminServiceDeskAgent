@@ -2715,3 +2715,34 @@ Chạy theo kế hoạch PO duyệt, mặc định PO duyệt: role thử `NOLOG
 | `tools/contract-checks/README.md` | Cách chạy trên container PostgreSQL 18 |
 
 **Số đo:** PostgreSQL 16.2 / pgvector 0.6.2 (`pgserver`) và PostgreSQL 18.2 / pgvector 0.8.1 (container `pgvector/pgvector:0.8.1-pg18`, `sha256:508c5290cda481d4f5f846446a26e9c1b804766828a394a5861de1b348a18b4c`): `--local` 169 / 63 / Lệch 0, `--local-migrated` 176 / 68 / Lệch 0 — trùng nhau và trùng số cũ. Chủ schema `public`: `pg_database_owner`. Bản minor của image, 18.2, khác Render, 18.6.
+
+---
+
+## 2026-10-04 — Spike 1, S1 trên Render: đạt; phát hiện file grant rỗng
+
+Chạy theo kế hoạch PO duyệt cùng năm mặc định. Output nguyên văn, đã che định danh: `docs/reference/render-postgres-s1.md`.
+
+**Số đo:** bước 0 → 4 đạt trên PostgreSQL 18.6; `check_grants.py --app-dsn` **176 / 68 / Lệch 0**. Chủ database và `public` là user mặc định; user đó `DROP` được bảng của `bo19_migrator`. Sổ `schema_migration` chưa có.
+
+**Phát hiện của spike:** `backend/migrations/library/checkpointer_grants.sql` chỉ có chú thích. Bộ kiểm local dùng bản chép cứng nên không bắt được; trên Render bước 3 "đạt" mà không cấp gì, lần `check_grants.py --app-dsn` đầu hỏng. Đã sửa file, bộ kiểm, luật trình chạy; áp lại bước 3.
+
+**Sơ suất của người triển khai, đã xử lý:** lần `check_grants.py --app-dsn` đầu truyền DSN của `bo19_app` qua đối số dòng lệnh của tiến trình Python — văn bản lệnh chỉ có tên biến shell, nhưng giá trị đã mở rộng nằm trong danh sách đối số của tiến trình suốt lúc chạy. Không in ra đâu. Đã đổi mật khẩu `bo19_app` bằng verifier mới, cập nhật `.env`; `check_grants.py` nay nhận `--app-dsn env:TÊN`.
+
+| File | Thay đổi |
+|---|---|
+| `backend/migrations/library/checkpointer_grants.sql` | Hai câu `GRANT` đúng thiết kế — trước chỉ có chú thích |
+| `tools/contract-checks/check_grants.py` | Mọi kỳ vọng đọc từ file thật — xem bảng ở `README.md`. Dừng khi file SQL sẽ áp không có câu thực thi được. `--app-dsn env:TÊN` |
+| `tools/contract-checks/README.md` | Bảng nguồn kỳ vọng; cách gọi `env:` |
+| `.github/workflows/s1-ci-connect-probe.yml` | **Mới.** Thử kết nối từ runner CI — chỉ `workflow_dispatch`, `contents: read`, `sslmode=require`, không echo DSN |
+| `docs/reference/render-postgres-s1.md` | **Mới.** Script, output, phát hiện |
+| `decisions/ADR-017-…` | Mục cập nhật: file không có câu SQL thực thi thì dừng; bước 3 ngoài sổ, chạy lại được; bước 0 do PO |
+| `06-structure.md` → 0.20 | Cây gốc: `.github/workflows/`, `docs/testing/`. Mục Migration và checkpointer: luật trình chạy |
+| `04-data.md` → 0.23 | Mục Giới hạn: chủ `public` trên Render là user mặc định; `DROP` đã xác nhận |
+| `ASSUMPTIONS.md` → 0.53 | A-047 `Đã chốt`; A-045, A-060 ghi kết quả |
+| `12-roadmap.md` → 0.29 | Cổng 2.10 Đạt |
+
+**Kiểm local sau khi sửa bộ kiểm:** `pgserver` 16.2 và container 18.2 — `--local` 169 / 63 / Lệch 0, `--local-migrated` 176 / 68 / Lệch 0. Kỳ vọng nạp từ file trùng khít các hằng cũ.
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-033-…` | Image local ghim theo digest `sha256:508c5290…`; ghi lệch minor 18.2 local so với 18.6 Render; đổi digest là thay đổi có chủ ý (PO, 2026-10-04) |

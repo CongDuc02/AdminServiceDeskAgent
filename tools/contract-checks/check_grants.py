@@ -24,6 +24,8 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
+import re
 import shutil
 import sys
 import tempfile
@@ -37,47 +39,116 @@ REPO = Path(__file__).resolve().parents[2]
 SCHEMA = REPO / "docs" / "design" / "contracts" / "schema.sql"
 MIGRATIONS = REPO / "backend" / "migrations" / "schema"
 
-# --- Nhóm quyền — nguồn: mục Nguyên tắc dữ liệu của docs/design/04-data.md -------------------
-# Đổi nhóm ở 04-data.md và schema.sql thì đổi ở đây. Bảng mới không thuộc nhóm nào → lệch.
-READ_ONLY = ["role", "permission", "role_permission", "employee_role", "employee_permission_grant"]
-APPEND_ONLY = ["audit_event", "decision_record", "document_render_pin", "document_register_format",
-               "template_variable", "template_variable_input", "seal_action", "document_halt",
-               "operating_mode_change", "llm_usage", "procedure_chunk"]
-INSERT_DELETE = ["decision_record_text", "document_render", "document_free_content", "stored_object",
-                 "stored_object_commit", "procedure_chunk_embedding_v1"]
-MUTABLE_NO_DELETE = ["employee", "request", "request_slot", "chat_session", "document", "approval_step",
-                     "graph_thread", "delegation", "request_type", "slot_definition", "template",
-                     "procedure_document", "room", "room_booking"]
-COLUMN_UPDATE = {
-    "chat_message": ["request_id", "body", "retrieval_query", "content_erased_at"],
-    "template_version": ["status", "activated_at", "retired_at", "updated_at", "row_version"],
-    "document_register": ["name", "is_active", "updated_at", "row_version"],
-    "document_register_counter": ["next_seq", "updated_at"],
-    "document_register_entry": ["status", "voided_at", "void_reason"],
-    "notification": ["pushed_at", "read_at"],
-    "procedure_document_version": ["is_active", "activated_at", "deactivated_at", "updated_at", "row_version"],
-    "embedding_collection": ["status", "activated_at", "retired_at", "updated_at", "row_version"],
+DATA_DESIGN = REPO / "docs" / "design" / "04-data.md"
+CHECKPOINTER_GRANTS_FILE = REPO / "backend" / "migrations" / "library" / "checkpointer_grants.sql"
+
+# Không giữ bản chép cứng của nội dung file nào trong repo (PO, 2026-10-04 — sự cố file grant rỗng ở S1).
+# Mỗi kỳ vọng đọc từ đúng file làm nguồn của nó:
+#   - nhóm quyền theo bảng      ← bảng nhóm quyền ở mục "Hai role, và bất biến bằng quyền" của 04-data.md
+#   - cột của nhóm sửa theo cột ← các câu GRANT UPDATE (...) ON t TO bo19_app trong file SQL được áp
+#                                 (04-data.md: "UPDATE chỉ trên các cột liệt kê trong schema.sql")
+#   - bảng của checkpointer, câu GRANT bước 3 ← backend/migrations/library/checkpointer_grants.sql
+#   - số chiều embedding         ← vector(N) trong DDL của procedure_chunk_embedding_v1
+# Giữ cố định, có lý do: tên sổ migration của ADR-017 — chưa có file DDL nào định nghĩa nó.
+LEDGER = ["schema_migration"]
+
+# Tên hàng trong bảng nhóm quyền của 04-data.md → nhóm của bộ kiểm.
+GROUP_ROWS = {
+    "Chỉ đọc": "READ_ONLY",
+    "Chỉ thêm": "APPEND_ONLY",
+    "Thêm và xoá, không sửa": "INSERT_DELETE",
+    "Sửa được, không xoá": "MUTABLE_NO_DELETE",
+    "Sửa theo cột": "COLUMN_UPDATE",
+    "Đủ vòng đời": "FULL_LIFECYCLE",
+    "Chỉ đọc — ghi bằng thao tác vận hành": "MIGRATION_READ_ONLY",
+    "Đếm và dọn theo cửa sổ": "MIGRATION_COLUMN_UPDATE",
 }
-FULL_LIFECYCLE = ["job"]
 
-# --- Bảng của migration sau schema.sql --------------------------------------------------------
-# Nguồn: GRANT ở mục Migration bổ sung của Phase 9 trong docs/design/09-security.md
-# (backend/migrations/schema/0002_phase9_security.sql), thu hẹp bởi 0005_rate_limit_window_column_grant.sql. --local chỉ áp schema.sql nên các bảng này
-# vắng ở đó — bỏ qua kèm INFO. --local-migrated và --app-dsn chạy trên DB đã migrate đủ nên vắng là lệch.
-MIGRATION_READ_ONLY = ["employee_credential"]       # chỉ SELECT; ghi bằng thao tác vận hành (A-048)
-MIGRATION_COLUMN_UPDATE = {"rate_limit_window": ["attempt_count"]}   # + SELECT, INSERT, DELETE; không TRUNCATE (0005)
 
-# --- Bảng ngoài schema.sql ----------------------------------------------------------------------
-CHECKPOINT_DATA = ["checkpoints", "checkpoint_blobs", "checkpoint_writes"]
-CHECKPOINT_META = ["checkpoint_migrations"]
-LEDGER = ["schema_migration"]            # ADR-017 — chỉ có sau khi có trình chạy migration
+def executable_sql(text: str) -> str:
+    """Bỏ chú thích -- và /* */ cùng khoảng trắng. Rỗng nghĩa là file không có câu SQL thực thi được."""
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.S)
+    text = "\n".join(line.split("--", 1)[0] for line in text.splitlines())
+    return text.strip()
 
-# Khớp mục Migration và checkpointer của docs/design/06-structure.md.
-CHECKPOINTER_GRANTS = (
-    "GRANT SELECT, INSERT, UPDATE, DELETE ON checkpoints, checkpoint_blobs, checkpoint_writes TO bo19_app;\n"
-    "GRANT SELECT ON checkpoint_migrations TO bo19_app;"
-)
-EXPECTED_EMBEDDING_DIM = 1024            # ADR-012: procedure_chunk_embedding_v1.embedding vector(1024)
+
+def read_sql(path: Path) -> str:
+    """Đọc một file SQL sẽ áp. Không có câu thực thi được thì dừng — không coi là đạt (luật của ADR-017)."""
+    text = path.read_text(encoding="utf-8")
+    if not executable_sql(text):
+        raise OSError(f"file không có câu SQL thực thi được: {path.relative_to(REPO).as_posix()}")
+    return text
+
+
+def design_groups() -> dict[str, list[str]]:
+    lines = DATA_DESIGN.read_text(encoding="utf-8").splitlines()
+    start = next(k for k, l in enumerate(lines) if l.startswith("| Nhóm quyền của `bo19_app`"))
+    groups: dict[str, list[str]] = {}
+    for l in lines[start + 2:]:
+        if not l.startswith("|"):
+            break
+        cells = [c.strip() for c in l.strip().strip("|").split("|")]
+        name = cells[0].replace("**", "").strip()
+        if name not in GROUP_ROWS:
+            raise OSError(f"04-data.md: hàng nhóm quyền lạ {name!r} — thêm vào GROUP_ROWS")
+        groups[GROUP_ROWS[name]] = re.findall(r"`([a-z_0-9]+)`", cells[1])
+    missing = set(GROUP_ROWS.values()) - set(groups)
+    if missing:
+        raise OSError(f"04-data.md: thiếu hàng nhóm quyền {sorted(missing)}")
+    return groups
+
+
+def grant_update_columns(files: list[Path]) -> dict[str, list[str]]:
+    cols: dict[str, list[str]] = {}
+    for f in files:
+        sql = executable_sql(f.read_text(encoding="utf-8"))
+        for m in re.finditer(r"GRANT\s+UPDATE\s*\(([^)]*)\)\s*ON\s+([a-z_0-9]+)\s+TO\s+bo19_app", sql, re.I):
+            cols[m.group(2)] = [c.strip() for c in m.group(1).split(",")]
+    return cols
+
+
+def checkpointer_tables() -> tuple[list[str], list[str]]:
+    sql = executable_sql(read_sql(CHECKPOINTER_GRANTS_FILE))
+    data, meta = [], []
+    for m in re.finditer(r"GRANT\s+([A-Z ,]+?)\s+ON\s+([a-z_0-9 ,]+?)\s+TO\s+bo19_app", sql, re.I):
+        privs = {p.strip().upper() for p in m.group(1).split(",")}
+        tables = [t.strip() for t in m.group(2).split(",")]
+        (data if {"INSERT", "UPDATE", "DELETE"} <= privs else meta).extend(tables)
+    return data, meta
+
+
+def embedding_dim(files: list[Path]) -> int:
+    for f in files:
+        m = re.search(r"CREATE TABLE procedure_chunk_embedding_v1\b.*?vector\((\d+)\)",
+                      executable_sql(f.read_text(encoding="utf-8")), re.S)
+        if m:
+            return int(m.group(1))
+    raise OSError("không tìm thấy vector(N) của procedure_chunk_embedding_v1 trong file SQL")
+
+
+def load_expectations(migrated: bool) -> None:
+    """Nạp mọi kỳ vọng từ file repo vào biến module — gọi một lần trước khi dựng hay kiểm."""
+    global READ_ONLY, APPEND_ONLY, INSERT_DELETE, MUTABLE_NO_DELETE, COLUMN_UPDATE, FULL_LIFECYCLE
+    global MIGRATION_READ_ONLY, MIGRATION_COLUMN_UPDATE, CHECKPOINT_DATA, CHECKPOINT_META
+    global CHECKPOINTER_GRANTS, EXPECTED_EMBEDDING_DIM
+    g = design_groups()
+    files = sorted(MIGRATIONS.glob("*.sql")) if migrated else [SCHEMA]
+    all_files = sorted(MIGRATIONS.glob("*.sql"))
+    upd = grant_update_columns(files)
+    upd_all = grant_update_columns(all_files)
+    READ_ONLY, APPEND_ONLY = g["READ_ONLY"], g["APPEND_ONLY"]
+    INSERT_DELETE, MUTABLE_NO_DELETE = g["INSERT_DELETE"], g["MUTABLE_NO_DELETE"]
+    FULL_LIFECYCLE = g["FULL_LIFECYCLE"]
+    MIGRATION_READ_ONLY = g["MIGRATION_READ_ONLY"]
+    COLUMN_UPDATE = {t: upd.get(t, []) for t in g["COLUMN_UPDATE"]}
+    MIGRATION_COLUMN_UPDATE = {t: upd_all.get(t, []) for t in g["MIGRATION_COLUMN_UPDATE"]}
+    for t, c in {**COLUMN_UPDATE, **MIGRATION_COLUMN_UPDATE}.items():
+        if not c:
+            raise OSError(f"nhóm sửa theo cột: không tìm thấy GRANT UPDATE (...) ON {t} TO bo19_app")
+    CHECKPOINT_DATA, CHECKPOINT_META = checkpointer_tables()
+    CHECKPOINTER_GRANTS = read_sql(CHECKPOINTER_GRANTS_FILE)
+    EXPECTED_EMBEDDING_DIM = embedding_dim(files)
+
 
 
 class _Rollback(Exception):
@@ -174,7 +245,7 @@ def setup_local(workdir: Path, rep: Report, migrated: bool = False, server_dsn: 
     with psycopg.connect(mig) as c:
         for f in files:
             with c.transaction():
-                c.execute(f.read_text(encoding="utf-8"))
+                c.execute(read_sql(f))
             rep.log("Đã áp:", f.relative_to(REPO).as_posix())
     # Bước 2 — setup() của checkpointer, autocommit (docs/reference/langgraph-checkpoint-postgres.md).
     with psycopg.connect(mig, autocommit=True, prepare_threshold=0, row_factory=dict_row) as c:
@@ -336,7 +407,7 @@ def main() -> int:
     mode = ap.add_mutually_exclusive_group(required=True)
     mode.add_argument("--local", action="store_true")
     mode.add_argument("--local-migrated", action="store_true")
-    mode.add_argument("--app-dsn")
+    mode.add_argument("--app-dsn", help="DSN, hoặc env:TÊN_BIẾN để đọc từ biến môi trường")
     ap.add_argument("--migrator-role", default="bo19_migrator")
     ap.add_argument("--server-dsn")
     args = ap.parse_args()
@@ -345,6 +416,15 @@ def main() -> int:
 
     rep = Report()
     rep.log("schema.sql sha256:", hashlib.sha256(SCHEMA.read_bytes()).hexdigest())
+    try:
+        load_expectations(migrated=not args.local)
+    except (OSError, StopIteration) as e:
+        rep.log("LỖI NGUỒN KỲ VỌNG:", str(e) or type(e).__name__)
+        return 2
+    rep.log("Kỳ vọng đọc từ: 04-data.md, " + ("backend/migrations/schema/*.sql" if not args.local else "schema.sql")
+            + ", checkpointer_grants.sql — nhóm:", len(READ_ONLY), len(APPEND_ONLY), len(INSERT_DELETE),
+            len(MUTABLE_NO_DELETE), len(COLUMN_UPDATE), len(FULL_LIFECYCLE), "· checkpoint:",
+            len(CHECKPOINT_DATA), "+", len(CHECKPOINT_META), "· số chiều:", EXPECTED_EMBEDDING_DIM)
     workdir = None
     try:
         local = args.local or args.local_migrated
@@ -354,6 +434,8 @@ def main() -> int:
             _srv, app_dsn = setup_local(workdir / "pgdata", rep, migrated, args.server_dsn)
         else:
             app_dsn = args.app_dsn
+            if app_dsn.startswith("env:"):
+                app_dsn = os.environ[app_dsn[4:]]
         run_checks(app_dsn, rep, args.migrator_role, local, migrated)
     except (psycopg.Error, OSError) as e:
         rep.log("LỖI MÔI TRƯỜNG:", type(e).__name__, str(e).splitlines()[0] if str(e) else "")
