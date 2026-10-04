@@ -82,3 +82,35 @@ Mục đích: đóng điểm 1 và 2 của tài liệu GitHub (`docs/reference/g
 - Probe: `commit=8fdd1bbc725c branch=spike/s3-do kiểm_commit=True client=github-actions runs=0 python=3.12.3 boot_epoch=1791128590.9654794` — cùng `boot_epoch` với `short-2`, nên **lượt này không đánh thức service**.
 - `curl` chưa được dùng (`keepwarm_s` không đặt) — sự có mặt của `curl` trên runner chưa kiểm.
 - Log của run: 194 dòng; host 0, token 0, `onrender` 0 lần khớp.
+
+## 5. `short-3` — một lượt `enc=none`, hoàn tất — 2026-10-04 16:16:55Z đến 16:26:56Z
+
+SSE `sse-events`, `interval=5`, `max=600`, `enc=none`, từ máy nhà (`home-pc`) do PO chạy trong Git Bash riêng, Python 3.11.9, TLSv1.3, HTTP/1.1, bản probe có JSONL. Lệnh: `--case sse-events --interval 5 --max 600 --enc none --label s3-local-short-3 --expect-commit 8fdd1bb…`. Không có gì chạy trên runner trong lúc đo. JSONL hoàn tất (`state = complete`, 0 dòng hỏng).
+
+| | `short-3`, `enc=none` | (so: `short-2`, `enc=none`) |
+|---|---|---|
+| Thời gian tới header / `open` | 0.238236 s / 0.239181 s | 0.085630 s / 0.085739 s |
+| Event / chunk / cặp | 122 / 121 / 120 | 122 / 121 / 120 |
+| `recv_gap` min / median / max | 4.392151 / 5.016614 / 5.599411 s | 4.610412 / 5.000139 / 5.539526 s |
+| `send_gap` min / median / max | 4.989331 / 4.999989 / 5.010243 s | 4.997265 / 5.000014 / 5.002756 s |
+| Lệch `\|recv_gap − send_gap\|` lớn nhất / median | **0.6083 s** / 0.0308 s | 0.5398 s / 0.0289 s |
+| Cặp lệch ≥ 0.5 s / ≥ 2.5 s | **2** / 0 | 1 / 0 |
+| `bunched_pairs` | 0 | 0 |
+| `lag` first / median / last | 0.281721 / 0.223471 / 0.195526 s (min 0.175, max 0.795) | 0.372511 / 0.361656 / 0.321877 s |
+| Kết thúc | `end_event`, 600.182158 s | `end_event`, 600.112291 s |
+| `/commit` sau lượt | 200, cùng commit, `boot_epoch` 1791128590.965 không đổi, `restarted=False` | như bên trái |
+| `commit_rtt` đầu lượt | 0.245006 s (service đang thức) | 22.328715 s (đang ngủ) |
+| Edge | HKG | HKG |
+| **Theo ngưỡng** | **không kết luận** | **không kết luận** |
+
+Các cặp có `|lệch| ≥ 0.3 s` (chỉ số cặp: lệch có dấu):
+
+- `short-3`, `none`: 35: +0.388 · 36: −0.389 · 38: +0.338 · 39: −0.329 · 56: +0.325 · **108: +0.600 · 109: −0.608**.
+- `short-2`, `none`: 10: +0.308 · 11: −0.307 · 16: +0.324 · 17: −0.323 · **24: +0.540** · 26: −0.390 · 57: +0.323 · 84: +0.313 · 85: −0.320 · 93: +0.302 · 94: −0.305.
+- `short-2`, `browser`: 12: +0.352 · 84: +0.309.
+
+Header response: như `short-2` — `Server: cloudflare`, `Transfer-Encoding: chunked`, `Cache-Control: no-cache`, không `Content-Encoding`, `CF-RAY` `a4557e6cdaf58623-HKG`, `rndr-id` `543c7940-8ce0-4628`, `Date` 16:16:55 GMT.
+
+**Kết quả:** hai lượt `enc=none` liên tiếp đều "không kết luận" (lệch lớn nhất 0.540 s rồi 0.608 s, vượt mốc 0.5 s); lượt `enc=browser` duy nhất là "không thấy gom đệm" (0.352 s). Ngưỡng **không đổi**. Không cặp nào ≥ 2.5 s; `bunched_pairs = 0` ở cả ba lượt. Điều kiện dừng của PO ("không kết luận" lặp lại) đã đạt — dừng, chờ PO.
+
+`boot_epoch` 1791128590.965 giữ nguyên từ 15:43:10Z tới ít nhất 16:27Z — gồm lượt vô hại trên runner lúc 16:11:03Z, `short-2` và `short-3`.
