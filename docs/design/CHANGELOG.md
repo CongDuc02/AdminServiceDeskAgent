@@ -2902,3 +2902,17 @@ PO duyệt tên cột sổ `filename`, `kind`, `sha256`, `applied_at`; chọn d�
 | `.claude/commands/spike.md` — PO cho phép | Dòng S2: kết quả B4 |
 
 **Số đo:** bắt đầu 7:28 PM, Live 7:29 PM; `STARTUP_OK`; `/healthz` 200 — 0.550544 s, 0.303003 s. **Chưa đo:** thời gian đánh thức — `curl` chạy khi instance đang thức.
+
+---
+
+## 2026-10-04 — S2 xong: deploy C; cổng 2.11 chưa đạt
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-web-service-s2.md` | Deploy C, vòng `curl`, Events, C4–C5, đánh thức, kết luận S2 — nguyên văn |
+| `06-structure.md` → 0.26 | Mục Bước kiểm khởi động: gỡ `[CẦN XÁC MINH]` — tiến trình thoát lúc khởi động làm deploy hỏng, Render giữ bản cũ |
+| `12-roadmap.md` → 0.30 | Cổng 2.11 chưa đạt (PO): phần đã đạt ở S2; hai điều kiện đóng — `migrate_main` từ CI (ADR-022), một lần dựng lại có `combined_main` (ADR-033) |
+| `11-ops.md` → 0.30 | Chu kỳ 2: cổng 2.11 chưa đạt |
+| `.claude/commands/spike.md` — PO cho phép | Dòng S2: kết quả C, S2 xong |
+
+**Số đo C:** `STARTUP_DB_CONNECT_FAILED class=OperationalError sqlstate=None`, thoát mã 1, chạy lại một lần; `Deploy failed` 7:51 PM; `/healthz` 60 / 60 `200` từ 19:49:01 tới 19:54:26, hai lần 1.30 s và 1.36 s trong lúc deploy. C5: `STARTUP_OK`, Live 7:55 PM, `/healthz` 200. **Chưa đo:** thời gian đánh thức — lần gọi sau ≥ 20 phút trả 0.30 s, không có dấu hiệu instance đã ngủ. **Ghi nhận:** `sqlstate=None` — mã `STARTUP_DB_CONNECT_FAILED` không phân biệt sai mật khẩu với host không tới được.
