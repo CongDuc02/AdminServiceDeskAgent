@@ -80,9 +80,17 @@ def read_sql(path: Path) -> str:
     return text
 
 
-def design_groups() -> dict[str, list[str]]:
-    lines = DATA_DESIGN.read_text(encoding="utf-8").splitlines()
-    start = next(k for k, l in enumerate(lines) if l.startswith("| Nhóm quyền của `bo19_app`"))
+class ExpectationError(Exception):
+    """Nguồn kỳ vọng hỏng hay mâu thuẫn — bộ kiểm dừng với mã 2, không kiểm trên kỳ vọng sai."""
+
+
+def design_groups(text: str | None = None) -> dict[str, list[str]]:
+    """Đọc bảng nhóm quyền của 04-data.md. Hỏng thành tiếng — PO, 2026-10-04: không tìm thấy bảng,
+    hàng lạ, thiếu hàng, hay một nhóm parse ra rỗng đều là ExpectationError."""
+    lines = (DATA_DESIGN.read_text(encoding="utf-8") if text is None else text).splitlines()
+    start = next((k for k, l in enumerate(lines) if l.startswith("| Nhóm quyền của `bo19_app`")), None)
+    if start is None:
+        raise ExpectationError("04-data.md: không tìm thấy bảng nhóm quyền của bo19_app")
     groups: dict[str, list[str]] = {}
     for l in lines[start + 2:]:
         if not l.startswith("|"):
@@ -90,12 +98,38 @@ def design_groups() -> dict[str, list[str]]:
         cells = [c.strip() for c in l.strip().strip("|").split("|")]
         name = cells[0].replace("**", "").strip()
         if name not in GROUP_ROWS:
-            raise OSError(f"04-data.md: hàng nhóm quyền lạ {name!r} — thêm vào GROUP_ROWS")
-        groups[GROUP_ROWS[name]] = re.findall(r"`([a-z_0-9]+)`", cells[1])
+            raise ExpectationError(f"04-data.md: hàng nhóm quyền lạ {name!r} — thêm vào GROUP_ROWS")
+        tables = re.findall(r"`([a-z_0-9]+)`", cells[1]) if len(cells) > 1 else []
+        if not tables:
+            raise ExpectationError(f"04-data.md: nhóm {name!r} parse ra rỗng")
+        groups[GROUP_ROWS[name]] = tables
     missing = set(GROUP_ROWS.values()) - set(groups)
     if missing:
-        raise OSError(f"04-data.md: thiếu hàng nhóm quyền {sorted(missing)}")
+        raise ExpectationError(f"04-data.md: thiếu hàng nhóm quyền {sorted(missing)}")
     return groups
+
+
+def schema_tables(files: list[Path]) -> set[str]:
+    """Tên bảng có CREATE TABLE trong các file SQL — bỏ qua chú thích."""
+    names: set[str] = set()
+    for f in files:
+        sql = executable_sql(f.read_text(encoding="utf-8"))
+        names |= {m.group(1) for m in re.finditer(
+            r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:public\.)?([a-z_0-9]+)", sql, re.I)}
+    return names
+
+
+def validate_groups(groups: dict[str, list[str]], tables: set[str]) -> None:
+    """Một bảng thuộc hơn một nhóm, hay bảng có trong schema mà không thuộc nhóm nào → ExpectationError."""
+    seen: dict[str, str] = {}
+    for g, ts in groups.items():
+        for t in ts:
+            if t in seen and seen[t] != g:
+                raise ExpectationError(f"bảng {t} thuộc hơn một nhóm quyền: {seen[t]}, {g}")
+            seen[t] = g
+    orphan = sorted(tables - set(seen))
+    if orphan:
+        raise ExpectationError(f"bảng có trong schema mà không thuộc nhóm quyền nào ở 04-data.md: {orphan}")
 
 
 def grant_update_columns(files: list[Path]) -> dict[str, list[str]]:
@@ -123,7 +157,7 @@ def embedding_dim(files: list[Path]) -> int:
                       executable_sql(f.read_text(encoding="utf-8")), re.S)
         if m:
             return int(m.group(1))
-    raise OSError("không tìm thấy vector(N) của procedure_chunk_embedding_v1 trong file SQL")
+    raise ExpectationError("không tìm thấy vector(N) của procedure_chunk_embedding_v1 trong file SQL")
 
 
 def load_expectations(migrated: bool) -> None:
@@ -133,6 +167,7 @@ def load_expectations(migrated: bool) -> None:
     global CHECKPOINTER_GRANTS, EXPECTED_EMBEDDING_DIM
     g = design_groups()
     files = sorted(MIGRATIONS.glob("*.sql")) if migrated else [SCHEMA]
+    validate_groups(g, schema_tables(files))
     all_files = sorted(MIGRATIONS.glob("*.sql"))
     upd = grant_update_columns(files)
     upd_all = grant_update_columns(all_files)
@@ -144,7 +179,7 @@ def load_expectations(migrated: bool) -> None:
     MIGRATION_COLUMN_UPDATE = {t: upd_all.get(t, []) for t in g["MIGRATION_COLUMN_UPDATE"]}
     for t, c in {**COLUMN_UPDATE, **MIGRATION_COLUMN_UPDATE}.items():
         if not c:
-            raise OSError(f"nhóm sửa theo cột: không tìm thấy GRANT UPDATE (...) ON {t} TO bo19_app")
+            raise ExpectationError(f"nhóm sửa theo cột: không tìm thấy GRANT UPDATE (...) ON {t} TO bo19_app")
     CHECKPOINT_DATA, CHECKPOINT_META = checkpointer_tables()
     CHECKPOINTER_GRANTS = read_sql(CHECKPOINTER_GRANTS_FILE)
     EXPECTED_EMBEDDING_DIM = embedding_dim(files)
@@ -418,7 +453,7 @@ def main() -> int:
     rep.log("schema.sql sha256:", hashlib.sha256(SCHEMA.read_bytes()).hexdigest())
     try:
         load_expectations(migrated=not args.local)
-    except (OSError, StopIteration) as e:
+    except (ExpectationError, OSError) as e:
         rep.log("LỖI NGUỒN KỲ VỌNG:", str(e) or type(e).__name__)
         return 2
     rep.log("Kỳ vọng đọc từ: 04-data.md, " + ("backend/migrations/schema/*.sql" if not args.local else "schema.sql")

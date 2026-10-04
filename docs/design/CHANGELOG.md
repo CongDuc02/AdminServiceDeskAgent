@@ -2746,3 +2746,19 @@ Chạy theo kế hoạch PO duyệt cùng năm mặc định. Output nguyên vă
 | File | Thay đổi |
 |---|---|
 | `decisions/ADR-033-…` | Image local ghim theo digest `sha256:508c5290…`; ghi lệch minor 18.2 local so với 18.6 Render; đổi digest là thay đổi có chủ ý (PO, 2026-10-04) |
+
+---
+
+## 2026-10-04 — S1: kết nối từ CI đạt; parser nhóm quyền hỏng thành tiếng
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-postgres-s1.md` | Mục mới "Kết nối từ runner CI": run `37186094663`, `ubuntu-24.04`, `bo19_app`, SSL, `SELECT 1` trả 1; log chỉ có `***` |
+| `ASSUMPTIONS.md` | A-060: kết nối từ runner CI đạt — không phát sinh rủi ro cho ADR-022 |
+| `.github/workflows/s1-ci-connect-probe.yml` | **Đã xoá** — secret PO đã xoá trước đó |
+| `06-structure.md` | Cây gốc: ghi chú `.github/workflows/` |
+| `tools/contract-checks/check_grants.py` | `ExpectationError`; parser nhóm quyền dừng mã 2 khi nhóm rỗng, bảng trong schema không thuộc nhóm nào, bảng thuộc hơn một nhóm, thiếu bảng hay thiếu hàng |
+| `tools/contract-checks/test_check_grants.py` | **Mới.** Năm test `unittest` — ba ca PO yêu cầu, một đối chứng trên nguồn thật, một ca chú thích không tính là bảng |
+| `tools/contract-checks/README.md` | Cách chạy test |
+
+**Đã chạy:** 5/5 test đạt. Bộ kiểm thật không đổi số: `pgserver` 16.2 `--local` 169 / 63 / Lệch 0, `--local-migrated` 176 / 68 / Lệch 0; Render `--app-dsn` 176 / 68 / Lệch 0.

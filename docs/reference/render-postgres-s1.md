@@ -25,7 +25,7 @@
 | Bước 4 — data migration | **Đạt** — 25 permission, 3 role, 29 dòng `role_permission` |
 | Sổ `schema_migration` | **Không có** — chưa có trình chạy `migrate_main` (ADR-017); không ghi gì, kể cả bản rỗng của file grant |
 | `check_grants.py --app-dsn` — lần cuối | **176 từ chối đúng, 68 cho phép đúng, Lệch 0**, mã thoát 0 — trùng `--local-migrated` trên PostgreSQL 16.2 và 18.2 |
-| Kết nối từ runner CI | **Chờ PO chạy** `.github/workflows/s1-ci-connect-probe.yml` |
+| Kết nối từ runner CI | **Đạt** — runner GitHub Actions `ubuntu-24.04`, bằng `bo19_app`, SSL bật; mục Kết nối từ runner CI |
 
 ## Script bước 0 — `s1_admin.sql`
 
@@ -259,4 +259,17 @@ KIỂM THÊM ĐẠT | số chiều embedding đọc từ catalog = 1024
 Kiểm phủ định — từ chối đúng: 176
 Kiểm khẳng định — cho phép đúng: 68
 Lệch: 0
+```
+
+## Kết nối từ runner CI — 2026-10-04
+
+- **Workflow:** `.github/workflows/s1-ci-connect-probe.yml` ở commit `40d7e6e` — chỉ `workflow_dispatch`, `permissions: contents: read`, đòi `sslmode=require`, không echo DSN. **Đã xoá** sau lần chạy này.
+- **Lần chạy:** run `37186094663`, `workflow_dispatch`, tạo lúc `2026-10-04T07:32:26Z`, kết luận `success`. PO thêm secret `BO19_S1_CI_PROBE_DSN` — DSN của `bo19_app` — trước khi chạy và **xoá ngay sau** (PO xác nhận; `gh secret list` không còn tên này).
+- **Runner**, theo log: `Image: ubuntu-24.04`, `Version: 20260927.320.1`; `platform.platform()` = `Linux-6.17.0-1022-azure-x86_64-with-glibc2.39`.
+- **Log:** biến môi trường của secret hiện `***`; không dòng nào chứa host hay chuỗi `postgresql://` — đã đếm trên log tải về bằng `gh run view --log`.
+
+Dòng kết quả, nguyên văn:
+
+```text
+KẾT NỐI ĐẠT | user: bo19_app | server_version: 18.6 (Debian 18.6-1.pgdg12+2) | ssl: True | select 1: 1
 ```
