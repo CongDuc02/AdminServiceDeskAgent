@@ -1,1 +1,11 @@
-{"label": "s3-gha-harmless-2", "expect_commit": "8fdd1bbc725ca5a586eb91238b294933990525a6", "runs": []}
+{"label": "s3-gha-final", "expect_commit": "8fdd1bbc725ca5a586eb91238b294933990525a6", "runs": [
+ {"case": "sse-events", "interval": 5, "max": 600, "enc": "none"},
+ {"case": "sse-events", "interval": 5, "max": 600, "enc": "browser"},
+ {"case": "sse-silent", "max": 30, "enc": "none", "ladder": "silent"},
+ {"case": "sse-silent", "max": 60, "enc": "none", "ladder": "silent"},
+ {"case": "sse-silent", "max": 120, "enc": "none", "ladder": "silent"},
+ {"case": "sse-silent", "max": 300, "enc": "none", "ladder": "silent"},
+ {"case": "sleep", "s": 30, "enc": "none", "ladder": "sleep"},
+ {"case": "sleep", "s": 60, "enc": "none", "ladder": "sleep"},
+ {"case": "sleep", "s": 120, "enc": "none", "ladder": "sleep"}
+]}
