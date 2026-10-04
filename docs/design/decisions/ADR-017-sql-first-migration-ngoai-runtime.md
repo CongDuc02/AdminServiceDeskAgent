@@ -88,3 +88,13 @@ Không đổi quyết định. Ba luật viết rõ ra, theo PO:
 - **File không có câu SQL thực thi được thì trình chạy dừng, không coi là đạt.** Áp cho mọi file của bước 1, 3, 4. "Thực thi được" là còn nội dung sau khi bỏ chú thích `--`, `/* */` và khoảng trắng. Nguồn: sự cố ở S1 — `checkpointer_grants.sql` chỉ có chú thích, bước 3 "đạt" mà không cấp gì (`docs/reference/render-postgres-s1.md`).
 - **Bước 3 nằm ngoài sổ `schema_migration`, và chạy lại được.** Nó chỉ gồm `GRANT` — idempotent — và phải chạy lại sau mỗi lần nâng thư viện checkpointer, nên không phải migration bất biến. Sổ chỉ ghi file của bước 1 và bước 4. S1 xác nhận: Render và local chưa có sổ — chưa có `migrate_main` — nên bản rỗng của file grant không bị ghi vào đâu.
 - **Bước 0 trên Render chạy bằng user mặc định, do PO**, không ở CI — ADR-022, cập nhật 2026-10-04.
+
+## Cập nhật 2026-10-04 — sổ là file DDL
+
+Không đổi quyết định; viết rõ dạng của sổ đã nêu ở phần Decision. PO duyệt:
+
+- **Cột:** `filename`, `kind`, `sha256`, `applied_at` — đúng bốn nội dung phần Decision đã kê.
+- **DDL là file**, `backend/migrations/ledger/schema_migration.sql`, có `CHECK (kind IN ('schema', 'data'))`; `bo19_app` chỉ `SELECT`. `migrate_main` áp file này mỗi lần chạy, trước bước 1, bằng `bo19_migrator`. Không đánh số, không ghi vào chính nó — nó tạo ra sổ nên không thể là một dòng của sổ.
+- **Không có bản chép thứ hai.** `check_grants.py` đọc tên sổ và quyền từ file này, bỏ hằng cũ; tài liệu chỉ tóm tắt và trỏ tới file — cùng luật đã đặt sau sự cố file grant rỗng ở S1.
+- **Ghi sổ cùng giao dịch với file.** Một file của bước 1 hay bước 4 và dòng sổ của nó cùng commit hoặc cùng rollback; không có trạng thái "đã áp mà chưa ghi".
+- **Hệ quả:** sửa DDL sổ về sau không đi qua `IF NOT EXISTS` — cần một quyết định riêng, vì sổ nằm ngoài chuỗi migration đánh số. Chi tiết ở mục Migration và checkpointer của `06-structure.md`.
