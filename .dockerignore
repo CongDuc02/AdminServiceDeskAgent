@@ -1,0 +1,18 @@
+# Secret và lịch sử không bao giờ vào build context (PO, 2026-10-04).
+.env
+.env.*
+**/.env
+.git
+.gitignore
+.gitattributes
+# Không cần cho image: tài liệu, bộ kiểm, cấu hình công cụ, frontend (giai đoạn 1 chưa có ở S2).
+docs/
+tools/
+.claude/
+.github/
+frontend/
+backend/tests/
+**/__pycache__/
+**/*.py[cod]
+**/.venv/
+**/venv/
