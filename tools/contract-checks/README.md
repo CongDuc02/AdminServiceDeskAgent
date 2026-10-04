@@ -67,3 +67,13 @@ Mọi phép thử dùng `WHERE false` hoặc giao dịch rollback: PostgreSQL ki
 | Tên sổ `schema_migration` | Hằng, có lý do — chưa có file DDL nào định nghĩa sổ; ADR-017 |
 
 File SQL sẽ áp mà không có câu thực thi được thì bộ kiểm dừng với mã 2 — cùng luật với trình chạy migration (ADR-017).
+
+## Test của bộ kiểm
+
+*Thêm 2026-10-04 theo PO.* Parser bảng nhóm quyền hỏng thành tiếng — mã thoát `2` khi: một nhóm parse ra rỗng; một bảng có `CREATE TABLE` trong file SQL được áp mà không thuộc nhóm nào; một bảng thuộc hơn một nhóm. Cộng: không tìm thấy bảng nhóm quyền, hàng lạ, thiếu hàng.
+
+```bash
+.venv/bin/python -m unittest test_check_grants -v      # Windows: .venv\Scripts\python
+```
+
+Không cần PostgreSQL — mọi ca dừng ở bước nạp kỳ vọng.
