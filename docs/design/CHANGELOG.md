@@ -2890,3 +2890,15 @@ PO duyệt tên cột sổ `filename`, `kind`, `sha256`, `applied_at`; chọn d�
 | `.claude/commands/spike.md` — PO cho phép | Dòng S2: mốc A, B1–B3 |
 
 **Số đo:** `migrate_main` áp 9 schema + 1 data, `max(v)` = 9, lần hai áp 0; `api_main` local trên DB Render `STARTUP_OK`, `/healthz` 200, `SIGTERM` → mã 0; `check_grants.py --app-dsn` **180 / 69 / Lệch 0**. Rò rỉ DSN, host trong output: 0.
+
+---
+
+## 2026-10-04 — S2: deploy B Live trên Render
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-web-service-s2.md` | Mục "Deploy B — trên Render": log, Events, hai lần `curl` nguyên văn; tên service che |
+| `11-ops.md` → 0.29 | Chu kỳ 2: bước 9 đạt; ghi lệch so với runbook — bước 6–8 từ máy người triển khai, bước 9 là `api_main`; cổng 2.11 chờ PO quyết |
+| `.claude/commands/spike.md` — PO cho phép | Dòng S2: kết quả B4 |
+
+**Số đo:** bắt đầu 7:28 PM, Live 7:29 PM; `STARTUP_OK`; `/healthz` 200 — 0.550544 s, 0.303003 s. **Chưa đo:** thời gian đánh thức — `curl` chạy khi instance đang thức.

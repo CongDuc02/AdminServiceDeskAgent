@@ -126,3 +126,53 @@ exit=0
 ```
 
 Đọc: sổ đủ 10 dòng, sha256 khớp image; `setup()` `max(v)` = 9; chạy lại không áp gì; bước kiểm #1, #2 đạt trên DB Render; bộ kiểm **180 / 69 / Lệch 0** — trùng số local.
+
+## 4. Deploy B — trên Render, 2026-10-04
+
+Manual Deploy → Deploy latest commit, `0b4b102`. Tên service che bằng `<service>` — không phải secret, nhưng không cần trong repo.
+
+Log, PO gửi, nguyên văn:
+
+```text
+==> Deploying...
+==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+2026-10-04 12:29:34,730 INFO bo19.startup STARTUP_OK bước kiểm #1, #2 đạt
+INFO:     Started server process [1]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:10000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:35310 - "HEAD / HTTP/1.1" 404 Not Found
+==> Your service is live 🎉
+==>
+==> ///////////////////////////////////////////////////////////
+==>
+==> Available at your primary URL https://<service>.onrender.com
+==>
+==> ///////////////////////////////////////////////////////////
+```
+
+Events, nguyên văn:
+
+```text
+Deploy live for 0b4b102: CLAUDE.md: mục 6 thêm backend/migrations/ledger/ — PO áp
+October 4, 2026 at 7:29 PM
+Deploy started for 0b4b102: CLAUDE.md: mục 6 thêm backend/migrations/ledger/ — PO áp
+Manually triggered by you via Dashboard
+October 4, 2026 at 7:28 PM
+```
+
+`curl -s -w '\nhttp=%{http_code} time=%{time_total}s\n' https://<service>.onrender.com/healthz`, hai lần liên tiếp:
+
+```text
+{"status":"ok"}
+http=200 time=0.550544s
+{"status":"ok"}
+http=200 time=0.303003s
+```
+
+**Đọc:**
+
+- Bước kiểm #1, #2 đạt trên Render, qua host nội bộ, credential `bo19_app`. Deploy bắt đầu 7:28 PM, Live 7:29 PM.
+- `/healthz` 200 từ ngoài Internet.
+- **Thời gian đánh thức chưa đo được.** `curl` chạy ngay sau khi deploy Live, nên instance đang thức: 0.55 s rồi 0.30 s là thời gian trả lời của một instance thức, không phải cold start. Đo đánh thức cần một lần `curl` sau khi service đã ngủ — chưa làm.
+- Dòng `HEAD / … 404` đến từ `127.0.0.1` ngay trước `Your service is live`: một yêu cầu từ phía Render vào `/`, không phải health check `/healthz`. Không ảnh hưởng kết quả; ứng dụng chưa có route `/`. Nguồn tài liệu cho yêu cầu này chưa có — không diễn giải thêm.
