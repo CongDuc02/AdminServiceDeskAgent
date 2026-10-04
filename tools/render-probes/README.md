@@ -63,11 +63,22 @@ Mẫu nhỏ và là loopback: đây là nền của phần mềm hai đầu, **k
 - **Tới trần mà không bị cắt:** ghi "≥ trần", không ghi "không giới hạn".
 - **Điểm cắt và nấc ngay dưới** mỗi cái chạy lại ít nhất 2 lần.
 - **Mỗi lần cắt:** đối chiếu log Render xem có restart, deploy hay spin-down (gói free ngủ sau 15 phút không có traffic vào) trong lúc đo. `boot_epoch` đổi giữa hai lần `/commit` là một bằng chứng; log Render là bằng chứng còn lại.
-- **Ca dài (≥ 15 phút):** chạy hai lần — có và không có `curl /healthz` mỗi 5 phút từ ngoài (`keepwarm_s` trong spec; workflow tự chạy vòng lặp đó).
+- **Chỗ chạy — PO, 2026-10-04:** ca dài (thang `sleep`, `sse-silent`, `sse-comment` ≥ 15 phút) **chỉ chạy từ runner**. Máy nhà chỉ chạy ca ngắn (SSE nhịp 5 s, 10 phút), làm điểm nhìn thứ hai cho A-050. Lý do: router/NAT nhà có thể tự cắt kết nối nhàn rỗi và làm sai ca (b); và một phiên bị ngắt giữa chừng làm mất lượt đo.
+- **Ca dài (≥ 15 phút), mỗi ca chạy hai lần** — có và không có `curl /healthz` mỗi 5 phút từ ngoài (`keepwarm_s` trong spec; workflow tự chạy vòng lặp đó). Hai lần là hai push `run.json` riêng.
+- **`boot_epoch` đổi trong lượt ⇒ lượt đó là `restart`, không tính là điểm cắt.** Probe so `boot_epoch` trước lượt với sau lượt (một lần `/commit` sau lượt, có thể chính nó đánh thức service đang ngủ). Không hỏi lại được `/commit` thì `cut_unverified` — không khẳng định gì.
 - **Một kết nối bị cắt có thể do nhiều nguyên nhân** — mạng nhà, NAT, restart, spin-down, giới hạn của Render. Một lần cắt chỉ là điểm dữ liệu; kết luận về giới hạn cần điểm cắt lặp lại, cùng giá trị, nhiều nơi gọi (máy nhà và runner), không có restart.
 - **Ca (b) im lặng sau header:** máy chủ không biết lúc nó bị cắt — chỉ khi proxy báo client ngắt thì log mới có `reason=cancelled` / `client_gone`, và chính việc có hay không là một quan sát. Kết luận dựa trên phía client (`ended`, `elapsed_s`) và log Render, không dựa vào `SPIKE_END` của ta.
 - **Gặp 429:** `probe.py` chờ rồi thử lại, ghi `busy_retries`, không tính là điểm dữ liệu.
 - **Giới hạn đã chấp nhận:** `probe.py` nói HTTP/1.1; trình duyệt qua Render có thể dùng HTTP/2. Mọi kết quả ghi rõ điều này.
+
+## Ghi tăng dần và nhãn — PO, 2026-10-04
+
+- Mỗi lượt ghi `out/<label>/NN-<case>-<enc>.jsonl`: một dòng cho mỗi sự kiện — `meta`, `start`, `response`, `chunk`, `event` (kèm `server_epoch` và `wall` giờ nhận), `end`, `after`, `final` — flush ngay. Mọi dòng qua bước che host. File JSON cuối của một lượt hoàn tất vẫn có.
+- **Lượt chết giữa chừng giữ dữ liệu tới điểm chết.** Thiếu dòng `end` là lượt **gián đoạn**. `probe.py --summarize <file|thư mục>` đọc lại, bỏ dòng cuối bị cắt dở.
+- **Không áp ngưỡng nếu chưa đủ cặp:** lượt gián đoạn dưới **60 cặp** event (nửa số cặp của lượt 10 phút nhịp 5 s) ghi "gián đoạn — không áp ngưỡng". Từ 60 cặp trở lên mới áp ngưỡng, và kết luận mang nhãn "dữ liệu một phần". Mốc 60 là **chọn**.
+- Nhãn `classification` của lượt hoàn tất: `completed` · `cut` (kết nối chấm dứt không có event `end`, `boot_epoch` không đổi) · `restart` · `cut_unverified` · `busy_gave_up`. Lượt gián đoạn không có `classification` của probe — nó đã chết trước khi hỏi `/commit`.
+- Trên runner, đĩa mất khi job kết thúc hay bị huỷ: `--emit` in từng dòng JSONL ra log dưới tiền tố `JOURNAL`, nên dữ liệu tới điểm huỷ vẫn nằm trong log.
+- Giết thử bằng test: `test_probe.py`, lớp `BiGietGiuaChung`.
 
 ## Runner GitHub Actions
 
@@ -75,4 +86,4 @@ Mẫu nhỏ và là loopback: đây là nền của phần mềm hai đầu, **k
 
 `run.json` mang `label`, `expect_commit` (commit Render đang chạy — **không** phải commit của lần push, vì Render chỉ deploy commit người ta bấm), `keepwarm_s` (tuỳ chọn) và `runs`. Tổng thời lượng ước tính ≤ 330 phút, dưới trần 360 phút của job. Nhiều vòng thì chia nhiều push; `concurrency` chỉ cho một lượt chạy, một lượt chờ — chờ lượt trước xong rồi mới push tiếp.
 
-Secret của repo: `BO19_SPIKE_BASE_URL`, `BO19_SPIKE_TOKEN` — PO tạo, xoá ở bước 7. Kết quả in thành các dòng `RESULT_JSON` trong log của job.
+Secret của repo: `BO19_SPIKE_BASE_URL`, `BO19_SPIKE_TOKEN` — PO tạo, xoá ở bước 7. Kết quả in thành các dòng `JOURNAL` (từng sự kiện) và `RESULT_JSON` (kết quả cuối của lượt) trong log của job.

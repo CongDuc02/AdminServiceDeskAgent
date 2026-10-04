@@ -17,7 +17,12 @@ Spec JSON: {"label": "...", "expect_commit": "<sha>" | null, "runs": [{"case": .
         sse-comment (nhịp là dòng comment, như stream tín hiệu ở mục 3.2 của 05-api.md) · sleep (không byte nào tới khi đủ s giây)
   enc:  none = không gửi Accept-Encoding · browser = "Accept-Encoding: gzip, deflate, br"
 
-Mỗi lượt đo ghi một file JSON vào out/<label>/: header response thực nhận, giao thức, thời điểm nhận từng chunk và từng event
+Ghi tăng dần: mỗi lượt có file out/<label>/NN-<case>-<enc>.jsonl, một dòng cho mỗi sự kiện (start, response, chunk, event — kèm giờ máy chủ
+và giờ nhận —, end, after, final), flush ngay. Lượt chết giữa chừng giữ dữ liệu tới điểm chết; thiếu dòng `end` là lượt "gián đoạn".
+`probe.py --summarize <file.jsonl|thư mục>` đọc lại và in trạng thái + kết luận theo ngưỡng; lượt gián đoạn dưới 60 cặp thì không áp ngưỡng.
+`classification` của lượt hoàn tất: completed · cut · restart (boot_epoch đổi — KHÔNG phải điểm cắt) · cut_unverified · busy_gave_up.
+
+Mỗi lượt đo hoàn tất cũng ghi một file JSON cùng tên: header response thực nhận, giao thức, thời điểm nhận từng chunk và từng event
 (giây tính từ lúc gửi request, và giờ máy khách), so khoảng cách nhận với khoảng cách gửi, và cách kết thúc. Probe chỉ ghi số đo —
 không kết luận "gom đệm" hay "cắt". Trước khi đo, probe hỏi /commit: sai commit thì dừng (mã 3), không đo.
 
@@ -205,13 +210,17 @@ class Journal:
     """JSONL, một dòng cho mỗi sự kiện của lượt đo, flush ngay: lượt chết giữa chừng vẫn giữ dữ liệu tới điểm chết.
     Mỗi dòng qua redact. Một lượt hoàn tất luôn có dòng type=end; thiếu nó là lượt gián đoạn."""
 
-    def __init__(self, path: Path, host: str) -> None:
+    def __init__(self, path: Path, host: str, echo: bool = False) -> None:
         self.f = open(path, "a", encoding="utf-8", newline="\n")
         self.host = host
+        self.echo = echo  # --emit: in luôn từng dòng ra log với tiền tố JOURNAL — đĩa của runner mất khi job kết thúc hay bị huỷ
 
     def write(self, obj: dict) -> None:
-        self.f.write(redact(json.dumps(obj, ensure_ascii=False, separators=(",", ":")), self.host) + "\n")
+        line = redact(json.dumps(obj, ensure_ascii=False, separators=(",", ":")), self.host)
+        self.f.write(line + "\n")
         self.f.flush()
+        if self.echo:
+            print("JOURNAL " + line, flush=True)
 
     def close(self) -> None:
         self.f.close()
@@ -439,7 +448,7 @@ def main() -> int:
     ap.add_argument("--label", default="manual")
     ap.add_argument("--out", default=str(Path(__file__).resolve().parent / "out"))
     ap.add_argument("--busy-wait-s", type=float, default=120.0, help="gặp 429 thì chờ tối đa chừng này giây (thử lại mỗi 10 s)")
-    ap.add_argument("--emit", action="store_true", help="in mỗi kết quả thành một dòng RESULT_JSON — cho log của CI")
+    ap.add_argument("--emit", action="store_true", help="in từng dòng JSONL (tiền tố JOURNAL) và mỗi kết quả cuối (RESULT_JSON) ra stdout — cho log của CI")
     ap.add_argument("--summarize", metavar="PATH", help="đọc file .jsonl (hoặc thư mục có .jsonl), in trạng thái hoàn tất/gián đoạn và kết luận theo ngưỡng; không nối mạng")
     ap.add_argument("--max-total-minutes", type=float, default=330.0, help="trần tổng thời lượng một lần chạy; job của GitHub-hosted tối đa 360 phút")
     a = ap.parse_args()
@@ -503,7 +512,7 @@ def main() -> int:
     rc = 0
     for i, run in enumerate(spec["runs"], 1):
         stem = f"{i:02d}-{run['case']}-{run.get('enc', 'none')}"
-        j = Journal(out / f"{stem}.jsonl", t.host)
+        j = Journal(out / f"{stem}.jsonl", t.host, echo=a.emit)
         j.write({"type": "meta", **meta})
         try:
             rec = measure(t, run, i, boot, a.busy_wait_s, j)
