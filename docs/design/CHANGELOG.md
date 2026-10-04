@@ -3005,3 +3005,13 @@ Chưa đo trên Render. A-025, A-050 chưa đổi.
 | `.github/workflows/spike-s3-probe.yml` | Bước đầu kiểm hai secret; rỗng hoặc chưa tạo thì job đỏ ngay, chỉ báo **tên** secret thiếu, không in giá trị |
 
 Render đang chạy `8fdd1bbc725ca5a586eb91238b294933990525a6` trên nhánh `spike/s3-do` — kiểm từ máy local bằng `/api/_spike/commit`, `boot_epoch` 1791125091.52. `.env`: hai dòng `BO19_SPIKE_*` không nháy, không `\r`, không khoảng trắng thừa. Repo công khai (`private: false` theo API) — không cần ước quota phút Actions.
+
+---
+
+## 2026-10-04 — S3: lượt vô hại trên runner — workflow chạy, nhưng repo chưa có secret
+
+Run `37210992837`, commit `3ba669c` (push đổi `tools/render-probes/run.json`): `failure` ở bước "Kiểm secret", đúng như thiết kế — cả hai biến `BO19_SPIKE_BASE_URL`, `BO19_SPIKE_TOKEN` rỗng, thông báo chỉ nêu tên, bước Probe bị bỏ qua.
+
+- **Workflow ở nhánh phi mặc định có chạy khi push đổi file `paths`:** có. Workflow chưa từng có trên `main`. Bốn push trước đó không đổi `run.json` (`dbe5546`, `8fdd1bb`, `943dcad`; cộng push đầu) — `total_count = 0` sau mỗi lần. Điểm 1 của tài liệu GitHub: phần "chạy cả workflow chưa vào nhánh mặc định" đã thấy tận mắt; run này chạy bản có bước "Kiểm secret", là bản thêm ở `943dcad` — không phải bản đầu.
+- **Secret dùng được khi chạy theo `push`: chưa kiểm được.** `GET /actions/secrets`, `/environments`, `/dependabot/secrets` đều `total_count = 0` — secret **chưa tồn tại** ở repo `CongDuc02/AdminServiceDeskAgent`, không phải "tạo rồi mà không vào". Điểm 2 vẫn mở.
+- Dừng theo điều kiện của PO: secret không vào. Chưa đo gì trên Render.
