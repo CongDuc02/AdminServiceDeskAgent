@@ -2824,3 +2824,18 @@ PO duyệt tên cột sổ `filename`, `kind`, `sha256`, `applied_at`; chọn d�
 - Bước 0 bằng `tools/db-bootstrap/`: đạt; hai role không superuser, không `CREATEROLE`, `CREATEDB`; chỉ `bo19_migrator` có `CREATE` trên `public`.
 - Image: A — `STARTUP_01_LEDGER_MISSING`, `STARTUP_02_PROBE_ERROR:42P01`, mã 1. `migrate_main` lần 1: 9 + 1 file áp, `max(v)` = 9, mã 0; lần 2: áp 0, mã 0. B — `GET /healthz` 200. C — `STARTUP_DB_CONNECT_FAILED class=OperationalError`, mã 1. Không dòng output nào chứa DSN.
 - `check_grants.py`: `--local` 173 / 64 / Lệch 0; `--local-migrated` 180 / 69 / Lệch 0; `--app-dsn` trên DB do `migrate_main` dựng 180 / 69 / Lệch 0. Sổ thêm 4 phủ định, 1 khẳng định.
+
+---
+
+## 2026-10-04 — S2: credential `bo19_admin` ra ngoài repo; PostgreSQL 18 ở runbook — PO, trước khi merge
+
+| File | Thay đổi |
+|---|---|
+| `tools/db-bootstrap/step0.sh` | Đọc `BO19_RENDER_ADMIN_DSN` từ `~/.bo19/admin.env` (ghi đè bằng `ADMIN_ENV_FILE`); file nằm trong repo thì dừng; không đọc `.env` của repo |
+| `tools/db-bootstrap/role_secrets.py` | `generate` không đọc credential `bo19_admin` nữa: lấy host:cổng và tên database từ `BO19_RENDER_EXTERNAL_HOST`, `BO19_RENDER_DB_NAME` — không bí mật — ở `.env` của repo; `.env` của repo còn `BO19_RENDER_ADMIN_DSN` thì dừng |
+| `tools/db-bootstrap/step0.sql` | Dừng nếu máy chủ không phải PostgreSQL 18 |
+| `tools/db-bootstrap/README.md` | Trình tự mới |
+| `11-ops.md` → 0.25 | Runbook bước 5: PostgreSQL Version = 18, khớp image pg18 của ADR-033; `~/.bo19/admin.env`; ba giá trị không bí mật ở `.env` của repo |
+| `09-security.md` → 0.13 | Bảng secret: `bo19_admin` ở `~/.bo19/admin.env`, ngoài repo; người triển khai không đọc, không ghi |
+
+**Đã chạy, container PostgreSQL 18.2, xác thực SCRAM:** `generate` dừng đúng khi `.env` còn `BO19_RENDER_ADMIN_DSN` và khi tên database sai dạng; `step0.sh` dừng đúng khi file admin nằm trong repo; luồng đủ — `generate`, `internal-dsn`, `step0.sh` đạt, `migrate_main` bằng mật khẩu mới đạt. Nhánh dừng khi máy chủ không phải bản 18: chưa chạy — không có server bản khác trong lượt này.

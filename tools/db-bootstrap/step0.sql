@@ -13,6 +13,13 @@
 SELECT current_user, current_database(), split_part(version(), ' ', 2) AS postgresql;
 SELECT pg_get_userbyid(nspowner) AS chu_schema_public FROM pg_namespace WHERE nspname = 'public';
 SELECT count(*) AS role_bo19_da_co FROM pg_roles WHERE rolname IN ('bo19_migrator', 'bo19_app');
+-- PostgreSQL 18 — khớp image pg18 ghim ở ADR-033 mà bộ kiểm local dùng (runbook dựng lại DB, 11-ops.md).
+SELECT current_setting('server_version_num')::int / 10000 = 18 AS la_pg18 \gset
+\if :la_pg18
+\else
+  \echo 'DỪNG: máy chủ không phải PostgreSQL 18 — tạo lại DB với PostgreSQL Version 18'
+  \quit 3
+\endif
 
 \echo '=== extension vector'
 CREATE EXTENSION IF NOT EXISTS vector;

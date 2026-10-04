@@ -3,10 +3,12 @@
 KHÔNG phải mã ứng dụng — không vào image. Cách dùng và trình tự: tools/db-bootstrap/README.md.
 Không in giá trị bí mật nào; chỉ in tên biến. Chỉ dùng thư viện chuẩn.
 
-  generate      Đọc DSN của user mặc định Render (BO19_RENDER_ADMIN_DSN) từ file .env để lấy host, cổng,
-                tên database. Sinh mật khẩu mới cho hai role; ghi hai DSN vào .env (thay dòng cũ tại chỗ,
-                hoặc thêm); ghi hai verifier ra một file env NGOÀI repo để step0.sh đưa vào container.
-                Máy chủ chỉ nhận verifier — mật khẩu thô không rời máy này (PO, 2026-10-04).
+  generate      Đọc host[:cổng] ngoài (BO19_RENDER_EXTERNAL_HOST) và tên database (BO19_RENDER_DB_NAME) từ
+                .env của repo — hai giá trị không bí mật. Sinh mật khẩu mới cho hai role; ghi hai DSN vào
+                .env (thay dòng cũ tại chỗ, hoặc thêm); ghi hai verifier ra một file env NGOÀI repo để
+                step0.sh đưa vào container. Máy chủ chỉ nhận verifier (PO, 2026-10-04).
+                KHÔNG đọc credential bo19_admin: nó ở ~/.bo19/admin.env, chỉ step0.sh đọc. .env của repo
+                còn dòng BO19_RENDER_ADMIN_DSN thì dừng — credential đó không được nằm trong repo.
   internal-dsn  Dựng DSN của bo19_app trên host NỘI BỘ của Render, cho BO19_DATABASE_URL của Web Service
                 (mục Biến môi trường theo môi trường của 11-ops.md): lấy credential từ BO19_RENDER_APP_DSN,
                 host[:cổng] từ BO19_RENDER_INTERNAL_HOST. Ghi vào BO19_RENDER_APP_INTERNAL_DSN.
@@ -21,6 +23,7 @@ import base64
 import hashlib
 import hmac
 import os
+import re
 import secrets
 import string
 import sys
@@ -69,6 +72,11 @@ def set_var(lines: list[str], name: str, value: str) -> None:
         lines += [f"{name}={value}", ""]
 
 
+def _is_host_port(v: str) -> bool:
+    host, _, port = v.partition(":")
+    return bool(host) and not any(c in host for c in "/@?# ") and (not port or port.isdigit())
+
+
 def write_atomic(path: Path, lines: list[str]) -> None:
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text("\n".join(lines), encoding="utf-8", newline="\n")
@@ -79,17 +87,17 @@ def generate(env: Path, verifier_file: Path, sslmode: str) -> None:
     if verifier_file.resolve().is_relative_to(REPO):
         sys.exit("file verifier phải nằm ngoài repo — dừng")
     lines = read_env(env)
-    admin = get_var(lines, "BO19_RENDER_ADMIN_DSN")
-    if not admin:
-        sys.exit("thiếu BO19_RENDER_ADMIN_DSN trong .env — dừng")
-    u = urlsplit(admin)
-    if u.scheme not in ("postgres", "postgresql") or "@" not in u.netloc or not u.path.strip("/"):
-        sys.exit("BO19_RENDER_ADMIN_DSN không phải URL postgresql://user:pass@host/db — dừng")
-    host_port = u.netloc.rsplit("@", 1)[1]
+    if any(l.startswith("BO19_RENDER_ADMIN_DSN=") for l in lines):
+        sys.exit("BO19_RENDER_ADMIN_DSN còn trong .env của repo — chuyển sang ~/.bo19/admin.env rồi xoá dòng đó; dừng")
+    host_port, db = get_var(lines, "BO19_RENDER_EXTERNAL_HOST"), get_var(lines, "BO19_RENDER_DB_NAME")
+    if not host_port or not db:
+        sys.exit("cần BO19_RENDER_EXTERNAL_HOST và BO19_RENDER_DB_NAME trong .env — dừng")
+    if not _is_host_port(host_port) or not re.fullmatch(r"[A-Za-z0-9_]+", db):
+        sys.exit("BO19_RENDER_EXTERNAL_HOST chỉ là host hoặc host:cổng, BO19_RENDER_DB_NAME chỉ là tên — dừng")
     verifiers = []
     for role, var, vvar in ROLES:
         pw = new_password()
-        set_var(lines, var, urlunsplit((u.scheme, f"{role}:{pw}@{host_port}", u.path, f"sslmode={sslmode}", "")))
+        set_var(lines, var, urlunsplit(("postgresql", f"{role}:{pw}@{host_port}", f"/{db}", f"sslmode={sslmode}", "")))
         verifiers.append(f"{vvar}={scram(pw)}")
     verifier_file.parent.mkdir(parents=True, exist_ok=True)
     verifier_file.write_text("\n".join(verifiers) + "\n", encoding="utf-8", newline="\n")
