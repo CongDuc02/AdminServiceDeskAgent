@@ -2877,3 +2877,16 @@ PO duyệt tên cột sổ `filename`, `kind`, `sha256`, `applied_at`; chọn d�
 | `.claude/commands/spike.md` — PO cho phép | Dòng S2: #16 chưa có trong image S2, không đặt `BO19_ENVIRONMENT`; kết quả A |
 
 **Kết quả A:** `Deploy failed`; `STARTUP_01_LEDGER_MISSING`, `STARTUP_02_PROBE_ERROR:42P01`, thoát mã 1; Render chạy lại một lần sau 5 giây, cùng kết quả. **Chưa đo:** mốc chuyển sang `Deploy failed`.
+
+---
+
+## 2026-10-04 — S2: mốc giờ deploy A; B1–B3 đạt trên Render
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-web-service-s2.md` | Events của A: bắt đầu 6:52 PM, `Deploy failed` 6:54 PM — Render không chờ hết 15 phút khi tiến trình thoát. Mục mới "Deploy B — chuẩn bị từ local": B1, B2, B3 nguyên văn |
+| `docs/reference/render-env-vars-manual-deploy.md` | **Mới.** Ba cách lưu biến môi trường; các lựa chọn của Manual Deploy — lấy bằng `curl` |
+| `11-ops.md` → 0.28 | Chu kỳ 2: bước 7–8 đạt; bước 9 là deploy B |
+| `.claude/commands/spike.md` — PO cho phép | Dòng S2: mốc A, B1–B3 |
+
+**Số đo:** `migrate_main` áp 9 schema + 1 data, `max(v)` = 9, lần hai áp 0; `api_main` local trên DB Render `STARTUP_OK`, `/healthz` 200, `SIGTERM` → mã 0; `check_grants.py --app-dsn` **180 / 69 / Lệch 0**. Rò rỉ DSN, host trong output: 0.
