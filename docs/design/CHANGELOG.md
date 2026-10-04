@@ -2936,3 +2936,14 @@ PO duyệt tên cột sổ `filename`, `kind`, `sha256`, `applied_at`; chọn d�
 | `.claude/commands/spike.md` — PO cho phép | Dòng S3: kế hoạch đã duyệt — endpoint `/_spike/*` sau cờ `BO19_SPIKE_PROBES` và token `BO19_SPIKE_TOKEN`, trần cứng, một kết nối; `probe.py` hai biến thể `Accept-Encoding`; đối chứng local; chạy thêm từ runner GitHub Actions; gỡ hẳn sau S3 |
 
 Chưa chạy phép đo nào. A-050, A-025 chưa đổi.
+
+---
+
+## 2026-10-04 — S2: một lần đo thời gian đánh thức
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-web-service-s2.md` | Mục 9: `/healthz` 200 sau 22.478055 s — nhiều khả năng instance đã ngủ; bảng kết luận cập nhật |
+| `.claude/commands/spike.md` — PO cho phép | Dòng S2: mục mở đánh thức có một lần đo; vẫn mở |
+
+**Chưa đủ điều kiện:** chưa xác nhận không có request trong 15 phút trước lần gọi, chưa có giờ gọi. Một lần đo, mạng nhà PO.
