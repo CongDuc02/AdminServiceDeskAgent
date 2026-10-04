@@ -2925,3 +2925,14 @@ PO duyệt tên cột sổ `filename`, `kind`, `sha256`, `applied_at`; chọn d�
 |---|---|
 | `12-roadmap.md` → 0.31 | Mục mở O1-4: phân loại thô `STARTUP_DB_CONNECT_FAILED` thành `AUTH` hoặc `NETWORK` từ thông báo libpq, không log nguyên văn — chưa làm |
 | `.claude/commands/spike.md` — PO cho phép | Dòng S2: mục mở thời gian đánh thức, cách đo, giả thuyết traffic lạ — chưa có nguồn |
+
+---
+
+## 2026-10-04 — S3: kế hoạch đã duyệt, chưa chạy
+
+| File | Thay đổi |
+|---|---|
+| `06-structure.md` → 0.27 | Cây gốc: `tools/render-probes/` — script đo của S3, không vào image |
+| `.claude/commands/spike.md` — PO cho phép | Dòng S3: kế hoạch đã duyệt — endpoint `/_spike/*` sau cờ `BO19_SPIKE_PROBES` và token `BO19_SPIKE_TOKEN`, trần cứng, một kết nối; `probe.py` hai biến thể `Accept-Encoding`; đối chứng local; chạy thêm từ runner GitHub Actions; gỡ hẳn sau S3 |
+
+Chưa chạy phép đo nào. A-050, A-025 chưa đổi.
