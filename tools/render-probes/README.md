@@ -2,7 +2,9 @@
 
 Đo từ **ngoài** Render: proxy có gom đệm response `text/event-stream` không (A-050), một request sống được bao lâu (A-025). Kết quả là của **Web Service free** — không suy ra cho gói trả phí.
 
-Tạm thời: cùng khối `SPIKE S3` ở `backend/src/bo19/entrypoints/api_main.py` và `backend/tests/test_spike_probes.py`, gỡ hẳn ở bước 7 của S3.
+**S3 xong, 2026-10-04–05.** Kết quả: `docs/reference/render-s3-nhat-ky-do.md`; ghi vào A-025, A-050, A-086 của `docs/design/ASSUMPTIONS.md`.
+
+**Đã gỡ ở bước 7:** khối `SPIKE S3` của `backend/src/bo19/entrypoints/api_main.py`, `backend/tests/test_spike_probes.py`, workflow `.github/workflows/spike-s3-probe.yml` và `run.json`. Endpoint `/api/_spike/*` **không còn** — `probe.py` không chạy được nếu không khôi phục khối đó từ lịch sử git (commit `91a0fcf`) và đặt lại `BO19_SPIKE_PROBES`, `BO19_SPIKE_TOKEN`. Giữ lại `probe.py`, `test_probe.py` (chỉ thư viện chuẩn, chạy độc lập với server) và README này để người sau đọc phương pháp và ngưỡng, hoặc đo lại ở Sprint 4 (A-086). Các đoạn dưới đây mô tả cách chạy **trong lúc S3 diễn ra**.
 
 ## Endpoint (dưới `/api/_spike`)
 

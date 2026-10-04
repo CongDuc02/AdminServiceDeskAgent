@@ -114,3 +114,57 @@ Header response: như `short-2` — `Server: cloudflare`, `Transfer-Encoding: ch
 **Kết quả:** hai lượt `enc=none` liên tiếp đều "không kết luận" (lệch lớn nhất 0.540 s rồi 0.608 s, vượt mốc 0.5 s); lượt `enc=browser` duy nhất là "không thấy gom đệm" (0.352 s). Ngưỡng **không đổi**. Không cặp nào ≥ 2.5 s; `bunched_pairs = 0` ở cả ba lượt. Điều kiện dừng của PO ("không kết luận" lặp lại) đã đạt — dừng, chờ PO.
 
 `boot_epoch` 1791128590.965 giữ nguyên từ 15:43:10Z tới ít nhất 16:27Z — gồm lượt vô hại trên runner lúc 16:11:03Z, `short-2` và `short-3`.
+
+## 6. Lượt đo cuối trên runner — 2026-10-04 16:40:07Z đến 17:13:55Z (00:40–01:13 Hà Nội, 2026-10-05)
+
+Phạm vi thu hẹp theo PO (2026-10-04): thang dài, chia đôi và ca ≥ 15 phút **không chạy — không quyết định nào cần**. Chạy một job trên runner `ubuntu-24.04` (Python 3.12.3, `Linux-6.17.0-1022-azure-x86_64-with-glibc2.39`): run `37217611319`, commit `b0dc3af`, `expect_commit` `8fdd1bb…` khớp (`kiểm_commit=True`), `commit_rtt` 0.804039 s. Chín lượt, `enc=none` trừ lượt 2. `boot_epoch` 1791128590.965 không đổi ở cả chín lượt (`restarted=False`). Không lượt nào gặp 429. Edge của mọi lượt: **IAD** (máy nhà: HKG). HTTP/1.1, TLS qua Cloudflare. Log của run: 1020 dòng; host 0, token 0, `onrender` 0 lần khớp; `BO19_SPIKE_BASE_URL` và `BO19_SPIKE_TOKEN` hiện `***` ở phần `env` của GitHub. Dữ liệu dựng lại từ các dòng `JOURNAL` và `RESULT_JSON` của log vào `tools/render-probes/out/s3-gha-final/` (gitignore).
+
+### 6.1 SSE 10 phút, nhịp 5 s — A-050, điểm nhìn thứ hai
+
+| | lượt 1, `enc=none` | lượt 2, `enc=browser` |
+|---|---|---|
+| Bắt đầu | 16:40:13.882Z | 16:50:15.016Z |
+| Thời gian tới header / `open` | 0.777 s / 0.777318 s | 0.787 s / 0.786963 s |
+| Event / chunk / cặp | 122 / 121 / 120 | 122 / 121 / 120 |
+| `recv_gap` min / median / max | 4.987156 / 4.999955 / 5.012271 s | 4.994270 / 4.999994 / 5.005871 s |
+| Lệch `abs(recv_gap − send_gap)` lớn nhất / median | **0.0064 s** / 0.0006 s | **0.0068 s** / 0.0005 s |
+| Cặp lệch ≥ 0.5 s / ≥ 1.0 s / ≥ 2.5 s | 0 / 0 / 0 | 0 / 0 / 0 |
+| `bunched_pairs` | 0 | 0 |
+| `lag` first / median / last | 0.126619 / 0.124309 / 0.124451 s | 0.137000 / 0.135553 / 0.137238 s |
+| Kết thúc | `end_event`, 600.776143 s | `end_event`, 600.789866 s |
+| **Ngưỡng gốc** | **không thấy gom đệm** | **không thấy gom đệm** |
+| **Tiêu chí phụ** | **không thấy gom đệm** | **không thấy gom đệm** |
+
+Không `Content-Encoding` ở cả hai lượt (lượt 2 gửi `Accept-Encoding: gzip, deflate, br`) — như máy nhà.
+
+### 6.2 SSE im lặng sau `open` — A-025, `enc=none`, `ladder: silent`
+
+| Nấc `max` | Kết thúc | `elapsed` | Nhận được |
+|---|---|---|---|
+| 30 s | `end_event`, `completed` | 30.263275 s | `open` ở 0.264684 s; `end` ở 30.262827 s |
+| 60 s | `end_event`, `completed` | 60.860251 s | `open` ở 0.861422 s; `end` ở 60.859511 s |
+| 120 s | `end_event`, `completed` | 120.279688 s | `open` ở 0.278000 s; `end` ở 120.275868 s |
+| **300 s** | **`error`, `TimeoutError`: "The read operation timed out"** | **390.331852 s** | **chỉ `open`** ở 0.259375 s; `since_last_data` 390.072 s |
+
+Lượt 300 s bắt đầu 17:03:50.334Z. Probe đặt thời gian chờ đọc `max + 90 s` = 390 s: nó **thoát vì hết thời gian chờ**, không phải vì kết nối đóng — client không thấy FIN, không thấy reset, và event `end` (do máy chủ gửi khi hết 300 s) không bao giờ tới. Sau lượt, `/commit` trả 200, cùng commit, `boot_epoch` không đổi: **không phải restart**. Phân loại của probe: `cut`. Thang dừng ở nấc này (nấc cuối của thang). **Một lần quan sát**, một điểm nhìn (runner, edge IAD); không chạy lại (phạm vi thu hẹp). **Không biết thời điểm thật kết nối chết** — chỉ biết `end` ở 300 s không tới trong 390 s. Log Render của lượt này — các dòng `SPIKE_START` và `SPIKE_END` (`reason=client_gone`/`cancelled` hay `server_cap`, và `elapsed`) — cho biết máy chủ có thấy client đi hay không; **chưa có** (PO sẽ lấy).
+
+### 6.3 `/sleep` — byte đầu chậm — A-025, `enc=none`, `ladder: sleep`
+
+| `s` | Kết thúc | Header (byte đầu) tới sau | `elapsed` | Thân |
+|---|---|---|---|---|
+| 30 | `completed` | 30.274251 s | 30.274904 s | `slept: 30.0` |
+| 60 | `completed` | 60.281730 s | 60.282261 s | `slept: 60.0` |
+| 120 | `completed` | 120.265256 s | 120.265976 s | `slept: 120.0` |
+
+Cả ba hoàn tất, byte đầu tới đúng hạn. Không đo nấc cao hơn — **không chạy, không quyết định nào cần**.
+
+## 7. Điều đã đo và điều không đo
+
+- **Đã đo (Web Service free, chuỗi client → Cloudflare → Render, HTTP/1.1):** stream có event mỗi 5 s sống đủ 600 s — **5/5 lượt** (ba từ máy nhà qua HKG, hai từ runner qua IAD). Im lặng sau `open`: 120 s sống, 300 s thì `end` không tới trong 390 s. Byte đầu chậm: tới 120 s đều hoàn tất. Không thấy gom đệm event nhỏ (~117 byte, mỗi 5 s) ở cả hai điểm nhìn; không nén `text/event-stream`.
+- **Không đo:** HTTP/2 (trình duyệt); event lớn hơn; nấc `sleep` trên 120 s; nấc im lặng giữa 120 và 300 s; thời điểm thật của lần chết ở lượt 300 s; mọi ca ≥ 15 phút; gói trả phí. Không giá trị nào ở trên là "giới hạn thật" của Render.
+
+## 8. Giả thuyết ngủ 15 phút — chưa kiểm, chuyển Sprint 4
+
+Giả thuyết: Web Service free ngủ sau 15 phút **không có request vào, tính từ request cuối** (`docs/reference/render-free-tier.md`). Chưa rõ: một response hay stream **đang mở** có được tính là traffic không; ngưỡng thực tế có đúng 15 phút không.
+
+Bốn mốc `boot_epoch` (bảng mục 1): 1791125091.522 (14:44:51Z), 1791127520.449 (15:25:20Z), 1791128590.965 (15:43:10Z), rồi **không đổi** ở 1791128590.965 qua mọi lần quan sát tới 17:14Z — gồm lượt vô hại lúc 16:11Z, `short-3` 16:17–16:27Z và job runner 16:40–17:14Z (traffic liên tục). Lần thức 15:43:10Z (lần gọi đầu mất 22.328715 s) xảy ra sau khoảng 9–10 phút kể từ dòng log cuối của `short-1` (≈ 15:33Z), chưa khớp 15 phút; chưa giải thích. Log Render quanh 21:40–22:50 Hà Nội (14:40–15:50Z) PO sẽ xem — **chưa nhận**. Lần gọi đầu sau khi ngủ mất ≈ 22 s: 22.478055 s ở S2, 22.328715 s ở S3. Ghi ở A-086 của `docs/design/ASSUMPTIONS.md`.

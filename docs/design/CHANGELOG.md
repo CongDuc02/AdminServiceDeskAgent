@@ -3015,3 +3015,30 @@ Run `37210992837`, commit `3ba669c` (push đổi `tools/render-probes/run.json`)
 - **Workflow ở nhánh phi mặc định có chạy khi push đổi file `paths`:** có. Workflow chưa từng có trên `main`. Bốn push trước đó không đổi `run.json` (`dbe5546`, `8fdd1bb`, `943dcad`; cộng push đầu) — `total_count = 0` sau mỗi lần. Điểm 1 của tài liệu GitHub: phần "chạy cả workflow chưa vào nhánh mặc định" đã thấy tận mắt; run này chạy bản có bước "Kiểm secret", là bản thêm ở `943dcad` — không phải bản đầu.
 - **Secret dùng được khi chạy theo `push`: chưa kiểm được.** `GET /actions/secrets`, `/environments`, `/dependabot/secrets` đều `total_count = 0` — secret **chưa tồn tại** ở repo `CongDuc02/AdminServiceDeskAgent`, không phải "tạo rồi mà không vào". Điểm 2 vẫn mở.
 - Dừng theo điều kiện của PO: secret không vào. Chưa đo gì trên Render.
+
+---
+
+## 2026-10-05 — S3 xong: kết quả A-025, A-050; giả thuyết ngủ 15 phút (A-086); bước 7 phần code
+
+Phạm vi S3 được PO thu hẹp 2026-10-04: thang `sleep` dài, SSE im lặng dài, chia đôi và mọi ca ≥ 15 phút **không chạy — không quyết định nào cần** (AC-1.13).
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-s3-nhat-ky-do.md` | Mới. Nhật ký đo nguyên văn: `boot_epoch`, `short-1` gián đoạn, `short-2`, `short-3`, lượt vô hại, lượt cuối trên runner (run `37217611319`), điều đã đo và không đo, giả thuyết ngủ 15 phút |
+| `docs/reference/render-request-timeout-streaming.md`, `github-actions-workflow-dispatch.md`, `github-actions-push-trigger.md` | Mới. Tài liệu Render và GitHub lấy bằng `curl`; Render không nêu giới hạn thời gian request hay gom đệm; `workflow_dispatch` đòi file ở nhánh mặc định |
+| `ASSUMPTIONS.md` → 0.55 | A-025 và A-050 `Mở` → `Thu hẹp` (kết quả ở cột Giả định); **A-086 mới**, `Mở`, chuyển Sprint 4 |
+| `12-roadmap.md` → 0.32 | R4-4 — instance Web Service free ngủ giữa các lượt dùng của buổi UAT |
+| `.claude/commands/spike.md` — PO cho phép lần này | Dòng S3: sửa cho khớp thực tế (push có lọc `paths` + file spec, `/api/_spike/*`, phạm vi thu hẹp, kết quả). Chỉ một dòng đổi |
+| `backend/src/bo19/entrypoints/api_main.py` | **Gỡ hẳn** khối `SPIKE S3`, hàm `make_spike_router`, `_mount_spike` và hai dòng trong `main()` — khôi phục đúng bản `23cec28` (diff 0 dòng) |
+| `backend/tests/test_spike_probes.py`, `.github/workflows/spike-s3-probe.yml`, `tools/render-probes/run.json` | Xoá |
+| `tools/render-probes/` | Giữ `probe.py`, `test_probe.py`, `README.md` (ghi rõ endpoint đã gỡ); `.gitignore`: `tools/render-probes/out/` |
+
+**Kết quả (Web Service free, chuỗi client → Cloudflare → Render, HTTP/1.1):**
+
+- **A-050:** không thấy gom đệm ở hai điểm nhìn. Máy nhà (HKG): lệch lớn nhất 0.540 / 0.352 / 0.608 s — ngưỡng gốc *không kết luận* / *không thấy* / *không kết luận*, tiêu chí phụ *không thấy* cả ba. Runner (IAD): 0.0064 s và 0.0068 s — *không thấy* theo cả hai tiêu chí. Không lượt nào *có gom đệm*. Không nén `text/event-stream`. **Tiêu chí phụ được đặt sau khi đã thấy dữ liệu local, trước khi có số đo runner** — ghi ở `tools/render-probes/README.md`.
+- **A-025:** stream có event mỗi 5 s sống ≥ 600 s (5/5 lượt); im lặng sống ≥ 120 s, ở 300 s event `end` không tới trong 390 s (một lần, từ runner, `boot_epoch` không đổi, chưa biết thời điểm chết); byte đầu chậm ≥ 120 s. **Không phải giá trị giới hạn thật.** Log Render của lượt 300 s chưa có.
+- **A-086 (giả thuyết, chưa kiểm):** ngủ sau 15 phút không có request, tính từ request cuối. Bốn mốc `boot_epoch`; một lần thức sau chỉ ≈ 9–10 phút nghỉ, chưa giải thích.
+
+**Sự cố ghi nhận:** (1) tiến trình đo local `short-1` chết cùng phiên điều khiển — mất lượt, không phải Render cắt; từ đó probe ghi JSONL tăng dần. (2) Tôi chạy `git checkout probe.py` để hoàn tác một phép thử đột biến và xoá luôn thay đổi chưa commit; đã viết lại và commit. (3) Con số "1.041 ms" sai ở mục S3 trước đó, đã đính chính.
+
+**Còn lại của bước 7 — chưa làm khi viết mục này:** Render đổi nhánh về `main`, bật Auto-Deploy, xoá `BO19_SPIKE_PROBES` và `BO19_SPIKE_TOKEN` (PO); xoá hai repo secret (PO); xoá hai dòng `BO19_SPIKE_*` trong `.env`; deploy bản đã dọn và kiểm `/api/_spike/*` trả 404. Sẽ ghi ở mục sau khi xong.
