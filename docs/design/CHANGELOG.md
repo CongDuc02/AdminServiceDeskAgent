@@ -2661,3 +2661,40 @@ Không thêm luật cho `backend/migrations/**/__init__.py`: sổ `schema_migrat
 **Đổi tên `PROVIDER_ERROR` → `PROVIDER_CALL_FAILED` cho mã con:** mục ngay trước dùng `PROVIDER_ERROR` cho mã con "5xx, timeout, lỗi mạng" — trùng tên với một giá trị **đã có** của `llm_usage.outcome` (ADR-019, `0001_initial.sql`), nơi nó nghĩa là "mọi lỗi gọi provider", gồm cả 429. Một tên hai nghĩa trái luật 5 của `CLAUDE.md`. `llm_usage.outcome` không đổi.
 
 **Căn cứ của WV-19:** RPM, TPM của Groq tính theo phút; RPD, TPD tính theo ngày (`docs/reference/llm-groq.md`). 429 do giới hạn theo phút không bắt chờ quá cỡ 60 giây; 120 giây là hai lần cửa sổ đó, cùng bậc với lần backoff dài nhất của job. Ví dụ "10 phút" của PO không chọn, vì không giới hạn nào của Groq nằm giữa "theo phút" và "theo ngày" — chờ thêm chỉ trì hoãn một job sẽ hỏng.
+
+---
+
+## 2026-10-04 — Postgres free chu kỳ 1; PostgreSQL 18 khác bản kiểm local
+
+PO tạo Postgres free trên Render, region Singapore. Render báo: hết hạn 2026-11-03, PostgreSQL 18.
+
+| File | Thay đổi |
+|---|---|
+| `11-ops.md` → 0.20 | Runbook dựng lại PostgreSQL free: nhật ký vận hành, chu kỳ 1 — tạo 2026-10-04 (suy ra), dựng lại 2026-10-29, hết hạn 2026-11-03, bị xoá 2026-11-17 |
+| `decisions/ADR-033-…` | Open Questions: image local là PostgreSQL 18; `pgvector/pgvector` có tag `pg18` trên Docker Hub; ghim bản pgvector sau khi S0 đọc bản của Render |
+| `ASSUMPTIONS.md` → 0.50 | A-040, A-047, A-045: Render là bản 18, mọi kiểm `check_grants.py` local tới nay chạy trên 16.2 — S0, S1 là lần đầu trên bản 18 |
+
+**Hệ quả lịch:** cổng 4.5 — buổi UAT phải xong trước 2026-10-29, hoặc chờ chu kỳ 2.
+
+---
+
+## 2026-10-04 — Spike 1, S0 trên Postgres free: đạt
+
+Chạy theo kế hoạch PO duyệt, mặc định PO duyệt: role thử `NOLOGIN` và xoá sau phép thử; giữ `vector`. Output nguyên văn, đã che tên database và user: `docs/reference/render-postgres-s0.md`.
+
+**Số đo:** PostgreSQL 18.6; `vector` 0.8.1 có sẵn, user mặc định cài được; `btree_gist` 1.8 có sẵn; user mặc định không superuser, có `CREATEROLE`, `CREATEDB`; role runtime sở hữu 0 bảng, bị từ chối `UPDATE` không cấp, `ALTER`, `DROP`; `REVOKE` có hiệu lực; `pg_ts_config` 30 cấu hình, có `simple`, không có tiếng Việt; kết nối từ ngoài Render được.
+
+**Không chạy ở S0 — để S1:** role có `LOGIN`; quyền `CREATE` trên `public`; extension BM25 (A-083).
+
+**Bất ngờ so với thiết kế:** trên Render, user mặc định — không superuser — tạo được `vector`; local `pgserver` 16.2 với pgvector 0.6.2 chỉ superuser tạo được. Local cũng lệch bản: 16.2 với 18.6, pgvector 0.6.2 với 0.8.1.
+
+**Phát sinh ngoài kế hoạch:** Docker Desktop không chạy lúc bắt đầu — người triển khai khởi động nó để dùng đúng công cụ đã duyệt; không đổi lệnh nào.
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-postgres-s0.md` | **Mới.** Script và output nguyên văn |
+| `ASSUMPTIONS.md` → 0.51 | A-040 `Đã chốt` — vế 1, 2, 3. A-037 `Đã chốt` — 0.8.1. A-046 thu hẹp. A-083 ghi `pg_ts_config` |
+| `11-ops.md` → 0.21 | Nhật ký chu kỳ 1: 18.6. Runbook: `vector` do user mặc định tạo; kết nối từ ngoài được |
+| `decisions/ADR-033-…` | Image local `pgvector/pgvector:0.8.1-pg18` |
+| `12-roadmap.md` → 0.28 | Cổng 2.1 Đạt |
+| `proposals/build-phase-free-tier-impact.md` | Open Questions: hai câu đã có trả lời |
