@@ -92,6 +92,6 @@ Như vậy entrypoint gộp chỉ dùng trên Render free; code và topology pro
 
 ## Open Questions
 
-- Postgres free có cho kết nối từ ngoài Render không — cần cho thao tác seed và cho phương án C. `[CẦN XÁC MINH]` theo tài liệu của Render.
-- Postgres free có cho tạo role và extension `vector` như A-040, A-047 cần không — S0 và S1 của Spike 1 trả lời, giờ phải chạy trên chính DB free.
+- ~~Postgres free có cho kết nối từ ngoài Render không~~ — **S0, 2026-10-04: có**, từ máy người triển khai (`docs/reference/render-postgres-s0.md`). Từ runner CI chưa thử.
+- ~~Postgres free có cho tạo role và extension `vector` như A-040 cần không~~ — **S0, 2026-10-04: có** (A-040 `Đã chốt`). A-047 chờ S1.
 - Shutdown delay có cấu hình được trên Web Service free không — WV-01 dùng mặc định 30 giây nên không phụ thuộc, nhưng chưa xác minh.
