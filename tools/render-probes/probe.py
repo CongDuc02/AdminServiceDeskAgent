@@ -81,6 +81,15 @@ def header_row(name: str, value: str, host: str = "") -> list[str]:
     return [name, red]
 
 
+def edge_of(headers: list[tuple[str, str]]) -> str | None:
+    """Đuôi của CF-RAY (ví dụ HKG) — điểm Cloudflare mà lượt đo đi qua. Có Cloudflare trước Render nên kết luận là của cả chuỗi
+    client → Cloudflare → Render, không quy riêng cho Render; mỗi lượt ghi edge để thấy hai lượt có đi qua cùng điểm hay không."""
+    for k, v in headers:
+        if k.lower() == "cf-ray" and "-" in v:
+            return v.rsplit("-", 1)[1]
+    return None
+
+
 class RedactingStream:
     """Bọc stdout/stderr: che từng dòng đầy đủ trước khi ra — một host không bao giờ bị cắt đôi giữa hai lần write."""
 
@@ -290,7 +299,7 @@ def summarize_journal(path: Path) -> dict:
     start = j["start"] or {}
     case = start.get("case")
     interval = (start.get("params") or {}).get("interval")
-    out = {"file": path.name, "state": state, "case": case, "enc": start.get("enc"), "events": len(j["events"]), "pairs": len(pair_errors(j["events"])),
+    out = {"file": path.name, "state": state, "case": case, "enc": start.get("enc"), "edge": (j["response"] or {}).get("edge"), "events": len(j["events"]), "pairs": len(pair_errors(j["events"])),
            "bad_lines": j["bad_lines"], "classification": (j["final"] or {}).get("classification") or ("gián đoạn" if state == "interrupted" else None),
            "last_event_t": j["events"][-1]["t"] if j["events"] else None, "summary": summarize({"events": j["events"], "chunks": j["chunks"]})}
     if case in ("sse-events", "sse-comment") and interval:
@@ -342,8 +351,9 @@ def attempt(t: Target, run: dict, idx: int, boot_before: float | None, j: Journa
         rec["status"] = resp.status
         rec["http_version"] = {10: "HTTP/1.0", 11: "HTTP/1.1"}.get(resp.version, str(resp.version))
         rec["response_headers"] = [header_row(k, v, t.host) for k, v in resp.getheaders()]
+        rec["edge"] = edge_of(resp.getheaders())
         j.write({"type": "response", "status": rec["status"], "http_version": rec["http_version"], "headers": rec["response_headers"],
-                 "tls_version": rec["tls_version"], "headers_s": rec["headers_s"], "wall": time.time()})
+                 "tls_version": rec["tls_version"], "headers_s": rec["headers_s"], "edge": rec["edge"], "wall": time.time()})
         if resp.status == 429:  # chỗ thử đang bị giữ — không phải điểm dữ liệu, measure() sẽ chờ rồi thử lại
             resp.read()
             rec["ended"] = "busy"
@@ -526,7 +536,7 @@ def main() -> int:
         s = rec["summary"]
         print(f"[run {i}] {rec['case']} enc={rec['enc']} status={rec.get('status')} ended={rec['ended']} elapsed={rec['elapsed_s']}s "
               f"events={s['events']} chunks={s['chunks']} bunched={s['bunched_pairs']} restarted={rec.get('after', {}).get('restarted')} "
-              f"class={rec['classification']} verdict={rec['verdict']} -> {f.name}", flush=True)
+              f"edge={rec.get('edge')} class={rec['classification']} verdict={rec['verdict']} -> {f.name}", flush=True)
         boot = (rec.get("after") or {}).get("boot_epoch") or boot
         if rec["ended"] == "busy_gave_up":
             rc = 6  # lượt này không có dữ liệu; các lượt sau vẫn chạy

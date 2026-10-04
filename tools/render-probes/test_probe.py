@@ -156,11 +156,13 @@ class DauCuoi(unittest.TestCase):
                 self.assertTrue(hdr["x-render-origin-server"].startswith("<masked len="))
                 self.assertEqual(hdr["x-echo"], f"http://{probe.MASK}:{srv.server_port}/echo")  # host của target che, cổng giữ
                 self.assertEqual(hdr["cf-ray"], "8a1b2c3d-SIN")  # header thường giữ nguyên
+                self.assertEqual(rec["edge"], "SIN")  # edge = đuôi CF-RAY
                 self.assertEqual(rec["meta"]["branch"], probe.MASK)
                 self.assertEqual(rec["body"]["note"], probe.MASK)
                 # lượt hoàn tất: JSONL có dòng end và final; classification là completed
                 s = probe.summarize_journal(jsonl[1])
                 self.assertEqual((s["state"], s["classification"], s["case"]), ("complete", "completed", "sse-events"))
+                self.assertEqual(s["edge"], "SIN")
         finally:
             srv.shutdown()
             srv.server_close()
@@ -254,6 +256,14 @@ class Nguong(unittest.TestCase):
 
     def test_gian_doan_du_cap_van_gan_nhan_mot_phan(self):
         self.assertEqual(probe.verdict(_ev(70), 5.0, "interrupted"), "không thấy gom đệm [dữ liệu một phần: lượt gián đoạn]")
+
+
+class Edge(unittest.TestCase):
+    def test_duoi_cf_ray(self):
+        self.assertEqual(probe.edge_of([("CF-RAY", "a4554d2aad4fef7b-HKG")]), "HKG")
+        self.assertEqual(probe.edge_of([("Cf-Ray", "x-y-SIN")]), "SIN")
+        self.assertIsNone(probe.edge_of([("Server", "cloudflare")]))
+        self.assertIsNone(probe.edge_of([("cf-ray", "nodash")]))
 
 
 class Classify(unittest.TestCase):
