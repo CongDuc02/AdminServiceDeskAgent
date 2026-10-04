@@ -28,6 +28,11 @@ python -m venv .venv
 # Local, áp đủ backend/migrations/schema/*.sql theo thứ tự thay cho schema.sql, rồi kiểm.
 .venv/bin/python check_grants.py --local-migrated
 
+# Như hai lệnh trên, nhưng trên một PostgreSQL có sẵn thay cho pgserver — cùng bản với Render.
+# Server phải mới, chỉ dùng cho phép kiểm này, bind 127.0.0.1:
+#   docker run -d --name bo19-pg18 -p 127.0.0.1:55432:5432 -e POSTGRES_HOST_AUTH_METHOD=trust pgvector/pgvector:0.8.1-pg18
+.venv/bin/python check_grants.py --local-migrated --server-dsn "postgresql://postgres@127.0.0.1:55432/postgres"
+
 # Cơ sở dữ liệu có sẵn, đã migrate (ví dụ Render): chỉ kiểm, không áp gì.
 .venv/bin/python check_grants.py --app-dsn "<dsn của bo19_app>" --migrator-role bo19_migrator
 ```

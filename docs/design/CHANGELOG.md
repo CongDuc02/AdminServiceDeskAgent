@@ -2698,3 +2698,20 @@ Chạy theo kế hoạch PO duyệt, mặc định PO duyệt: role thử `NOLOG
 | `decisions/ADR-033-…` | Image local `pgvector/pgvector:0.8.1-pg18` |
 | `12-roadmap.md` → 0.28 | Cổng 2.1 Đạt |
 | `proposals/build-phase-free-tier-impact.md` | Open Questions: hai câu đã có trả lời |
+
+---
+
+## 2026-10-04 — chuẩn bị S1: `bo19_admin` trong ranh giới tin cậy; bước 0; kiểm contract trên PostgreSQL 18
+
+| File | Thay đổi |
+|---|---|
+| `04-data.md` → 0.22 | Mục Giới hạn: ranh giới tin cậy gồm `bo19_admin` — chủ database và schema `public` trên Render |
+| `09-security.md` → 0.10 | Bảng secret: dòng `bo19_admin` — chỉ PO giữ, không CI, không runtime |
+| `decisions/ADR-022-…` | Mục "Cập nhật 2026-10-04": bước 0 chạy bằng `bo19_admin`, do PO, không ở CI |
+| `06-structure.md` → 0.19 | Bước 0: thêm `GRANT CREATE ON SCHEMA public TO bo19_migrator`, `btree_gist` khi A-046 cần, tạo hai role; role là `bo19_admin` trên Render. Mục Chạy lại: bảng số đo trên 16.2 và 18.2 |
+| `11-ops.md` → 0.22 | Runbook bước 5: bước 0 do PO, mật khẩu không trên dòng lệnh |
+| `ASSUMPTIONS.md` → 0.52 | A-047: số đo trên PostgreSQL 18.2 |
+| `tools/contract-checks/check_grants.py` | Tuỳ chọn `--server-dsn` — chạy trên PostgreSQL có sẵn thay `pgserver`. Phần dựng local giống Render: database thuộc superuser, bước 0 cấp `CREATE` trên `public`; log chủ schema `public` |
+| `tools/contract-checks/README.md` | Cách chạy trên container PostgreSQL 18 |
+
+**Số đo:** PostgreSQL 16.2 / pgvector 0.6.2 (`pgserver`) và PostgreSQL 18.2 / pgvector 0.8.1 (container `pgvector/pgvector:0.8.1-pg18`, `sha256:508c5290cda481d4f5f846446a26e9c1b804766828a394a5861de1b348a18b4c`): `--local` 169 / 63 / Lệch 0, `--local-migrated` 176 / 68 / Lệch 0 — trùng nhau và trùng số cũ. Chủ schema `public`: `pg_database_owner`. Bản minor của image, 18.2, khác Render, 18.6.

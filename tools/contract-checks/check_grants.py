@@ -7,6 +7,9 @@ Nơi đặt, lý do và khi nào chạy lại: tools/contract-checks/README.md.
 Ba chế độ:
   --local            Dựng PostgreSQL + pgvector tạm bằng pgserver, tạo hai role, áp schema.sql,
                      chạy setup() của checkpointer, cấp quyền thư viện, rồi kiểm.
+  --server-dsn DSN   Đi kèm --local hoặc --local-migrated: dùng một PostgreSQL có sẵn, kết nối bằng
+                     superuser — ví dụ container pgvector/pgvector:0.8.1-pg18, cùng bản với Render —
+                     thay cho pgserver. Server phải mới, chỉ dùng cho phép kiểm này.
   --local-migrated   Như --local, nhưng bước 1 áp lần lượt backend/migrations/schema/*.sql
                      (0001_initial.sql = schema.sql, rồi 0002, 0003, ...), mỗi file một giao dịch.
                      Kiểm được bảng và quyền của migration sau schema.sql. Không có sổ
@@ -127,18 +130,24 @@ class Report:
             self.mismatch.append(f"{what}: muốn {want}, được {got}")
 
 
-def setup_local(workdir: Path, rep: Report, migrated: bool = False):
-    import pgserver  # chỉ cần cho --local
+def setup_local(workdir: Path, rep: Report, migrated: bool = False, server_dsn: str | None = None):
     from langgraph.checkpoint.postgres import PostgresSaver
     from psycopg.rows import dict_row
 
-    srv = pgserver.get_server(workdir, cleanup_mode="stop")
-    su = srv.get_uri()
+    if server_dsn:
+        srv, su = None, server_dsn
+    else:
+        import pgserver  # chỉ cần khi không có --server-dsn
+        srv = pgserver.get_server(workdir, cleanup_mode="stop")
+        su = srv.get_uri()
+    # Database thuộc superuser — đứng thay user mặc định của Render, chủ database và schema public
+    # trên Render (docs/reference/render-postgres-s0.md). bo19_migrator nhận CREATE trên public ở
+    # bước 0 (mục Migration và checkpointer của 06-structure.md).
     with psycopg.connect(su, autocommit=True) as c:
         rep.log("PostgreSQL:", c.execute("select version()").fetchone()[0])
         c.execute("create role bo19_migrator login")
         c.execute("create role bo19_app login")
-        c.execute("create database bo19 owner bo19_migrator")
+        c.execute("create database bo19")
         c.execute("create database bo19_probe owner bo19_migrator")
     su_db = dsn_with(su, db="bo19")
     mig = dsn_with(su, "bo19_migrator", "bo19")
@@ -152,9 +161,13 @@ def setup_local(workdir: Path, rep: Report, migrated: bool = False):
         except errors.InsufficientPrivilege as e:
             rep.log("INFO bo19_migrator tạo extension vector: BỊ TỪ CHỐI |", str(e).splitlines()[0])
 
-    # Bước 0 — extension, bằng role có quyền (mục Migration và checkpointer của 06-structure.md).
+    # Bước 0 — bằng role có quyền (mục Migration và checkpointer của 06-structure.md):
+    # extension, và quyền CREATE trên public cho bo19_migrator.
     with psycopg.connect(su_db, autocommit=True) as c:
         c.execute("create extension if not exists vector")
+        c.execute("grant create on schema public to bo19_migrator")
+        rep.log("Chủ schema public:", c.execute(
+            "select pg_get_userbyid(nspowner) from pg_namespace where nspname = 'public'").fetchone()[0])
     # Bước 1 — schema.sql, hoặc mọi file của backend/migrations/schema theo thứ tự; bằng bo19_migrator,
     # mỗi file một giao dịch (ADR-017).
     files = sorted(MIGRATIONS.glob("*.sql")) if migrated else [SCHEMA]
@@ -325,7 +338,10 @@ def main() -> int:
     mode.add_argument("--local-migrated", action="store_true")
     mode.add_argument("--app-dsn")
     ap.add_argument("--migrator-role", default="bo19_migrator")
+    ap.add_argument("--server-dsn")
     args = ap.parse_args()
+    if args.server_dsn and args.app_dsn:
+        ap.error("--server-dsn chỉ đi với --local hoặc --local-migrated")
 
     rep = Report()
     rep.log("schema.sql sha256:", hashlib.sha256(SCHEMA.read_bytes()).hexdigest())
@@ -335,7 +351,7 @@ def main() -> int:
         migrated = not args.local
         if local:
             workdir = Path(tempfile.mkdtemp(prefix="bo19-contract-"))
-            _srv, app_dsn = setup_local(workdir / "pgdata", rep, migrated)
+            _srv, app_dsn = setup_local(workdir / "pgdata", rep, migrated, args.server_dsn)
         else:
             app_dsn = args.app_dsn
         run_checks(app_dsn, rep, args.migrator_role, local, migrated)
