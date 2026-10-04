@@ -2866,3 +2866,53 @@ PO duyệt tên cột sổ `filename`, `kind`, `sha256`, `applied_at`; chọn d�
 | `11-ops.md` → 0.27 | Chu kỳ 2: bước 4–5 đạt, bước 6–8 chưa — cổng 2.11 chưa đạt; runbook bước 5 ghi rõ tên database có hậu tố |
 
 **Kết quả:** PostgreSQL 18.6, SSL, `vector` 0.8.1; `bo19_migrator`, `bo19_app` có `LOGIN`, không superuser, không `CREATEROLE`, `CREATEDB`; chỉ `bo19_migrator` có `CREATE` trên `public`; 0 bảng. Output `step0.sh` lần đạt: PO báo đạt, không gửi output — bằng chứng là phép kiểm bằng `bo19_app`.
+
+---
+
+## 2026-10-04 — S2: deploy A trên Render
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-web-service-s2.md` | **Mới.** Cấu hình Web Service; deploy A — log nguyên văn, đọc kết quả, phần chưa đo |
+| `.claude/commands/spike.md` — PO cho phép | Dòng S2: #16 chưa có trong image S2, không đặt `BO19_ENVIRONMENT`; kết quả A |
+
+**Kết quả A:** `Deploy failed`; `STARTUP_01_LEDGER_MISSING`, `STARTUP_02_PROBE_ERROR:42P01`, thoát mã 1; Render chạy lại một lần sau 5 giây, cùng kết quả. **Chưa đo:** mốc chuyển sang `Deploy failed`.
+
+---
+
+## 2026-10-04 — S2: mốc giờ deploy A; B1–B3 đạt trên Render
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-web-service-s2.md` | Events của A: bắt đầu 6:52 PM, `Deploy failed` 6:54 PM — Render không chờ hết 15 phút khi tiến trình thoát. Mục mới "Deploy B — chuẩn bị từ local": B1, B2, B3 nguyên văn |
+| `docs/reference/render-env-vars-manual-deploy.md` | **Mới.** Ba cách lưu biến môi trường; các lựa chọn của Manual Deploy — lấy bằng `curl` |
+| `11-ops.md` → 0.28 | Chu kỳ 2: bước 7–8 đạt; bước 9 là deploy B |
+| `.claude/commands/spike.md` — PO cho phép | Dòng S2: mốc A, B1–B3 |
+
+**Số đo:** `migrate_main` áp 9 schema + 1 data, `max(v)` = 9, lần hai áp 0; `api_main` local trên DB Render `STARTUP_OK`, `/healthz` 200, `SIGTERM` → mã 0; `check_grants.py --app-dsn` **180 / 69 / Lệch 0**. Rò rỉ DSN, host trong output: 0.
+
+---
+
+## 2026-10-04 — S2: deploy B Live trên Render
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-web-service-s2.md` | Mục "Deploy B — trên Render": log, Events, hai lần `curl` nguyên văn; tên service che |
+| `11-ops.md` → 0.29 | Chu kỳ 2: bước 9 đạt; ghi lệch so với runbook — bước 6–8 từ máy người triển khai, bước 9 là `api_main`; cổng 2.11 chờ PO quyết |
+| `.claude/commands/spike.md` — PO cho phép | Dòng S2: kết quả B4 |
+
+**Số đo:** bắt đầu 7:28 PM, Live 7:29 PM; `STARTUP_OK`; `/healthz` 200 — 0.550544 s, 0.303003 s. **Chưa đo:** thời gian đánh thức — `curl` chạy khi instance đang thức.
+
+---
+
+## 2026-10-04 — S2 xong: deploy C; cổng 2.11 chưa đạt
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-web-service-s2.md` | Deploy C, vòng `curl`, Events, C4–C5, đánh thức, kết luận S2 — nguyên văn |
+| `06-structure.md` → 0.26 | Mục Bước kiểm khởi động: gỡ `[CẦN XÁC MINH]` — tiến trình thoát lúc khởi động làm deploy hỏng, Render giữ bản cũ |
+| `12-roadmap.md` → 0.30 | Cổng 2.11 chưa đạt (PO): phần đã đạt ở S2; hai điều kiện đóng — `migrate_main` từ CI (ADR-022), một lần dựng lại có `combined_main` (ADR-033) |
+| `11-ops.md` → 0.30 | Chu kỳ 2: cổng 2.11 chưa đạt |
+| `.claude/commands/spike.md` — PO cho phép | Dòng S2: kết quả C, S2 xong |
+
+**Số đo C:** `STARTUP_DB_CONNECT_FAILED class=OperationalError sqlstate=None`, thoát mã 1, chạy lại một lần; `Deploy failed` 7:51 PM; `/healthz` 60 / 60 `200` từ 19:49:01 tới 19:54:26, hai lần 1.30 s và 1.36 s trong lúc deploy. C5: `STARTUP_OK`, Live 7:55 PM, `/healthz` 200. **Chưa đo:** thời gian đánh thức — lần gọi sau ≥ 20 phút trả 0.30 s, không có dấu hiệu instance đã ngủ. **Ghi nhận:** `sqlstate=None` — mã `STARTUP_DB_CONNECT_FAILED` không phân biệt sai mật khẩu với host không tới được.
