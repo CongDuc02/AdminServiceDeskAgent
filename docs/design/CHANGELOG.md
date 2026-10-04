@@ -2839,3 +2839,15 @@ PO duyệt tên cột sổ `filename`, `kind`, `sha256`, `applied_at`; chọn d�
 | `09-security.md` → 0.13 | Bảng secret: `bo19_admin` ở `~/.bo19/admin.env`, ngoài repo; người triển khai không đọc, không ghi |
 
 **Đã chạy, container PostgreSQL 18.2, xác thực SCRAM:** `generate` dừng đúng khi `.env` còn `BO19_RENDER_ADMIN_DSN` và khi tên database sai dạng; `step0.sh` dừng đúng khi file admin nằm trong repo; luồng đủ — `generate`, `internal-dsn`, `step0.sh` đạt, `migrate_main` bằng mật khẩu mới đạt. Nhánh dừng khi máy chủ không phải bản 18: chưa chạy — không có server bản khác trong lượt này.
+
+---
+
+## 2026-10-04 — S2: luật đổi cấu trúc sổ; chu kỳ DB 2 có ngày
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-017-…` | Luật, PO: `ledger/schema_migration.sql` áp lại mỗi lần chạy nên không đổi được sổ đã có; đổi cấu trúc hay quyền của sổ chỉ bằng migration đánh số. Thay câu "cần một quyết định riêng" |
+| `06-structure.md` → 0.25 | Mục Migration và checkpointer: cùng luật — không sửa file sổ |
+| `11-ops.md` → 0.26 | Nhật ký chu kỳ 2: tạo 2026-10-04, dựng lại 2026-10-29, hết hạn 2026-11-03, bị xoá 2026-11-17 — PO gửi ngày tạo và ngày hết hạn |
+
+`role_secrets.py generate`, `internal-dsn` đã chạy trên `.env` của repo cho DB chu kỳ 2 — chỉ in tên biến; verifier ở file tạm ngoài repo, chờ PO chạy `step0.sh`.
