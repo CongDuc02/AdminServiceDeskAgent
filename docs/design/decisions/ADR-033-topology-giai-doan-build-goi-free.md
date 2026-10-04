@@ -113,7 +113,7 @@ Lịch của từng thao tác cron là **cấu hình**, đọc từ một nguồ
 
 ## Open Questions
 
-- Image PostgreSQL có `vector` cho local, và bản major của Postgres free trên Render — `[CẦN XÁC MINH]`, chốt ở BUILD MODE cùng S0 của Spike 1.
+- Image PostgreSQL có `vector` cho local — **thu hẹp 2026-10-04:** Postgres free trên Render là **bản major 18** (PO). Docker Hub API cùng ngày có repo `pgvector/pgvector` với các tag `pg18`, `pg18-bookworm`, `pg18-trixie` và các tag ghim bản pgvector dạng `0.8.x-pg18`, mới nhất `0.8.7-pg18`. **Bản pgvector phải khớp bản Render cài** — S0 đọc từ `pg_available_extensions`, rồi mới ghim tag cho local.
 - Tên image SeaweedFS 4.47 nếu chạy trong container — `[CẦN XÁC MINH]`; chạy lại bộ phép thử của ADR-031 trên container.
 - S5 của Spike 1 đổi đích: đo trên Web Service free bằng `combined_main`, không deploy Background Worker. `.claude/commands/spike.md` là file lệnh của PO — người triển khai không tự sửa; diff đề xuất ở báo cáo của lần sửa này.
 - Các phần còn lại của cổng 1.15 — F3, F4, F5: một môi trường, chu kỳ dựng lại DB dưới 30 ngày, không backup — và F14: danh sách ngắn chỉ gồm gói free — vẫn chờ PO.

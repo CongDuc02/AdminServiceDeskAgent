@@ -2661,3 +2661,17 @@ Không thêm luật cho `backend/migrations/**/__init__.py`: sổ `schema_migrat
 **Đổi tên `PROVIDER_ERROR` → `PROVIDER_CALL_FAILED` cho mã con:** mục ngay trước dùng `PROVIDER_ERROR` cho mã con "5xx, timeout, lỗi mạng" — trùng tên với một giá trị **đã có** của `llm_usage.outcome` (ADR-019, `0001_initial.sql`), nơi nó nghĩa là "mọi lỗi gọi provider", gồm cả 429. Một tên hai nghĩa trái luật 5 của `CLAUDE.md`. `llm_usage.outcome` không đổi.
 
 **Căn cứ của WV-19:** RPM, TPM của Groq tính theo phút; RPD, TPD tính theo ngày (`docs/reference/llm-groq.md`). 429 do giới hạn theo phút không bắt chờ quá cỡ 60 giây; 120 giây là hai lần cửa sổ đó, cùng bậc với lần backoff dài nhất của job. Ví dụ "10 phút" của PO không chọn, vì không giới hạn nào của Groq nằm giữa "theo phút" và "theo ngày" — chờ thêm chỉ trì hoãn một job sẽ hỏng.
+
+---
+
+## 2026-10-04 — Postgres free chu kỳ 1; PostgreSQL 18 khác bản kiểm local
+
+PO tạo Postgres free trên Render, region Singapore. Render báo: hết hạn 2026-11-03, PostgreSQL 18.
+
+| File | Thay đổi |
+|---|---|
+| `11-ops.md` → 0.20 | Runbook dựng lại PostgreSQL free: nhật ký vận hành, chu kỳ 1 — tạo 2026-10-04 (suy ra), dựng lại 2026-10-29, hết hạn 2026-11-03, bị xoá 2026-11-17 |
+| `decisions/ADR-033-…` | Open Questions: image local là PostgreSQL 18; `pgvector/pgvector` có tag `pg18` trên Docker Hub; ghim bản pgvector sau khi S0 đọc bản của Render |
+| `ASSUMPTIONS.md` → 0.50 | A-040, A-047, A-045: Render là bản 18, mọi kiểm `check_grants.py` local tới nay chạy trên 16.2 — S0, S1 là lần đầu trên bản 18 |
+
+**Hệ quả lịch:** cổng 4.5 — buổi UAT phải xong trước 2026-10-29, hoặc chờ chu kỳ 2.
