@@ -2797,3 +2797,45 @@ Chạy theo kế hoạch PO duyệt cùng năm mặc định. Output nguyên vă
 - Chạy image, thiếu `BO19_DATABASE_URL`: `STARTUP_FAIL CONFIG_DATABASE_URL_MISSING`, mã 1.
 - Chạy image, `bo19_app` trên Render qua URL ngoài — bản thử trước của deploy A: chỉ `STARTUP_01_LEDGER_MISSING`, mã 1; bước #2 đạt.
 - Chạy image trên PostgreSQL 18 local có sổ giả lập: `GET /healthz` 200; `SIGTERM` → mã 0.
+
+---
+
+## 2026-10-04 — S2: sổ thành file DDL; `migrate_main`; công cụ bước 0; chu kỳ DB 2
+
+PO duyệt tên cột sổ `filename`, `kind`, `sha256`, `applied_at`; chọn dựng lại DB theo runbook trước khi tạo Web Service — lần thử đầu cho cổng 2.11.
+
+| File | Thay đổi |
+|---|---|
+| `backend/migrations/ledger/schema_migration.sql` | **Mới.** DDL sổ: `CHECK (kind IN ('schema', 'data'))`, `sha256` hex 64, dạng `filename`, thư mục trùng `kind`; `REVOKE ALL … FROM PUBLIC`; `bo19_app` chỉ `SELECT` |
+| `backend/src/bo19/entrypoints/migrate_main.py` | Thân xử lý: sổ → bước 1 → `setup()` autocommit → bước 3 ngoài sổ → bước 4. File và dòng sổ cùng giao dịch; đã có cùng sha thì bỏ qua; khác sha thì dừng `MIGRATE_LEDGER_MISMATCH`; file rỗng thì dừng. DSN từ `BO19_MIGRATOR_DATABASE_URL`, không ghi ra log |
+| `backend/tests/test_migrate_main.py` | **Mới.** Năm test: hai thuần, ba tích hợp — chạy hai lần không đổi gì và bước kiểm #1, #2 đạt; file đã áp bị sửa thì dừng; `bo19_app` không ghi được sổ |
+| `tools/contract-checks/check_grants.py` | Bỏ hằng `LEDGER`; đọc sổ từ file DDL, file cấp `bo19_app` khác đúng `SELECT` thì mã 2; dựng local áp DDL sổ trước bước 1; kiểm sổ như bảng chỉ đọc; `--app-dsn` thiếu sổ là lệch. `read_sql` báo được file ngoài repo |
+| `tools/contract-checks/test_check_grants.py`, `README.md` | Ba test sổ; bảng nguồn kỳ vọng |
+| `tools/db-bootstrap/` | **Mới.** `role_secrets.py` — mật khẩu và SCRAM verifier, ghi `.env`, verifier ra file tạm ngoài repo; `internal-dsn` cho `BO19_DATABASE_URL`. `step0.sql`, `step0.sh` — bước 0 một giao dịch, xoá verifier khi đạt |
+| `decisions/ADR-017-…` | Mục cập nhật: sổ là file DDL, không bản chép thứ hai, ghi sổ cùng giao dịch |
+| `06-structure.md` → 0.24 | Cây: `migrations/ledger/`, `tools/db-bootstrap/`; dòng "Sổ" trong bảng bước; khối DDL chép tay thay bằng tóm tắt trỏ file; `BO19_MIGRATOR_DATABASE_URL`; số đo mới ở mục Chạy lại |
+| `11-ops.md` → 0.24 | `BO19_MIGRATOR_DATABASE_URL`; runbook bước 5 trỏ `tools/db-bootstrap/`; nhật ký chu kỳ 2 — ngày TBD, chờ PO |
+| `09-security.md` → 0.12 | Bảng secret: `bo19_migrator` qua `BO19_MIGRATOR_DATABASE_URL` |
+| `.claude/commands/spike.md` — PO cho phép | Dòng S2: lệch có chủ ý `migrate_main` chạy từ local thay vì CI (ADR-022); mã trượt dự kiến của A trên DB mới |
+
+**Đã chạy, 2026-10-04, container `pgvector/pgvector:0.8.1-pg18@sha256:508c5290…` — PostgreSQL 18.2, xác thực SCRAM:**
+
+- Test: backend 25/25; bộ kiểm 8/8.
+- Bước 0 bằng `tools/db-bootstrap/`: đạt; hai role không superuser, không `CREATEROLE`, `CREATEDB`; chỉ `bo19_migrator` có `CREATE` trên `public`.
+- Image: A — `STARTUP_01_LEDGER_MISSING`, `STARTUP_02_PROBE_ERROR:42P01`, mã 1. `migrate_main` lần 1: 9 + 1 file áp, `max(v)` = 9, mã 0; lần 2: áp 0, mã 0. B — `GET /healthz` 200. C — `STARTUP_DB_CONNECT_FAILED class=OperationalError`, mã 1. Không dòng output nào chứa DSN.
+- `check_grants.py`: `--local` 173 / 64 / Lệch 0; `--local-migrated` 180 / 69 / Lệch 0; `--app-dsn` trên DB do `migrate_main` dựng 180 / 69 / Lệch 0. Sổ thêm 4 phủ định, 1 khẳng định.
+
+---
+
+## 2026-10-04 — S2: credential `bo19_admin` ra ngoài repo; PostgreSQL 18 ở runbook — PO, trước khi merge
+
+| File | Thay đổi |
+|---|---|
+| `tools/db-bootstrap/step0.sh` | Đọc `BO19_RENDER_ADMIN_DSN` từ `~/.bo19/admin.env` (ghi đè bằng `ADMIN_ENV_FILE`); file nằm trong repo thì dừng; không đọc `.env` của repo |
+| `tools/db-bootstrap/role_secrets.py` | `generate` không đọc credential `bo19_admin` nữa: lấy host:cổng và tên database từ `BO19_RENDER_EXTERNAL_HOST`, `BO19_RENDER_DB_NAME` — không bí mật — ở `.env` của repo; `.env` của repo còn `BO19_RENDER_ADMIN_DSN` thì dừng |
+| `tools/db-bootstrap/step0.sql` | Dừng nếu máy chủ không phải PostgreSQL 18 |
+| `tools/db-bootstrap/README.md` | Trình tự mới |
+| `11-ops.md` → 0.25 | Runbook bước 5: PostgreSQL Version = 18, khớp image pg18 của ADR-033; `~/.bo19/admin.env`; ba giá trị không bí mật ở `.env` của repo |
+| `09-security.md` → 0.13 | Bảng secret: `bo19_admin` ở `~/.bo19/admin.env`, ngoài repo; người triển khai không đọc, không ghi |
+
+**Đã chạy, container PostgreSQL 18.2, xác thực SCRAM:** `generate` dừng đúng khi `.env` còn `BO19_RENDER_ADMIN_DSN` và khi tên database sai dạng; `step0.sh` dừng đúng khi file admin nằm trong repo; luồng đủ — `generate`, `internal-dsn`, `step0.sh` đạt, `migrate_main` bằng mật khẩu mới đạt. Nhánh dừng khi máy chủ không phải bản 18: chưa chạy — không có server bản khác trong lượt này.

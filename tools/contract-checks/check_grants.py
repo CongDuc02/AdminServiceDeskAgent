@@ -12,8 +12,9 @@ Ba chế độ:
                      thay cho pgserver. Server phải mới, chỉ dùng cho phép kiểm này.
   --local-migrated   Như --local, nhưng bước 1 áp lần lượt backend/migrations/schema/*.sql
                      (0001_initial.sql = schema.sql, rồi 0002, 0003, ...), mỗi file một giao dịch.
-                     Kiểm được bảng và quyền của migration sau schema.sql. Không có sổ
-                     schema_migration và không chạy data migration — không thay migrate_main.
+                     Kiểm được bảng và quyền của migration sau schema.sql. Sổ schema_migration được
+                     tạo từ file DDL của nó nhưng để trống; không chạy data migration — không thay
+                     migrate_main.
   --app-dsn DSN      Chỉ kiểm, trên một cơ sở dữ liệu đã được migrate (ví dụ Render).
                      Không tạo role, không áp gì. Mọi phép thử dùng WHERE false hoặc giao dịch
                      rollback; TRUNCATE chỉ kiểm bằng has_table_privilege, không thực thi.
@@ -41,6 +42,7 @@ MIGRATIONS = REPO / "backend" / "migrations" / "schema"
 
 DATA_DESIGN = REPO / "docs" / "design" / "04-data.md"
 CHECKPOINTER_GRANTS_FILE = REPO / "backend" / "migrations" / "library" / "checkpointer_grants.sql"
+LEDGER_FILE = REPO / "backend" / "migrations" / "ledger" / "schema_migration.sql"
 
 # Không giữ bản chép cứng của nội dung file nào trong repo (PO, 2026-10-04 — sự cố file grant rỗng ở S1).
 # Mỗi kỳ vọng đọc từ đúng file làm nguồn của nó:
@@ -49,8 +51,7 @@ CHECKPOINTER_GRANTS_FILE = REPO / "backend" / "migrations" / "library" / "checkp
 #                                 (04-data.md: "UPDATE chỉ trên các cột liệt kê trong schema.sql")
 #   - bảng của checkpointer, câu GRANT bước 3 ← backend/migrations/library/checkpointer_grants.sql
 #   - số chiều embedding         ← vector(N) trong DDL của procedure_chunk_embedding_v1
-# Giữ cố định, có lý do: tên sổ migration của ADR-017 — chưa có file DDL nào định nghĩa nó.
-LEDGER = ["schema_migration"]
+#   - sổ migration, quyền của bo19_app trên sổ ← backend/migrations/ledger/schema_migration.sql (ADR-017)
 
 # Tên hàng trong bảng nhóm quyền của 04-data.md → nhóm của bộ kiểm.
 GROUP_ROWS = {
@@ -76,7 +77,8 @@ def read_sql(path: Path) -> str:
     """Đọc một file SQL sẽ áp. Không có câu thực thi được thì dừng — không coi là đạt (luật của ADR-017)."""
     text = path.read_text(encoding="utf-8")
     if not executable_sql(text):
-        raise OSError(f"file không có câu SQL thực thi được: {path.relative_to(REPO).as_posix()}")
+        shown = path.relative_to(REPO) if path.is_relative_to(REPO) else path
+        raise OSError(f"file không có câu SQL thực thi được: {shown.as_posix()}")
     return text
 
 
@@ -151,6 +153,25 @@ def checkpointer_tables() -> tuple[list[str], list[str]]:
     return data, meta
 
 
+def ledger_tables() -> list[str]:
+    """Bảng sổ, từ file DDL sổ. PO, 2026-10-04: bo19_app chỉ SELECT trên sổ — file cấp khác thì dừng,
+    không kiểm trên kỳ vọng sai."""
+    sql = executable_sql(read_sql(LEDGER_FILE))
+    tables = sorted({m.group(1) for m in re.finditer(
+        r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:public\.)?([a-z_0-9]+)", sql, re.I)})
+    if not tables:
+        raise ExpectationError("schema_migration.sql: không có CREATE TABLE")
+    grants: dict[str, set[str]] = {}
+    for m in re.finditer(r"GRANT\s+([A-Z ,]+?)\s+ON\s+(?:TABLE\s+)?([a-z_0-9 ,]+?)\s+TO\s+bo19_app\b", sql, re.I):
+        for t in (x.strip() for x in m.group(2).split(",")):
+            grants.setdefault(t, set()).update(x.strip().upper() for x in m.group(1).split(","))
+    for t in tables:
+        if grants.get(t) != {"SELECT"}:
+            raise ExpectationError(
+                f"schema_migration.sql: bo19_app trên {t} phải đúng SELECT, file cấp {sorted(grants.get(t, set()))}")
+    return tables
+
+
 def embedding_dim(files: list[Path]) -> int:
     for f in files:
         m = re.search(r"CREATE TABLE procedure_chunk_embedding_v1\b.*?vector\((\d+)\)",
@@ -164,7 +185,7 @@ def load_expectations(migrated: bool) -> None:
     """Nạp mọi kỳ vọng từ file repo vào biến module — gọi một lần trước khi dựng hay kiểm."""
     global READ_ONLY, APPEND_ONLY, INSERT_DELETE, MUTABLE_NO_DELETE, COLUMN_UPDATE, FULL_LIFECYCLE
     global MIGRATION_READ_ONLY, MIGRATION_COLUMN_UPDATE, CHECKPOINT_DATA, CHECKPOINT_META
-    global CHECKPOINTER_GRANTS, EXPECTED_EMBEDDING_DIM
+    global CHECKPOINTER_GRANTS, EXPECTED_EMBEDDING_DIM, LEDGER, LEDGER_DDL
     g = design_groups()
     files = sorted(MIGRATIONS.glob("*.sql")) if migrated else [SCHEMA]
     validate_groups(g, schema_tables(files))
@@ -183,6 +204,8 @@ def load_expectations(migrated: bool) -> None:
     CHECKPOINT_DATA, CHECKPOINT_META = checkpointer_tables()
     CHECKPOINTER_GRANTS = read_sql(CHECKPOINTER_GRANTS_FILE)
     EXPECTED_EMBEDDING_DIM = embedding_dim(files)
+    LEDGER = ledger_tables()
+    LEDGER_DDL = read_sql(LEDGER_FILE)
 
 
 
@@ -274,6 +297,11 @@ def setup_local(workdir: Path, rep: Report, migrated: bool = False, server_dsn: 
         c.execute("grant create on schema public to bo19_migrator")
         rep.log("Chủ schema public:", c.execute(
             "select pg_get_userbyid(nspowner) from pg_namespace where nspname = 'public'").fetchone()[0])
+    # Sổ migration — migrate_main tạo nó trước bước 1, bằng bo19_migrator (ADR-017). Ở đây để trống.
+    with psycopg.connect(mig) as c:
+        with c.transaction():
+            c.execute(LEDGER_DDL)
+        rep.log("Đã áp:", LEDGER_FILE.relative_to(REPO).as_posix())
     # Bước 1 — schema.sql, hoặc mọi file của backend/migrations/schema theo thứ tự; bằng bo19_migrator,
     # mỗi file một giao dịch (ADR-017).
     files = sorted(MIGRATIONS.glob("*.sql")) if migrated else [SCHEMA]
@@ -334,7 +362,10 @@ def run_checks(app_dsn: str, rep: Report, migrator_role: str | None, local: bool
             ok = a.execute("select has_table_privilege(current_user, %s, 'TRUNCATE')", (t,)).fetchone()[0]
             return "ALLOW" if ok else "DENY"
 
-        for t in (x for x in READ_ONLY + MIGRATION_READ_ONLY if x in tables):
+        for t in LEDGER:
+            if t not in tables:
+                rep.mismatch.append(f"sổ {t} không có trong DB — migrate_main chưa chạy")
+        for t in (x for x in READ_ONLY + MIGRATION_READ_ONLY + LEDGER if x in tables):
             rep.expect(f"{t} SELECT", probe(a, f"select 1 from {t} limit 0"), "ALLOW")
             rep.expect(f"{t} INSERT", probe(a, f"insert into {t} default values"), "DENY")
             rep.expect(f"{t} UPDATE", probe(a, upd(t)), "DENY")
@@ -457,9 +488,9 @@ def main() -> int:
         rep.log("LỖI NGUỒN KỲ VỌNG:", str(e) or type(e).__name__)
         return 2
     rep.log("Kỳ vọng đọc từ: 04-data.md, " + ("backend/migrations/schema/*.sql" if not args.local else "schema.sql")
-            + ", checkpointer_grants.sql — nhóm:", len(READ_ONLY), len(APPEND_ONLY), len(INSERT_DELETE),
+            + ", checkpointer_grants.sql, ledger/schema_migration.sql — nhóm:", len(READ_ONLY), len(APPEND_ONLY), len(INSERT_DELETE),
             len(MUTABLE_NO_DELETE), len(COLUMN_UPDATE), len(FULL_LIFECYCLE), "· checkpoint:",
-            len(CHECKPOINT_DATA), "+", len(CHECKPOINT_META), "· số chiều:", EXPECTED_EMBEDDING_DIM)
+            len(CHECKPOINT_DATA), "+", len(CHECKPOINT_META), "· sổ:", len(LEDGER), "· số chiều:", EXPECTED_EMBEDDING_DIM)
     workdir = None
     try:
         local = args.local or args.local_migrated

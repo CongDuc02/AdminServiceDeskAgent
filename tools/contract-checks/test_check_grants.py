@@ -1,4 +1,4 @@
-"""Test của bộ kiểm — parser bảng nhóm quyền phải hỏng thành tiếng (PO, 2026-10-04).
+"""Test của bộ kiểm — parser nguồn kỳ vọng phải hỏng thành tiếng (PO, 2026-10-04).
 
 Chạy: .venv/Scripts/python -m unittest test_check_grants -v     (Windows; Linux: .venv/bin/python)
 Không cần PostgreSQL: mọi ca dừng ở bước nạp kỳ vọng, trước khi kết nối hay dựng server.
@@ -24,12 +24,12 @@ APPEND_ROW = next(l for l in REAL_DESIGN.splitlines() if l.startswith("| **Chỉ
 class GroupParserFailsLoudly(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="bo19-cg-test-"))
-        self.saved = (cg.DATA_DESIGN, cg.MIGRATIONS, cg.SCHEMA)
+        self.saved = (cg.DATA_DESIGN, cg.MIGRATIONS, cg.SCHEMA, cg.LEDGER_FILE)
         shutil.copytree(cg.MIGRATIONS, self.tmp / "schema")
         cg.MIGRATIONS = self.tmp / "schema"
 
     def tearDown(self):
-        cg.DATA_DESIGN, cg.MIGRATIONS, cg.SCHEMA = self.saved
+        cg.DATA_DESIGN, cg.MIGRATIONS, cg.SCHEMA, cg.LEDGER_FILE = self.saved
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def design(self, text: str) -> None:
@@ -81,6 +81,30 @@ class GroupParserFailsLoudly(unittest.TestCase):
         code, out = self.run_main("--local")
         self.assertEqual(code, 2)
         self.assertIn("thuộc hơn một nhóm", out)
+
+    # --- sổ migration: đọc từ file DDL sổ, bo19_app chỉ SELECT (PO, 2026-10-04) ----------
+    def ledger(self, text: str) -> None:
+        p = self.tmp / "schema_migration.sql"
+        p.write_text(text, encoding="utf-8")
+        cg.LEDGER_FILE = p
+
+    def test_so_doc_tu_file(self):
+        self.assertEqual(cg.ledger_tables(), ["schema_migration"])
+
+    def test_so_cap_them_quyen_ghi_thoat_ma_2(self):
+        real = self.saved[3].read_text(encoding="utf-8")
+        self.ledger(real.replace("GRANT SELECT ON schema_migration", "GRANT SELECT, INSERT ON schema_migration"))
+        with self.assertRaisesRegex(cg.ExpectationError, "phải đúng SELECT"):
+            cg.ledger_tables()
+        code, out = self.run_main("--local")
+        self.assertEqual(code, 2)
+        self.assertIn("phải đúng SELECT", out)
+
+    def test_so_rong_thoat_ma_2(self):
+        self.ledger("-- chỉ chú thích\n")
+        code, out = self.run_main("--local")
+        self.assertEqual(code, 2)
+        self.assertIn("không có câu SQL thực thi được", out)
 
     # --- chú thích không tính là bảng ----------------------------------------------------
     def test_create_table_trong_chu_thich_khong_tinh(self):
