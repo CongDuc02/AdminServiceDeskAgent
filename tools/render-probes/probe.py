@@ -50,7 +50,52 @@ UA = "bo19-render-probe/1"
 BROWSER_AE = "gzip, deflate, br"
 CASES = ("sse-events", "sse-silent", "sse-comment", "sleep")
 HEARTBEAT = re.compile(r"^: hb seq=(\d+) server_epoch=([0-9.]+)")
+MASK = "<render-host>"
+# Repo công khai: log và file kết quả ai cũng xem được; GitHub chỉ che đúng nguyên chuỗi secret. Mọi chuỗi chứa
+# "onrender.com" — kể cả không kèm https:// — và chính host của BO19_SPIKE_BASE_URL bị thay bằng MASK ở stdout, stderr, file kết quả.
+HOST_RE = re.compile(r"[A-Za-z0-9._-]*onrender\.com", re.IGNORECASE)
+# Header có thể mang host: không ghi nguyên văn giá trị, chỉ ghi tên kèm giá trị đã che.
+RISKY_HEADERS = {"location", "content-location", "alt-svc", "link", "refresh", "set-cookie", "referer", "origin",
+                 "access-control-allow-origin", "report-to", "nel"}
+_host = ""  # host của Target — đặt trong main() ngay sau khi đọc môi trường
 OVERHEAD_S = 60.0  # ước tính nối, kiểm commit hai lần, ghi file — chỉ để tính trần tổng thời lượng
+
+
+def redact(text: str, host: str = "") -> str:
+    """Thay host của Target và mọi chuỗi chứa onrender.com bằng MASK. Không đụng gì khác."""
+    if host:
+        text = re.sub(re.escape(host), MASK, text, flags=re.IGNORECASE)
+    return HOST_RE.sub(MASK, text)
+
+
+def header_row(name: str, value: str, host: str = "") -> list[str]:
+    """Một header response thực nhận. Header rủi ro (hoặc x-render-*): chỉ ghi độ dài và có chứa host hay không."""
+    red = redact(value, host)
+    if name.lower() in RISKY_HEADERS or name.lower().startswith("x-render-"):
+        return [name, f"<masked len={len(value)} contained_host={red != value}>"]
+    return [name, red]
+
+
+class RedactingStream:
+    """Bọc stdout/stderr: che từng dòng đầy đủ trước khi ra — một host không bao giờ bị cắt đôi giữa hai lần write."""
+
+    def __init__(self, raw) -> None:
+        self.raw, self.buf = raw, ""
+
+    def write(self, s: str) -> int:
+        *lines, self.buf = (self.buf + s).split("\n")
+        for line in lines:
+            self.raw.write(redact(line, _host) + "\n")
+        return len(s)
+
+    def flush(self) -> None:
+        if self.buf:
+            self.raw.write(redact(self.buf, _host))
+            self.buf = ""
+        self.raw.flush()
+
+    def __getattr__(self, name: str):
+        return getattr(self.raw, name)
 
 
 class Target:
@@ -67,7 +112,7 @@ class Target:
         return http.client.HTTPConnection(self.host, self.port, timeout=timeout)
 
     def scrub(self, text: str) -> str:
-        return text.replace(self.host, "<host>") if self.host else text
+        return redact(text, self.host)
 
 
 def utc() -> str:
@@ -192,7 +237,7 @@ def attempt(t: Target, run: dict, idx: int, boot_before: float | None) -> dict:
         rec["headers_s"] = round(time.perf_counter() - t_req, 6)
         rec["status"] = resp.status
         rec["http_version"] = {10: "HTTP/1.0", 11: "HTTP/1.1"}.get(resp.version, str(resp.version))
-        rec["response_headers"] = [[k, t.scrub(v)] for k, v in resp.getheaders()]
+        rec["response_headers"] = [header_row(k, v, t.host) for k, v in resp.getheaders()]
         if resp.status == 429:  # chỗ thử đang bị giữ — không phải điểm dữ liệu, measure() sẽ chờ rồi thử lại
             resp.read()
             rec["ended"] = "busy"
@@ -269,6 +314,12 @@ def measure(t: Target, run: dict, idx: int, boot_before: float | None, busy_wait
 
 
 def main() -> int:
+    global _host
+    for name in ("stdout", "stderr"):  # trước mọi thứ khác: mọi dòng ra đều qua redact
+        stream = getattr(sys, name)
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        setattr(sys, name, RedactingStream(stream))
     ap = argparse.ArgumentParser(description="S3 của Spike 1 — đo từ ngoài Render")
     ap.add_argument("--spec")
     ap.add_argument("--case", choices=CASES)
@@ -308,6 +359,7 @@ def main() -> int:
         print("THIẾU BO19_SPIKE_BASE_URL hoặc BO19_SPIKE_TOKEN", file=sys.stderr)
         return 2
     t = Target(base, token)
+    _host = t.host
     label = re.sub(r"[^A-Za-z0-9._-]", "_", str(spec.get("label", "run")))
     out = Path(a.out) / label
     out.mkdir(parents=True, exist_ok=True)
@@ -339,7 +391,7 @@ def main() -> int:
         rec = measure(t, run, i, boot, a.busy_wait_s)
         rec["meta"] = meta
         f = out / f"{i:02d}-{rec['case']}-{rec['enc']}.json"
-        f.write_text(json.dumps(rec, indent=1, ensure_ascii=False), encoding="utf-8")
+        f.write_text(redact(json.dumps(rec, indent=1, ensure_ascii=False), t.host), encoding="utf-8")
         if a.emit:
             print("RESULT_JSON " + json.dumps(rec, separators=(",", ":"), ensure_ascii=False), flush=True)
         s = rec["summary"]
