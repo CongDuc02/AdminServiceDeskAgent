@@ -22,9 +22,12 @@ esac
 BO19_STEP0_ADMIN_DSN="$(grep '^BO19_RENDER_ADMIN_DSN=' "$ADMIN_ENV_FILE" | head -n1 | cut -d= -f2- | tr -d '\r' | sed 's/^"//; s/"$//')"
 [ -n "$BO19_STEP0_ADMIN_DSN" ] || { echo "thiếu BO19_RENDER_ADMIN_DSN trong $ADMIN_ENV_FILE"; exit 2; }
 export BO19_STEP0_ADMIN_DSN
+# docker là chương trình Windows: đường dẫn kiểu MSYS (/tmp/...) phải đổi sang dạng Windows. MSYS_NO_PATHCONV
+# tắt việc đổi tự động — cần cho lệnh sh -c bên dưới — nên đổi tay bằng cygpath. Linux không có cygpath: giữ nguyên.
+VERIFIER_FILE_DOCKER="$(cygpath -w "$VERIFIER_FILE" 2>/dev/null || printf '%s' "$VERIFIER_FILE")"
 
 MSYS_NO_PATHCONV=1 docker run --rm -i \
-  -e BO19_STEP0_ADMIN_DSN --env-file "$VERIFIER_FILE" \
+  -e BO19_STEP0_ADMIN_DSN --env-file "$VERIFIER_FILE_DOCKER" \
   "$IMAGE" \
   sh -c 'psql "$BO19_STEP0_ADMIN_DSN" -X -q --single-transaction -v ON_ERROR_STOP=1 -f -' \
   < "$HERE/step0.sql"
