@@ -3140,3 +3140,27 @@ Track build, tầng nền. Nhánh `build/b1-ci`.
 **Hoãn:** ESLint (client chưa có khung; `frontend/package.json` rỗng). Job `migrate_main` từ CI bằng credential `bo19_migrator` (ADR-022, cổng 2.1/2.6) — cần secret, ngoài B1.
 
 **Sự cố ghi nhận:** `git push` bị GitHub từ chối khi thêm file workflow — token của Git Credential Manager (và `gh`) không có quyền `workflow`. PO cấp quyền cho `gh` (`gh auth refresh -h github.com -s workflow`); push nhánh `build/*` dùng token của `gh` qua `-c credential.helper=!gh auth git-credential` cho riêng lệnh push, không đổi cấu hình git của máy.
+
+## 2026-10-05 — B2 xong: nền chạy — observability, cấu hình có kiểu, bộ chạy bước kiểm khởi động; AC-1.7; D1-1
+
+Track build, tầng nền. Nhánh `build/b2-nen-chay`. Commit tách theo phần để đọc diff từng phần.
+
+| Phần | Thay đổi |
+|---|---|
+| `bo19.observability` | Mới: `log.py` (lối ghi duy nhất, sự kiện là **mã**, trường có kiểu, `Sensitive` bọc giá trị slot; chỉ file này import `structlog`, ADR-029), `masking.py` (`INT` giữ, `PER` → `[PER]`, `RES` → `[RES]`, input không phải slot mask như `RES`), `handler.py` (handler JSON UTC duy nhất của root logger; bản ghi thư viện bên thứ ba bị bỏ nội dung), `trace.py` (`trace_id` UUID v4, ADR-024). `domain/sensitivity.py`: enum `SlotSensitivity`. **AC-1.8 chỉ phần mask, test đơn vị** — bằng chứng đầu-cuối chỉ có ở lần chạy AC-1.1 |
+| `bo19.config.settings` | Có kiểu: `BO19_ENVIRONMENT`, `BO19_SESSION_SECRET`, múi giờ, WV-01/02/03/08/10/16. `load_settings` **không ném**: trả `Settings` kèm `problems` để bước kiểm chạy hết rồi gom mã. `.env.example` mới; `BO19_ENVIRONMENT=dev` thêm vào `.env` cục bộ (không đọc nội dung) |
+| `bo19.startup` | Bộ chạy `runner.py` + `model.py` (ma trận 23 dòng khớp bảng của `06-structure.md`, test đọc lại bảng) + `registry.py` + `connect.py` (O1-4). Bước đã có: #1, #2 (chuyển từ `run_s2_checks`), #10, #11, #12, #13, #15, #16, #17, #19, #20. **Chưa có:** #3, #4a–c, #5, #6, #7, #8, #9, #14, #18, #21 — ghi `STARTUP_CHECK_PENDING` mỗi lần khởi động, danh sách khoá bằng test. #4 vắng ở danh sách "chưa làm" trong kế hoạch B2 đã duyệt — bổ sung vào, không làm thêm |
+| `persistence/read.py` | Mới: lối đọc READ ONLY, `current_operating_mode` — một lần đọc cho #15 và #17 |
+| `entrypoints/api_main.py` | Dùng `configure_logging` + bộ chạy; `uvicorn.run(log_config=None)` — mọi log của uvicorn đi qua handler mask duy nhất (hệ quả: dòng access log của uvicorn chỉ còn tên logger và mức, không còn đường dẫn) |
+| Test | `test_observability`, `test_settings`, `test_startup_runner` (gồm khoá danh sách chưa làm), `test_checks_{logging,config,security,environment}`, `test_ac_1_7` (PostgreSQL thật). Đột biến thử trên bản sao cho từng nhóm |
+| `docs/reference/` | `langsmith-tracing-env-nguon-goc.md` + `langsmith-nguon/` (tên biến tracing, nguồn gốc `curl`, đúng bản lock 0.14.3 / 1.6.6 — bản cũ ở `langsmith-tracing-env.md` là 0.14.1 / 1.6.5 từ wheel); `structlog-25.4.0.md`; `psycopg-connect-errors.md` (quan sát) |
+| `11-ops.md` | Bảng biến cấu hình của tiến trình runtime (tên, bắt buộc, mặc định, nguồn WV) |
+| `ASSUMPTIONS.md` → 0.57 | A-088: độ dài tối thiểu của session secret chưa chốt |
+| `06-structure.md` → 0.30 | Mục Bước kiểm khởi động: các chỗ B2 đã chọn; cây `startup/` |
+| `12-roadmap.md` → 0.35 | AC-1.7 đạt với các bước đã có code; AC-1.8 chỉ phần mask; O1-4 đã làm; D1-1 có code |
+
+**Chỗ code chọn mà thiết kế chưa nói** (đã ghi vào `06-structure.md`): #17 khi không đọc được `operating_mode` ngoài `prod` là Chặn (fail-closed); bước kiểm nổ là trượt; chín biến WV là biến môi trường tuỳ chọn có mặc định để #11, #13, #20 có thứ để kiểm.
+
+**Nợ khai báo:** `entrypoints/migrate_main.py` còn tự tạo logger và `basicConfig` — ngoài ma trận bước kiểm và ngoài kế hoạch B2; test quét văn bản (`test_observability.QuetVanBan`) khoá nó là ngoại lệ duy nhất. Chờ PO quyết khi nào chuyển.
+
+**CI:** run xanh cả ba job (`backend`, `contracts`, `lock`) trên nhánh `build/b2-nen-chay` — https://github.com/CongDuc02/AdminServiceDeskAgent/actions/runs/37292976261 — 179 test, 0 bỏ qua (các ca cần PostgreSQL đã chạy thật, gồm `test_ac_1_7`), `lint-imports` 8 contract giữ. Chạy tay trước đó: image Docker thật, nối DB Render bằng `bo19_app`, `BO19_ENVIRONMENT=dev` — khởi động qua các bước đã có, `GET /healthz` 200, log JSON UTC.

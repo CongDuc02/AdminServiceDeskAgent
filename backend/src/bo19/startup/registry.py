@@ -1,0 +1,22 @@
+"""Bước kiểm đã có code ở B2 — số bước → hàm. Bước nào có trong `MATRIX` mà không có ở đây là bước **chưa làm**:
+bộ chạy ghi `STARTUP_CHECK_PENDING` cho nó ở mỗi lần khởi động, và `tests/test_startup_runner.py` khoá danh sách đó — thêm một bước vào
+đây mà không sửa danh sách khai báo trong test là test đỏ, và ngược lại.
+"""
+from __future__ import annotations
+
+from bo19.startup import checks, checks_config, checks_environment, checks_logging, checks_security
+from bo19.startup.model import Check
+
+REGISTRY: dict[str, Check] = {
+    "1": checks.step_01,
+    "2": checks.step_02,
+    "10": checks_logging.step_10,
+    "11": checks_config.step_11,
+    "12": checks_security.step_12,
+    "13": checks_config.step_13,
+    "15": checks_environment.step_15,
+    "16": checks_environment.step_16,
+    "17": checks_environment.step_17,
+    "19": checks_security.step_19,
+    "20": checks_security.step_20,
+}

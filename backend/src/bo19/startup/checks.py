@@ -1,7 +1,6 @@
-"""Bước kiểm khởi động #1 và #2 — mục Bước kiểm khởi động của 06-structure.md. Phần cho S2 của Spike 1.
+"""Bước kiểm khởi động #1 và #2 — mục Bước kiểm khởi động của 06-structure.md. Viết ở S2 của Spike 1; B2 chuyển vào bộ chạy `runner.py`.
 
-Mọi bước chạy tới hết rồi mới gom danh sách mã trượt — không dừng ở bước trượt đầu tiên. Hàm `evaluate_*`
-là hàm thuần trên dữ liệu đã đọc, để test không cần PostgreSQL.
+Hàm `evaluate_*` là hàm thuần trên dữ liệu đã đọc, để test không cần PostgreSQL; `step_01`, `step_02` đọc rồi gọi chúng.
 """
 from __future__ import annotations
 
@@ -12,6 +11,7 @@ from pathlib import Path
 import psycopg
 
 from bo19.persistence import probe
+from bo19.startup.model import Context, Result
 
 # /app/src/bo19/startup/checks.py → /app/migrations ; backend/src/bo19/startup → backend/migrations
 MIGRATIONS_DIR = Path(__file__).resolve().parents[3] / "migrations"
@@ -75,8 +75,9 @@ def evaluate_role(facts: probe.RoleFacts, audit_event_update: str) -> list[str]:
     return fails
 
 
-def run_s2_checks(conn: psycopg.Connection, migrations_root: Path = MIGRATIONS_DIR) -> list[str]:
-    """Chạy #1 rồi #2 trên cùng một kết nối, gom mọi mã trượt."""
-    fails = evaluate_ledger(probe.read_ledger(conn), known_migrations(migrations_root))
-    fails += evaluate_role(probe.role_facts(conn), probe.write_probe(conn, AUDIT_EVENT_UPDATE_PROBE))
-    return fails
+def step_01(ctx: Context) -> Result:
+    return Result(tuple(evaluate_ledger(probe.read_ledger(ctx.conn), known_migrations(ctx.migrations_root))))
+
+
+def step_02(ctx: Context) -> Result:
+    return Result(tuple(evaluate_role(probe.role_facts(ctx.conn), probe.write_probe(ctx.conn, AUDIT_EVENT_UPDATE_PROBE))))

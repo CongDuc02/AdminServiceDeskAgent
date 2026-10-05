@@ -7,6 +7,7 @@
 - **Ngày lấy:** 2026-09-27.
 - **Phiên bản mà nguồn mô tả:** `langsmith` **0.14.1**, `langchain-core` **1.6.5**, `langgraph` **1.2.11** — đúng các bản của lần cài thử `backend/pyproject.toml` ngày 2026-09-26 (mục ngày đó của `docs/design/CHANGELOG.md`). `langsmith` và `langchain-core` là phụ thuộc bắc cầu, **chưa ghim**.
 - **Dùng cho:** A-082. Mọi trích dẫn mã là nguyên văn, chép bằng script từ file trong wheel.
+- **Cập nhật 2026-10-05 (B2):** lock đã chốt `langsmith` 0.14.3 và `langchain-core` 1.6.6. Đối chiếu bằng nguồn gốc tải bằng `curl` ở `langsmith-tracing-env-nguon-goc.md` — danh sách tên biến cho test của bước kiểm khởi động #19 lấy từ file đó. File này giữ nguyên làm bằng chứng thử chạy ở 0.14.1 / 1.6.5.
 - **Phải đối chiếu lại khi lockfile chốt bản (A-081, ADR-030).** Lock chốt bản khác 0.14.1 / 1.6.5 thì lấy lại đúng các file dưới đây từ wheel của bản đó và so từng đoạn — tên biến và điều kiện bật có thể đổi giữa các bản.
 
 ---
