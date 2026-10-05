@@ -111,3 +111,23 @@ Ba lượt local (`short-2` `none`, `short-2` `browser`, `short-3` `none`) cho l
 | **Không kết luận** | Còn lại, gồm một cặp lệch ≥ 2.5 s đơn lẻ (chạy lại) |
 
 Chỉ khác ngưỡng gốc ở mốc "không thấy": 0.1 · I → 0.2 · I, cộng điều kiện `bunched_pairs` = 0. Mốc 1.0 s là **chọn**: 1.6 lần lệch lớn nhất đã thấy ở local; không suy từ lý thuyết. Áp ngược cho ba lượt local, cả ba là "không thấy gom đệm" theo tiêu chí phụ, hai trong ba là "không kết luận" theo ngưỡng gốc. Trong `probe.py`: `verdict` (gốc) và `verdict_phu`.
+
+## S4 xong — `s4_witness_poll.py`, đo lại trước production (A-087)
+
+**S4 xong, 2026-10-05.** Kết quả: `docs/reference/render-s4-nhat-ky-do.md`; ghi vào A-031, A-086, A-087. Trên Web Service free: `SIGKILL` ≈ 5 s sau `SIGTERM` ((4.9, 5.2] s, có nhân chứng), cả deploy lẫn ngủ. Khối `SPIKE S4` của `api_main.py` và test của nó **đã gỡ**; **giữ** `s4_witness_poll.py` và `test_s4_witness.py` để đo lại **trước production, trên gói trả phí** (điều kiện A-087, mục Sau UAT của `docs/design/12-roadmap.md`).
+
+**Điều kiện để đo lại.** Bộ poll chỉ đọc một kết nối PostgreSQL mà app phải mở sẵn. Khối cần khôi phục từ lịch sử git: bản `api_main.py` ở commit `83591ee` (kết nối nhân chứng mở lúc khởi động, `application_name` = `s4 boot=<boot_utc> n=<k>`, vòng giữ `SHUTDOWN_HOLD`, ghi mọi tín hiệu, log uvicorn có giờ UTC) và `backend/tests/test_spike_s4.py` cùng commit. Chỉ bật khi đặt `BO19_S4_HOLD_S` (ví dụ 120). Nếu start command đã là `combined_main` (O1-6), khối đó phải được đặt vào entrypoint thật Render chạy.
+
+**Cách đo**, một lần deploy sạch rồi một lần ngủ:
+
+1. Deploy bản có khối S4 lên gói trả phí, đặt `BO19_S4_HOLD_S=120`. Kiểm log có `WITNESS_OPEN` và `S4_ARMED … witness=True`.
+2. Từ máy người triển khai chạy bộ poll — credential `bo19_app` **chỉ** qua biến môi trường `BO19_S4_POLL_DSN` đọc từ file, không trên dòng lệnh, không in. Máy chủ Windows của dự án không có `psycopg`; chạy trong image của dự án (`docker run --env-file … -v tools/render-probes:/tools:ro <image> python /tools/s4_witness_poll.py --duration 1800 > poll.jsonl`).
+3. **Manual Deploy một lần**, không có request nào khác. Đọc log của instance cũ: `SIGNAL_RECEIVED` (mọi dòng), `SIGTERM_RECEIVED`, `SHUTDOWN_HOLD`.
+4. Gói trả phí có thể không ngủ; nếu có, để yên ≥ 15 phút để lấy đường ngủ. Ghi giờ request cuối trong access log.
+5. `python s4_witness_poll.py --analyze poll.jsonl --sigterm <giờ SIGTERM_RECEIVED trong log>`.
+
+**Báo riêng hai số:** (a) `n` cuối đọc được, (b) lúc kết nối biến mất. Nhãn theo **ba kết quả khai báo trước** ở mục Khai báo trước kết quả của nhân chứng của nhật ký S4 — kill ≈ T s (n dừng ở T, biến mất ngay), log bị cắt (n tiếp tục tăng), treo (n dừng, kết nối còn ≥ 10 s) — hoặc "không gán nhãn". Đặt các ngưỡng **trước** khi deploy, không sửa sau khi có số.
+
+**Rồi `maxShutdownDelaySeconds`** (mặc định 30 s, tối đa 300 s; đặt qua API hoặc `render.yaml` theo `docs/reference/render-deploys-docker.md`): đặt một giá trị khác mặc định rồi đo lại bằng cùng bộ — PO quyết lúc đó. Trên gói free **không thử** (PO, 2026-10-05).
+
+**Hai bài học của S4:** log của Render không phân biệt được kill với cắt log (cùng n=5 sáu lần) — chỉ nhân chứng độc lập với log phân biệt được; và một deploy hay một lần đo đúng lúc instance đang tắt vì ngủ có thể hỏng (`Port scan timeout`) — wake bằng một request, rồi bấm deploy ngay.
