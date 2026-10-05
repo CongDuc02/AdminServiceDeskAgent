@@ -3252,3 +3252,26 @@ CI của `dcb8c4d` xanh ([run 37318116931](https://github.com/CongDuc02/AdminSer
 | `06-structure.md` → 0.33 | Bước kiểm **#22** (`BO19_LLM_API_KEY`, **chưa có code, gắn lát `intake_graph`**); trần output cứng; O1-11 |
 | `ADR-035` | Quyết định PO sau B4 |
 | `12-roadmap.md` → 0.40 | O1-11 (trần nạp kho, gắn lát P3/embedding), O1-12 (hồ sơ model tường minh + trần output cứng, B4b) |
+
+---
+
+## 2026-10-05 — B4b: hồ sơ model tường minh, tool đo, và hai lần gọi Groq thật ngoài kế hoạch (nhánh `build/b4b-do-groq`, chờ PO)
+
+PO duyệt kế hoạch B4b: giá trị khởi đầu làm "chưa hiệu chỉnh"; `tiktoken` trong container tạm; ≤ 40 lời gọi, < 60K token mỗi model; chỉ văn bản bịa có nhãn "(giả)". Thêm: tin nhắn E1 tiếng Việt có dấu; thân response vào `docs/reference/` phải che định danh và tool tự quét; adapter không giữ/log nội dung suy luận; tool chỉ ghi số và mã.
+
+| Phần | Thay đổi |
+|---|---|
+| Hồ sơ model | Schema 2 — `reasoning_effort`, `temperature` bắt buộc cả hai tier; `module_params.max_completion_tokens` bắt buộc theo module; miền khoảng; `max_tokens` cấm; #21 kiểm. Test (HoSoModel viết lại) và đột biến |
+| Adapter | Không giữ/log nội dung suy luận (test: response chứa `message.reasoning`, `reasoning_content`, … đều không để lại dấu vết); `content` ẩn khỏi `repr`; `finish_reason`. Đột biến: giữ văn bản suy luận, `content` lộ trong `repr`, bỏ `max_completion_tokens` khỏi request — mỗi chỗ làm test đỏ |
+| `tools/llm-probe/` | `llm_probe.py`, `sanitize.py` (che `<masked>` + `self_check`), `fixtures.py` (dữ liệu giả, 2.000 ký tự có dấu), README. 27 test với server giả; đột biến 8 chỗ (ghi nội dung, ghi suy luận, publish bỏ `self_check`, không che khoá, bỏ hạn mức số lời gọi, bỏ hạn mức token, không che mã tiền tố, bỏ cờ xác nhận) — mỗi chỗ làm ít nhất một test đỏ |
+
+**SỰ CỐ — ghi trung thực.** PO đã đặt `BO19_LLM_API_KEY` vào `.env` trước khi tôi báo sẵn sàng, và tôi **không kiểm** `.env` có khoá hay chưa (không đọc `.env` theo luật; tool tự đọc nó). Hậu quả: **hai lần gọi Groq thật ngoài kế hoạch**:
+
+1. Khi chạy CLI không tham số để "kiểm mã thoát thiếu khoá", tool tìm thấy khoá trong `.env` và bắt đầu chạy thật: xong E1 (5 lời gọi), vào E2, bị tôi dừng bằng `docker kill` sau ~2 phút. Kết quả không được ghi (file kết quả ghi ở cuối). **Số lời gọi E2 đã gửi trước khi dừng không biết chính xác (0–3).**
+2. Khi chạy phép đột biến T8 (cố ý bỏ cờ `--confirm-real`) trên bản sao, một test gọi `main(["--prior-calls", "9"])` nên tool chạy thật với khoá trong `.env` — **29 lời gọi, đủ E1–E6**, và đã tự ghi `docs/reference/llm-groq-do-thuc-te-b4b.md` (sau khi `self_check` đạt). Đây là lỗi thiết kế của phép đột biến: đột biến vô hiệu hoá chính chốt chặn mà test dựa vào, trong khi môi trường có khoá thật.
+
+**Hạn mức:** tổng ước **34–37 lời gọi** (5 + 0–3 + 29) trên 40; token đã tiêu: `gpt-oss-20b` khoảng 21.500 (lần 2) cộng khoảng 12.000–15.000 (lần 1, ước) < 60.000; `gpt-oss-120b` 3.607. **Trong hạn mức, nhưng chỉ còn 3–6 lời gọi — không đủ để chạy lại E2 (9 lời gọi) với `tiktoken`.** Cần PO nới hạn mức nếu muốn đóng O1-3.
+
+**Đã sửa:** tool **không gọi mạng nếu thiếu `--confirm-real`** (mã thoát 3, in kế hoạch); `--prior-calls`; test `ChongChayNham` và đột biến T8. **Bài học cho đột biến:** không chạy phép đột biến của chốt chặn gọi mạng khi môi trường có khoá — từ nay chạy test của tool với `.env` không có trong container.
+
+**Dữ liệu thu được** (không nội dung model; che định danh; `self_check` đạt; `docs/reference/llm-groq-do-thuc-te-b4b.md`): P1 `prompt_tokens` 1.640–1.642 (> trần 1.500), completion 63–74, reasoning 19–31; P2 reasoning 398–691 ở mức `low`; P4 completion 238–341; schema thật với từ khoá `maxLength`… được `strict` chấp nhận (A-089 chốt); dạng thân lỗi (A-091 chốt); `include_reasoning: false` và `reasoning_format: "hidden"` đều được chấp nhận và làm biến mất trường suy luận; **trần output quá thấp trả HTTP 400 `json_validate_failed`, không phải `finish_reason: length`**; ngữ nghĩa trần output và O1-3 **chưa kết luận** (không có `tiktoken` trong lần chạy).

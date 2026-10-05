@@ -1,6 +1,6 @@
 # Đề xuất giá trị hồ sơ model — tham số ảnh hưởng output và trần output cứng
 
-**Trạng thái:** ✋ **Chờ PO duyệt** — chưa sửa `model_profiles.json`, chưa sửa code. · **Ngày:** 2026-10-05 · **Người đề xuất:** người triển khai · **Theo:** A-090 (3), quyết định PO 2026-10-05 · **Nguồn tham số:** `docs/reference/llm-groq-chat-params.md`, `docs/reference/llm-groq.md` mục 6c
+**Trạng thái:** ✅ **PO duyệt làm giá trị khởi đầu, nhãn "chưa hiệu chỉnh" (2026-10-05)** — đã vào `model_profiles.json` (B4b). Nếu đo cho thấy `max_completion_tokens` tính cả `reasoning_tokens` thì đề xuất lại 512/1536/2048 **trước khi dùng thật** (PO). · **Ngày:** 2026-10-05 · **Người đề xuất:** người triển khai · **Theo:** A-090 (3), quyết định PO 2026-10-05 · **Nguồn tham số:** `docs/reference/llm-groq-chat-params.md`, `docs/reference/llm-groq.md` mục 6c
 
 Mọi giá trị dưới đây là **lựa chọn có lý do**, không phải số đo. Cột Nguồn nói tài liệu nào căn cứ cho *tham số* và *miền giá trị*; **giá trị cụ thể** thì không nguồn nào cho — nên đều nhãn "chưa hiệu chỉnh" cho tới khi có bộ eval của `10-eval.md`. Đổi bất kỳ giá trị nào là một dòng `CHANGELOG.md` và kích hoạt Regression gate (ADR-035, điều kiện 2).
 
