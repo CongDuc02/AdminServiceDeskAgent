@@ -42,7 +42,7 @@ T1 là lúc bộ poll thấy `n=1` lần đầu — mốc không phụ thuộc l
 
 Deploy 2 bắt đầu **trước** `SIGTERM` ngủ lúc 04:58:43 của instance cũ (4 phút 43 giây sau khi bấm) và hỏng; cùng commit, cùng biến với deploy 1 đã chạy được. **Không biết nguyên nhân.** Hai luồng log cùng kết thúc đột ngột: instance cũ dừng ở 04:58:47.331, instance mới sau 04:59:02.523. Tài liệu Render đã lấy: deploy hỏng thì "your service continues running its most recent successful deploy".
 
-## 3. Bốn lần `SIGTERM`: dòng giữ cuối thấy được luôn là n=5
+## 3. Năm lần `SIGTERM`: dòng giữ cuối thấy được luôn là n=5
 
 | Đường | Request cuối (access log) | `SIGTERM_RECEIVED` | Khoảng cách | `SHUTDOWN_HOLD` cuối |
 |---|---|---|---|---|
@@ -50,9 +50,10 @@ Deploy 2 bắt đầu **trước** `SIGTERM` ngủ lúc 04:58:43 của instance 
 | Ngủ, sạch | 05:17:17.623 | 05:32:17.272 | 899.649 s | **n=5**, 4.148 s |
 | Ngủ, sạch | 05:38:15.407 | 05:53:15.220 | 899.813 s | **n=5**, 4.139 s |
 | **Deploy, sạch** | — (instance cũ phục vụ lần cuối khoảng 06:56:19) | 06:57:36.634 | — | **n=5**, 4.168 s |
+| Ngủ, sạch (instance của deploy 3) | `GET /` của Render 06:57:37.944 | 07:12:37.214 | **899.270 s** | **n=5**, 4.107 s |
 
 - **Đồng hồ ngủ:** `SIGTERM` đến 899.4–899.8 s sau request cuối, tính từ lúc instance **phục vụ** request. Lần 3: tôi gửi lúc 05:37:52.956 nhưng service đang ngủ, request chờ 22.5 s để dậy và được phục vụ lúc 05:38:15.407; `SIGTERM` đến 899.813 s sau giờ phục vụ, không phải sau giờ gửi.
-- **Hold dừng ở n=5 (4.14–4.17 s sau `SIGTERM`) ở cả bốn lần**, hai đường khác nhau, lệch nhau 0.04 s. Kill hay đường log bị cắt xảy ra trong (4.17, 5.17] s sau `SIGTERM`. **Log ứng dụng không phân biệt được hai khả năng.** Shutdown delay mặc định 30 s theo tài liệu Render; nếu n=5 là kill thật thì drain window chỉ ≈ 5 s.
+- **Hold dừng ở n=5 (4.11–4.17 s sau `SIGTERM`) ở cả năm lần**, hai đường khác nhau, lệch nhau 0.07 s. Kill hay đường log bị cắt xảy ra trong (4.17, 5.17] s sau `SIGTERM`. **Log ứng dụng không phân biệt được hai khả năng.** Shutdown delay mặc định 30 s theo tài liệu Render; nếu n=5 là kill thật thì drain window chỉ ≈ 5 s.
 - **Handler của bản `37fa504` chỉ ghi lần `SIGTERM` đầu, không ghi lần hai và không ghi SIGINT**, nên bốn log không loại trừ được tín hiệu thứ hai trong 5 s đầu. Theo mã nguồn uvicorn 0.34.2, chỉ SIGINT thứ hai đặt `force_exit` và nó không cắt được vòng giữ nằm trong `lifespan.shutdown()`.
 
 ## 4. `SIGTERM` đến cùng lúc instance mới Live, không phải 60 s sau — ghi 2026-10-05
@@ -89,6 +90,16 @@ Khoảng thời gian tính từ `SIGTERM_RECEIVED` trong log. `n` của nhân ch
 
 **Chưa sửa** WV-01, bước kiểm khởi động #11 hay ADR-016. Nếu xác nhận kill ≈ 5 s: dừng, báo người quyết; bước kế có thể là thử `maxShutdownDelaySeconds` trên gói free (PO quyết lúc đó).
 
-## 6. Lần `SIGTERM` ngủ thứ năm
+## 6. Lần `SIGTERM` ngủ thứ năm — kết quả
 
-Instance của deploy 3 (`boot_utc` 06:57:28.483). **Request mà nó thấy:** `HEAD /` từ 127.0.0.1 lúc 06:57:32.236 (Render dò cổng, không qua proxy) và `GET /` 404 lúc 06:57:37.944 (Render, sau khi Live). Request lúc 06:56:19Z của người đo do instance **cũ** phục vụ — nó không tính cho instance này. **Dự đoán, khai báo trước khi có số:** nếu lần `GET /` của Render tính là request và đồng hồ là 899.4–899.8 s như ba lần trước, `SIGTERM` đến khoảng **07:12:37Z**; nếu lần `GET /` không tính, từ `HEAD /` là khoảng 07:12:32Z. Không ai gọi service trong khoảng này. **Để diễn ra, ghi thành quan sát thứ năm** (chưa có số — chờ log); nó còn trả lời việc dò của Render có làm mới đồng hồ ngủ hay không.
+Log PO dán 2026-10-05: `SIGTERM_RECEIVED utc=2026-10-05T07:12:37.214+00:00 pid=1 boot_utc=2026-10-05T06:57:28.483+00:00`, rồi `Shutting down`, `SHUTDOWN_HOLD` n=1..5 (`since_sigterm` 0.107 → 4.107 s) và **không có dòng nào sau n=5**. Không có `SIGNAL_RECEIVED` (bản `37fa504` chưa ghi), không có request nào khác giữa 06:57:37.944 và `SIGTERM`.
+
+| Mốc | Khoảng tới `SIGTERM_RECEIVED` |
+|---|---|
+| `GET /` của Render, 06:57:37.944 (qua mạng Render, sau khi Live) | **899.270 s** |
+| `HEAD /` từ 127.0.0.1, 06:57:32.236 (Render dò cổng) | 904.978 s |
+| dòng "Your service is live" (≈ `SHUTDOWN_HOLD` n=1, 06:57:36.801; nằm trong 06:57:36.8–37.8) | 899.4–900.4 s |
+
+**So với dự đoán đã commit (07:11:54Z):** nếu `GET /` của Render tính là request, `SIGTERM` ≈ 07:12:37Z; nếu chỉ `HEAD /`, ≈ 07:12:32Z. Quan sát 07:12:37.214 — **khớp dự đoán thứ nhất**, không khớp thứ hai (lệch 5.0 s).
+
+**`GET /` của Render lúc 06:57:37.944 có làm mới đồng hồ ngủ không?** Dữ liệu **ủng hộ có**: khoảng 899.270 s từ nó nằm trong dải 899.27–899.81 s của bốn lần trước tính từ request cuối; từ `HEAD /` thì 904.978 s, ngoài dải. **Một quan sát chưa đủ loại cách giải thích khác:** đồng hồ tính từ lúc instance **Live** (06:57:36.8–37.8) cũng khớp (899.4–900.4 s), vì `GET /` đến chỉ 0.1–1.1 s sau Live. Cách giải thích đó **bị lần 3 bác** ở đường đánh thức: instance dậy 05:38:07, request lúc 05:38:15.407, `SIGTERM` lúc 05:53:15.220 — tức 15 phút sau **request**, không sau lúc dậy (nếu tính từ lúc dậy thì là 05:53:07) — nhưng chưa bác ở đường deploy-Live. Kết luận hẹp: **`GET /` của Render rất có thể tính; `HEAD /` từ 127.0.0.1 không (hoặc không phải request cuối); chưa phân biệt được "tính từ `GET /`" với "tính từ lúc Live" ở đường deploy.**
