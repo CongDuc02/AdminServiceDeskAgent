@@ -49,3 +49,6 @@ logs/
 .claude/commands/spike.md
 # S3 của Spike 1 — kết quả đo của probe.py; số đo vào docs/reference/ bằng tay
 tools/render-probes/out/
+
+# seed-dev — mật khẩu của tài khoản GIẢ (tools/seed-dev/README.md)
+tools/seed-dev/out/
