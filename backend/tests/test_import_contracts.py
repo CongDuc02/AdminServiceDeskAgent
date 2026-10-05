@@ -6,6 +6,8 @@ file vi phạm rồi chạy `lint-imports`: mã thoát 1 và đúng contract b�
 """
 from __future__ import annotations
 
+from tests import _guard  # noqa: F401 — chốt chặn mạng và khoá API của bộ test (tests/_guard.py)
+
 import shutil
 import subprocess
 import sys

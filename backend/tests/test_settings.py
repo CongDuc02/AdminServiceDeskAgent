@@ -1,6 +1,8 @@
 """Test cấu hình có kiểu — B2. Chạy từ backend/:  PYTHONPATH=src python -m unittest tests.test_settings -v"""
 from __future__ import annotations
 
+from tests import _guard  # noqa: F401 — chốt chặn mạng và khoá API của bộ test (tests/_guard.py)
+
 import unittest
 
 from bo19.config.settings import ENV_NAMES, ORG_TIMEZONE, Environment, load_settings

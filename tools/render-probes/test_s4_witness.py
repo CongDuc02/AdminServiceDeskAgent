@@ -5,6 +5,11 @@ Chỉ thư viện chuẩn (không cần psycopg: chỉ hàm phân tích được
 """
 from __future__ import annotations
 
+import sys as _guard_sys
+from pathlib import Path as _GuardPath
+_guard_sys.path.insert(0, str(_GuardPath(__file__).resolve().parents[2] / "backend"))
+from tests import _guard  # noqa: F401 — chốt chặn mạng và khoá API của bộ test (tests/_guard.py)
+
 import importlib.util
 import sys
 import types

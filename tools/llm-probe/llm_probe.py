@@ -6,7 +6,7 @@ ngữ nghĩa trần output `max_completion_tokens` (A-090), và tham số tắt 
 Luật (PO, 2026-10-05):
   - CHỈ văn bản bịa có nhãn "(giả)" (A-080) — `fixtures.py`;
   - tool CHỈ ghi số và mã — không ghi `message.content`, không ghi nội dung suy luận; áp cho mọi thí nghiệm;
-  - khoá API đọc từ biến môi trường BO19_LLM_API_KEY (hoặc từ `.env` do chính tool đọc) — không trên dòng lệnh, không in, không ghi;
+  - khoá API CHỈ từ biến môi trường BO19_LLM_API_KEY do người chạy export tường minh — tool KHÔNG đọc `.env`; không trên dòng lệnh, không in, không ghi;
   - thân response lưu vào docs/reference/ (repo public) phải được che định danh và `self_check` đạt trước khi ghi; tool báo ĐẠT/KHÔNG ĐẠT;
   - tối đa 40 lời gọi, dưới 60.000 token mỗi model (kể cả token suy luận); giãn nhịp theo TPM của gói Free (8K/phút/model).
 """
@@ -268,15 +268,9 @@ def publish(probe: Probe, secrets: list[str]) -> tuple[bool, list[str]]:
 
 
 def read_key() -> str | None:
-    key = os.environ.get("BO19_LLM_API_KEY", "").strip()
-    if key:
-        return key
-    env = REPO / ".env"
-    if env.exists():  # tool tự đọc `.env` — người triển khai không đọc file này
-        for line in env.read_text(encoding="utf-8").splitlines():
-            if line.startswith("BO19_LLM_API_KEY="):
-                return line.split("=", 1)[1].strip().strip("'\"") or None
-    return None
+    """Khoá CHỈ vào qua biến môi trường mà người chạy đặt tường minh (PO, 2026-10-05). Tool **không** đọc `.env` hay bất kỳ file nào — nên một lần chạy nhầm
+    không thể tự tìm thấy khoá."""
+    return os.environ.get("BO19_LLM_API_KEY", "").strip() or None
 
 
 def main(argv: list[str] | None = None) -> int:

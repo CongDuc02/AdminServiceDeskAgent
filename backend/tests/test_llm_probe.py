@@ -7,6 +7,8 @@ Chạy từ backend/:  PYTHONPATH=src python -m unittest tests.test_llm_probe -v
 """
 from __future__ import annotations
 
+from tests import _guard  # noqa: F401 — chốt chặn mạng và khoá API của bộ test (tests/_guard.py)
+
 import importlib
 import json
 import re
@@ -130,6 +132,27 @@ def server(*, status=200, usage=None, finish="stop", reasoning=True, reject_sche
 
 
 class ChongChayNham(unittest.TestCase):
+    def test_tool_khong_doc_env_hay_file_nao_de_tim_khoa(self):  # PO, 2026-10-05
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / ".env").write_text(f"BO19_LLM_API_KEY={KEY}" + chr(10), encoding="utf-8")
+            old = llm_probe.REPO
+            llm_probe.REPO = Path(d)  # thư mục gốc giả có `.env` chứa khoá
+            try:
+                self.assertIsNone(llm_probe.read_key())  # không có biến môi trường → không có khoá, dù `.env` có
+            finally:
+                llm_probe.REPO = old
+        src = (TOOL / "llm_probe.py").read_text(encoding="utf-8")
+        self.assertNotIn("read_text(", src.split("def read_key")[1].split("def main")[0])  # read_key không đọc file
+        self.assertNotIn('REPO / ".env"', src)
+
+    def test_khoa_chi_tu_bien_moi_truong(self):
+        from unittest import mock
+        with mock.patch.dict("os.environ", {"BO19_LLM_API_KEY": "  gsk_TU_BIEN_MOI_TRUONG  "}):
+            self.assertEqual(llm_probe.read_key(), "gsk_TU_BIEN_MOI_TRUONG")
+        self.assertIsNone(llm_probe.read_key())  # chốt chặn của bộ test đã xoá khoá
+
+
     """Sau lần chạy nhầm ngày 2026-10-05: không có `--confirm-real` thì tool không bao giờ gọi mạng, kể cả khi có khoá."""
 
     def test_khong_co_co_xac_nhan_thi_khong_goi_mang_va_khong_doc_khoa(self):

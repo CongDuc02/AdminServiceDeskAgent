@@ -5,6 +5,8 @@ trên bảng thật. Chạy từ backend/:  PYTHONPATH=src python -m unittest te
 """
 from __future__ import annotations
 
+from tests import _guard  # noqa: F401 — chốt chặn mạng và khoá API của bộ test (tests/_guard.py)
+
 import io
 import json
 import logging

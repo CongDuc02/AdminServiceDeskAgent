@@ -7,7 +7,7 @@ Quyết định: PO duyệt kế hoạch B4b, 2026-10-05.
 
 - **Chỉ văn bản bịa có nhãn "(giả)"** (`fixtures.py`; A-080; `docs/testing/nguoi-thu.md`). Tin nhắn trần dài đúng 2.000 ký tự (WV-15), tiếng Việt **có dấu**, văn phong tin nhắn nhân viên.
 - **Chỉ ghi số và mã.** Không ghi `message.content`, không ghi nội dung suy luận — ở mọi thí nghiệm. Kết quả thô: `out/results.json` (gitignored).
-- **Khoá API:** biến môi trường `BO19_LLM_API_KEY`, hoặc dòng `BO19_LLM_API_KEY=` trong `.env` ở thư mục gốc — **chính tool đọc**; người triển khai không đọc `.env`. Không bao giờ trên dòng lệnh, không in, không ghi.
+- **Khoá API:** **chỉ** biến môi trường `BO19_LLM_API_KEY` do người chạy export tường minh trong terminal. Tool **không đọc `.env`** hay file nào (đổi sau sự cố 2026-10-05). Không bao giờ trên dòng lệnh, không in, không ghi.
 - **Thân response lưu vào `docs/reference/`** (repo public) được che định danh (`<masked>`: mã tổ chức, request id, chuỗi giống khoá, UUID, email, IP) và **tool tự quét lại** (`self_check`); không đạt thì **không ghi file** và tool báo `KHÔNG ĐẠT`.
 - **Hạn mức:** tối đa 40 lời gọi; dưới 60.000 token mỗi model (kể cả token suy luận); giãn nhịp dưới 6.500 token/phút (gói Free: 8K TPM mỗi model, `docs/reference/llm-groq.md` mục 5).
 
