@@ -120,7 +120,7 @@ class AC17(unittest.TestCase):
         report = self.start("bo19_app")
         self.assertTrue(report.ok, report.failures)
         self.assertEqual(report.passed, ("1", "2", "5", "10", "11", "12", "13", "15", "16", "17", "19", "20", "21"))
-        self.assertEqual(report.pending, ("3", "4a", "4b", "4c", "8", "9", "14"))  # chưa làm — không tính là đạt
+        self.assertEqual(report.pending, ("3", "4a", "4b", "4c", "8", "9", "14", "22"))  # chưa làm — không tính là đạt
         self.assertEqual(report.skipped, ())
         info = [json.loads(x) for x in self.out.getvalue().splitlines() if '"STARTUP_CHECK_INFO"' in x]
         self.assertEqual([(i["step"], i["mode"], i["source"]) for i in info], [("15", "NON_PRODUCTION", "DEFAULT_NO_ROW")])

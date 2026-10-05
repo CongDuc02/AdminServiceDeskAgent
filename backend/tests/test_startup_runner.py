@@ -24,7 +24,7 @@ DOC = Path(__file__).resolve().parents[2] / "docs" / "design" / "06-structure.md
 
 # Danh sách KHAI BÁO các bước chưa có code ở B2 — khoá bằng test. Thêm một bước vào `registry.py` mà không sửa danh sách này là đỏ;
 # sửa danh sách này mà không thêm bước vào `registry.py` cũng đỏ. Mỗi lần một bước được làm xong, bỏ nó khỏi danh sách trong cùng commit.
-DECLARED_PENDING = ("3", "4a", "4b", "4c", "6", "7", "8", "9", "14", "18")
+DECLARED_PENDING = ("3", "4a", "4b", "4c", "6", "7", "8", "9", "14", "18", "22")
 
 GOOD_ENV = {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": "postgresql://u:BI_MAT@h/db", "BO19_SESSION_SECRET": "BI_MAT_SESSION_KHONG_DUOC_LOT_RA_LOG"}
 
@@ -250,9 +250,9 @@ class MaTranKhopTaiLieu(unittest.TestCase):
         for number in doc:
             self.assertEqual(code_rows[number], doc[number], f"bước #{number}")
 
-    def test_so_buoc_la_21_voi_buoc_4_chia_ba(self):
-        self.assertEqual(len(MATRIX), 23)
-        self.assertEqual({re.match(r"\d+", s.number).group() for s in MATRIX}, {str(i) for i in range(1, 22)})
+    def test_so_buoc_la_22_voi_buoc_4_chia_ba(self):
+        self.assertEqual(len(MATRIX), 24)
+        self.assertEqual({re.match(r"\d+", s.number).group() for s in MATRIX}, {str(i) for i in range(1, 23)})
 
     def test_combined_la_hop_cac_cot_cong_buoc_18(self):
         combined = {s.number for s in MATRIX if s.applies(Entry.COMBINED)}
