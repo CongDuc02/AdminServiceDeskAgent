@@ -3063,3 +3063,19 @@ Phạm vi S3 được PO thu hẹp 2026-10-04: thang `sleep` dài, SSE im lặng
 - **Merge:** PO cho phép (2026-10-05, một lần): `spike/s3-do` vào `main` bằng `--no-ff`, push `main`.
 
 Phần còn mở của S3: A-086 (Sprint 4, R4-4); đoạn log Render quanh 21:40–22:50 Hà Nội chưa nhận; A-025 và A-050 `Thu hẹp`, không đóng.
+
+---
+
+## 2026-10-05 — S3: log Render quanh lần dừng và thức; đính chính khoảng nghỉ "9–10 phút" (A-086)
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-s3-nhat-ky-do.md` | Mục 8.1 mới: log Render PO gửi (14:41–15:53Z), bảng đối chiếu, phép tính; mục 1 và 8 đính chính |
+| `ASSUMPTIONS.md` | A-086: giải thích lần thức 15:43:10Z, đính chính, nêu phần vẫn chưa kiểm |
+| `12-roadmap.md` | R4-4: quan sát cập nhật |
+
+**Đính chính:** các mục trước ghi lần thức 15:43:10Z xảy ra "sau khoảng 9–10 phút nghỉ, chưa khớp 15 phút, chưa giải thích". Con số đó tính từ **dòng log cuối của probe bị gián đoạn** (stream kết thúc 15:33:47,961Z), không phải từ **lúc request cuối bắt đầu** (15:25:29,934Z). Tính đúng, khoảng nghỉ tới request đánh thức (15:42:54Z) là **17 phút 24 giây**.
+
+**Điều log cho thấy:** nếu ngủ sau 15 phút kể từ lúc request cuối **bắt đầu**, instance dừng khoảng 15:40:30 — trong khoảng 15:33:48–15:42:54 mà log cho phép. Nếu tính từ lúc stream **kết thúc**, nó phải còn thức tới 15:48:48 — nhưng nó đã ngủ. Mọi khoảng nghỉ mà service không ngủ đều ≤ 13 phút 11 giây. Kết luận: **nhất quán với** "15 phút từ request bắt đầu; stream đang mở không làm mới đồng hồ" — **chưa kiểm**: giờ dừng không có trong log (dòng uvicorn không mang giờ), restart khác của nền tảng chưa loại, một lần ngủ duy nhất đủ dữ kiện. A-086 vẫn `Mở`, Sprint 4.
+
+**Auto-Deploy:** PO xác nhận đã bật (2026-10-05).

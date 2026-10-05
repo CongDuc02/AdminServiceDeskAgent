@@ -21,7 +21,7 @@ Ghi nguyên văn số đo của `tools/render-probes/probe.py` trên Web Service
 | 1791128590.965 | 15:43:10 | 22:43:10 | lần gọi đầu của `short-2` (15:42:54Z); `commit_rtt` **22.328715 s** |
 | 1791128590.965 | — | — | lượt vô hại trên runner, 16:11:03Z — **không đổi**, không thức |
 
-**Chưa giải thích:** lần thức 15:43:10Z xảy ra sau khoảng 9–10 phút kể từ dòng log cuối của `short-1` (khoảng 15:33Z); `render-free-tier.md` ghi ngủ sau 15 phút không có traffic vào. PO sẽ đối chiếu log Render quanh 21:40–22:50 Hà Nội.
+**Giải thích có điều kiện, theo log Render PO gửi 2026-10-05 (mục 8.1):** khoảng nghỉ tính từ lúc request cuối **bắt đầu** (15:25:29,9Z) tới request đánh thức (15:42:54Z) là **17 phút 24 giây**, không phải "9–10 phút" như tôi từng ghi — con số đó tính từ dòng log cuối của probe (15:33Z), khi stream đã kết thúc. Không còn mâu thuẫn với ngủ sau 15 phút, nếu đồng hồ tính từ request bắt đầu.
 
 ## 2. `short-1` — gián đoạn, không có dữ liệu — 2026-10-04 15:24:59Z
 
@@ -187,6 +187,33 @@ Các dòng ứng dụng `SPIKE_START` / `SPIKE_END` (UTC, giờ trong log của 
 
 ## 8. Giả thuyết ngủ 15 phút — chưa kiểm, chuyển Sprint 4
 
-Giả thuyết: Web Service free ngủ sau 15 phút **không có request vào, tính từ request cuối** (`docs/reference/render-free-tier.md`). Chưa rõ: một response hay stream **đang mở** có được tính là traffic không; ngưỡng thực tế có đúng 15 phút không.
+Giả thuyết: Web Service free ngủ sau 15 phút **không có request vào, tính từ request cuối** (`docs/reference/render-free-tier.md`). Chưa rõ: ngưỡng thực tế có đúng 15 phút không; một response hay stream **đang mở** có được tính là traffic không — log Render (mục 8.1) gợi ý là không.
 
-Bốn mốc `boot_epoch` (bảng mục 1): 1791125091.522 (14:44:51Z), 1791127520.449 (15:25:20Z), 1791128590.965 (15:43:10Z), rồi **không đổi** ở 1791128590.965 qua mọi lần quan sát tới 17:14Z — gồm lượt vô hại lúc 16:11Z, `short-3` 16:17–16:27Z và job runner 16:40–17:14Z (traffic liên tục). Lần thức 15:43:10Z (lần gọi đầu mất 22.328715 s) xảy ra sau khoảng 9–10 phút kể từ dòng log cuối của `short-1` (≈ 15:33Z), chưa khớp 15 phút; chưa giải thích. Log Render quanh 21:40–22:50 Hà Nội (14:40–15:50Z) PO sẽ xem — **chưa nhận**; log PO gửi 2026-10-05 chỉ phủ 16:40–17:14Z (mục 6.4), không chứa các lần thức. Lần gọi đầu sau khi ngủ mất ≈ 22 s: 22.478055 s ở S2, 22.328715 s ở S3. Ghi ở A-086 của `docs/design/ASSUMPTIONS.md`.
+Bốn mốc `boot_epoch` (bảng mục 1): 1791125091.522 (14:44:51Z), 1791127520.449 (15:25:20Z), 1791128590.965 (15:43:10Z), rồi **không đổi** ở 1791128590.965 qua mọi lần quan sát tới 17:14Z — gồm lượt vô hại lúc 16:11Z, `short-3` 16:17–16:27Z và job runner 16:40–17:14Z (traffic liên tục). Lần gọi đầu sau khi ngủ mất ≈ 22 s: 22.478055 s ở S2, 22.328715 s ở `short-2`. Đính chính khoảng nghỉ và log Render: mục 8.1. Lần gọi đầu sau khi ngủ mất ≈ 22 s: 22.478055 s ở S2, 22.328715 s ở S3. Ghi ở A-086 của `docs/design/ASSUMPTIONS.md`.
+
+### 8.1 Log Render quanh các lần dừng và thức — PO gửi 2026-10-05
+
+Các dòng uvicorn (`Shutting down`, `Finished server process`) **không mang giờ**; PO bỏ bớt một số dòng (không có `STARTUP_OK` của lần thức 15:43:10Z). Trình tự và giờ của các dòng ứng dụng:
+
+| Giờ (UTC) | Trong log | Đối chiếu |
+|---|---|---|
+| 14:41:00 | `STARTUP_OK` — không có dòng `SPIKE_PROBES_ON` | deploy trước khi đổi sang `8fdd1bb` |
+| 14:44:51–52 | `STARTUP_OK`, `SPIKE_PROBES_ON commit=8fdd1bb…` | khớp `boot_epoch` 14:44:51 |
+| (không giờ) | `GET /api/_spike/commit` 200 → `Shutting down` … `Finished server process` | instance dừng sau lần `/commit` cuối của người triển khai; giờ dừng không biết |
+| 15:25:20–21 | `STARTUP_OK`, `SPIKE_PROBES_ON` | khớp `boot_epoch` 15:25:20 |
+| 15:25:29,934 | `SPIKE_START` — `short-1` | request cuối trước lần dừng kế tiếp |
+| 15:33:47,961 | `SPIKE_END reason=cancelled elapsed=498.026 ticks=99` | máy chủ thấy client rời ngay khi tiến trình probe chết; `cancelled` là cách ghi khi client đóng |
+| (không giờ) | `Shutting down` → `Finished server process`; **không có request nào ở giữa** | dừng trong khoảng 15:33:47,961–15:42:54 |
+| 15:43:18,218 | `SPIKE_START` — `short-2` lượt 1; `SPIKE_END server_cap elapsed=600.000 ticks=120` lúc 15:53:18,218 | request tới 15:42:54Z, mất ≈ 24 s do instance thức |
+
+**Phép tính** (từ giờ trong bảng):
+
+- Từ lúc request cuối **bắt đầu** (15:25:29,934) tới request đánh thức (15:42:54) = **17 phút 24 giây**.
+- Từ lúc stream **kết thúc** (15:33:47,961) tới request đánh thức = 9 phút 6 giây.
+- Nếu đồng hồ 15 phút tính từ request **bắt đầu**, instance dừng khoảng 15:40:30 — nằm trong khoảng 15:33:48–15:42:54 của log. **Khớp.**
+- Nếu tính từ lúc stream **kết thúc**, instance phải còn thức tới 15:48:48, tức còn thức lúc request 15:42:54 — nhưng nó đã ngủ (lần gọi đầu mất 22 s, `boot_epoch` đổi). **Không khớp.**
+- Mọi khoảng nghỉ giữa các request mà service **không** ngủ (`boot_epoch` không đổi): 10 phút 25 giây, 10 phút 1 giây, 7 phút 43 giây, 5 phút 52 giây, 13 phút 11 giây — đều ngắn hơn 17 phút 24 giây.
+
+**Nhất quán với:** Web Service free ngủ sau 15 phút kể từ lúc request cuối **bắt đầu**; một stream đang mở **không** làm mới đồng hồ (nó không mang thêm byte vào, chỉ byte ra — `render-free-tier.md`: "inbound traffic"). **Vẫn chưa kiểm:** giờ dừng không có trong log; một lần restart khác của nền tảng (`render-request-timeout-streaming.md`: Render có thể thay instance bất cứ lúc nào) chưa loại được; chỉ một lần ngủ có đủ dữ kiện; chưa thử khoảng nghỉ 15 phút có chủ ý. Chuyển Sprint 4 (A-086).
+
+Một quan sát phụ: lần `short-1` bị gián đoạn, máy chủ thấy client rời **trong vòng vài giây** (`elapsed=498.026` so với tick 99 ở `t = 495.254 s`; tick 100 sẽ tới ở khoảng 500 s) — việc client đóng được truyền tới ứng dụng. Ở lượt im lặng 300 s (mục 6.4) thì ngược lại: Render đóng phía ứng dụng, client không biết.
