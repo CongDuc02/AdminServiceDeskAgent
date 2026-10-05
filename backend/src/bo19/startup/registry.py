@@ -4,11 +4,13 @@ bộ chạy ghi `STARTUP_CHECK_PENDING` cho nó ở mỗi lần khởi động, 
 """
 from __future__ import annotations
 
-from bo19.startup import checks, checks_logging
+from bo19.startup import checks, checks_config, checks_logging
 from bo19.startup.model import Check
 
 REGISTRY: dict[str, Check] = {
     "1": checks.step_01,
     "2": checks.step_02,
     "10": checks_logging.step_10,
+    "11": checks_config.step_11,
+    "13": checks_config.step_13,
 }

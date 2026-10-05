@@ -24,7 +24,7 @@ DOC = Path(__file__).resolve().parents[2] / "docs" / "design" / "06-structure.md
 
 # Danh sách KHAI BÁO các bước chưa có code ở B2 — khoá bằng test. Thêm một bước vào `registry.py` mà không sửa danh sách này là đỏ;
 # sửa danh sách này mà không thêm bước vào `registry.py` cũng đỏ. Mỗi lần một bước được làm xong, bỏ nó khỏi danh sách trong cùng commit.
-DECLARED_PENDING = ("3", "4a", "4b", "4c", "5", "6", "7", "8", "9", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21")
+DECLARED_PENDING = ("3", "4a", "4b", "4c", "5", "6", "7", "8", "9", "12", "14", "15", "16", "17", "18", "19", "20", "21")
 
 GOOD_ENV = {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": "postgresql://u:BI_MAT@h/db", "BO19_SESSION_SECRET": "BI_MAT_SESSION"}
 
