@@ -1,6 +1,7 @@
 # Groq — số đo lời gọi thật ở B4b (số và mã; không có nội dung model trả về)
 
 - **Ngày đo:** 2026-10-05. **Công cụ:** `tools/llm-probe/llm_probe.py`. Nội dung gửi đi: văn bản bịa có nhãn "(giả)" (A-080).
+- **Nguồn gốc — ghi rõ (PO, 2026-10-05):** đây là kết quả của một lần chạy **ngoài kế hoạch**: tool tự đọc khoá trong `.env` khi bị gọi để kiểm mã thoát thiếu khoá, rồi một phép đột biến kích hoạt lại nó (29 lời gọi, `--prior-calls 9`). Nội dung gửi vẫn chỉ là văn bản bịa có nhãn "(giả)"; kết quả vẫn qua `self_check`. **Không có `tiktoken`** nên cột "nhìn thấy" trống và O1-3 chưa kết luận được. Số đo được PO cho phép dùng. Chi tiết sự cố: `CHANGELOG.md`, mục B4b. Lần chạy có `tiktoken`: `llm-groq-do-thuc-te-b4b-lan2.md` (khi có).
 - Bảng dưới chỉ có số token, mã HTTP, `finish_reason` và cờ. Thân lỗi bên dưới đã che định danh bằng `<masked>` và `self_check` của tool đạt trước khi ghi.
 
 ## Lời gọi

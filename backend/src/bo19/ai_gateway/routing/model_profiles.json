@@ -5,6 +5,7 @@
       "allowed_params": {
         "reasoning_effort": { "values": ["low", "medium", "high"] },
         "temperature": { "type": "number", "min": 0, "max": 2 },
+        "include_reasoning": { "values": [true, false] },
         "max_completion_tokens": { "type": "integer", "min": 1 }
       }
     },
@@ -12,13 +13,14 @@
       "allowed_params": {
         "reasoning_effort": { "values": ["low", "medium", "high"] },
         "temperature": { "type": "number", "min": 0, "max": 2 },
+        "include_reasoning": { "values": [true, false] },
         "max_completion_tokens": { "type": "integer", "min": 1 }
       }
     }
   },
   "tiers": {
-    "CHEAP": { "model": "openai/gpt-oss-20b", "params": { "reasoning_effort": "low", "temperature": 0.2 } },
-    "STRONG": { "model": "openai/gpt-oss-120b", "params": { "reasoning_effort": "medium", "temperature": 0.3 } }
+    "CHEAP": { "model": "openai/gpt-oss-20b", "params": { "reasoning_effort": "low", "temperature": 0.2, "include_reasoning": false } },
+    "STRONG": { "model": "openai/gpt-oss-120b", "params": { "reasoning_effort": "medium", "temperature": 0.3, "include_reasoning": false } }
   },
   "module_params": {
     "classify_intent": { "max_completion_tokens": 512 },

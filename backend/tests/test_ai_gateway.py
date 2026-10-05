@@ -116,6 +116,7 @@ class DuongChinh(Base):
         self.assertEqual((body["model"], body["reasoning_effort"], body["temperature"], body["max_completion_tokens"], body["stream"]),
                          ("openai/gpt-oss-20b", "low", 0.2, 512, False))  # tham số tường minh + trần output cứng của module (A-090)
         self.assertNotIn("max_tokens", body)
+        self.assertIs(body["include_reasoning"], False)  # không nhận văn bản suy luận (PO, 2026-10-05)
         schema = body["response_format"]["json_schema"]
         self.assertEqual((schema["name"], schema["strict"]), ("classify_intent", True))
         self.assertEqual(schema["schema"]["properties"]["intent"]["enum"], ["WORK_CONFIRMATION", "ROOM_BOOKING", "OUT_OF_SCOPE", "NEED_CLARIFICATION"])  # sinh từ catalog (ADR-025)
@@ -132,6 +133,7 @@ class DuongChinh(Base):
         self.assertEqual(set(json.loads(body["messages"][1]["content"].split("\n", 1)[1])), {"purpose", "variable_guidance", "request_type"})
         self.assertEqual(body["model"], "openai/gpt-oss-120b")  # tier mạnh
         self.assertEqual((body["reasoning_effort"], body["temperature"], body["max_completion_tokens"]), ("medium", 0.3, 2048))  # tier mạnh: tường minh, không dựa mặc định
+        self.assertIs(body["include_reasoning"], False)
         self.assertNotIn("max_tokens", body)
         prop = body["response_format"]["json_schema"]["schema"]["properties"]
         self.assertEqual((prop["variable_name"]["const"], prop["body"]["maxLength"]), ("purpose_statement", 120))
@@ -352,6 +354,72 @@ class EpJson(Base):
         with self.assertRaises(ParseFailed) as cm:
             await self.gateway(rec).call(DRAFT_FREE_CONTENT, P4, self.owner, variable=VAR)
         self.assertEqual([(v.path, v.code) for v in cm.exception.violations], [("variable_name", "CONST")])
+
+
+class JsonValidateFailed(Base):
+    """PO, 2026-10-05: HTTP 400 `json_validate_failed` (output bị cắt do trần thấp / không hợp schema) đi đường sửa parse một lần; log mã con riêng."""
+
+    def jvf(self) -> httpx.Response:
+        return httpx.Response(400, json={"error": {"message": f"Failed to generate JSON. {RES}", "type": "invalid_request_error", "code": "json_validate_failed",
+                                                   "failed_generation": RES}})
+
+    async def test_lan_dau_400_json_validate_failed_roi_sua_dat(self):
+        rec = Recorder(self.jvf(), reply(GOOD_P1))
+        r = await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
+        self.assertEqual((r.outcome, r.output, len(rec.requests)), ("PARSE_REPAIRED", GOOD_P1, 2))
+        roles = [m["role"] for m in self.sent(rec, 1)["messages"]]
+        self.assertEqual(roles, ["system", "user", "user"])  # không có output cũ để gửi lại
+        self.assertIn("$: JSON_VALIDATE_FAILED", self.sent(rec, 1)["messages"][2]["content"])
+        self.assertIn("quá dài", self.sent(rec, 1)["messages"][2]["content"])
+        (row,) = self.rows()
+        self.assertEqual((row[3], row[4], row[5], row[6]), (120, 30, 12, "PARSE_REPAIRED"))  # token chỉ của lần có usage
+        self.assertEqual(self.sent(rec, 0)["max_completion_tokens"], 512)
+
+    async def test_log_ma_con_rieng_co_tran_va_so_lan_thu(self):
+        await self.gateway(Recorder(self.jvf(), reply(GOOD_P1))).call(CLASSIFY_INTENT, P1, self.owner)
+        (event,) = [e for e in self.logged() if e["message"] == "LLM_PROVIDER_JSON_VALIDATE_FAILED"]
+        self.assertEqual((event["provider_error_code"], event["max_completion_tokens"], event["attempt"], event["call_name"], event["tier"]),
+                         ("json_validate_failed", 512, 1, "classify_intent", "CHEAP"))
+        self.assertNotIn("LLM_PROVIDER_ERROR", self.out.getvalue())  # không phải lỗi provider
+        self.assertNoLeak(RES)
+
+    async def test_hai_lan_deu_400_la_parse_failed_khong_phai_provider_error(self):
+        rec = Recorder(self.jvf())
+        with self.assertRaises(ParseFailed) as cm:
+            await self.gateway(rec).call(DRAFT_FREE_CONTENT, P4, self.owner, variable=VAR)
+        self.assertEqual(len(rec.requests), 2)  # đúng một lần sửa
+        self.assertEqual([(v.path, v.code) for v in cm.exception.violations], [("$", "JSON_VALIDATE_FAILED")])
+        (row,) = self.rows()
+        self.assertEqual((row[0], row[1], row[3], row[6]), ("draft_free_content", "STRONG", 0, "PARSE_FAILED"))
+        events = [e for e in self.logged() if e["message"] == "LLM_PROVIDER_JSON_VALIDATE_FAILED"]
+        self.assertEqual([(e["attempt"], e["max_completion_tokens"]) for e in events], [(1, 2048), (2, 2048)])
+        self.assertNoLeak(RES, cm.exception, cm.exception.__dict__, "".join(traceback.format_exception(cm.exception)), self.rows())
+
+    async def test_400_khac_ma_van_la_provider_error_khong_sua(self):
+        for body in ({"error": {"type": "invalid_request_error", "code": "invalid_api_key"}}, {"error": {"type": "invalid_request_error"}},
+                     {"error": {"type": "invalid_request_error", "code": "json_validate_failed_khac"}}):
+            rec = Recorder(httpx.Response(400, json=body))
+            with self.assertRaises(ProviderError):
+                await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
+            self.assertEqual(len(rec.requests), 1)
+
+    async def test_ma_json_validate_failed_o_status_khac_400_la_provider_error(self):
+        rec = Recorder(httpx.Response(422, json={"error": {"type": "x", "code": "json_validate_failed"}}))
+        with self.assertRaises(ProviderError):
+            await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
+        self.assertEqual(len(rec.requests), 1)
+
+    async def test_json_validate_failed_dung_chung_han_chot(self):
+        self.addCleanup(setattr, wv, "LLM_CALL_DEADLINE_CHEAP_SECONDS", wv.LLM_CALL_DEADLINE_CHEAP_SECONDS)
+        wv.LLM_CALL_DEADLINE_CHEAP_SECONDS = 0.3
+
+        async def slow_jvf():
+            await asyncio.sleep(0.4)
+            return self.jvf()
+
+        with self.assertRaises(ProviderError) as cm:
+            await self.gateway(Recorder(slow_jvf)).call(CLASSIFY_INTENT, P1, self.owner)
+        self.assertEqual(cm.exception.kind, "DEADLINE")
 
 
 class LoiProvider(Base):

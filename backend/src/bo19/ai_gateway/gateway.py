@@ -29,6 +29,10 @@ from bo19.persistence.pool import Pool
 log = get_logger("bo19.ai_gateway")
 
 
+JSON_VALIDATE_FAILED_CODE = "json_validate_failed"  # `error.code` của Groq khi output không hợp schema / bị cắt ở trần (docs/reference/llm-groq-do-thuc-te-b4b.md)
+JSON_VALIDATE_FAILED = "JSON_VALIDATE_FAILED"  # mã vi phạm trong `ParseFailed.violations` và trong lời nhắn sửa
+
+
 class ParseFailed(Exception):
     """Output không hợp schema sau lần sửa duy nhất. Mang đường dẫn trường và mã (không giá trị)."""
 
@@ -106,7 +110,8 @@ class Gateway:
         def remaining() -> float:
             return total - (loop.time() - started)
 
-        async def ask(msgs: list[dict[str, str]]) -> ProviderResponse:
+        async def ask(msgs: list[dict[str, str]], attempt: int) -> ProviderResponse | None:
+            """`None` khi provider trả HTTP 400 `json_validate_failed`: output bị cắt hay không hợp schema — đi đường sửa parse, không phải lỗi provider (PO, 2026-10-05)."""
             try:
                 left = remaining()
                 if left <= 0:
@@ -114,6 +119,11 @@ class Gateway:
                 response = await self._client.call(profile=profile, messages=msgs, schema_name=module.call_name, schema=schema, total_deadline_s=left,
                                                    retry_after_cap_s=retry_cap)
             except ProviderError as e:
+                if e.http_status == 400 and e.error_code == JSON_VALIDATE_FAILED_CODE:
+                    # Tín hiệu có mã con riêng: trần `max_completion_tokens` quá thấp làm output bị cắt hiện ra ở đây. Chỉ mã và số — không thân lỗi (`failed_generation` có thể mang input).
+                    log.warning("LLM_PROVIDER_JSON_VALIDATE_FAILED", call_name=module.call_name, tier=module.tier, attempt=attempt, provider_error_code=e.error_code,
+                                max_completion_tokens=profile.params.get("max_completion_tokens"))
+                    return None
                 log.error("LLM_PROVIDER_ERROR", call_name=module.call_name, tier=module.tier, **e.log_fields())  # mã HTTP, loại lỗi, code — không thân response
                 await self._record(module, budget_owner, spent["in"], spent["out"], spent["reasoning"], "PROVIDER_ERROR")
                 raise
@@ -121,22 +131,23 @@ class Gateway:
                                                              _sum(spent["reasoning"], response.reasoning_tokens))
             return response
 
-        first = await ask(messages)
-        violations = self._violations(first.content, schema)
+        first = await ask(messages, 1)
+        violations = self._violations(first.content, schema) if first is not None else [Violation("$", JSON_VALIDATE_FAILED)]
         outcome, response = "OK", first
         if violations:
-            repair = [*messages, {"role": "assistant", "content": first.content},
+            # Không có output cũ để gửi lại khi lần đầu là `json_validate_failed` (provider không trả nội dung).
+            repair = [*messages, *([{"role": "assistant", "content": first.content}] if first is not None else []),
                       {"role": "user", "content": self._repair_message(violations)}]  # đúng một lần (mục Chiến lược ép JSON của 07-prompts.md)
-            response = await ask(repair)
-            violations = self._violations(response.content, schema)
+            response = await ask(repair, 2)
+            violations = self._violations(response.content, schema) if response is not None else [Violation("$", JSON_VALIDATE_FAILED)]
             outcome = "PARSE_FAILED" if violations else "PARSE_REPAIRED"
 
         await self._record(module, budget_owner, spent["in"], spent["out"], spent["reasoning"], outcome)
         total_tokens = sum(v or 0 for v in spent.values())
         fingerprint = catalog_fingerprint(inputs["request_type_catalog"]) if module is CLASSIFY_INTENT else None
         log.info("LLM_CALL_DONE", call_name=module.call_name, tier=module.tier, model=profile.model, outcome=outcome, prompt_module_version=module.version,
-                 input_tokens=spent["in"], output_tokens=spent["out"], reasoning_tokens=spent["reasoning"], prompt_time=response.prompt_time,
-                 completion_time=response.completion_time, finish_reason=response.finish_reason, catalog_fingerprint=fingerprint)
+                 input_tokens=spent["in"], output_tokens=spent["out"], reasoning_tokens=spent["reasoning"], prompt_time=response.prompt_time if response else None,
+                 completion_time=response.completion_time if response else None, finish_reason=response.finish_reason if response else None, catalog_fingerprint=fingerprint)
         ceiling = wv.TOKEN_CEILING_PER_CALL.get(module.call_name)
         if ceiling is not None and total_tokens > ceiling:
             log.warning("LLM_CALL_OVER_CEILING", call_name=module.call_name, total_tokens=total_tokens, ceiling=ceiling)  # A-090: đo và cảnh báo, chưa chặn trước được
@@ -158,7 +169,8 @@ class Gateway:
     def _repair_message(violations: list[Violation]) -> str:
         # Đường dẫn trường và mã — không giá trị (Violation không mang giá trị).
         listed = "; ".join(f"{v.path}: {v.code}" for v in violations[:20])
-        return f"Output trước không hợp schema ({listed}). Chỉ trả JSON đúng schema, không thêm gì khác."
+        extra = " Có thể output đã bị cắt vì quá dài: trả JSON ngắn gọn." if any(v.code == JSON_VALIDATE_FAILED for v in violations) else ""
+        return f"Output trước không hợp schema ({listed}). Chỉ trả JSON đúng schema, không thêm gì khác.{extra}"
 
     async def _record(self, module: PromptModule, owner: BudgetOwner, input_tokens: int | None, output_tokens: int | None, reasoning_tokens: int | None, outcome: str) -> None:
         await asyncio.to_thread(self._budget.record, call_name=module.call_name, tier=module.tier, prompt_module_version=module.version, owner=owner,

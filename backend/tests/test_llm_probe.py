@@ -308,6 +308,60 @@ class ChayThuVoiServerGia(unittest.TestCase):
         self.assertNotIn(KEY[:8], blob)
         self.assertEqual(sanitize.self_check(blob, [KEY]), [])
 
+    def test_e4b_dat_tran_giua_token_nhin_thay_va_tong_sinh_ra_va_gui_ba_lan(self):
+        class FakeEnc:
+            def encode(self, text):
+                return text.split()  # số "token" = số từ — đủ để thử logic
+
+        hits: list[httpx.Request] = []
+        p = self.probe(hits=hits)
+        p._enc = FakeEnc()
+        p.e2_o1_3(1)
+        visible = [c.visible_tokens for c in p.calls if c.label.startswith("E2-draft_free_content")]
+        self.assertTrue(all(v is not None for v in visible))
+        before = len(hits)
+        p.e4b_cap_semantics()
+        self.assertEqual(p.cap_under_test, max(visible) + 30)
+        caps = [json.loads(h.content)["max_completion_tokens"] for h in hits[before:]]
+        self.assertEqual(caps, [max(visible) + 30] * 3)
+        self.assertEqual(len(p.calls) - 3, before)  # đúng ba lời gọi E4b
+
+    def test_e4b_khong_chay_khi_thieu_tiktoken(self):
+        p = self.probe()
+        p._enc = None
+        p.e2_o1_3(1)
+        n = len(p.calls)
+        p.e4b_cap_semantics()
+        self.assertEqual((len(p.calls), p.cap_under_test), (n, None))  # không đoán trần khi không có số token nhìn thấy
+
+    def test_goi_y_ngu_nghia_tran_output(self):
+        def c(status, fin, comp, reas, vis, code=None):
+            return llm_probe.Call("E4b-x", "m", status, completion_tokens=comp, reasoning_tokens=reas, visible_tokens=vis, finish_reason=fin, error_code=code)
+        cut = [c(400, None, None, None, None, "json_validate_failed")] * 3
+        self.assertEqual(llm_probe.suggest_cap(cut, 100)["gợi_ý"], "CÓ TÍNH reasoning vào trần")
+        length = [c(200, "length", 100, 60, 40)] * 3
+        self.assertEqual(llm_probe.suggest_cap(length, 100)["gợi_ý"], "CÓ TÍNH reasoning vào trần")
+        passed = [c(200, "stop", 230, 170, 60)] * 3  # tổng sinh ra 230 > trần 100 mà vẫn qua
+        self.assertEqual(llm_probe.suggest_cap(passed, 100)["gợi_ý"], "KHÔNG tính reasoning vào trần")
+        self.assertEqual(llm_probe.suggest_cap([*cut[:1], *passed[:2]], 100)["gợi_ý"], "KHÔNG RÕ / LẪN LỘN")
+        self.assertEqual(llm_probe.suggest_cap([], 100)["gợi_ý"], "KHÔNG ĐO ĐƯỢC")
+        self.assertEqual(llm_probe.suggest_cap(passed, None)["gợi_ý"], "KHÔNG ĐO ĐƯỢC")
+
+    def test_max_calls_rieng_cua_lan_chay(self):
+        import io
+        from contextlib import redirect_stdout
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            llm_probe.main(["--max-calls", "12", "--experiments", "E2,E4B"])
+        self.assertIn("hạn_mức_còn=12", buf.getvalue())
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            llm_probe.main(["--max-calls", "99", "--prior-calls", "30"])
+        self.assertIn("hạn_mức_còn=10", buf.getvalue())  # không bao giờ vượt 40 − đã tiêu
+
+    def test_ket_qua_mac_dinh_ghi_vao_file_lan_2_khong_de_len_lan_1(self):
+        self.assertTrue(str(llm_probe.REFERENCE).endswith("llm-groq-do-thuc-te-b4b-lan2.md"))
+
     def test_goi_y_o1_3(self):
         def call(label, comp, reas, vis):
             return llm_probe.Call(label, "m", 200, completion_tokens=comp, reasoning_tokens=reas, visible_tokens=vis)

@@ -72,20 +72,28 @@ class HoSoModel(unittest.TestCase):
         check = profiles.load_profiles()
         self.assertEqual(check.codes, ())
         cheap, strong = check.profiles.for_tier("CHEAP"), check.profiles.for_tier("STRONG")
-        self.assertEqual((cheap.model, cheap.params), ("openai/gpt-oss-20b", {"reasoning_effort": "low", "temperature": 0.2}))
-        self.assertEqual((strong.model, strong.params), ("openai/gpt-oss-120b", {"reasoning_effort": "medium", "temperature": 0.3}))
+        self.assertEqual((cheap.model, cheap.params), ("openai/gpt-oss-20b", {"reasoning_effort": "low", "temperature": 0.2, "include_reasoning": False}))
+        self.assertEqual((strong.model, strong.params), ("openai/gpt-oss-120b", {"reasoning_effort": "medium", "temperature": 0.3, "include_reasoning": False}))
         self.assertEqual(check.profiles.modules, {"classify_intent": {"max_completion_tokens": 512}, "extract_slots": {"max_completion_tokens": 1536},
                                                    "draft_free_content": {"max_completion_tokens": 2048}})
 
     def test_ca_hai_tier_ghi_tuong_minh_moi_tham_so_anh_huong_output(self):  # không dựa mặc định provider
         for tier in ("CHEAP", "STRONG"):
-            self.assertTrue(set(profiles.REQUIRED_TIER_PARAMS) <= set(profiles.load_profiles().profiles.for_tier(tier).params), tier)
+            self.assertTrue(set(("reasoning_effort", "temperature", "include_reasoning")) <= set(profiles.load_profiles().profiles.for_tier(tier).params), tier)
 
     def test_profile_hieu_luc_cua_loi_goi_la_tier_cong_tran_output_cua_module(self):
         p = profiles.load_profiles().profiles
-        self.assertEqual(p.profile_for("classify_intent", "CHEAP").params, {"reasoning_effort": "low", "temperature": 0.2, "max_completion_tokens": 512})
-        self.assertEqual(p.profile_for("draft_free_content", "STRONG").params, {"reasoning_effort": "medium", "temperature": 0.3, "max_completion_tokens": 2048})
-        self.assertEqual(p.for_tier("CHEAP").params, {"reasoning_effort": "low", "temperature": 0.2})  # tier không bị sửa tại chỗ
+        self.assertEqual(p.profile_for("classify_intent", "CHEAP").params, {"reasoning_effort": "low", "temperature": 0.2, "include_reasoning": False, "max_completion_tokens": 512})
+        self.assertEqual(p.profile_for("draft_free_content", "STRONG").params, {"reasoning_effort": "medium", "temperature": 0.3, "include_reasoning": False, "max_completion_tokens": 2048})
+        self.assertEqual(p.for_tier("CHEAP").params, {"reasoning_effort": "low", "temperature": 0.2, "include_reasoning": False})  # tier không bị sửa tại chỗ
+
+    def test_include_reasoning_false_o_ca_hai_tier_va_chi_nhan_boolean(self):  # PO, 2026-10-05
+        p = profiles.load_profiles().profiles
+        for tier in ("CHEAP", "STRONG"):
+            self.assertIs(p.for_tier(tier).params["include_reasoning"], False)
+        for bad in ("false", 0, None, "no"):
+            raw = mutated(lambda r, b=bad: r["tiers"]["CHEAP"]["params"].update({"include_reasoning": b}))
+            self.assertEqual(profiles.validate(raw).codes, ("PROFILE_PARAM_VALUE_INVALID:CHEAP:include_reasoning",), repr(bad))
 
     def test_module_co_prompt_module_deu_co_tran_output_va_khop_tier(self):
         from bo19.ai_gateway.prompt_modules import MODULES
@@ -114,7 +122,7 @@ class HoSoModel(unittest.TestCase):
         self.assertEqual(profiles.validate(mutated(lambda r: r["tiers"]["CHEAP"].update({"model": "  "}))).codes, ("PROFILE_TIER_MODEL_MISSING:CHEAP",))
 
     def test_thieu_tham_so_tuong_minh_cua_tier_la_loi(self):
-        for name in profiles.REQUIRED_TIER_PARAMS:
+        for name in ("reasoning_effort", "temperature", "include_reasoning"):
             for tier in ("CHEAP", "STRONG"):
                 raw = mutated(lambda r, n=name, t=tier: r["tiers"][t]["params"].pop(n))
                 self.assertEqual(profiles.validate(raw).codes, (f"PROFILE_TIER_PARAM_MISSING:{tier}:{name}",), (tier, name))

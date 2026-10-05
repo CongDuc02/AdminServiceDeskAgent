@@ -39,7 +39,7 @@ MAX_CALLS = 40
 MAX_TOKENS_PER_MODEL = 60_000
 TPM_SOFT = 6_500  # dưới 8K của gói Free (docs/reference/llm-groq.md mục 5), chừa chỗ cho suy luận
 OUT = Path(__file__).resolve().parent / "out"
-REFERENCE = REPO / "docs" / "reference" / "llm-groq-do-thuc-te-b4b.md"
+REFERENCE = REPO / "docs" / "reference" / "llm-groq-do-thuc-te-b4b-lan2.md"  # lần 1 (ngoài kế hoạch) ở llm-groq-do-thuc-te-b4b.md — không ghi đè
 VAR = VariableSpec("purpose_statement", 300, ("purpose",))
 
 
@@ -74,6 +74,7 @@ class Probe:
         self.spent: dict[str, int] = {}
         self._window: list[tuple[float, int]] = []
         self.masked_errors: list[dict[str, Any]] = []
+        self.cap_under_test: int | None = None
         try:
             import tiktoken
             self._enc = tiktoken.get_encoding("o200k_harmony")
@@ -189,6 +190,19 @@ class Probe:
             for i in range(n):
                 self.raw(f"E2-{module}-{i + 1}", m, msgs, schema, params)
 
+    def e4b_cap_semantics(self) -> None:
+        """Ngữ nghĩa `max_completion_tokens` (A-090): P4 tier mạnh với trần ĐẶT GIỮA token nhìn thấy và tổng token sinh ra (nhìn thấy + suy luận), ba lần, lấy từ số đo E2.
+        Qua được (HTTP 200, `finish_reason: stop`) dù tổng sinh ra > trần ⇒ trần chỉ đếm output nhìn thấy; HTTP 400 `json_validate_failed` hay `length` ⇒ trần gồm cả suy luận."""
+        visible = [c.visible_tokens for c in self.calls if c.label.startswith("E2-draft_free_content") and c.status == 200 and c.visible_tokens is not None]
+        if not visible:  # thiếu tiktoken hay E2 chưa chạy: không đoán
+            self.cap_under_test = None
+            return
+        self.cap_under_test = max(visible) + 30
+        m, params = self.profile("STRONG", "draft_free_content")
+        msgs, schema = self.p4()
+        for i in range(3):
+            self.raw(f"E4b-p4-cap{self.cap_under_test}-{i + 1}", m, msgs, schema, {**params, "max_completion_tokens": self.cap_under_test}, expected_tokens=1200)
+
     def e3_a089(self) -> None:
         """Nếu mọi schema thật của E1/E2 trả 200 thì từ khoá đã được chấp nhận. Chỉ khi có 400 mới tách từng từ khoá."""
         rejected = [c for c in self.calls if c.label.startswith(("E1", "E2")) and c.status == 400]
@@ -227,7 +241,7 @@ class Probe:
         ping = [{"role": "user", "content": fixtures.PING}]
         for tier, module in (("CHEAP", "classify_intent"), ("STRONG", "draft_free_content")):
             m, params = self.profile(tier, module)
-            base = {k: v for k, v in params.items() if k != "max_completion_tokens"} | {"max_completion_tokens": 128}
+            base = {k: v for k, v in params.items() if k not in ("max_completion_tokens", "include_reasoning")} | {"max_completion_tokens": 128}  # hồ sơ đã có include_reasoning=false: thí nghiệm này so sánh với mặc định provider
             self.raw(f"E6-{tier}-mac-dinh", m, ping, None, base, expected_tokens=300)
             self.raw(f"E6-{tier}-include_reasoning-false", m, ping, None, {**base, "include_reasoning": False}, expected_tokens=300, keep_error_body=True)
             self.raw(f"E6-{tier}-reasoning_format-hidden", m, ping, None, {**base, "reasoning_format": "hidden"}, expected_tokens=300, keep_error_body=True)
@@ -248,16 +262,31 @@ def suggest_o1_3(calls: list[Call]) -> dict[str, Any]:
     return {"gợi_ý": verdict, "dung_sai": "max(5 token, 5%) — do người triển khai chọn", "dòng": rows}
 
 
+def suggest_cap(calls: list[Call], cap: int | None) -> dict[str, Any]:
+    """Gợi ý (không phải kết luận) ngữ nghĩa trần output từ các lời gọi E4b."""
+    rows = [c for c in calls if c.label.startswith("E4b")]
+    if cap is None or not rows:
+        return {"gợi_ý": "KHÔNG ĐO ĐƯỢC", "trần": cap}
+    cut = [c for c in rows if (c.status == 400 and c.error_code == "json_validate_failed") or (c.status == 200 and c.finish_reason == "length")]
+    passed_over = [c for c in rows if c.status == 200 and c.finish_reason == "stop" and None not in (c.visible_tokens, c.reasoning_tokens)
+                   and c.visible_tokens + c.reasoning_tokens > cap]
+    verdict = ("CÓ TÍNH reasoning vào trần" if len(cut) == len(rows) else "KHÔNG tính reasoning vào trần" if len(passed_over) == len(rows) else "KHÔNG RÕ / LẪN LỘN")
+    return {"gợi_ý": verdict, "trần": cap, "bị_cắt": len(cut), "qua_dù_tổng_sinh_ra_vượt_trần": len(passed_over), "số_lời_gọi": len(rows),
+            "dòng": [{"label": c.label, "http": c.status, "finish": c.finish_reason, "completion": c.completion_tokens, "reasoning": c.reasoning_tokens, "visible": c.visible_tokens} for c in rows]}
+
+
 def publish(probe: Probe, secrets: list[str]) -> tuple[bool, list[str]]:
     """Ghi `docs/reference/llm-groq-do-thuc-te-b4b.md` (chỉ số, mã và thân lỗi ĐÃ CHE). Chỉ ghi khi `self_check` đạt. Trả (đạt, vấn đề)."""
-    lines = ["# Groq — số đo lời gọi thật ở B4b (số và mã; không có nội dung model trả về)", "",
-             f"- **Ngày đo:** {time.strftime('%Y-%m-%d')}. **Công cụ:** `tools/llm-probe/llm_probe.py`. Nội dung gửi đi: văn bản bịa có nhãn \"(giả)\" (A-080).",
+    lines = ["# Groq — số đo lời gọi thật ở B4b, lần 2 (có `tiktoken`; số và mã; không có nội dung model trả về)", "",
+             f"- **Ngày đo:** {time.strftime('%Y-%m-%d')}. **Công cụ:** `tools/llm-probe/llm_probe.py`. Nội dung gửi đi: văn bản bịa có nhãn \"(giả)\" (A-080). Lần 1 (ngoài kế hoạch, không có `tiktoken`): `llm-groq-do-thuc-te-b4b.md`.",
              "- Bảng dưới chỉ có số token, mã HTTP, `finish_reason` và cờ. Thân lỗi bên dưới đã che định danh bằng `<masked>` và `self_check` của tool đạt trước khi ghi.", "",
              "## Lời gọi", "", "| nhãn | model | HTTP | prompt | completion | reasoning | nhìn thấy | finish | hợp schema | có trường suy luận | loại lỗi | code |", "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for c in probe.calls:
         lines.append(f"| {c.label} | {c.model} | {c.status} | {c.prompt_tokens} | {c.completion_tokens} | {c.reasoning_tokens} | {c.visible_tokens} | {c.finish_reason} | {c.valid_schema} | "
                      f"{c.has_reasoning_field} ({c.reasoning_field_chars_bucket}) | {c.error_type} | {c.error_code} |")
-    lines += ["", "## Gợi ý O1-3 (không phải kết luận)", "", "```json", json.dumps(suggest_o1_3(probe.calls), ensure_ascii=False, indent=2), "```", "", "## Thân lỗi (E5, E6) — đã che", ""]
+    lines += ["", "## Gợi ý O1-3 (không phải kết luận)", "", "```json", json.dumps(suggest_o1_3(probe.calls), ensure_ascii=False, indent=2), "```", "",
+              "## Gợi ý ngữ nghĩa trần output — E4b (không phải kết luận)", "", "```json", json.dumps(suggest_cap(probe.calls, probe.cap_under_test), ensure_ascii=False, indent=2), "```", "",
+              "## Thân lỗi (E5, E6) — đã che", ""]
     for e in probe.masked_errors:
         lines += [f"### {e['label']} — HTTP {e['status']}", "", "```json", e["body"], "```", ""]
     text = "\n".join(lines) + "\n"
@@ -275,31 +304,33 @@ def read_key() -> str | None:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Đo lời gọi Groq thật — B4b (tools/llm-probe/README.md)")
-    ap.add_argument("--experiments", default="E1,E2,E3,E4,E5,E6")
+    ap.add_argument("--experiments", default="E1,E2,E3,E4,E5,E6", help="E1…E6, E4B (ngữ nghĩa trần output — cần E2 chạy trước và `tiktoken`)")
     ap.add_argument("--base-url", default=os.environ.get("BO19_LLM_BASE_URL", DEFAULT_LLM_BASE_URL))
     ap.add_argument("--no-publish", action="store_true", help="chỉ ghi out/results.json, không ghi docs/reference/")
     ap.add_argument("--confirm-real", action="store_true", help="BẮT BUỘC để gọi mạng thật. Không có cờ này tool chỉ in kế hoạch rồi thoát (mã 3) — chống chạy nhầm")
     ap.add_argument("--prior-calls", type=int, default=0, help="số lời gọi thật đã tiêu ở các lần chạy trước (tính vào hạn mức 40)")
+    ap.add_argument("--max-calls", type=int, default=MAX_CALLS, help="hạn mức riêng của lần chạy này (không vượt 40)")
     args = ap.parse_args(argv)
     wanted = [x.strip() for x in args.experiments.split(",") if x.strip()]
     if not args.confirm_real:
-        print(f"LLM_PROBE_PLAN thí_nghiệm={wanted} hạn_mức_còn={MAX_CALLS - args.prior_calls} — KHÔNG gọi mạng. Thêm --confirm-real để chạy thật.")
+        print(f"LLM_PROBE_PLAN thí_nghiệm={wanted} hạn_mức_còn={min(MAX_CALLS - args.prior_calls, args.max_calls)} — KHÔNG gọi mạng. Thêm --confirm-real để chạy thật.")
         return 3
     key = read_key()
     if not key:
         print("LLM_PROBE_CONFIG_MISSING BO19_LLM_API_KEY", file=sys.stderr)
         return 2
-    probe = Probe(key, args.base_url, max_calls=max(0, MAX_CALLS - args.prior_calls))
+    probe = Probe(key, args.base_url, max_calls=max(0, min(MAX_CALLS - args.prior_calls, args.max_calls)))
     print(f"LLM_PROBE_START tiktoken={'có' if probe._enc else 'KHÔNG'} tối_đa_lời_gọi={MAX_CALLS}")
     try:
-        for name, fn in (("E1", probe.e1_o1_1), ("E2", probe.e2_o1_3), ("E3", probe.e3_a089), ("E4", probe.e4_cap), ("E5", probe.e5_a091), ("E6", probe.e6_reasoning_off)):
+        for name, fn in (("E1", probe.e1_o1_1), ("E2", probe.e2_o1_3), ("E3", probe.e3_a089), ("E4", probe.e4_cap), ("E4B", probe.e4b_cap_semantics), ("E5", probe.e5_a091), ("E6", probe.e6_reasoning_off)):
             if name in wanted:
                 fn()
                 print(f"LLM_PROBE_DONE {name} lời_gọi_tích_luỹ={len(probe.calls)}")
     except Budget as e:
         print(f"LLM_PROBE_BUDGET_STOP {e}", file=sys.stderr)
     OUT.mkdir(parents=True, exist_ok=True)
-    results = {"calls": [c.__dict__ for c in probe.calls], "spent_tokens_per_model": probe.spent, "o1_3": suggest_o1_3(probe.calls)}
+    results = {"calls": [c.__dict__ for c in probe.calls], "spent_tokens_per_model": probe.spent, "o1_3": suggest_o1_3(probe.calls),
+               "cap": suggest_cap(probe.calls, probe.cap_under_test)}
     text = json.dumps(results, ensure_ascii=False, indent=2)
     problems = sanitize.self_check(text, [key])
     if problems:

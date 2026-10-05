@@ -4,7 +4,7 @@
 
 - `models[<mã model>].allowed_params` — tham số được phép gửi kèm và miền giá trị của từng tham số: `{"values": [...]}` (danh sách đóng) hoặc
   `{"type": "integer" | "number", "min": ..., "max": ...}` (khoảng, `max` tuỳ chọn).
-- `tiers[<tier>]` — mã model và `params`. **Mọi tham số ảnh hưởng output ghi tường minh, không dựa mặc định provider:** `reasoning_effort` và `temperature` là bắt buộc ở cả hai tier.
+- `tiers[<tier>]` — mã model và `params`. **Mọi tham số ảnh hưởng output ghi tường minh, không dựa mặc định provider:** `reasoning_effort`, `temperature` và `include_reasoning` là bắt buộc ở cả hai tier. `include_reasoning: false` bảo Groq không trả văn bản suy luận; adapter vẫn bỏ trường suy luận nếu provider trả về (lớp thứ hai).
 - `module_params[<call_name>]` — tham số theo từng module. **Trần output cứng** `max_completion_tokens` là bắt buộc cho mọi module có prompt module (A-090). Tham số của module và của tier không được trùng tên.
 
 `max_tokens` (deprecated, `docs/reference/llm-groq-chat-params.md`) không bao giờ gửi: nằm trong `RESERVED_PARAMS`.
@@ -22,7 +22,7 @@ from typing import Any
 
 DEFAULT_PATH = Path(__file__).resolve().parent / "model_profiles.json"
 REQUIRED_TIERS = ("CHEAP", "STRONG")  # EMBEDDING khi A-028 chốt
-REQUIRED_TIER_PARAMS = ("reasoning_effort", "temperature")
+REQUIRED_TIER_PARAMS = ("reasoning_effort", "temperature", "include_reasoning")  # include_reasoning=false: không nhận văn bản suy luận (PO, 2026-10-05; số đo B4b)
 REQUIRED_MODULE_PARAMS = ("max_completion_tokens",)
 # Module có prompt module và tier của nó — `tests/test_checks_gateway.py` đòi khớp `prompt_modules.MODULES`.
 MODULE_TIERS = {"classify_intent": "CHEAP", "extract_slots": "CHEAP", "draft_free_content": "STRONG"}
