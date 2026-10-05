@@ -11,7 +11,7 @@ import sys
 
 import psycopg
 
-from bo19.config.settings import ConfigError, load_settings
+from bo19.config.settings import load_settings
 from bo19.startup.checks import run_s2_checks
 
 log = logging.getLogger("bo19.startup")
@@ -19,10 +19,10 @@ log = logging.getLogger("bo19.startup")
 
 def _startup() -> int | None:
     """Trả cổng để phục vụ, hoặc None khi trượt."""
-    try:
-        settings = load_settings()
-    except ConfigError as e:
-        log.error("STARTUP_FAIL %s", e)
+    settings = load_settings()
+    if settings.problems:  # tạm thời giữ hành vi cũ — thay bằng bộ chạy bước kiểm ở commit tích hợp
+        for _, code in settings.problems:
+            log.error("STARTUP_FAIL %s", code)
         return None
     try:
         with psycopg.connect(settings.database_url, connect_timeout=10, application_name="bo19-api-startup") as conn:

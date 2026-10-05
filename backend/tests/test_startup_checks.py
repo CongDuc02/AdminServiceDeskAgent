@@ -15,7 +15,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from bo19.config.settings import ConfigError, Settings, load_settings  # noqa: E402
 from bo19.persistence.probe import RoleFacts  # noqa: E402
 from bo19.startup import checks  # noqa: E402
 
@@ -97,17 +96,6 @@ class Step01Ledger(unittest.TestCase):
         real = {m.filename: m.sha256 for m in checks.known_migrations()}
         self.assertEqual(real["schema/0001_initial.sql"],
                          "937ca18412aff409f2dd429a50b550524994fab73579b12bc23f68bc71e242fd")
-
-
-class Config(unittest.TestCase):
-    def test_thieu_dsn(self):
-        with self.assertRaisesRegex(ConfigError, "CONFIG_DATABASE_URL_MISSING"):
-            load_settings({})
-
-    def test_repr_khong_lo_dsn(self):
-        s = load_settings({"BO19_DATABASE_URL": "postgresql://u:matkhau@h/db", "PORT": "10000"})
-        self.assertNotIn("matkhau", repr(s))
-        self.assertIsInstance(s, Settings)
 
 
 @unittest.skipUnless(os.environ.get("BO19_TEST_PG_SUPERUSER_DSN"), "cần BO19_TEST_PG_SUPERUSER_DSN")

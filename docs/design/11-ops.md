@@ -47,6 +47,26 @@ Bảng secret đã chốt ở mục Secret management trên Render của `09-sec
 **`BO19_DATABASE_URL` — thêm 2026-10-04 (PO).** DSN mà `api`, `worker`, cron nối PostgreSQL — **credential của `bo19_app`**, host **nội bộ** của Render, `sslmode=require`. **Không** dán nguyên URL nội bộ Render hiển thị: URL đó mang credential của user mặc định `bo19_admin` (`docs/reference/render-web-service-health-checks.md`; S1). Dựng bằng cách lấy host, cổng, tên database của URL nội bộ, ghép user `bo19_app` và mật khẩu của nó. Bước kiểm khởi động #2 chặn khi lỡ dùng credential khác — kể cả `bo19_migrator` hay `bo19_admin`.
 
 **`BO19_MIGRATOR_DATABASE_URL` — thêm 2026-10-04.** DSN duy nhất mà `migrate_main` đọc — credential `bo19_migrator`, `sslmode=require`. Chỉ có ở ngữ cảnh chạy migrate (ADR-022), **không bao giờ** là biến của Web Service hay của tiến trình runtime nào. Tên khác `BO19_DATABASE_URL` có chủ ý: một tiến trình runtime không thể vô tình đọc nhầm credential của role sở hữu.
+**Biến cấu hình của tiến trình runtime — thêm 2026-10-05 (B2).** Đọc một lần lúc khởi động bởi `bo19.config.settings`; giá trị rỗng hoặc chỉ có khoảng trắng coi như **không đặt**. Bước kiểm khởi động trượt ở biến nào thì log chỉ ghi **tên biến** và mã, không ghi giá trị (đúng luật của `CLAUDE.md` về secret).
+
+| Biến | Bắt buộc | Mặc định | Nguồn | Bước kiểm |
+|---|---|---|---|---|
+| `BO19_ENVIRONMENT` | Có — thiếu là **Chặn**, không mặc định `prod` | — | ADR-023 | #16, #17 |
+| `BO19_DATABASE_URL` | Có, ở `api`/`worker`/cron | — | Đoạn trên | #1, #2, #15, #17 |
+| `BO19_SESSION_SECRET` | Có, ở `api` | — | ADR-013; mục Secret management trên Render của `09-security.md`; độ dài tối thiểu: A-088 | #12 |
+| `PORT` | Render tự đặt | `10000` | Render | — |
+| `BO19_ORG_TIMEZONE` | Không | `Asia/Ho_Chi_Minh` | A-041 `Đã chốt` | #13 — đặt giá trị khác là **Chặn** |
+| `BO19_SHUTDOWN_DELAY_SECONDS` | Không | `30` | WV-01 | #11 |
+| `BO19_TURN_DEADLINE_SECONDS` | Không | `20` | WV-02 | #11 |
+| `BO19_TURN_DEADLINE_MARGIN_SECONDS` | Không | `10` | WV-03 | #11 |
+| `BO19_OBJECT_STORAGE_TIMEOUT_SECONDS` | Không | `30` | WV-08 | #11 |
+| `BO19_STORED_OBJECT_LEASE_SECONDS` | Không | `120` | WV-10 | #11 |
+| `BO19_ARGON2_TIME_COST` | Không | `2` | WV-16 | #20 |
+| `BO19_ARGON2_MEMORY_COST_KIB` | Không | `19456` | WV-16 | #20 |
+| `BO19_ARGON2_PARALLELISM` | Không | `1` | WV-16 | #20 |
+
+Chín biến sau cùng có mặc định bằng đúng giá trị WV; trên Render **không cần đặt**. Chúng là biến để bước kiểm #11, #13, #20 có thứ để kiểm — một giá trị viết cứng thì bước kiểm chỉ kiểm chính hằng số. Giá trị không phải số nguyên dương, hay vượt miền cho phép của bước kiểm, là **Chặn**. Bước kiểm #11 so **giá trị cấu hình** với nhau — không đo shutdown delay thực của Render (S4 đo được ≈ 5 s trên gói free so với 30 s cấu hình; A-031, R2-5).
+
 ---
 
 ## 2. Cold start, khởi động và tắt tiến trình êm
