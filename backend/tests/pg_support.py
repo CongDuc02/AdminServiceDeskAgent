@@ -84,6 +84,28 @@ class PgDb:
                 c.execute("insert into employee_credential (employee_id, password_hash) values (%s, %s)", (employee_id, password_hash))
         return employee_id, code
 
+    def make_chat_session(self, employee_id: uuid.UUID) -> uuid.UUID:
+        sid = uuid.uuid4()
+        with self.connect("bo19_migrator") as c:
+            c.execute("insert into chat_session (id, employee_id) values (%s, %s)", (sid, employee_id))
+        return sid
+
+    def make_request(self) -> uuid.UUID:
+        """Một dòng `request` tối thiểu cho khoá ngoại của `llm_usage` — superuser, tắt kiểm khoá ngoại (như `set_operating_mode` của test_ac_1_7): fixture không cần dựng loại yêu cầu."""
+        rid = uuid.uuid4()
+        with self.connect(autocommit=True) as c:
+            c.execute("set session_replication_role = replica")
+            c.execute("insert into request (id, request_type_code, status, created_by_employee_id, beneficiary_employee_id) values (%s, 'WORK_CONFIRMATION', 'DRAFT', %s, %s)",
+                      (rid, uuid.uuid4(), uuid.uuid4()))
+        return rid
+
+    def usage_rows(self, **owner) -> list[tuple]:
+        """Các dòng `llm_usage` của một chủ budget: (call_name, model_tier, prompt_module_version, input, output, reasoning, outcome, trace_id)."""
+        (col, value), = owner.items()
+        with self.connect("bo19_migrator") as c:
+            return c.execute(f"select call_name, model_tier, prompt_module_version, input_tokens, output_tokens, reasoning_tokens, outcome, trace_id "
+                             f"from llm_usage where {col} = %s order by created_at, id", (value,)).fetchall()
+
     def set_active(self, employee_id: uuid.UUID, active: bool) -> None:
         with self.connect("bo19_migrator") as c:
             c.execute("update employee set is_active = %s where id = %s", (active, employee_id))

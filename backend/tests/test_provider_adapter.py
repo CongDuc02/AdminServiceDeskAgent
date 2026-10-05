@@ -336,7 +336,7 @@ class LoiKhongLoThanThô(Base):
 
     async def test_gateway_ghi_log_chi_ba_truong(self):
         e = await self.fail_with(httpx.Response(400, json=self.bodies()["message trích input"]))
-        self.assertEqual(set(e.log_fields()), {"subcode", "kind", "http_status", "error_type", "error_code", "retry_after_seconds", "attempts"})
+        self.assertEqual(set(e.log_fields()), {"subcode", "kind", "http_status", "provider_error_type", "provider_error_code", "retry_after_seconds", "attempts"})
 
     async def test_log_cua_httpx_cua_ban_than_cung_khong_lo(self):
         logging.getLogger("httpx").setLevel(logging.DEBUG)

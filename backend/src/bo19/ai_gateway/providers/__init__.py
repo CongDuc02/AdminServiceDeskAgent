@@ -66,8 +66,9 @@ class ProviderError(Exception):
     code = property(lambda self: self.subcode)
 
     def log_fields(self) -> dict[str, Any]:
-        return {"subcode": self.subcode, "kind": self.kind, "http_status": self.http_status, "error_type": self.error_type, "error_code": self.error_code,
-                "retry_after_seconds": self.retry_after_seconds, "attempts": self.attempts}
+        # `error_type` là tên dành riêng của log (kiểu exception) — nên đổi tên trường của provider
+        return {"subcode": self.subcode, "kind": self.kind, "http_status": self.http_status, "provider_error_type": self.error_type,
+                "provider_error_code": self.error_code, "retry_after_seconds": self.retry_after_seconds, "attempts": self.attempts}
 
 
 @dataclass(frozen=True)
