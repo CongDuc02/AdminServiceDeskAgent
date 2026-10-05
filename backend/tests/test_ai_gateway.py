@@ -111,7 +111,9 @@ class DuongChinh(Base):
         rec = Recorder(reply(GOOD_P1))
         await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
         body = self.sent(rec)
-        self.assertEqual((body["model"], body["reasoning_effort"], body["stream"]), ("openai/gpt-oss-20b", "low", False))
+        self.assertEqual((body["model"], body["reasoning_effort"], body["temperature"], body["max_completion_tokens"], body["stream"]),
+                         ("openai/gpt-oss-20b", "low", 0.2, 512, False))  # tham số tường minh + trần output cứng của module (A-090)
+        self.assertNotIn("max_tokens", body)
         schema = body["response_format"]["json_schema"]
         self.assertEqual((schema["name"], schema["strict"]), ("classify_intent", True))
         self.assertEqual(schema["schema"]["properties"]["intent"]["enum"], ["WORK_CONFIRMATION", "ROOM_BOOKING", "OUT_OF_SCOPE", "NEED_CLARIFICATION"])  # sinh từ catalog (ADR-025)
@@ -127,7 +129,8 @@ class DuongChinh(Base):
         body = self.sent(rec)
         self.assertEqual(set(json.loads(body["messages"][1]["content"].split("\n", 1)[1])), {"purpose", "variable_guidance", "request_type"})
         self.assertEqual(body["model"], "openai/gpt-oss-120b")  # tier mạnh
-        self.assertNotIn("reasoning_effort", body)  # A-090
+        self.assertEqual((body["reasoning_effort"], body["temperature"], body["max_completion_tokens"]), ("medium", 0.3, 2048))  # tier mạnh: tường minh, không dựa mặc định
+        self.assertNotIn("max_tokens", body)
         prop = body["response_format"]["json_schema"]["schema"]["properties"]
         self.assertEqual((prop["variable_name"]["const"], prop["body"]["maxLength"]), ("purpose_statement", 120))
         (row,) = self.rows()
@@ -473,6 +476,14 @@ class LogVaCanhBao(Base):
         (event,) = [e for e in self.logged() if e["message"] == "LLM_CALL_OVER_CEILING"]
         self.assertEqual((event["total_tokens"], event["ceiling"], event["call_name"]), (1812, 1500, "classify_intent"))
         self.assertEqual(self.rows()[0][3], 1700)  # và vẫn được ghi, cộng vào tổng của chủ budget
+
+    async def test_van_ban_suy_luan_cua_provider_khong_vao_log_hay_so(self):  # PO, 2026-10-05
+        body = {"choices": [{"message": {"content": json.dumps(GOOD_P1), "reasoning": f"suy luận {RES}"}, "finish_reason": "stop"}], "usage": USAGE}
+        r = await self.gateway(Recorder(httpx.Response(200, json=body))).call(CLASSIFY_INTENT, P1, self.owner)
+        self.assertEqual((r.output, r.reasoning_tokens), (GOOD_P1, 12))
+        self.assertNoLeak(RES, r, self.rows())
+        (event,) = [e for e in self.logged() if e["message"] == "LLM_CALL_DONE"]
+        self.assertEqual((event["reasoning_tokens"], event["finish_reason"]), (12, "stop"))
 
     async def test_trong_tran_thi_khong_canh_bao(self):
         await self.gateway(Recorder(reply(GOOD_P1))).call(CLASSIFY_INTENT, P1, self.owner)

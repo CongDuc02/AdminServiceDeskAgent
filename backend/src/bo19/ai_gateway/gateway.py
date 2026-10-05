@@ -96,7 +96,7 @@ class Gateway:
             await self._record(module, budget_owner, None, None, None, "BUDGET_UNAVAILABLE")
             raise
 
-        profile = self._profiles.for_tier(module.tier)
+        profile = self._profiles.profile_for(module.call_name, module.tier)  # tham số của tier cộng trần output của module (A-090)
         tier_deadline = wv.LLM_CALL_DEADLINE_CHEAP_SECONDS if module.tier == "CHEAP" else wv.LLM_CALL_DEADLINE_STRONG_SECONDS
         total = float(tier_deadline) if turn_deadline is None else min(float(tier_deadline), turn_deadline - started)
         retry_cap = float(wv.LLM_RETRY_AFTER_CEILING_SECONDS) if turn_deadline is None else None  # trong lượt chat, WV-02 đã chặn mọi lần chờ
@@ -136,7 +136,7 @@ class Gateway:
         fingerprint = catalog_fingerprint(inputs["request_type_catalog"]) if module is CLASSIFY_INTENT else None
         log.info("LLM_CALL_DONE", call_name=module.call_name, tier=module.tier, model=profile.model, outcome=outcome, prompt_module_version=module.version,
                  input_tokens=spent["in"], output_tokens=spent["out"], reasoning_tokens=spent["reasoning"], prompt_time=response.prompt_time,
-                 completion_time=response.completion_time, catalog_fingerprint=fingerprint)
+                 completion_time=response.completion_time, finish_reason=response.finish_reason, catalog_fingerprint=fingerprint)
         ceiling = wv.TOKEN_CEILING_PER_CALL.get(module.call_name)
         if ceiling is not None and total_tokens > ceiling:
             log.warning("LLM_CALL_OVER_CEILING", call_name=module.call_name, total_tokens=total_tokens, ceiling=ceiling)  # A-090: đo và cảnh báo, chưa chặn trước được
