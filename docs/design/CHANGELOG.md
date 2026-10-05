@@ -3162,3 +3162,5 @@ Track build, tầng nền. Nhánh `build/b2-nen-chay`. Commit tách theo phần 
 **Chỗ code chọn mà thiết kế chưa nói** (đã ghi vào `06-structure.md`): #17 khi không đọc được `operating_mode` ngoài `prod` là Chặn (fail-closed); bước kiểm nổ là trượt; chín biến WV là biến môi trường tuỳ chọn có mặc định để #11, #13, #20 có thứ để kiểm.
 
 **Nợ khai báo:** `entrypoints/migrate_main.py` còn tự tạo logger và `basicConfig` — ngoài ma trận bước kiểm và ngoài kế hoạch B2; test quét văn bản (`test_observability.QuetVanBan`) khoá nó là ngoại lệ duy nhất. Chờ PO quyết khi nào chuyển.
+
+**CI:** run xanh cả ba job (`backend`, `contracts`, `lock`) trên nhánh `build/b2-nen-chay` — https://github.com/CongDuc02/AdminServiceDeskAgent/actions/runs/37292976261 — 179 test, 0 bỏ qua (các ca cần PostgreSQL đã chạy thật, gồm `test_ac_1_7`), `lint-imports` 8 contract giữ. Chạy tay trước đó: image Docker thật, nối DB Render bằng `bo19_app`, `BO19_ENVIRONMENT=dev` — khởi động qua các bước đã có, `GET /healthz` 200, log JSON UTC.
