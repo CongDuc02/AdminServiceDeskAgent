@@ -70,5 +70,5 @@ Mục "2.15 (2026-09-04)" có trong trang Release notes.
 
 | Câu hỏi | Theo nguồn |
 |---|---|
-| Mã thoát khi có contract bị phá | Không có trong các trang đã lấy — **kiểm bằng chạy thật** (`docs/design/CHANGELOG.md`, mục B1) |
+| Mã thoát khi có contract bị phá | Không có trong các trang đã lấy. **Quan sát khi chạy 2.15, 2026-10-05:** `0` khi mọi contract đạt (`Contracts: 8 kept, 0 broken.`), `1` khi có contract bị phá (`7 kept, 1 broken.`) |
 | Cú pháp đúng cho chú thích cuối dòng trong `.importlinter` | Không có — chỉ dùng dòng chú thích riêng bắt đầu bằng `#` |
