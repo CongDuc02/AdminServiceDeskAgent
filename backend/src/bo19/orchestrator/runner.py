@@ -1,0 +1,1 @@
+"""Lối vào công khai của orchestrator: run_intake_turn, run_render, resume_document, run_finalize_issue, purge_thread (06-structure.md, cây backend). Chưa mã — khung để contract import-linter có chỗ bám."""

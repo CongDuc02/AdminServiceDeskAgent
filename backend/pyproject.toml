@@ -40,5 +40,13 @@ dependencies = [
     "httpx==0.28.1",
 ]
 
+# Công cụ kiểm của CI — KHÔNG vào image (ADR-030, ghi chú Cập nhật). Lock riêng: requirements-dev-linux.lock, sinh bằng đúng lệnh ở
+# đầu file đó — cùng lệnh với lock của image cộng --extra dev. Tập hợp là phụ thuộc chạy + dev, để CI cài một file là đủ chạy test và
+# lint-imports. Phiên bản chốt theo kết quả của chính công cụ khoá ở mốc --exclude-newer, không từ trí nhớ (CLAUDE.md, quy tắc trích dẫn).
+[project.optional-dependencies]
+dev = [
+    "import-linter==2.15",
+]
+
 [tool.ruff]
 line-length = 100
