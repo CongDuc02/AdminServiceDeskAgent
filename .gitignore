@@ -47,3 +47,5 @@ logs/
 .claude/settings.local.json
 
 .claude/commands/spike.md
+# S3 của Spike 1 — kết quả đo của probe.py; số đo vào docs/reference/ bằng tay
+tools/render-probes/out/

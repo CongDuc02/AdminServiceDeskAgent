@@ -2947,3 +2947,119 @@ Chưa chạy phép đo nào. A-050, A-025 chưa đổi.
 | `.claude/commands/spike.md` — PO cho phép | Dòng S2: mục mở đánh thức có một lần đo; vẫn mở |
 
 **Chưa đủ điều kiện:** chưa xác nhận không có request trong 15 phút trước lần gọi, chưa có giờ gọi. Một lần đo, mạng nhà PO.
+
+---
+
+## 2026-10-04 — S3: bước 1–4 — tài liệu, endpoint đo, probe, đối chứng local; kế hoạch chỉnh theo PO
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-request-timeout-streaming.md` | Mới. Tài liệu Render không nêu giới hạn thời gian request, thời gian im lặng tối đa, hay việc proxy gom đệm response stream. Bài blog của Render nêu "100 minutes" — nguồn thứ cấp, không dùng để đóng A-025 |
+| `docs/reference/github-actions-workflow-dispatch.md` | Mới. `workflow_dispatch` chỉ chạy khi file workflow đã có trên nhánh mặc định |
+| `backend/src/bo19/entrypoints/api_main.py` | Khối `SPIKE S3`: `make_spike_router`, `_mount_spike`, hai dòng trong `main()`; `/api/_spike/{sse,sleep,commit}` |
+| `backend/tests/test_spike_probes.py` | Mới — 14 test |
+| `tools/render-probes/probe.py`, `README.md` | Mới. `.gitignore`: `tools/render-probes/out/` |
+
+**Chỉnh kế hoạch — PO duyệt 2026-10-04:**
+
+- Đường dẫn là `/api/_spike/*`, không phải `/_spike/*`: luật 404 của mục Phục vụ tĩnh và luật 404 của `06-structure.md` trả `index.html` cho GET lạ ngoài `/api`.
+- Bước 8 (runner GitHub Actions) dùng trigger `push` có cổng tường minh, không dùng `workflow_dispatch` — tài liệu GitHub đòi file workflow ở nhánh mặc định. Chưa viết workflow.
+- Kiểm bản đang chạy bằng `/api/_spike/commit` (biến `RENDER_GIT_COMMIT`), probe dừng nếu sai commit.
+- Render đang deploy từ `main`; để đo phải đổi sang `spike/s3-do`, bước 7 đổi lại về `main`. PO tự đổi trên dashboard.
+- Trần SSE giữ 60 phút; không cắt thì ghi "≥ 60 phút".
+- Thêm cờ `kind=comment` và `accel=no` vào `/sse` — cho ca (c) và biến thể `X-Accel-Buffering` của bước 7, để không phải deploy lại.
+
+**Đối chứng local (bước 4):** container dựng từ `Dockerfile` S2, nối DB Render bằng `bo19_app`; `STARTUP_OK`. Sáu lượt probe — hai biến thể `Accept-Encoding`, bốn ca — lệch lớn nhất giữa khoảng nhận và khoảng gửi 4.237 ms trên 18 cặp event (lượt 2; bốn lượt còn lại có cặp: 0.493 ms, 0.838 ms, 1.041 ms), event đầu sau 3.627–8.486 ms, không `Content-Encoding`. Client ngắt: SSE trả chỗ ngay (`cancelled`), `/sleep` thấy trong ≤ 1 s (`client_gone`). 429 có thật qua mạng. Log không có token, không có header. 39 test đạt, 5 bỏ qua (cần superuser PostgreSQL). **Hai lỗi của probe do đối chứng bắt:** `time.monotonic()` trên Windows nhảy bước ~15.6 ms; `bunched_pairs` đếm nhầm cặp `tick`/`end` gửi cách nhau 0.6 ms — đã sửa.
+
+Chưa đo trên Render. A-025, A-050 chưa đổi.
+
+---
+
+## 2026-10-04 — S3: chuẩn bị bước 6 — ngưỡng, 429, test hết hạn, workflow
+
+| File | Thay đổi |
+|---|---|
+| `tools/render-probes/README.md` | Nhiễu nền local; **ngưỡng kết luận gom đệm đặt trước khi đo Render**; quy trình đo A-025 (thang `sleep`, dừng chia đôi khi `hi − lo` ≤ `max(15 s, 10% · lo)`, ca dài hai lần có/không `keepwarm`); ca (b); runner |
+| `tools/render-probes/probe.py` | Gặp 429 chờ 10 s rồi thử lại, ghi `busy_retries`, không tính là điểm dữ liệu; bỏ cuộc thì mã thoát 6; `--emit` in `RESULT_JSON`; `--busy-wait-s` |
+| `backend/tests/test_spike_probes.py` | Thêm test chỗ thử tự hết hạn — 15 test đạt |
+| `.github/workflows/spike-s3-probe.yml` | Mới: trigger `push` lên `spike/s3-do` **và** `paths: tools/render-probes/run.json`; `concurrency` một nhóm; job 345 phút; `actions/checkout` ghim theo sha |
+| `docs/reference/github-actions-push-trigger.md` | Mới: `push`, `paths`, `concurrency`, thời lượng job, secret, `checkout`; ghi rõ hai điều tài liệu không nói thẳng |
+
+**Đính chính:** mục ngay trên ghi sai "tối đa 1.041 ms" cho cả sáu lượt đối chứng; số đúng trên 18 cặp là **4.237 ms** (lượt 2), 1.041 ms chỉ là lượt 1. Đã sửa tại chỗ. Số sai do tôi mới in tóm tắt hai lượt khi viết.
+
+**Ngưỡng — `I = 5 s`:** không thấy gom đệm nếu event đầu tới ≤ 2 s và mọi cặp lệch ≤ 0.5 s; có gom đệm nếu event đầu tới ≥ 5 s hoặc ≥ 1 cặp lệch ≥ 2.5 s; còn lại không kết luận. Nền local 4.237 ms nên 0.5 s cao hơn 118 lần. 2 s, 0.5 s, 2.5 s là chọn, không suy từ nền local.
+
+**Phép thử âm của workflow (S3):**
+
+- Push 1 — `dbe5546`, thêm `.github/workflows/spike-s3-probe.yml`, không đổi `run.json`: sau 20 s `GET /actions/runs?branch=spike/s3-do` trả `total_count = 0`.
+- `GET /actions/workflows` trả `total_count = 0` — workflow chỉ nằm ở nhánh `spike/s3-do` **không** hiện ở danh sách này. Vì vậy "0 lượt chạy" chỉ cho biết push thường không kích hoạt gì; **chưa** chứng minh file workflow hợp lệ. Việc đó chờ lượt chạy vô hại.
+- `GET /actions/secrets` trả `total_count = 0` — chưa có repo secret nào.
+
+---
+
+## 2026-10-04 — S3: ngưỡng gom đệm chỉnh trước khi đo Render; workflow kiểm secret rỗng
+
+| File | Thay đổi |
+|---|---|
+| `tools/render-probes/README.md` | PO sửa ngưỡng: **một** cặp lệch ≥ 2.5 s đơn lẻ là "không kết luận" và chạy lại; "có gom đệm" khi ≥ 2 cặp trong một lượt, hoặc một cặp lặp lại ở lượt chạy lại. Các mốc khác giữ (event đầu ≥ 5 s; 2 s; 0.5 s) |
+| `.github/workflows/spike-s3-probe.yml` | Bước đầu kiểm hai secret; rỗng hoặc chưa tạo thì job đỏ ngay, chỉ báo **tên** secret thiếu, không in giá trị |
+
+Render đang chạy `8fdd1bbc725ca5a586eb91238b294933990525a6` trên nhánh `spike/s3-do` — kiểm từ máy local bằng `/api/_spike/commit`, `boot_epoch` 1791125091.52. `.env`: hai dòng `BO19_SPIKE_*` không nháy, không `\r`, không khoảng trắng thừa. Repo công khai (`private: false` theo API) — không cần ước quota phút Actions.
+
+---
+
+## 2026-10-04 — S3: lượt vô hại trên runner — workflow chạy, nhưng repo chưa có secret
+
+Run `37210992837`, commit `3ba669c` (push đổi `tools/render-probes/run.json`): `failure` ở bước "Kiểm secret", đúng như thiết kế — cả hai biến `BO19_SPIKE_BASE_URL`, `BO19_SPIKE_TOKEN` rỗng, thông báo chỉ nêu tên, bước Probe bị bỏ qua.
+
+- **Workflow ở nhánh phi mặc định có chạy khi push đổi file `paths`:** có. Workflow chưa từng có trên `main`. Bốn push trước đó không đổi `run.json` (`dbe5546`, `8fdd1bb`, `943dcad`; cộng push đầu) — `total_count = 0` sau mỗi lần. Điểm 1 của tài liệu GitHub: phần "chạy cả workflow chưa vào nhánh mặc định" đã thấy tận mắt; run này chạy bản có bước "Kiểm secret", là bản thêm ở `943dcad` — không phải bản đầu.
+- **Secret dùng được khi chạy theo `push`: chưa kiểm được.** `GET /actions/secrets`, `/environments`, `/dependabot/secrets` đều `total_count = 0` — secret **chưa tồn tại** ở repo `CongDuc02/AdminServiceDeskAgent`, không phải "tạo rồi mà không vào". Điểm 2 vẫn mở.
+- Dừng theo điều kiện của PO: secret không vào. Chưa đo gì trên Render.
+
+---
+
+## 2026-10-05 — S3 xong: kết quả A-025, A-050; giả thuyết ngủ 15 phút (A-086); bước 7 phần code
+
+Phạm vi S3 được PO thu hẹp 2026-10-04: thang `sleep` dài, SSE im lặng dài, chia đôi và mọi ca ≥ 15 phút **không chạy — không quyết định nào cần** (AC-1.13).
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-s3-nhat-ky-do.md` | Mới. Nhật ký đo nguyên văn: `boot_epoch`, `short-1` gián đoạn, `short-2`, `short-3`, lượt vô hại, lượt cuối trên runner (run `37217611319`), điều đã đo và không đo, giả thuyết ngủ 15 phút |
+| `docs/reference/render-request-timeout-streaming.md`, `github-actions-workflow-dispatch.md`, `github-actions-push-trigger.md` | Mới. Tài liệu Render và GitHub lấy bằng `curl`; Render không nêu giới hạn thời gian request hay gom đệm; `workflow_dispatch` đòi file ở nhánh mặc định |
+| `ASSUMPTIONS.md` → 0.55 | A-025 và A-050 `Mở` → `Thu hẹp` (kết quả ở cột Giả định); **A-086 mới**, `Mở`, chuyển Sprint 4 |
+| `12-roadmap.md` → 0.32 | R4-4 — instance Web Service free ngủ giữa các lượt dùng của buổi UAT |
+| `.claude/commands/spike.md` — PO cho phép lần này | Dòng S3: sửa cho khớp thực tế (push có lọc `paths` + file spec, `/api/_spike/*`, phạm vi thu hẹp, kết quả). Chỉ một dòng đổi |
+| `backend/src/bo19/entrypoints/api_main.py` | **Gỡ hẳn** khối `SPIKE S3`, hàm `make_spike_router`, `_mount_spike` và hai dòng trong `main()` — khôi phục đúng bản `23cec28` (diff 0 dòng) |
+| `backend/tests/test_spike_probes.py`, `.github/workflows/spike-s3-probe.yml`, `tools/render-probes/run.json` | Xoá |
+| `tools/render-probes/` | Giữ `probe.py`, `test_probe.py`, `README.md` (ghi rõ endpoint đã gỡ); `.gitignore`: `tools/render-probes/out/` |
+
+**Kết quả (Web Service free, chuỗi client → Cloudflare → Render, HTTP/1.1):**
+
+- **A-050:** không thấy gom đệm ở hai điểm nhìn. Máy nhà (HKG): lệch lớn nhất 0.540 / 0.352 / 0.608 s — ngưỡng gốc *không kết luận* / *không thấy* / *không kết luận*, tiêu chí phụ *không thấy* cả ba. Runner (IAD): 0.0064 s và 0.0068 s — *không thấy* theo cả hai tiêu chí. Không lượt nào *có gom đệm*. Không nén `text/event-stream`. **Tiêu chí phụ được đặt sau khi đã thấy dữ liệu local, trước khi có số đo runner** — ghi ở `tools/render-probes/README.md`.
+- **A-025:** stream có event mỗi 5 s sống ≥ 600 s (5/5 lượt); im lặng sống ≥ 120 s, ở 300 s event `end` không tới trong 390 s (một lần, từ runner, `boot_epoch` không đổi, chưa biết thời điểm chết); byte đầu chậm ≥ 120 s. **Không phải giá trị giới hạn thật.** Log Render của lượt 300 s chưa có.
+- **A-086 (giả thuyết, chưa kiểm):** ngủ sau 15 phút không có request, tính từ request cuối. Bốn mốc `boot_epoch`; một lần thức sau chỉ ≈ 9–10 phút nghỉ, chưa giải thích.
+
+**Sự cố ghi nhận:** (1) tiến trình đo local `short-1` chết cùng phiên điều khiển — mất lượt, không phải Render cắt; từ đó probe ghi JSONL tăng dần. (2) Tôi chạy `git checkout probe.py` để hoàn tác một phép thử đột biến và xoá luôn thay đổi chưa commit; đã viết lại và commit. (3) Con số "1.041 ms" sai ở mục S3 trước đó, đã đính chính.
+
+**Còn lại của bước 7 — chưa làm khi viết mục này:** Render đổi nhánh về `main`, bật Auto-Deploy, xoá `BO19_SPIKE_PROBES` và `BO19_SPIKE_TOKEN` (PO); xoá hai repo secret (PO); xoá hai dòng `BO19_SPIKE_*` trong `.env`; deploy bản đã dọn và kiểm `/api/_spike/*` trả 404. Sẽ ghi ở mục sau khi xong.
+
+---
+
+## 2026-10-05 — S3: bước 7 xong; log Render của lượt 300 s
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-s3-nhat-ky-do.md` | Mục 6.4 mới: log Render `SPIKE_START`/`SPIKE_END` của chín lượt (PO gửi); mục 6.2, 7, 8 cập nhật |
+| `ASSUMPTIONS.md` | A-025: thêm kết quả log Render; cột Trạng thái cập nhật phần còn hở |
+
+**Log Render của lượt im lặng 300 s:** `SPIKE_END reason=cancelled elapsed=282.382` — Render đóng kết nối tới ứng dụng ở 282.382 s, trong khi client (qua Cloudflare) không nhận FIN hay reset và chờ tới 390 s. Tám lượt còn lại: `server_cap`/`completed`, `elapsed` đúng tham số. Một lần quan sát — **không phải giá trị giới hạn**; `boot_epoch` không đổi.
+
+**Bước 7 — đã làm, 2026-10-05:**
+
+- **Render (PO báo):** đổi nhánh, xoá hai biến, deploy. Kiểm của người triển khai: 03:41:42Z `/api/_spike/commit` kèm token đúng trả **200** (`commit=8fdd1bb…`, nhánh `spike/s3-do`) — instance cũ vừa thức dậy; 03:42:08Z trả **404**. Lần kiểm 03:42:16Z: `/api/_spike/commit`, `/sleep?s=0`, `/sse?interval=0&max=1` và đường dẫn lạ đều `404` thân `{"detail":"Not Found"}` **kể cả khi gửi token đúng**; `/healthz` 200. **Auto-Deploy:** PO chưa xác nhận đã bật.
+- **Repo secret:** `gh secret list` trả 0 secret (PO đã xoá cả hai).
+- **`.env`:** đã xoá hai dòng `BO19_SPIKE_BASE_URL`, `BO19_SPIKE_TOKEN`; sáu biến `BO19_RENDER_*` còn nguyên.
+- **Code:** đã gỡ ở `bf8cbce` — `api_main.py` trùng bản `23cec28`; so với `main`, `backend/`, `Dockerfile`, `.dockerignore` không đổi dòng nào.
+- **Merge:** PO cho phép (2026-10-05, một lần): `spike/s3-do` vào `main` bằng `--no-ff`, push `main`.
+
+Phần còn mở của S3: A-086 (Sprint 4, R4-4); đoạn log Render quanh 21:40–22:50 Hà Nội chưa nhận; A-025 và A-050 `Thu hẹp`, không đóng.
