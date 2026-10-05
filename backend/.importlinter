@@ -2,5 +2,137 @@
 root_package = bo19
 include_external_packages = True
 
-# Đặc tả đầy đủ xem 06-structure.md:4.1 — 6 contract:
-# layers, siblings-llm-tools, api-surface, write-path, probe, object-storage, allowlist-gate, graph-library
+# Đặc tả: 06-structure.md mục Đặc tả .importlinter. Cú pháp theo import-linter 2.15 — tài liệu ở docs/reference/import-linter-2.15.md.
+# Chạy từ backend/ với PYTHONPATH=src:  lint-imports
+#
+# Mọi contract `forbidden` đặt allow_indirect_imports = True. Theo tài liệu 2.15, `forbidden` mặc định kiểm cả import GIÁN TIẾP; ý của
+# thiết kế là import TRỰC TIẾP — chuỗi hợp lệ như bo19.api → bo19.orchestrator → bo19.ai_gateway không được tính là api chạm ai_gateway.
+# Hai chỗ giữ chỗ của đặc tả bị bỏ cho tới khi có SDK: <sdk-s3> (A-024) ở object-storage, <sdk-embedding> (A-028) ở allowlist-gate.
+
+[importlinter:contract:layers]
+name = Tầng — chỉ import xuống
+type = layers
+layers =
+    bo19.entrypoints
+    bo19.startup
+    bo19.api | bo19.queue_worker
+    bo19.orchestrator
+    bo19.ai_gateway | bo19.tool_layer
+    bo19.object_storage | bo19.persistence
+    bo19.observability
+    bo19.domain
+    bo19.config
+
+[importlinter:contract:siblings-llm-tools]
+name = ai_gateway và tool_layer độc lập (ADR-019)
+type = independence
+modules =
+    bo19.ai_gateway
+    bo19.tool_layer
+
+[importlinter:contract:api-surface]
+name = api chỉ vào orchestrator qua runner, không chạm ai_gateway hay lối ghi
+type = forbidden
+allow_indirect_imports = True
+source_modules = bo19.api
+forbidden_modules =
+    bo19.ai_gateway
+    bo19.persistence.write
+    bo19.object_storage
+    bo19.orchestrator.intake_graph
+    bo19.orchestrator.document_graph
+    bo19.orchestrator.runtime
+    bo19.orchestrator.state
+
+[importlinter:contract:write-path]
+name = Lối ghi DB — chỉ tool_layer và ba chủ ngoại lệ
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    bo19.api
+    bo19.queue_worker
+    bo19.startup
+    bo19.ai_gateway.gateway
+    bo19.ai_gateway.allowlist
+    bo19.ai_gateway.prompt_modules
+    bo19.ai_gateway.routing
+    bo19.ai_gateway.json_contract
+    bo19.ai_gateway.providers
+    bo19.orchestrator.intake_graph
+    bo19.orchestrator.document_graph
+    bo19.orchestrator.state
+    bo19.orchestrator.runner
+forbidden_modules = bo19.persistence.write
+# Được import bo19.persistence.write: bo19.tool_layer, bo19.ai_gateway.budget (ngoại lệ 3),
+# bo19.orchestrator.runtime (ngoại lệ 1 và 2 — checkpoint, graph_thread), bo19.entrypoints.
+# bo19.startup dùng bo19.persistence.probe: phép thử quyền cần giao dịch thường — trong giao dịch
+# READ ONLY, PostgreSQL báo lỗi chỉ đọc trước khi kiểm quyền, nên phép thử mất nghĩa.
+
+[importlinter:contract:probe]
+name = Chỉ bước kiểm khởi động dùng lối thử quyền
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    bo19.api
+    bo19.queue_worker
+    bo19.orchestrator
+    bo19.ai_gateway
+    bo19.tool_layer
+forbidden_modules = bo19.persistence.probe
+
+[importlinter:contract:object-storage]
+name = Chỉ tool_layer.storage chạm object_storage (mục Lưu trữ file và bất biến bản render của 04-data.md)
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    bo19.api
+    bo19.queue_worker
+    bo19.orchestrator
+    bo19.ai_gateway
+    bo19.tool_layer.kernel
+    bo19.tool_layer.jobs
+    bo19.tool_layer.rendering
+    bo19.tool_layer.numbering
+    bo19.tool_layer.retrieval
+    bo19.tool_layer.checks
+    bo19.tool_layer.tools
+    bo19.tool_layer.gate_ops
+    bo19.tool_layer.employee_ops
+    bo19.tool_layer.endpoint_ops
+    bo19.tool_layer.config_ops
+    bo19.tool_layer.ops
+forbidden_modules = bo19.object_storage
+# SDK S3 điền vào forbidden_modules khi A-024 chốt.
+
+[importlinter:contract:allowlist-gate]
+name = Đường tới provider đi qua gateway — nơi kiểm allowlist
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    bo19.api
+    bo19.queue_worker
+    bo19.orchestrator
+    bo19.tool_layer
+    bo19.ai_gateway.prompt_modules
+    bo19.ai_gateway.routing
+    bo19.ai_gateway.json_contract
+    bo19.ai_gateway.budget
+forbidden_modules =
+    bo19.ai_gateway.providers
+    httpx
+# httpx: ADR-035 — client gọi provider LLM; A-026 mốc 1: Groq. SDK embedding điền khi A-028 chốt.
+
+[importlinter:contract:graph-library]
+name = LangGraph chỉ ở orchestrator.runtime — node chỉ vào graph qua builder có biên node
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    bo19.api
+    bo19.queue_worker
+    bo19.tool_layer
+    bo19.ai_gateway
+    bo19.orchestrator.intake_graph
+    bo19.orchestrator.document_graph
+    bo19.orchestrator.state
+    bo19.orchestrator.runner
+forbidden_modules = langgraph
