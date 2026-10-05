@@ -103,3 +103,43 @@ Log PO dán 2026-10-05: `SIGTERM_RECEIVED utc=2026-10-05T07:12:37.214+00:00 pid=
 **So với dự đoán đã commit (07:11:54Z):** nếu `GET /` của Render tính là request, `SIGTERM` ≈ 07:12:37Z; nếu chỉ `HEAD /`, ≈ 07:12:32Z. Quan sát 07:12:37.214 — **khớp dự đoán thứ nhất**, không khớp thứ hai (lệch 5.0 s).
 
 **`GET /` của Render lúc 06:57:37.944 có làm mới đồng hồ ngủ không?** Dữ liệu **ủng hộ có**: khoảng 899.270 s từ nó nằm trong dải 899.27–899.81 s của bốn lần trước tính từ request cuối; từ `HEAD /` thì 904.978 s, ngoài dải. **Một quan sát chưa đủ loại cách giải thích khác:** đồng hồ tính từ lúc instance **Live** (06:57:36.8–37.8) cũng khớp (899.4–900.4 s), vì `GET /` đến chỉ 0.1–1.1 s sau Live. Cách giải thích đó **bị lần 3 bác** ở đường đánh thức: instance dậy 05:38:07, request lúc 05:38:15.407, `SIGTERM` lúc 05:53:15.220 — tức 15 phút sau **request**, không sau lúc dậy (nếu tính từ lúc dậy thì là 05:53:07) — nhưng chưa bác ở đường deploy-Live. Kết luận hẹp: **`GET /` của Render rất có thể tính; `HEAD /` từ 127.0.0.1 không (hoặc không phải request cuối); chưa phân biệt được "tính từ `GET /`" với "tính từ lúc Live" ở đường deploy.**
+
+## 7. Kết quả nhân chứng — deploy 5, 2026-10-05
+
+Bản `edf3687` (kết nối nhân chứng mở lúc khởi động, ghi mọi tín hiệu). Deploy 4 đưa bản này lên (07:31–07:32Z, instance cũ chưa có nhân chứng); **deploy 5** (instance cũ `boot_utc` 07:32:33.036, đã `WITNESS_OPEN` và `S4_ARMED … witness=True`) là phép đo. Bộ poll (`bab67b0`) bật 07:33:00Z từ máy người đo, hỏi `pg_stat_activity` mỗi 0.25 s: 1549 lần hỏi, 0 lỗi; một khoảng cách 1.219 s lúc 07:33:03.
+
+### 7.1 Hai số, báo riêng
+
+| | Giá trị |
+|---|---|
+| **(a) `n` cuối đọc được** (nhân chứng) | **5** — `SHUTDOWN_HOLD` cuối trong log cũng n=5 (4.167 s sau `SIGTERM`); `n=6` chưa từng xuất hiện ở cả hai |
+| **(b) lúc kết nối biến mất** | lần hỏi cuối **còn** thấy 07:37:00.159, lần hỏi đầu **không** thấy 07:37:00.409 — **1.000 s sau lần đổi `n` cuối** (n=5 thấy 07:36:59.409) |
+
+`SIGTERM_RECEIVED` trong log: 07:36:54.936. Bộ poll thấy `n=1..5` lần lượt lúc +0.473, +1.473, +2.473, +3.473, +4.473 s so với giờ đó; `n=k` được đặt `0.167 + (k−1)` s sau `SIGTERM` theo đồng hồ instance, nên độ lệch (đồng hồ hai máy cộng lượng tử hoá của poll) khoảng **0.31 s**. Trừ độ lệch đó, kết nối biến mất trong khoảng **(4.92, 5.17] s sau `SIGTERM`** — sau lần đặt `n=5` (4.167 s) và trước lần đặt `n=6` (5.167 s). Độ phân giải 0.25 s.
+
+### 7.2 Nhãn theo khai báo trước (mục 5)
+
+| Điều thấy | Nhãn đã khai báo | Khớp? |
+|---|---|---|
+| `n` cuối = 5, kết nối biến mất 1.000 s sau lần đổi `n` cuối (≤ 2 s) | **Kill ≈ 5 s sau `SIGTERM`** | **Có** |
+| `n` tiếp tục tăng tới ≈ 30 | Log bị cắt, delay 30 s | Không (`n` dừng ở 5) |
+| `n` dừng ở 5, kết nối còn ≥ 10 s | Treo | Không (biến mất ngay) |
+
+**Kết luận theo nhãn khai báo trước: kill ≈ 5 s sau `SIGTERM`.** Đường log **không** bị cắt: nhân chứng độc lập với log cho cùng `n` cuối và cùng thời điểm. Đây là một lần đo có nhân chứng ở đường deploy (cộng sáu lần chỉ-log ở cả hai đường, mọi lần n=5).
+
+### 7.3 `SIGNAL_RECEIVED` của instance cũ
+
+Chỉ **một** dòng, trong toàn bộ 4.17 s log nhìn thấy được:
+
+```text
+SIGNAL_RECEIVED sig=SIGTERM nth=1 total=1 utc=2026-10-05T07:36:54.936+00:00 pid=1
+```
+
+Không có `SIGTERM` thứ hai, không SIGINT, và không có `SIGHUP`, `SIGQUIT`, `SIGUSR1`, `SIGUSR2`, `SIGALRM`, `SIGCONT`, `SIGTSTP` (đã đặt handler ghi — `S4_ARMED … extra_signals=…`). **Giả thuyết "uvicorn ép thoát vì tín hiệu lần hai" bị loại cho khoảng 0–4.17 s.** `SIGKILL` không bắt được nên không có dòng — kill được suy từ việc kết nối nhân chứng biến mất.
+
+### 7.4 Điều kèm theo
+
+- **`SIGTERM` đến cùng lúc instance mới Live, ba lần ở đường deploy.** `SIGTERM` của instance cũ đứng trước `GET /` của Render (dò sau khi Live) 1.31 s (deploy 3), 1.78 s (deploy 4), 0.70 s (deploy 5). Không có 60 s nào.
+- **Deploy 4** (instance cũ boot 07:31:04.807, do lệnh đánh thức dựng lên): `SIGTERM_RECEIVED` 07:32:42.747, hold dừng n=5 (4.155 s) — lần chỉ-log thứ sáu.
+- Instance mới của deploy 5 (`boot_utc` 07:36:46.021) giữ nguyên, bộ poll vẫn chạy; `SIGTERM` ngủ của nó, nếu đến (khoảng 15 phút sau `GET /` 07:36:55.640, tức khoảng 07:51:55Z), sẽ có nhân chứng — lần ngủ đầu tiên có nhân chứng.
+- **Chưa sửa** WV-01, bước kiểm khởi động #11 hay ADR-016. Theo chỉ thị: xác nhận kill ≈ 5 s thì dừng và báo người quyết.
