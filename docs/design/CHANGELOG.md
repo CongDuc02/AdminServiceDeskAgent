@@ -3211,3 +3211,26 @@ PO cho phép merge `build/b3-api-xac-thuc` vào `main` bằng `--no-ff` khi CI c
 | `12-roadmap.md` → 0.37 | Cổng 2.7 **chặn thêm: không seed bất kỳ tài khoản nào lên Render** trước khi đạt (PO). O1-9: nợ access log có cấu trúc — PO hoãn, hạn trước AC-2.1, không làm. O1-10: nợ `LoginBody` `maxLength` và trần body — chờ PO duyệt diff, hạn trước cổng 2.8 |
 | `ASSUMPTIONS.md` → 0.59 | A-062: cổng 2.7 chặn thêm seed lên Render, kèm lý do (cả hệ thống chung một ngưỡng 20 lần mỗi 15 phút — ai cũng khoá được đăng nhập của mọi người) |
 | `proposals/login-body-limits.md` | **Mới, chờ PO duyệt:** diff đề xuất `openapi.yaml` và `05-api.md`. **Chưa sửa contract.** Các con số 64, 128, 4096 là đề xuất chưa có căn cứ nguồn |
+
+---
+
+## 2026-10-05 — B4: `ai_gateway` (nhánh `build/b4-ai-gateway`, chờ PO duyệt merge)
+
+PO duyệt kế hoạch B4 (2026-10-05): transport giả, B4b (lời gọi Groq thật) sau; hồ sơ model là file JSON trong repo, chỉ `base_url` và khoá là biến môi trường; giữ trần P1 1.500, O1-1 phải đóng trước AC-1.1. Kèm ba yêu cầu: không log thân lỗi provider thô, hạn chót tổng mỗi lời gọi, khoá API không lộ — cả ba có test và có trong phép thử đột biến.
+
+| Phần | Thay đổi |
+|---|---|
+| Cấu hình | `ai_gateway/routing/model_profiles.json` + `profiles.py` (schema; tham số ngoài danh sách của model bị từ chối); `BO19_LLM_BASE_URL` (mặc định Groq, bắt buộc `https://`), `BO19_LLM_API_KEY` (ẩn khỏi `repr`); trần budget ở `config/working_values.py`; bước kiểm **#21** và **#5** (`startup/checks_gateway.py`) |
+| `allowlist`, `prompt_modules`, `json_contract` | Allowlist tập khoá đúng bằng; P1, P2, P4 khai đích danh; `variable` cho allowlist của P4; danh sách cấm P4; `catalog_fingerprint`; schema sinh lúc gọi (ADR-025); bộ validate tự viết cho tập từ khoá của `07-prompts.md` (không có `jsonschema` trong lock), từ khoá lạ bị từ chối |
+| `providers` | `httpx`, `async`; hạn chót tổng bằng `asyncio.timeout` bao retry và `retry-after`; lỗi chỉ giữ mã HTTP, loại lỗi, code; khoá trong `_Secret`; không theo chuyển hướng, không đọc proxy từ môi trường |
+| `budget`, `gateway` | Sổ `llm_usage` một dòng mỗi lời gọi (token cộng dồn, cộng cả `completion_tokens` và `reasoning_tokens`); trần chủ budget `chat_session` 46.500, `request` 92.000, fail-closed; `gateway.call` theo thứ tự chủ budget → allowlist → budget → provider → ép JSON → ghi sổ; `build_gateway` |
+| Tài liệu | `docs/reference/llm-groq-structured-request.md` (curl, sha256); `06-structure.md` → 0.32; ADR-035 mục Cập nhật B4; `11-ops.md` → 0.32 (hai biến); `ASSUMPTIONS.md` A-089, A-090, A-091; `12-roadmap.md` → 0.39 (AC-1.9, AC-1.7, O1-1 trước AC-1.1) |
+| Test | 478 test trên PostgreSQL thật. **Đột biến thử trên bản sao, mỗi chỗ làm test đỏ:** adapter 9 chỗ (bỏ hạn chót tổng, chờ `retry-after` bất kể thời gian, giữ thân thô, bỏ `from None`, `repr` lộ khoá, theo chuyển hướng, thử lại 400, không kiểm khuôn type/code, `repr` client lộ khoá); gateway/budget/allowlist 12 chỗ (bỏ allowlist, bỏ kiểm budget, bỏ sửa parse, không ghi sổ khi từ chối, budget không cộng reasoning, `>` thay `>=`, bỏ hạn chót lượt, bỏ trần WV-19, danh sách cấm rỗng, không ghi sổ khi lỗi provider, lần sửa không dùng chung hạn chót, log lỗi kèm input). Một chỗ sống sót ở lần chạy đầu đã được siết (xem dưới) |
+
+**Chỗ code chọn mà thiết kế chưa nói** (đã ghi vào `06-structure.md`, mục Triển khai ở B4): API `async`; hạn chót tổng thay câu "tier rẻ chỉ retry khi còn ≥ WV-04" của WV-05; trần token mỗi lời gọi chỉ đo và cảnh báo (`LLM_CALL_OVER_CEILING`) vì không chặn được trước lời gọi (A-090); trần nạp kho chưa có giá trị nên #5 chưa phủ; `temperature` và `reasoning_effort` của tier mạnh không đặt (A-090); thiếu khoá API không chặn khởi động ở B4.
+
+**Đột biến đáng nhớ:** (1) bỏ `retry-after` guard thứ nhất không làm test đỏ vì guard thứ hai (`wait >= remaining`) che — hai guard chồng nhau, chỉ trần WV-19 là chỗ phân biệt được; (2) ca "lần sửa parse dùng chung hạn chót" ban đầu **không** bắt được đột biến; đã siết (lần đầu chậm 0,5 s, hạn chót 1 s) và lặp 8 lần không flaky.
+
+**Flaky đã sửa:** `test_lan_sua_parse_dung_chung_han_chot…` fail 1/6 lần với biên 0,25 s/0,5 s do độ phân giải timer của Docker trên Windows (~15 ms) và overhead DB; nới biên lên 0,5 s/1 s, 8 lần liên tiếp đạt, đột biến tương ứng vẫn bị bắt.
+
+**Chưa làm ở B4:** P3, P5, E1, E2 (A-028), nhánh B ép JSON, trần nạp kho, lời gọi Groq thật (B4b — đóng O1-1, O1-3, A-089, A-091).

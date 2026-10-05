@@ -425,10 +425,10 @@ class HanChotTong(Base):
 
     async def test_lan_sua_parse_dung_chung_han_chot_va_token_lan_dau_van_ghi(self):
         self.addCleanup(setattr, wv, "LLM_CALL_DEADLINE_CHEAP_SECONDS", wv.LLM_CALL_DEADLINE_CHEAP_SECONDS)
-        wv.LLM_CALL_DEADLINE_CHEAP_SECONDS = 0.5
+        wv.LLM_CALL_DEADLINE_CHEAP_SECONDS = 1.0
 
         async def slow_bad():
-            await asyncio.sleep(0.25)  # lần đầu hỏng sau 0.25 s: lần sửa chỉ còn ~0.25 s trong hạn chót tổng 0.5 s
+            await asyncio.sleep(0.5)  # lần đầu hỏng sau 0.5 s: lần sửa chỉ còn ~0.5 s trong hạn chót tổng 1.0 s — biên rộng để không flaky khi máy tải
             return reply("{hong")
 
         rec = Recorder(slow_bad, self.drip(GOOD_P1))  # lần sửa nhỏ giọt
@@ -436,7 +436,7 @@ class HanChotTong(Base):
         with self.assertRaises(ProviderError) as cm:
             await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
         self.assertEqual((cm.exception.kind, len(rec.requests)), ("DEADLINE", 2))
-        self.assertLess(time.monotonic() - t, 0.65)  # nếu lần sửa được cấp lại cả 0.5 s thì tổng ≈ 0.75 s
+        self.assertLess(time.monotonic() - t, 1.25)  # nếu lần sửa được cấp lại cả 1.0 s thì tổng ≈ 1.5 s
         (row,) = self.rows()
         self.assertEqual((row[3], row[4], row[5], row[6]), (120, 30, 12, "PROVIDER_ERROR"))  # token của lần đầu đã tiêu thật — không mất khỏi sổ
 
