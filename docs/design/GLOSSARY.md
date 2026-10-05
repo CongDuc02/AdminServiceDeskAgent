@@ -1,6 +1,6 @@
 # GLOSSARY — BO-19 Admin Service Desk Agent
 
-**Phiên bản:** 0.27 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5, vòng duyệt Phase 5, Phase 6, Phase 9, Phase 12, đợt sửa A-068, A-073, A-075, đợt sửa 2 và đợt sửa 3 sau Phase 13 · **v0.24:** đợt sửa 4 sau Phase 13 — ba con trỏ cũ (AUD-11) · **v0.25:** đợt sửa 5 sau Phase 13 — định nghĩa Product Owner · **v0.26:** A-055 `Đã chốt` — hướng 1, danh sách miễn `audit_event` (2026-09-27) · **v0.27:** enum `provider_failure_subcode` (ADR-035, 2026-10-02)
+**Phiên bản:** 0.28 · **Chốt tại:** Phase 0, bổ sung ở Phase 2, Phase 3, các vòng sửa Phase 3, Phase 4, vòng duyệt Phase 4, Phase 5, vòng duyệt Phase 5, Phase 6, Phase 9, Phase 12, đợt sửa A-068, A-073, A-075, đợt sửa 2 và đợt sửa 3 sau Phase 13 · **v0.24:** đợt sửa 4 sau Phase 13 — ba con trỏ cũ (AUD-11) · **v0.25:** đợt sửa 5 sau Phase 13 — định nghĩa Product Owner · **v0.26:** A-055 `Đã chốt` — hướng 1, danh sách miễn `audit_event` (2026-09-27) · **v0.27:** enum `provider_failure_subcode` (ADR-035, 2026-10-02) · **v0.28:** B3 — thao tác `rate_limit_window_increment` (2026-10-05)
 
 > Đây là danh sách tên chuẩn. Từ Phase 1 trở đi, mọi tài liệu, diagram, DDL, endpoint và prompt phải dùng **đúng** các định danh trong file này. Muốn đổi tên thì sửa file này trước, rồi ghi vào [`CHANGELOG.md`](./CHANGELOG.md).
 
@@ -339,6 +339,8 @@ Node `open_request` gọi tool `request_open`; hai tên khác nhau có chủ đ�
 **Thao tác do endpoint gọi** *(thêm ở Phase 9)* — `operating_mode_transition`: ghi một dòng `operating_mode_change`. Tên khác entity `operating_mode_change` có chủ đích — một là bước ghi của `tool_layer`, một là entity/bảng nó ghi vào, cùng lý do `open_request`/`request_open` đã nêu ở mục 12. Định nghĩa ở mục `operating_mode_change` của `09-security.md`
 
 **Thao tác do endpoint gọi** *(thêm ở ADR-023, ghi vào đây ở đợt sửa 2 sau Phase 13)* — `operating_mode_transition_reject`: khi `POST /operating-mode/transitions` xin chuyển sang `PRODUCTION` mà `BO19_ENVIRONMENT ≠ prod`, chỉ ghi `audit_event` mức `WARNING`. Không ghi `operating_mode_change`, không đổi `operating_mode`. Tên khác `operating_mode_transition` có chủ đích: hai hợp đồng ghi khác nhau
+
+**Thao tác do endpoint gọi** *(thêm ở B3, 2026-10-05)* — `rate_limit_window_increment`: tăng `attempt_count` của một dòng `rate_limit_window` theo `scope` và cửa sổ hiện hành. Sổ sách kỹ thuật, không `audit_event` (A-055); không cần `tool_layer.kernel`. Định nghĩa ở mục Rate limit của `09-security.md`.
 
 **Loại job** — `render_document` · `resume_document_graph` · `finalize_issue` · `checkpoint_purge` · `procedure_ingest` · `notification_send`. Ba loại cuối thêm ở Phase 4: là thao tác mà Phase 3 đã mô tả chạy bằng job, nay có tên trong enum
 

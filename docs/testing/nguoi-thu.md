@@ -12,7 +12,7 @@ Không gõ vào ô chat, không tải lên, không dán vào bất kỳ ô nào:
 - tên cơ quan nhận văn bản, mục đích xin giấy **của một việc có thật**;
 - bất cứ thứ gì bạn sẽ không muốn đọc lại trên màn hình của người khác.
 
-Chỉ dùng **tài khoản giả** được cấp và **nội dung bịa**. Ví dụ dùng được: "Xin giấy xác nhận công tác để nộp hồ sơ vay tại Ngân hàng Thử Nghiệm ABC, 2 bản". Cố đặt tên sao cho ai đọc cũng nhận ra là giả.
+Chỉ dùng **tài khoản giả** được cấp và **nội dung bịa**. Tài khoản giả có mã dạng `GIA-0001`; mật khẩu do người triển khai giao riêng, ngoài hệ thống — chưa có chức năng đổi hay quên mật khẩu (A-048), nên mất mật khẩu thì báo người triển khai đặt lại. Ví dụ dùng được: "Xin giấy xác nhận công tác để nộp hồ sơ vay tại Ngân hàng Thử Nghiệm ABC, 2 bản". Cố đặt tên sao cho ai đọc cũng nhận ra là giả.
 
 **Vì sao.** Mỗi tin nhắn chat được gửi nguyên văn tới nhà cung cấp mô hình ngôn ngữ — trong giai đoạn này là Groq, xử lý và lưu ở Mỹ (`docs/reference/llm-groq.md`). Thủ tục chuyển dữ liệu cá nhân ra nước ngoài theo Luật Bảo vệ dữ liệu cá nhân năm 2025 chưa được xét xong (A-080, ADR-032). Hệ thống không có chặn kỹ thuật nào phân biệt được dữ liệu thật với dữ liệu giả — chỉ có bạn.
 
