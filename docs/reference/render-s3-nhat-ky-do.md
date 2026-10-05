@@ -146,7 +146,7 @@ Không `Content-Encoding` ở cả hai lượt (lượt 2 gửi `Accept-Encoding
 | 120 s | `end_event`, `completed` | 120.279688 s | `open` ở 0.278000 s; `end` ở 120.275868 s |
 | **300 s** | **`error`, `TimeoutError`: "The read operation timed out"** | **390.331852 s** | **chỉ `open`** ở 0.259375 s; `since_last_data` 390.072 s |
 
-Lượt 300 s bắt đầu 17:03:50.334Z. Probe đặt thời gian chờ đọc `max + 90 s` = 390 s: nó **thoát vì hết thời gian chờ**, không phải vì kết nối đóng — client không thấy FIN, không thấy reset, và event `end` (do máy chủ gửi khi hết 300 s) không bao giờ tới. Sau lượt, `/commit` trả 200, cùng commit, `boot_epoch` không đổi: **không phải restart**. Phân loại của probe: `cut`. Thang dừng ở nấc này (nấc cuối của thang). **Một lần quan sát**, một điểm nhìn (runner, edge IAD); không chạy lại (phạm vi thu hẹp). **Không biết thời điểm thật kết nối chết** — chỉ biết `end` ở 300 s không tới trong 390 s. Log Render của lượt này — các dòng `SPIKE_START` và `SPIKE_END` (`reason=client_gone`/`cancelled` hay `server_cap`, và `elapsed`) — cho biết máy chủ có thấy client đi hay không; **chưa có** (PO sẽ lấy).
+Lượt 300 s bắt đầu 17:03:50.334Z. Probe đặt thời gian chờ đọc `max + 90 s` = 390 s: nó **thoát vì hết thời gian chờ**, không phải vì kết nối đóng — client không thấy FIN, không thấy reset, và event `end` (do máy chủ gửi khi hết 300 s) không bao giờ tới. Sau lượt, `/commit` trả 200, cùng commit, `boot_epoch` không đổi: **không phải restart**. Phân loại của probe: `cut`. Thang dừng ở nấc này (nấc cuối của thang). **Một lần quan sát**, một điểm nhìn (runner, edge IAD); không chạy lại (phạm vi thu hẹp). Phía client **không biết thời điểm kết nối chết** — chỉ biết `end` ở 300 s không tới trong 390 s; phía máy chủ thấy nó ở 282.382 s (mục 6.4). Log phía máy chủ (PO gửi 2026-10-05, mục 6.4) cho biết điều client không thấy: **máy chủ ghi `SPIKE_END reason=cancelled elapsed=282.382`** — nó thấy client rời đi sau 282.382 s kể từ `SPIKE_START`, trước hạn 300 s của chính nó.
 
 ### 6.3 `/sleep` — byte đầu chậm — A-025, `enc=none`, `ladder: sleep`
 
@@ -158,13 +158,35 @@ Lượt 300 s bắt đầu 17:03:50.334Z. Probe đặt thời gian chờ đọc 
 
 Cả ba hoàn tất, byte đầu tới đúng hạn. Không đo nấc cao hơn — **không chạy, không quyết định nào cần**.
 
+### 6.4 Log Render của lượt cuối — PO gửi 2026-10-05
+
+Các dòng ứng dụng `SPIKE_START` / `SPIKE_END` (UTC, giờ trong log của Render). Bỏ các dòng truy cập `GET … 200 OK` của uvicorn và địa chỉ nội bộ.
+
+| Lượt | Ca | `SPIKE_START` | `SPIKE_END` | `reason` | `elapsed` |
+|---|---|---|---|---|---|
+| 1 | `sse` nhịp 5 s, `max=600` | 16:40:14,565 | 16:50:14,565 | `server_cap` | 600.001 s, 120 tick |
+| 2 | `sse` nhịp 5 s, `max=600` | 16:50:15,703 | 17:00:15,705 | `server_cap` | 600.001 s, 120 tick |
+| 3 | `sse` im lặng, `max=30` | 17:00:17,033 | 17:00:47,033 | `server_cap` | 30.000 s |
+| 4 | `sse` im lặng, `max=60` | 17:00:48,753 | 17:01:48,753 | `server_cap` | 60.000 s |
+| 5 | `sse` im lặng, `max=120` | 17:01:49,403 | 17:03:49,405 | `server_cap` | 120.002 s |
+| **6** | **`sse` im lặng, `max=300`** | **17:03:50,527** | **17:08:32,908** | **`cancelled`** | **282.382 s** |
+| 7 | `sleep` `s=30` | 17:10:21,247 | 17:10:51,247 | `completed` | 30.000 s |
+| 8 | `sleep` `s=60` | 17:10:51,857 | 17:11:51,857 | `completed` | 60.000 s |
+| 9 | `sleep` `s=120` | 17:11:52,466 | 17:13:52,466 | `completed` | 120.000 s |
+
+- **Khớp với phía client** ở tám lượt: `server_cap` / `completed` với `elapsed` đúng bằng tham số; số tick của lượt 1, 2 là 120.
+- **Lượt 6 khác:** `reason=cancelled` là cách `api_main` ghi khi tác vụ stream bị huỷ vì client đóng kết nối (kiểm ở đối chứng local — mục "S3: bước 1–4" của `docs/design/CHANGELOG.md`). Nghĩa là **Render đóng kết nối tới ứng dụng ở 282.382 s**, trong lúc client — qua Cloudflare — **không nhận FIN hay reset** và chờ tới hết 390 s. `282.382` **không** phải 300 và không phải một giá trị tròn; đây là **một lần quan sát**, không phải giá trị giới hạn. `ticks=0` vì ca im lặng.
+- Lượt 7 bắt đầu 17:10:21,247 — 17:03:50,3 + 390,33 s = 17:10:20,7: đúng lúc probe thoát vì hết thời gian chờ.
+- Cuối log: `Shutting down` → `Finished server process` — instance cũ dừng khi PO deploy bản đã dọn.
+- Đoạn log quanh 21:40–22:50 Hà Nội (các lần thức dậy ở mục 1) **không** nằm trong phần PO gửi.
+
 ## 7. Điều đã đo và điều không đo
 
-- **Đã đo (Web Service free, chuỗi client → Cloudflare → Render, HTTP/1.1):** stream có event mỗi 5 s sống đủ 600 s — **5/5 lượt** (ba từ máy nhà qua HKG, hai từ runner qua IAD). Im lặng sau `open`: 120 s sống, 300 s thì `end` không tới trong 390 s. Byte đầu chậm: tới 120 s đều hoàn tất. Không thấy gom đệm event nhỏ (~117 byte, mỗi 5 s) ở cả hai điểm nhìn; không nén `text/event-stream`.
-- **Không đo:** HTTP/2 (trình duyệt); event lớn hơn; nấc `sleep` trên 120 s; nấc im lặng giữa 120 và 300 s; thời điểm thật của lần chết ở lượt 300 s; mọi ca ≥ 15 phút; gói trả phí. Không giá trị nào ở trên là "giới hạn thật" của Render.
+- **Đã đo (Web Service free, chuỗi client → Cloudflare → Render, HTTP/1.1):** stream có event mỗi 5 s sống đủ 600 s — **5/5 lượt** (ba từ máy nhà qua HKG, hai từ runner qua IAD). Im lặng sau `open`: 120 s sống, 300 s thì `end` không tới trong 390 s. Máy chủ thấy client rời ở **282.382 s** của lượt 300 s (một lần). Byte đầu chậm: tới 120 s đều hoàn tất. Không thấy gom đệm event nhỏ (~117 byte, mỗi 5 s) ở cả hai điểm nhìn; không nén `text/event-stream`.
+- **Không đo:** HTTP/2 (trình duyệt); event lớn hơn; nấc `sleep` trên 120 s; nấc im lặng giữa 120 và 300 s; mọi ca ≥ 15 phút; gói trả phí. Không giá trị nào ở trên là "giới hạn thật" của Render.
 
 ## 8. Giả thuyết ngủ 15 phút — chưa kiểm, chuyển Sprint 4
 
 Giả thuyết: Web Service free ngủ sau 15 phút **không có request vào, tính từ request cuối** (`docs/reference/render-free-tier.md`). Chưa rõ: một response hay stream **đang mở** có được tính là traffic không; ngưỡng thực tế có đúng 15 phút không.
 
-Bốn mốc `boot_epoch` (bảng mục 1): 1791125091.522 (14:44:51Z), 1791127520.449 (15:25:20Z), 1791128590.965 (15:43:10Z), rồi **không đổi** ở 1791128590.965 qua mọi lần quan sát tới 17:14Z — gồm lượt vô hại lúc 16:11Z, `short-3` 16:17–16:27Z và job runner 16:40–17:14Z (traffic liên tục). Lần thức 15:43:10Z (lần gọi đầu mất 22.328715 s) xảy ra sau khoảng 9–10 phút kể từ dòng log cuối của `short-1` (≈ 15:33Z), chưa khớp 15 phút; chưa giải thích. Log Render quanh 21:40–22:50 Hà Nội (14:40–15:50Z) PO sẽ xem — **chưa nhận**. Lần gọi đầu sau khi ngủ mất ≈ 22 s: 22.478055 s ở S2, 22.328715 s ở S3. Ghi ở A-086 của `docs/design/ASSUMPTIONS.md`.
+Bốn mốc `boot_epoch` (bảng mục 1): 1791125091.522 (14:44:51Z), 1791127520.449 (15:25:20Z), 1791128590.965 (15:43:10Z), rồi **không đổi** ở 1791128590.965 qua mọi lần quan sát tới 17:14Z — gồm lượt vô hại lúc 16:11Z, `short-3` 16:17–16:27Z và job runner 16:40–17:14Z (traffic liên tục). Lần thức 15:43:10Z (lần gọi đầu mất 22.328715 s) xảy ra sau khoảng 9–10 phút kể từ dòng log cuối của `short-1` (≈ 15:33Z), chưa khớp 15 phút; chưa giải thích. Log Render quanh 21:40–22:50 Hà Nội (14:40–15:50Z) PO sẽ xem — **chưa nhận**; log PO gửi 2026-10-05 chỉ phủ 16:40–17:14Z (mục 6.4), không chứa các lần thức. Lần gọi đầu sau khi ngủ mất ≈ 22 s: 22.478055 s ở S2, 22.328715 s ở S3. Ghi ở A-086 của `docs/design/ASSUMPTIONS.md`.

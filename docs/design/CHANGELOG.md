@@ -3042,3 +3042,24 @@ Phạm vi S3 được PO thu hẹp 2026-10-04: thang `sleep` dài, SSE im lặng
 **Sự cố ghi nhận:** (1) tiến trình đo local `short-1` chết cùng phiên điều khiển — mất lượt, không phải Render cắt; từ đó probe ghi JSONL tăng dần. (2) Tôi chạy `git checkout probe.py` để hoàn tác một phép thử đột biến và xoá luôn thay đổi chưa commit; đã viết lại và commit. (3) Con số "1.041 ms" sai ở mục S3 trước đó, đã đính chính.
 
 **Còn lại của bước 7 — chưa làm khi viết mục này:** Render đổi nhánh về `main`, bật Auto-Deploy, xoá `BO19_SPIKE_PROBES` và `BO19_SPIKE_TOKEN` (PO); xoá hai repo secret (PO); xoá hai dòng `BO19_SPIKE_*` trong `.env`; deploy bản đã dọn và kiểm `/api/_spike/*` trả 404. Sẽ ghi ở mục sau khi xong.
+
+---
+
+## 2026-10-05 — S3: bước 7 xong; log Render của lượt 300 s
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-s3-nhat-ky-do.md` | Mục 6.4 mới: log Render `SPIKE_START`/`SPIKE_END` của chín lượt (PO gửi); mục 6.2, 7, 8 cập nhật |
+| `ASSUMPTIONS.md` | A-025: thêm kết quả log Render; cột Trạng thái cập nhật phần còn hở |
+
+**Log Render của lượt im lặng 300 s:** `SPIKE_END reason=cancelled elapsed=282.382` — Render đóng kết nối tới ứng dụng ở 282.382 s, trong khi client (qua Cloudflare) không nhận FIN hay reset và chờ tới 390 s. Tám lượt còn lại: `server_cap`/`completed`, `elapsed` đúng tham số. Một lần quan sát — **không phải giá trị giới hạn**; `boot_epoch` không đổi.
+
+**Bước 7 — đã làm, 2026-10-05:**
+
+- **Render (PO báo):** đổi nhánh, xoá hai biến, deploy. Kiểm của người triển khai: 03:41:42Z `/api/_spike/commit` kèm token đúng trả **200** (`commit=8fdd1bb…`, nhánh `spike/s3-do`) — instance cũ vừa thức dậy; 03:42:08Z trả **404**. Lần kiểm 03:42:16Z: `/api/_spike/commit`, `/sleep?s=0`, `/sse?interval=0&max=1` và đường dẫn lạ đều `404` thân `{"detail":"Not Found"}` **kể cả khi gửi token đúng**; `/healthz` 200. **Auto-Deploy:** PO chưa xác nhận đã bật.
+- **Repo secret:** `gh secret list` trả 0 secret (PO đã xoá cả hai).
+- **`.env`:** đã xoá hai dòng `BO19_SPIKE_BASE_URL`, `BO19_SPIKE_TOKEN`; sáu biến `BO19_RENDER_*` còn nguyên.
+- **Code:** đã gỡ ở `bf8cbce` — `api_main.py` trùng bản `23cec28`; so với `main`, `backend/`, `Dockerfile`, `.dockerignore` không đổi dòng nào.
+- **Merge:** PO cho phép (2026-10-05, một lần): `spike/s3-do` vào `main` bằng `--no-ff`, push `main`.
+
+Phần còn mở của S3: A-086 (Sprint 4, R4-4); đoạn log Render quanh 21:40–22:50 Hà Nội chưa nhận; A-025 và A-050 `Thu hẹp`, không đóng.
