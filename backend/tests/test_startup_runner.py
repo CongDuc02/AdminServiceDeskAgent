@@ -26,7 +26,7 @@ DOC = Path(__file__).resolve().parents[2] / "docs" / "design" / "06-structure.md
 # sửa danh sách này mà không thêm bước vào `registry.py` cũng đỏ. Mỗi lần một bước được làm xong, bỏ nó khỏi danh sách trong cùng commit.
 DECLARED_PENDING = ("3", "4a", "4b", "4c", "5", "6", "7", "8", "9", "14", "18", "21")
 
-GOOD_ENV = {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": "postgresql://u:BI_MAT@h/db", "BO19_SESSION_SECRET": "BI_MAT_SESSION"}
+GOOD_ENV = {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": "postgresql://u:BI_MAT@h/db", "BO19_SESSION_SECRET": "BI_MAT_SESSION_KHONG_DUOC_LOT_RA_LOG"}
 
 
 class FakeConn:

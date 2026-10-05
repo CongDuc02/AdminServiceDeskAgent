@@ -22,7 +22,7 @@ from bo19.startup.checks_security import step_12, step_19, step_20, tracing_vari
 from bo19.startup.model import Context, Entry
 
 REFERENCE = Path(__file__).resolve().parents[2] / "docs" / "reference" / "langsmith-tracing-env-nguon-goc.md"
-BASE = {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": "x", "BO19_SESSION_SECRET": "y"}
+BASE = {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": "x", "BO19_SESSION_SECRET": "y" * 32}
 
 # Mục 1 của tài liệu — bốn tên bật tracing (N1, `tracing_is_enabled`, hai tiền tố × hai tên).
 DOC_S1_ENABLING = ("LANGSMITH_TRACING_V2", "LANGCHAIN_TRACING_V2", "LANGSMITH_TRACING", "LANGCHAIN_TRACING")
@@ -135,9 +135,28 @@ class Buoc12(unittest.TestCase):
         c = Context(Entry.API, load_settings({k: v for k, v in BASE.items() if k != "BO19_SESSION_SECRET"}), {}, None, Path("."))
         self.assertEqual(step_12(c).codes, ("STARTUP_12_SESSION_SECRET_MISSING",))
 
-    def test_khong_kiem_do_dai_a088(self):
-        c = Context(Entry.API, load_settings({**BASE, "BO19_SESSION_SECRET": "x"}), {}, None, Path("."))
-        self.assertEqual(step_12(c).codes, ())  # A-088: độ dài tối thiểu chưa chốt — bước kiểm không bịa số
+    def secret(self, value: str):
+        return step_12(Context(Entry.API, load_settings({**BASE, "BO19_SESSION_SECRET": value}), {}, None, Path("."))).codes
+
+    def test_ngan_hon_32_byte_la_chan(self):  # A-088: HS256 — docs/reference/pyjwt-hmac-key-length.md
+        for n in (1, 16, 31):
+            self.assertEqual(self.secret("x" * n), ("STARTUP_12_SESSION_SECRET_TOO_SHORT",), n)
+
+    def test_tu_32_byte_tro_len_la_dat(self):
+        for n in (32, 33, 64, 200):
+            self.assertEqual(self.secret("x" * n), (), n)
+
+    def test_do_dai_do_bang_byte_khong_phai_ky_tu(self):
+        self.assertEqual(self.secret("é" * 16), ())  # 16 ký tự, 32 byte UTF-8
+        self.assertEqual(self.secret("é" * 15), ("STARTUP_12_SESSION_SECRET_TOO_SHORT",))  # 15 ký tự, 30 byte
+        self.assertEqual(self.secret("x" * 31 + "é"), ())  # 32 ký tự, 33 byte
+
+    def test_khoang_trang_hai_dau_khong_duoc_tinh_vao_do_dai(self):
+        self.assertEqual(self.secret("  " + "x" * 31 + "  "), ("STARTUP_12_SESSION_SECRET_TOO_SHORT",))  # settings cắt khoảng trắng trước khi dùng làm khoá
+
+    def test_ma_truot_khong_lo_gia_tri_secret(self):
+        for code_ in self.secret("BI_MAT_NGAN"):
+            self.assertNotIn("BI_MAT_NGAN", code_)
 
 
 class Buoc20(unittest.TestCase):

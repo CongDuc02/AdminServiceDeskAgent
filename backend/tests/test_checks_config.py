@@ -8,7 +8,7 @@ from bo19.config.settings import load_settings
 from bo19.startup.checks_config import step_11, step_13
 from bo19.startup.model import Context, Entry
 
-BASE = {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": "x", "BO19_SESSION_SECRET": "y"}
+BASE = {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": "x", "BO19_SESSION_SECRET": "y" * 32}
 
 
 def run(step, entry: Entry, **env):

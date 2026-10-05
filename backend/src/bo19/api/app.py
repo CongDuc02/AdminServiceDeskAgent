@@ -12,13 +12,14 @@ from fastapi import APIRouter, Depends, FastAPI
 from bo19.api.deps.csrf import require_csrf_header
 from bo19.api.deps.state import AppState
 from bo19.api.errors import install_exception_handlers
+from bo19.api.routers import auth
 from bo19.api.trace import TraceMiddleware
 
 API_PREFIX = "/api/v1"
 
 
 def default_routers() -> list[APIRouter]:
-    return []
+    return [auth.router]
 
 
 def create_app(state: AppState, *, routers: Sequence[APIRouter] | None = None) -> FastAPI:

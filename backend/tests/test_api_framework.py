@@ -74,7 +74,7 @@ class Base(unittest.TestCase):
         self.out = io.StringIO()
         h = configure_logging(self.out)
         self.addCleanup(logging.getLogger().removeHandler, h)
-        self.app = create_app(AppState(pool=object(), session_secret="x" * 40), routers=[build_router()])  # type: ignore[arg-type]
+        self.app = create_app(AppState(pool=object(), session_secret="x" * 40, verifier=object()), routers=[build_router()])  # type: ignore[arg-type]
         self.client = TestClient(self.app, raise_server_exceptions=False)
         self.csrf = {"X-BO19-CSRF": "1"}
 

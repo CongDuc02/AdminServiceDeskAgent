@@ -18,6 +18,7 @@ import sys
 import uvicorn
 
 from bo19.api.app import create_app
+from bo19.api.auth.hasher import PasswordVerifier
 from bo19.api.deps.state import AppState
 from bo19.config.settings import load_settings
 from bo19.observability.log import configure_logging
@@ -34,7 +35,7 @@ def main() -> None:
     pool = Pool(settings.database_url, application_name="bo19-api")
     pool.open()
     try:
-        app = create_app(AppState(pool=pool, session_secret=settings.session_secret))
+        app = create_app(AppState(pool=pool, session_secret=settings.session_secret, verifier=PasswordVerifier.from_settings(settings)))
         # `proxy_headers=False`: uvicorn không được tự đọc X-Forwarded-For. IP của rate limit đọc ở đúng một hàm, `bo19.api.auth.client_ip` (A-062, cổng 2.7).
         uvicorn.run(app, host="0.0.0.0", port=settings.port, log_config=None, log_level="info", proxy_headers=False)
     finally:

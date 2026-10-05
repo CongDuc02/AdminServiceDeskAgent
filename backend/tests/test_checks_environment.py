@@ -21,7 +21,7 @@ from bo19.startup import runner
 from bo19.startup.checks_environment import step_15, step_16, step_17
 from bo19.startup.model import Context, Entry
 
-BASE = {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": "x", "BO19_SESSION_SECRET": "y"}
+BASE = {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": "x", "BO19_SESSION_SECRET": "y" * 32}
 NONPROD = read.OperatingModeRead(read.NON_PRODUCTION, True)
 NONPROD_DEFAULT = read.OperatingModeRead(read.NON_PRODUCTION, False)
 PROD = read.OperatingModeRead(read.PRODUCTION, True)

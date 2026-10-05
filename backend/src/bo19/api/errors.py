@@ -82,10 +82,11 @@ def _is_api_path(path: str) -> bool:
 
 # Mã con của fields[].code (mục Danh mục error_code của 05-api.md) theo kiểu lỗi của pydantic. Không bao giờ chép `input` hay `msg`:
 # giá trị đã gửi có thể là mật khẩu.
-def _field_code(pydantic_type: str) -> str:
+def _field_code(pydantic_type: str, ctx: dict | None = None) -> str:
     if pydantic_type == "missing":
         return "REQUIRED"
-    if pydantic_type == "string_too_short":
+    # `SecretStr` (mật khẩu) báo `too_short` với `field_type = "Value"`; danh sách cũng `too_short` nhưng `field_type = "List"` — chỉ giá trị vô hướng là BLANK.
+    if pydantic_type == "string_too_short" or (pydantic_type == "too_short" and (ctx or {}).get("field_type") == "Value"):
         return "BLANK"
     if pydantic_type == "string_too_long":
         return "TOO_LONG"
@@ -101,7 +102,7 @@ def _fields(exc: RequestValidationError) -> list[dict[str, str]]:
     for err in exc.errors():
         loc = [str(x) for x in err.get("loc", ())]
         name = ".".join(loc[1:]) if len(loc) > 1 else (loc[0] if loc else "body")
-        out.append({"field": name, "code": _field_code(str(err.get("type", "")))})
+        out.append({"field": name, "code": _field_code(str(err.get("type", "")), err.get("ctx"))})
     return out
 
 
