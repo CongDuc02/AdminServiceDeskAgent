@@ -19,6 +19,18 @@ Ghi nguyên văn số đo của S4: shutdown delay thật của Web Service free
 
 Số thứ tự liên tục 1..10 và 1..30. Không đặt biến: `docker stop` mất 1.0 s, **exit code 0** — `api_main` là PID 1 nên `signal.raise_signal` mà uvicorn 0.34.2 gọi lại sau khi tắt êm bị bỏ qua. **Mở cho track build:** PID 1 trong container không có init thường không reap tiến trình con; worker sẽ chạy `soffice` làm tiến trình con (ADR-015).
 
+### 1.1 Đối chứng local của nhân chứng — bản `83591ee`, bộ poll `bab67b0`
+
+Container app dựng từ `Dockerfile` nối DB Render bằng `bo19_app` (URL ngoài), `BO19_S4_HOLD_S=120`; bộ poll chạy trong container thứ hai, hỏi `pg_stat_activity` mỗi 0.25 s (140–220 lần hỏi mỗi ca, 0 lỗi, không khoảng cách > 1 s). Credential qua env-file tạm, đã xoá.
+
+| `docker stop -t` | (a) `n` cuối đọc được | (b) kết nối biến mất | `n` cuối thấy / biến mất, so với `SIGTERM_RECEIVED` | Exit code |
+|---|---|---|---|---|
+| 10 | **10** | 0.997 s sau lần đổi `n` cuối | 9.191 s / **10.188 s** | 137 |
+| 10 (lần khác) | 10 | 1.000 s sau lần đổi `n` cuối | T1 + 9.000 s / T1 + **10.000 s** | 137 |
+| 30 | **30** | 1.000 s sau lần đổi `n` cuối | T1 + 28.997 s / T1 + **29.997 s** | 137 |
+
+T1 là lúc bộ poll thấy `n=1` lần đầu — mốc không phụ thuộc lệch đồng hồ giữa máy và instance (`n=1` được đặt 0.12–0.17 s sau `SIGTERM`). Nhân chứng thấy đúng: `n` tăng tới T, kết nối biến mất đúng lúc kill, độ phân giải 0.25 s; phần lệch ≈ 0.19 s là độ trễ của poll và của máy chủ PostgreSQL phát hiện kết nối đóng. Bản này cũng ghi **mọi** tín hiệu: `SIGNAL_RECEIVED sig=SIGTERM nth=1 total=1 …` (kèm `SIGTERM_RECEIVED` ở lần đầu); `S4_ARMED` liệt kê các tín hiệu khác đã đặt handler ghi (`SIGHUP`, `SIGQUIT`, `SIGUSR1`, `SIGUSR2`, `SIGALRM`, `SIGCONT`, `SIGTSTP`); kết nối nhân chứng mở lúc khởi động (`WITNESS_OPEN … n=0`).
+
 ## 2. Sự kiện deploy — tab Events của Render (giờ Hà Nội)
 
 | Deploy | Bấm | Kết quả |
