@@ -55,6 +55,8 @@ Vì vậy, chạy `intake_graph` **bên trong** generator của response là sai
 
 **Điều kiện đảo ngược** — tín hiệu vận hành, dùng lại chỗ quan sát của ADR-005: phân phối thời lượng một lượt chạy `orchestrator` trong tiến trình `api`, nhìn phần đuôi. Khi phần đuôi tiến sát shutdown delay tối đa, drain không còn phủ được lượt. Khi đó chuyển sang phương án C.
 
+**Ghi chú S4 (2026-10-05) — không đổi quyết định.** Đo trên Web Service free (S4 của Spike 1, `docs/reference/render-s4-nhat-ky-do.md`): (1) `SIGTERM` tới instance cũ **vào lúc instance mới Live** — 0.70, 1.31 và 1.78 s trước lần `GET /` đầu tiên của Render sau khi Live, ba lần — **không** 60 giây sau như đoạn "Theo nguồn đã ghim của Render" ở mục 2 phía trên; (2) `SIGKILL` tới **≈ 5 s** sau `SIGTERM` (khoảng (4.9, 5.2] s, có nhân chứng độc lập với log), không phải 30 s mặc định, ở cả đường deploy và đường ngủ. Hệ quả cho **Ràng buộc cấu hình** của mục 2: trên gói free, hạn chót lượt cộng biên **không** nằm trong cửa sổ drain — bất biến "mọi lượt bắt đầu trước `SIGTERM` đều kết thúc tự nhiên" không giữ; lượt đang chạy khi deploy có thể mất câu trả lời, client dựng lại bằng `GET …/messages` (A-056). Rủi ro chấp nhận cho giai đoạn build (PO, 2026-10-05; R2-5 và R4-5 của `12-roadmap.md`). `maxShutdownDelaySeconds` không thử; đo lại trên gói trả phí trước production (A-087). Quyết định A (task riêng) và cơ chế drain không đổi.
+
 ## Rejected alternatives
 
 **B — Che body iterator khỏi bị huỷ.** Loại vì hành vi phụ thuộc nhánh `spec_version` của máy chủ ASGI — nguồn cho thấy hai nhánh dừng iterator bằng hai cơ chế khác nhau. Với nhánh từ 2.4, iterator không bị huỷ mà đơn giản là **không được lặp tiếp**, nên không có gì để "che". Một thiết kế đúng hay sai tuỳ phiên bản máy chủ là thiết kế chưa xong.

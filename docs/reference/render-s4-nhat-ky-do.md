@@ -171,3 +171,21 @@ SHUTDOWN_HOLD n=1 … since_sigterm=0.147  →  n=5 … since_sigterm=4.148 (07:
 **Tóm tắt có nhân chứng, hai đường:** deploy (deploy 5) và ngủ (07:51Z) cho cùng kết quả — `n` cuối 5, kết nối biến mất 1.000 s sau lần đổi `n` cuối, T1 + 5.000 s, kill trong khoảng (4.9, 5.2] s sau `SIGTERM`. Độ lệch giữa hai đường ≤ 0.05 s sau hiệu chỉnh.
 
 **Bằng chứng thô:** `docs/reference/render-s4-nhan-chung-poll.jsonl` — 65 lần hỏi quanh ba mốc (07:33:00–07:33:03, 07:36:53.5–07:37:01.5, 07:51:53.5–07:52:01.5). Toàn bộ chạy: 7200 lần hỏi, 0 lỗi, tới 08:03:01Z. Dòng thô chỉ có `pid`, `application_name` và `state`; không có host, DSN hay địa chỉ.
+
+## 8. Đóng S4 — quyết định của PO, 2026-10-05
+
+**Kết quả (Web Service free, có nhân chứng):**
+
+- **Drain thật ≈ 5 s ở cả deploy và ngủ**: `SIGKILL` trong (4.9, 5.2] s sau `SIGTERM`. Tài liệu Render nói mặc định 30 s. Mục 7.
+- **`SIGTERM` của deploy đến lúc instance mới Live**, không phải 60 s sau (0.70, 1.31, 1.78 s trước `GET /` đầu tiên của Render sau khi Live; ba lần). Mục 4 và 7.4.
+- **`SIGTERM` ngủ đến 899.27–899.81 s sau request cuối** (năm lần: 899.385, 899.649, 899.813, 899.270, 899.563 s). **Request lạ trong khoảng giữa request cuối và `SIGTERM` chưa kiểm** cho lần 899.563 s: log chỉ được dán từ 07:51Z. Vế "stream đang mở không tính là traffic" vẫn chỉ có một quan sát từ S3 — giữ mở, chờ `GET /signals` ở Sprint 3 (A-086).
+- **Mọi tín hiệu:** ở hai lần có `SIGNAL_RECEIVED` (deploy 5 và ngủ 07:51Z), chỉ có một dòng `SIGTERM nth=1 total=1`; không SIGINT, không `SIGTERM` thứ hai, không tín hiệu nào trong số đã đặt handler ghi. Giả thuyết "uvicorn ép thoát khi nhận tín hiệu lần hai" bị loại cho khoảng 0–4.17 s.
+
+**Quyết định:**
+
+- **`maxShutdownDelaySeconds`: không thử.** Chuyển thành điều kiện trước production — đo lại trên gói trả phí bằng `tools/render-probes/s4_witness_poll.py` (A-087; mục Sau UAT của `12-roadmap.md`).
+- **WV-01 giữ 30 s**, ghi chú "giá trị theo tài liệu; trên gói free đo được ≈ 5 s". WV-02, bước kiểm khởi động #11 và ADR-016 **không sửa**.
+- **Rủi ro chấp nhận cho giai đoạn build:** bất biến drain của ADR-016 không giữ trên gói free; lượt đang chạy khi deploy có thể mất câu trả lời, client dựng lại bằng `GET …/messages` (A-056). **Kỷ luật: không deploy trong buổi thử.** R2-5 (Sprint 2) và R4-5 (Sprint 4) của `12-roadmap.md`.
+- **Ghi chú, không đổi quyết định:** ADR-016 và mục Tắt tiến trình êm của `06-structure.md` — `SIGTERM` đến lúc instance mới Live, không phải 60 s sau.
+- **Việc nợ cho track build, không làm ở S4** (mục Mục mở của Sprint 1 của `12-roadmap.md`): O1-5 log `SIGTERM_RECEIVED`/`PROCESS_EXIT` theo log JSON của `11-ops.md`, phủ mọi entrypoint, có test; O1-6 điều kiện `combined_main`; O1-7 PID 1 với `soffice`.
+- **Dọn:** gỡ khối SPIKE S4 (handler, vòng giữ, kết nối nhân chứng, `BO19_S4_HOLD_S`) khỏi `api_main.py` và `test_spike_s4.py`; **giữ** `s4_witness_poll.py`, `test_s4_witness.py` và `README.md` của `tools/render-probes/` (README: đo lại trước production).
