@@ -3234,3 +3234,5 @@ PO duyệt kế hoạch B4 (2026-10-05): transport giả, B4b (lời gọi Groq 
 **Flaky đã sửa:** `test_lan_sua_parse_dung_chung_han_chot…` fail 1/6 lần với biên 0,25 s/0,5 s do độ phân giải timer của Docker trên Windows (~15 ms) và overhead DB; nới biên lên 0,5 s/1 s, 8 lần liên tiếp đạt, đột biến tương ứng vẫn bị bắt.
 
 **Chưa làm ở B4:** P3, P5, E1, E2 (A-028), nhánh B ép JSON, trần nạp kho, lời gọi Groq thật (B4b — đóng O1-1, O1-3, A-089, A-091).
+
+**CI:** run xanh cả ba job trên nhánh `build/b4-ai-gateway` — https://github.com/CongDuc02/AdminServiceDeskAgent/actions/runs/37317922464 — 478 test, `lint-imports` 8 contract giữ.
