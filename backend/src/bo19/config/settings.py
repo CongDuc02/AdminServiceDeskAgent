@@ -13,6 +13,7 @@ import enum
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 ORG_TIMEZONE = "Asia/Ho_Chi_Minh"  # A-041 `Đã chốt`
@@ -39,7 +40,11 @@ ENV_NAMES: Mapping[str, str] = {
     "argon2_time_cost": "BO19_ARGON2_TIME_COST",
     "argon2_memory_cost_kib": "BO19_ARGON2_MEMORY_COST_KIB",
     "argon2_parallelism": "BO19_ARGON2_PARALLELISM",
+    "llm_base_url": "BO19_LLM_BASE_URL",
+    "llm_api_key": "BO19_LLM_API_KEY",
 }
+
+DEFAULT_LLM_BASE_URL = "https://api.groq.com/openai/v1"  # ADR-032 mốc 1, ADR-035; đổi sang provider khác là đổi biến này, khoá và hồ sơ model — không đổi mã
 
 # (trường, mặc định) — WV-01, WV-02, WV-03, WV-08, WV-10, WV-16.
 _INT_DEFAULTS: tuple[tuple[str, int], ...] = (
@@ -63,14 +68,17 @@ class Settings:
     argon2_time_cost: int | None
     argon2_memory_cost_kib: int | None
     argon2_parallelism: int | None
+    llm_base_url: str | None
+    llm_api_key: str | None = field(repr=False)  # secret — không bao giờ vào repr, log hay lỗi (ADR-035, mục Cập nhật B4)
     problems: tuple[tuple[str, str], ...] = ()  # (trường, mã) — mã dạng CONFIG_<TÊN>_MISSING | _INVALID
 
     def problem(self, name: str) -> str | None:
         return dict(self.problems).get(name)
 
     def __repr__(self) -> str:
-        shown = ", ".join(f"{f}={getattr(self, f)!r}" for f in ENV_NAMES if f not in ("database_url", "session_secret"))
-        return f"Settings({shown}, database_url=<ẩn>, session_secret=<ẩn>, problems={[p for p, _ in self.problems]})"
+        hidden = ("database_url", "session_secret", "llm_api_key")
+        shown = ", ".join(f"{f}={getattr(self, f)!r}" for f in ENV_NAMES if f not in hidden)
+        return f"Settings({shown}, database_url=<ẩn>, session_secret=<ẩn>, llm_api_key=<ẩn>, problems={[p for p, _ in self.problems]})"
 
 
 def _code(name: str, kind: str) -> str:
@@ -80,6 +88,11 @@ def _code(name: str, kind: str) -> str:
 def _get(env: Mapping[str, str], name: str) -> str | None:
     value = env.get(ENV_NAMES[name])
     return None if value is None or value.strip() == "" else value.strip()
+
+
+def _https_url(raw: str) -> bool:
+    parts = urlsplit(raw)
+    return parts.scheme == "https" and bool(parts.hostname) and not any(c.isspace() for c in raw)
 
 
 def _positive_int(raw: str) -> int | None:
@@ -130,5 +143,11 @@ def load_settings(env: Mapping[str, str] = os.environ) -> Settings:
         values[name] = value
         if value is None:
             problems.append((name, _code(name, "INVALID")))
+
+    raw = _get(env, "llm_base_url") or DEFAULT_LLM_BASE_URL
+    values["llm_base_url"] = raw if _https_url(raw) else None  # bắt buộc https (bước kiểm #21)
+    if values["llm_base_url"] is None:
+        problems.append(("llm_base_url", _code("llm_base_url", "INVALID")))
+    values["llm_api_key"] = _get(env, "llm_api_key")  # tuỳ chọn ở B4 — `api` chưa gọi LLM; thiếu khoá không phải lỗi cấu hình lúc khởi động
 
     return Settings(problems=tuple(problems), **values)  # type: ignore[arg-type]
