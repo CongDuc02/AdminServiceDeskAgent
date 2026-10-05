@@ -8,6 +8,8 @@
 - **Không phải tài liệu.** `docs/design/contracts/` giữ contract dạng khai báo (`schema.sql`, `openapi.yaml`). Để mã chạy được ở đó sẽ làm mờ ranh giới "contract là khai báo".
 - **Thuộc repo**, vì nó phải chạy lại theo đúng phiên bản `schema.sql` cùng commit.
 
+**Chạy trong CI từ B1 (2026-10-05):** job `contracts` của `.github/workflows/ci.yml` chạy `test_check_grants` và `check_grants.py --local-migrated --server-dsn …` trên một container `pgvector/pgvector:0.8.1-pg18` ghim digest (ADR-033), mỗi lần push. Mô tả cách chạy tay ở dưới vẫn đúng.
+
 ## Khi nào chạy lại
 
 1. **Sau mỗi lần `docs/design/contracts/schema.sql` đổi**, trước khi merge — và `--local-migrated` sau mỗi lần một file trong `backend/migrations/schema/` được thêm hay sửa.

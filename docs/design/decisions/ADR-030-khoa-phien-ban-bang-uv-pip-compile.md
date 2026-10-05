@@ -77,6 +77,8 @@ Công cụ cài bằng `pip` vào một venv Python 3.11.9 trên Windows: `uv` *
 - Cần image cho hơn một nền tảng — xét C, vì một lock cho nhiều nền tảng là việc của định dạng đó; cần thử trước.
 - `uv` không còn phát hành bản dùng được — lock đã sinh vẫn cài được bằng `pip`, chỉ phải đổi công cụ sinh lock.
 
+**Cập nhật 2026-10-05 — lock dev tách riêng; quyết định không đổi.** B1 của track build (CI, AC-1.12) thêm `import-linter` làm phụ thuộc **dev**. Lock dev là một file riêng, `backend/requirements-dev-linux.lock`, sinh bằng đúng lệnh của lock image cộng `--extra dev` — nhóm `dev` ở `[project.optional-dependencies]` của `backend/pyproject.toml` — cùng mốc `--exclude-newer`, cùng phiên bản `uv`, cùng định dạng header (dòng 2 là lệnh khoá kèm `# uv <phiên bản>`). Tập hợp của nó là phụ thuộc chạy **cộng** dev, để CI cài một file là đủ chạy test và `lint-imports`. **Image không chứa:** `Dockerfile` vẫn chỉ cài `requirements-linux.lock` — "không có phụ thuộc dev" — và lock của image **không đổi một byte** khi thêm nhóm `dev` (đã kiểm bằng cách sinh lại). Bước CI so lock của quyết định này chạy cho **cả hai** file, ở mọi lần push (rộng hơn "mọi thay đổi chạm …" — thêm chi phí không đáng kể, bớt một điều kiện phải nhớ). Không cần ADR mới (PO, 2026-10-05).
+
 ## Rejected alternatives
 
 **B — `pip-compile`.** Không có tuỳ chọn chọn nền tảng đích (`pip-compile --help`, bản 7.6.1). Muốn đúng cho Linux thì phải chạy trên Linux: ở CI thì người triển khai không tái lập được lock ở local, vì Docker Desktop không chạy được trên máy họ. Chạy trên Windows thì lock đúng cho Windows — thiếu `uvloop`, thừa `colorama`.

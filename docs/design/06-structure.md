@@ -1,6 +1,6 @@
 # Project Structure — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.28 · **Trạng thái:** Đã duyệt ở vòng duyệt Phase 6 · **v0.2:** Open Questions sau các phép B1 → B4; mục 9.4 về bộ kiểm trong repo; `tools/` trong cây gốc — mục ngày 2026-09-13 (lần 9) của `CHANGELOG.md` · **v0.3:** Open Questions sau phép bổ sung — mục ngày 2026-09-14 · **v0.4:** thêm bước kiểm khởi động #16–17 (ADR-023, Phase 11) — quyết định của PO khi duyệt đề xuất diff riêng, không phải một hệ quả của luật 5 (đổi tên cho nhất quán) trong `CLAUDE.md`; mục ngày 2026-09-16 của `CHANGELOG.md` · **v0.5:** làm rõ #15/#17 dùng chung một lần đọc `operating_mode`, #17 chỉ áp dụng ngoài `prod` và tự vệ khi thiếu `BO19_ENVIRONMENT`, nhắc mô hình chạy hết-rồi-gom — cùng mục ngày 2026-09-16 · **v0.6:** đợt sửa 2 sau Phase 13 — cron và `ops/` thêm năm thao tác vận hành mới (AUD-08); `endpoint_ops/` không đếm số; tuyến `/config/request-types` hết "từ chối mọi người" (AUD-05); không có tuyến cho đổi `operating_mode` là có chủ đích (câu 6b); skeleton khớp cây ở mục 3 (AUD-16); số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.7:** tuyến `/takeover` và phần tiếp quản của `DocumentReviewPage` (AUD-02 (d)) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.8:** thư viện token phiên và log — ADR-028, ADR-029 — mục ngày 2026-09-26 (quyết định PO sau đợt 3) · **v0.9:** Open Questions 7 đã giải — mục ngày 2026-09-26 (đợt sửa 3b) · **v0.10:** đợt sửa 4 sau Phase 13 — ba chế độ của `check_grants.py`, con trỏ cũ (AUD-11) · **v0.11:** dòng cài phụ thuộc Python của đặc tả `Dockerfile` theo ADR-030 (2026-09-27) · **v0.12:** bước kiểm khởi động #13 ghi giá trị múi giờ đã chốt (A-041, 2026-09-27) · **v0.13:** A-055 `Đã chốt` — hướng 1, danh sách miễn `audit_event` (2026-09-27) · **v0.14:** Docker Desktop đã chạy được trên máy người triển khai (2026-10-02) · **v0.15:** entrypoint `combined_main`, `cron_scheduler_main`; bước kiểm #18 — ADR-033 (2026-10-02) · **v0.16:** bước kiểm khởi động #19 — chặn biến tracing của `langsmith` theo mẫu tên (A-082); tên lockfile trong đặc tả `Dockerfile` (2026-10-02) · **v0.17:** bước kiểm khởi động #20 (tham số `argon2id`, ADR-034), #21 (hồ sơ model, ADR-035); luật import điền `httpx` (2026-10-02) · **v0.18:** đính chính sha256 của `schema.sql` — bản LF trong repo (2026-10-02) · **v0.19:** bước 0 của migration: `GRANT CREATE ON SCHEMA public`, chạy bằng `bo19_admin`; kiểm contract trên PostgreSQL 18 (2026-10-04) · **v0.20:** cây gốc thêm `.github/workflows/`, `docs/testing/`; luật trình chạy: file không có câu SQL thực thi thì dừng; bước 3 ngoài sổ (2026-10-04) · **v0.21:** cây gốc: workflow thử S1 đã xoá (2026-10-04) · **v0.22:** bước kiểm #2 mở rộng; cột sổ `schema_migration`; vị trí `backend/tests/` (2026-10-04) · **v0.23:** đặc tả `Dockerfile`: sửa đường dẫn lock; image nền ghim digest (2026-10-04) · **v0.24:** sổ `schema_migration` thành file DDL `migrations/ledger/`; `tools/db-bootstrap/`; biến `BO19_MIGRATOR_DATABASE_URL` của `migrate_main`; số đo mới của bộ kiểm (2026-10-04) · **v0.25:** luật đổi cấu trúc sổ chỉ bằng migration đánh số (2026-10-04) · **v0.26:** mục Bước kiểm khởi động: gỡ `[CẦN XÁC MINH]` về deploy hỏng — S2 (2026-10-04) · **v0.27:** cây gốc: `tools/render-probes/` cho S3 (2026-10-04) · **v0.28:** mục Tắt tiến trình êm: ghi chú S4 — `SIGTERM` lúc instance mới Live, `SIGKILL` ≈ 5 s sau `SIGTERM` trên gói free; cây gốc: `s4_witness_poll.py` (2026-10-05)
+**Phiên bản:** 0.29 · **Trạng thái:** Đã duyệt ở vòng duyệt Phase 6 · **v0.2:** Open Questions sau các phép B1 → B4; mục 9.4 về bộ kiểm trong repo; `tools/` trong cây gốc — mục ngày 2026-09-13 (lần 9) của `CHANGELOG.md` · **v0.3:** Open Questions sau phép bổ sung — mục ngày 2026-09-14 · **v0.4:** thêm bước kiểm khởi động #16–17 (ADR-023, Phase 11) — quyết định của PO khi duyệt đề xuất diff riêng, không phải một hệ quả của luật 5 (đổi tên cho nhất quán) trong `CLAUDE.md`; mục ngày 2026-09-16 của `CHANGELOG.md` · **v0.5:** làm rõ #15/#17 dùng chung một lần đọc `operating_mode`, #17 chỉ áp dụng ngoài `prod` và tự vệ khi thiếu `BO19_ENVIRONMENT`, nhắc mô hình chạy hết-rồi-gom — cùng mục ngày 2026-09-16 · **v0.6:** đợt sửa 2 sau Phase 13 — cron và `ops/` thêm năm thao tác vận hành mới (AUD-08); `endpoint_ops/` không đếm số; tuyến `/config/request-types` hết "từ chối mọi người" (AUD-05); không có tuyến cho đổi `operating_mode` là có chủ đích (câu 6b); skeleton khớp cây ở mục 3 (AUD-16); số phiên bản đầu dòng nâng cho khớp ghi chú (AUD-18) — mục ngày 2026-09-26 (đợt sửa 2) của `CHANGELOG.md` · **v0.7:** tuyến `/takeover` và phần tiếp quản của `DocumentReviewPage` (AUD-02 (d)) — mục ngày 2026-09-26 (đợt sửa 3) · **v0.8:** thư viện token phiên và log — ADR-028, ADR-029 — mục ngày 2026-09-26 (quyết định PO sau đợt 3) · **v0.9:** Open Questions 7 đã giải — mục ngày 2026-09-26 (đợt sửa 3b) · **v0.10:** đợt sửa 4 sau Phase 13 — ba chế độ của `check_grants.py`, con trỏ cũ (AUD-11) · **v0.11:** dòng cài phụ thuộc Python của đặc tả `Dockerfile` theo ADR-030 (2026-09-27) · **v0.12:** bước kiểm khởi động #13 ghi giá trị múi giờ đã chốt (A-041, 2026-09-27) · **v0.13:** A-055 `Đã chốt` — hướng 1, danh sách miễn `audit_event` (2026-09-27) · **v0.14:** Docker Desktop đã chạy được trên máy người triển khai (2026-10-02) · **v0.15:** entrypoint `combined_main`, `cron_scheduler_main`; bước kiểm #18 — ADR-033 (2026-10-02) · **v0.16:** bước kiểm khởi động #19 — chặn biến tracing của `langsmith` theo mẫu tên (A-082); tên lockfile trong đặc tả `Dockerfile` (2026-10-02) · **v0.17:** bước kiểm khởi động #20 (tham số `argon2id`, ADR-034), #21 (hồ sơ model, ADR-035); luật import điền `httpx` (2026-10-02) · **v0.18:** đính chính sha256 của `schema.sql` — bản LF trong repo (2026-10-02) · **v0.19:** bước 0 của migration: `GRANT CREATE ON SCHEMA public`, chạy bằng `bo19_admin`; kiểm contract trên PostgreSQL 18 (2026-10-04) · **v0.20:** cây gốc thêm `.github/workflows/`, `docs/testing/`; luật trình chạy: file không có câu SQL thực thi thì dừng; bước 3 ngoài sổ (2026-10-04) · **v0.21:** cây gốc: workflow thử S1 đã xoá (2026-10-04) · **v0.22:** bước kiểm #2 mở rộng; cột sổ `schema_migration`; vị trí `backend/tests/` (2026-10-04) · **v0.23:** đặc tả `Dockerfile`: sửa đường dẫn lock; image nền ghim digest (2026-10-04) · **v0.24:** sổ `schema_migration` thành file DDL `migrations/ledger/`; `tools/db-bootstrap/`; biến `BO19_MIGRATOR_DATABASE_URL` của `migrate_main`; số đo mới của bộ kiểm (2026-10-04) · **v0.25:** luật đổi cấu trúc sổ chỉ bằng migration đánh số (2026-10-04) · **v0.26:** mục Bước kiểm khởi động: gỡ `[CẦN XÁC MINH]` về deploy hỏng — S2 (2026-10-04) · **v0.27:** cây gốc: `tools/render-probes/` cho S3 (2026-10-04) · **v0.28:** mục Tắt tiến trình êm: ghi chú S4 — `SIGTERM` lúc instance mới Live, `SIGKILL` ≈ 5 s sau `SIGTERM` trên gói free; cây gốc: `s4_witness_poll.py` (2026-10-05) · **v0.29:** mục Đặc tả `.importlinter`: cú pháp xác minh theo import-linter 2.15; `allow_indirect_imports = True` cho mọi `forbidden`; bỏ hai chỗ giữ chỗ SDK; cây gốc: `ci.yml` (B1, 2026-10-05)
 
 > File này chốt cây thư mục của backend và frontend, luật "được import gì, cấm import gì" kèm **thứ gì chặn vi phạm**, entrypoint và cách chạy trên Render, bước kiểm khởi động, trình tự migration so với checkpointer, và kết quả xác minh contract DDL. File này **không** chứa implementation (DESIGN MODE — mục Chế độ làm việc hiện tại của `CLAUDE.md`). Hai khối `.importlinter` và `Dockerfile` bên dưới là **đặc tả**, không phải file. File này cũng **không** thiết kế màn hình tiếp quản hay quy tắc hiển thị theo độ nhạy (Phase 8), AuthZ chi tiết và quản lý secret (Phase 9), và **không** định cỡ tham số vận hành (Phase 11).
 
@@ -53,7 +53,7 @@ Ba package không phải thành phần: `bo19.domain` (enum, bảng chuyển tr�
 ├── frontend/                 # SPA React — mục 10
 ├── fonts/                    # bộ font của A-058, kèm giấy phép từng font — đưa vào image
 ├── .github/
-│   └── workflows/            # CI — job so lock (ADR-030), migrate (ADR-022). Workflow thử của S1 đã xoá sau khi ghi kết quả
+│   └── workflows/            # CI: ci.yml (B1) — job backend (import-linter, test), contracts (check_grants), lock (ADR-030); migrate (ADR-022) khi có secret (cổng 2.6). Workflow thử của S1 đã xoá sau khi ghi kết quả
 ├── tools/
 │   ├── contract-checks/      # bộ kiểm quyền của contract DDL — không phải mã ứng dụng, không vào image (mục 9.4)
 │   ├── db-bootstrap/         # bước 0 của mục 8: sinh verifier, step0.sql, step0.sh — do PO chạy bằng bo19_admin; không vào image
@@ -167,7 +167,9 @@ Thư mục `tests/` thuộc BUILD MODE; ở phase này chỉ ghi hai nhóm đã 
 
 ### 4.1 Đặc tả `.importlinter`
 
-Cú pháp theo tài liệu của phiên bản `import-linter` được chọn — `[CẦN XÁC MINH]`, tài liệu chưa có trong `docs/reference/`. Client gọi provider LLM: `httpx` (ADR-035, 2026-10-02). SDK S3 điền khi A-024 chốt; embedding khi A-028 chốt.
+Cú pháp theo tài liệu của `import-linter` **2.15** (phiên bản do công cụ khoá chọn ở mốc `--exclude-newer` của ADR-030), đã có trong `docs/reference/import-linter-2.15.md`. Client gọi provider LLM: `httpx` (ADR-035, 2026-10-02). SDK S3 điền khi A-024 chốt; embedding khi A-028 chốt.
+
+**Hai chỗ khác bản đặc tả trước, 2026-10-05 (B1):** (1) mọi contract `forbidden` có `allow_indirect_imports = True` — theo tài liệu 2.15, `forbidden` mặc định kiểm cả import **gián tiếp**, còn ý của thiết kế là import **trực tiếp**: chuỗi hợp lệ `bo19.api` → `bo19.orchestrator.runner` → `bo19.ai_gateway` không được tính là api chạm `ai_gateway`; (2) hai chỗ giữ chỗ `<sdk-s3>` và `<sdk-embedding>` bỏ khỏi `forbidden_modules` cho tới khi có SDK — 2.15 báo lỗi khi gặp module không tồn tại, nên không thể để chỗ giữ chỗ. Hai file khung `orchestrator/runner.py` và `persistence/write.py`, có trong cây thư mục ở mục Cây backend, được tạo để contract có chỗ bám. File thật: `backend/.importlinter`; test từng contract: `backend/tests/test_import_contracts.py`.
 
 ```ini
 [importlinter]
@@ -198,6 +200,7 @@ modules =
 [importlinter:contract:api-surface]
 name = api chỉ vào orchestrator qua runner, không chạm ai_gateway hay lối ghi
 type = forbidden
+allow_indirect_imports = True
 source_modules = bo19.api
 forbidden_modules =
     bo19.ai_gateway
@@ -211,6 +214,7 @@ forbidden_modules =
 [importlinter:contract:write-path]
 name = Lối ghi DB — chỉ tool_layer và ba chủ ngoại lệ
 type = forbidden
+allow_indirect_imports = True
 source_modules =
     bo19.api
     bo19.queue_worker
@@ -234,6 +238,7 @@ forbidden_modules = bo19.persistence.write
 [importlinter:contract:probe]
 name = Chỉ bước kiểm khởi động dùng lối thử quyền
 type = forbidden
+allow_indirect_imports = True
 source_modules =
     bo19.api
     bo19.queue_worker
@@ -245,6 +250,7 @@ forbidden_modules = bo19.persistence.probe
 [importlinter:contract:object-storage]
 name = Chỉ tool_layer.storage chạm object_storage (mục Lưu trữ file và bất biến bản render của 04-data.md)
 type = forbidden
+allow_indirect_imports = True
 source_modules =
     bo19.api
     bo19.queue_worker
@@ -262,13 +268,13 @@ source_modules =
     bo19.tool_layer.endpoint_ops
     bo19.tool_layer.config_ops
     bo19.tool_layer.ops
-forbidden_modules =
-    bo19.object_storage
-    <sdk-s3>                  # A-024
+forbidden_modules = bo19.object_storage
+# SDK S3 điền vào forbidden_modules khi A-024 chốt.
 
 [importlinter:contract:allowlist-gate]
 name = Đường tới provider đi qua gateway — nơi kiểm allowlist
 type = forbidden
+allow_indirect_imports = True
 source_modules =
     bo19.api
     bo19.queue_worker
@@ -280,12 +286,13 @@ source_modules =
     bo19.ai_gateway.budget
 forbidden_modules =
     bo19.ai_gateway.providers
-    httpx                     # ADR-035 — client gọi provider LLM; A-026 mốc 1: Groq
-    <sdk-embedding>           # A-028
+    httpx
+# httpx: ADR-035 — client gọi provider LLM; A-026 mốc 1: Groq. SDK embedding điền khi A-028 chốt.
 
 [importlinter:contract:graph-library]
 name = LangGraph chỉ ở orchestrator.runtime — node chỉ vào graph qua builder có biên node
 type = forbidden
+allow_indirect_imports = True
 source_modules =
     bo19.api
     bo19.queue_worker
@@ -295,8 +302,7 @@ source_modules =
     bo19.orchestrator.document_graph
     bo19.orchestrator.state
     bo19.orchestrator.runner
-forbidden_modules =
-    langgraph
+forbidden_modules = langgraph
 ```
 
 ### 4.2 Nghĩa vụ kế thừa — thứ gì chặn vi phạm

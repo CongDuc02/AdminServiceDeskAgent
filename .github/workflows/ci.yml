@@ -1,0 +1,107 @@
+# CI của BO-19 — B1 của track build. Chạy trên push MỌI nhánh và pull_request. KHÔNG dùng secret nào (PO, 2026-10-05).
+# Ba job độc lập, mỗi job chạy trong container Linux cùng image nền với Dockerfile để khớp nền tảng của image runtime:
+#   backend    — import-linter (AC-1.12) + toàn bộ test, gồm các ca cần PostgreSQL (container pgvector ghim digest, ADR-033)
+#   contracts  — check_grants.py --local-migrated (AC-1.6: Lệch 0) + test của bộ kiểm
+#   lock       — so lock bằng cách sinh lại (ADR-030): lệch một byte là fail; cài lock vào venv sạch bằng --require-hashes
+# ESLint chưa có: client chưa có khung (frontend/package.json rỗng). Phần ESLint của AC-1.12 hoãn tới khi dựng khung client.
+# Tài liệu: docs/reference/import-linter-2.15.md; docs/design/06-structure.md mục Luật import; ADR-030 ghi chú Cập nhật.
+name: ci
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Cùng digest với Dockerfile (giai đoạn runtime) và với ADR-033 (PostgreSQL 18 + pgvector của bộ kiểm local).
+  PY_IMAGE: python:3.11-slim@sha256:bab1b7ef4b450c81002278d035eff85ebe394ae94df904f7a3ba14f7e16e487b
+  PG_IMAGE: pgvector/pgvector:0.8.1-pg18@sha256:508c5290cda481d4f5f846446a26e9c1b804766828a394a5861de1b348a18b4c
+
+jobs:
+  backend:
+    name: backend — import-linter và test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+      - name: PostgreSQL mới cho các ca test tích hợp
+        run: |
+          docker network create ci
+          docker run -d --name pg --network ci -e POSTGRES_HOST_AUTH_METHOD=trust "$PG_IMAGE"
+          for i in $(seq 1 30); do docker exec pg pg_isready -U postgres && break; sleep 2; done
+          docker exec pg pg_isready -U postgres
+      - name: lint-imports và test
+        run: |
+          docker run --rm --network ci -v "$PWD":/repo -w /repo/backend \
+            -e PYTHONPATH=src -e PYTHONDONTWRITEBYTECODE=1 \
+            -e BO19_TEST_PG_SUPERUSER_DSN=postgresql://postgres@pg:5432/postgres \
+            "$PY_IMAGE" bash -c '
+              set -euo pipefail
+              pip install -q --disable-pip-version-check --require-hashes --no-deps -r requirements-dev-linux.lock
+              lint-imports --no-cache --no-logo
+              python -m unittest discover -s tests -v'
+
+  contracts:
+    name: contracts — check_grants và test của bộ kiểm
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+      - name: PostgreSQL mới
+        run: |
+          docker network create ci
+          docker run -d --name pg --network ci -e POSTGRES_HOST_AUTH_METHOD=trust "$PG_IMAGE"
+          for i in $(seq 1 30); do docker exec pg pg_isready -U postgres && break; sleep 2; done
+          docker exec pg pg_isready -U postgres
+      - name: check_grants --local-migrated và test của bộ kiểm
+        run: |
+          docker run --rm --network ci -v "$PWD":/repo -w /repo/tools/contract-checks \
+            -e PYTHONDONTWRITEBYTECODE=1 -e PYTHONIOENCODING=utf-8 \
+            "$PY_IMAGE" bash -c '
+              set -euo pipefail
+              pip install -q --disable-pip-version-check --require-hashes --no-deps -r /repo/backend/requirements-dev-linux.lock
+              python -m unittest test_check_grants -v
+              python check_grants.py --local-migrated --server-dsn postgresql://postgres@pg:5432/postgres'
+
+  lock:
+    name: lock — so lock sinh lại (ADR-030)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+      - name: Sinh lại từng lock bằng đúng lệnh ở dòng 2 của chính nó, so từng byte, rồi cài vào venv sạch
+        run: |
+          docker run --rm -v "$PWD":/repo "$PY_IMAGE" bash -c '
+            set -euo pipefail
+            fail=0
+            for L in requirements-linux.lock requirements-dev-linux.lock; do
+              HDR=$(sed -n 2p "/repo/backend/$L" | sed "s/^#    //")        # lệnh khoá + "  # uv <phiên bản>"
+              CMD="${HDR%%  # uv *}"
+              UVV=${HDR##*# uv }
+              echo "== $L: uv $UVV"
+              python -m venv "/tmp/uv-$L" && "/tmp/uv-$L/bin/pip" install -q --disable-pip-version-check "uv==$UVV"
+              rm -rf "/tmp/regen-$L" && mkdir "/tmp/regen-$L"
+              cp /repo/backend/pyproject.toml /repo/backend/constraints.txt "/tmp/regen-$L/"
+              (cd "/tmp/regen-$L" && UV_CUSTOM_COMPILE_COMMAND="$HDR" PATH="/tmp/uv-$L/bin:$PATH" $CMD >/dev/null)
+              if cmp -s "/tmp/regen-$L/$L" "/repo/backend/$L"; then
+                echo "   sinh lại: GIỐNG TỪNG BYTE"
+              else
+                echo "   sinh lại: LỆCH — lock đã commit không phải kết quả của lệnh ở dòng 2"; diff "/tmp/regen-$L/$L" "/repo/backend/$L" | head -20 || true; fail=1
+              fi
+              python -m venv "/tmp/v-$L" && "/tmp/v-$L/bin/pip" install -q --disable-pip-version-check --require-hashes --no-deps -r "/repo/backend/$L" \
+                && echo "   cài --require-hashes vào venv sạch: ĐẠT"
+            done
+            exit $fail'
