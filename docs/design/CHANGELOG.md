@@ -3291,3 +3291,15 @@ PO ghi nhận sự cố, cho phép dùng số đo của lần chạy ngoài kế
 | `proposals/tran-p1-1800.md` | **Chờ PO duyệt:** diff các tổng dẫn xuất — TỔNG/request vẫn 92.000 (91.700 làm tròn lên bội 2.000), `chat_session` 46.500 → 51.900 (+11,6%); biên giữa số đo lớn nhất (1.744) và 1.800 là 56 token |
 
 **Đính chính:** dòng O1-1 ở `12-roadmap.md` ban đầu ghi "tổng một lời gọi ≈ 1.720–1.790" — sai; đúng là 1.703–1.744 (tuỳ cách cộng suy luận). Đã sửa.
+
+### B4b — lần chạy lại E2 + E4B; áp trần P1 1.800; đóng O1-3 (2026-10-05)
+
+PO chạy lại E2 + E4B có `tiktoken`: 12 lời gọi, `self-check` đạt (kết quả và tài liệu tham chiếu), tiêu `gpt-oss-20b` 10.880 và `gpt-oss-120b` 2.848 token. PO duyệt diff trần P1.
+
+| Việc | Kết quả |
+|---|---|
+| **Trần P1 1.800 — đã áp** | `11-ops.md` (trần mỗi lời gọi 1.800; phần `intake_agent` 27.700; TỔNG/request vẫn 92.000 — 91.700 làm tròn lên bội 2.000; `chat_session` **51.900**), `working_values.py`, test, A-022, A-031, roadmap, `06-structure.md`. Đột biến: trả về 1.500 và 46.500 — mỗi chỗ làm test đỏ |
+| **O1-3 đóng** | `completion_tokens` gấp 2,6–7,5 lần token nhìn thấy và bằng nhìn thấy + `reasoning_tokens` + phần dư 12–19 token (khung định dạng, chưa xác minh) ⇒ suy luận đã nằm trong `completion_tokens`. **Bỏ tính dư:** budget chỉ cộng `input_tokens + output_tokens`; `reasoning_tokens` vẫn ghi sổ. Tổng cảnh báo mỗi lời gọi cũng bỏ cộng trùng. Đột biến: cộng lại reasoning ở truy vấn budget và ở tổng cảnh báo — mỗi chỗ làm test đỏ. Ghi chú: gợi ý tự động của tool ghi "KHÔNG RÕ" vì dung sai do người triển khai chọn hẹp hơn phần dư ở các lời gọi nhỏ; kết luận ở đây đọc từ số, nêu rõ ở tài liệu tham chiếu |
+| **Ngữ nghĩa `max_completion_tokens` đóng** | Trần gồm cả suy luận: E4B trần 87 > nhìn thấy lớn nhất 57 mà 3/3 HTTP 400 `json_validate_failed`. Mẫu nhỏ (n = 3), nhưng các điểm của lần chạy 1 cùng chiều và không điểm nào ngược. **Chưa biết:** phần dư 12–19 token là gì; token của lời gọi bị cắt (400 không có `usage`, sổ đếm thiếu); thời lượng so với hạn chót 8 s (tool không ghi `completion_time`) |
+| **Đề xuất trần output — CHƯA ÁP** | `proposals/model-profile-values.md` mục 4: chỉ `extract_slots` 1.536 → 2.048 (1,9× → 2,5× max đo 817; phương sai suy luận lớn, tới 8 slot); `classify_intent` 512 và `draft_free_content` 2.048 giữ. PO duyệt trước khi dùng thật |
+| Cổng 4.6 | Tính lại hạn mức Groq cho UAT với `chat_session` 51.900: mốc từ số đo — một lượt P1 + P2 ≈ 2.960–3.110 token trên `gpt-oss-20b`; 8K TPM ⇒ ~2 lượt/phút; 200K TPD ⇒ chưa tới 4 phiên đủ trần mỗi ngày hoặc ≈ 64–67 lượt; thay bằng `usage` thật khi tới cổng |
