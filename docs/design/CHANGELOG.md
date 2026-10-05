@@ -3079,3 +3079,28 @@ Phần còn mở của S3: A-086 (Sprint 4, R4-4); đoạn log Render quanh 21:4
 **Điều log cho thấy:** nếu ngủ sau 15 phút kể từ lúc request cuối **bắt đầu**, instance dừng khoảng 15:40:30 — trong khoảng 15:33:48–15:42:54 mà log cho phép. Nếu tính từ lúc stream **kết thúc**, nó phải còn thức tới 15:48:48 — nhưng nó đã ngủ. Mọi khoảng nghỉ mà service không ngủ đều ≤ 13 phút 11 giây. Kết luận: **nhất quán với** "15 phút từ request bắt đầu; stream đang mở không làm mới đồng hồ" — **chưa kiểm**: giờ dừng không có trong log (dòng uvicorn không mang giờ), restart khác của nền tảng chưa loại, một lần ngủ duy nhất đủ dữ kiện. A-086 vẫn `Mở`, Sprint 4.
 
 **Auto-Deploy:** PO xác nhận đã bật (2026-10-05).
+
+---
+
+## 2026-10-05 — S4 xong: shutdown delay thật ≈ 5 s trên gói free; A-087; R2-5, R4-5; việc nợ track build
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/render-s4-nhat-ky-do.md` | Mới. Nhật ký đo S4: start command thật (`api_main`), đối chứng local, sự kiện deploy, sáu lần `SIGTERM`, `SIGTERM` lúc instance mới Live, khai báo trước và kết quả nhân chứng, hai lần có nhân chứng (deploy, ngủ), quyết định đóng S4 |
+| `docs/reference/render-s4-nhan-chung-poll.jsonl` | Mới. 65 lần hỏi `pg_stat_activity` thô quanh ba mốc |
+| `ASSUMPTIONS.md` → 0.56 | A-031: kết quả S4 (WV-01 giữ 30 s, đo được ≈ 5 s); A-086: số đo S4, vế "stream đang mở" giữ `Mở`; **A-087 mới** — `maxShutdownDelaySeconds` và drain trên gói trả phí, đo lại trước production |
+| `proposals/sprint1-working-values-a031-a048.md` | WV-01: ghi chú "giá trị theo tài liệu; trên gói free đo được ≈ 5 s"; cột chờ cập nhật |
+| `12-roadmap.md` → 0.33 | R2-5 và R4-5 (rủi ro chấp nhận, kỷ luật không deploy trong buổi thử); O1-5, O1-6, O1-7 (việc nợ track build); A-087 vào danh sách trước production ở mục Sau UAT |
+| `decisions/ADR-016-…md` | Ghi chú S4 trước mục Rejected alternatives — **không đổi quyết định** |
+| `06-structure.md` → 0.28 | Ghi chú S4 ở mục Tắt tiến trình êm — không sửa hàng nào của bảng; cây gốc: `s4_witness_poll.py` |
+| `.claude/commands/spike.md` — PO cho phép lần này | Dòng S4: thực tế, kết quả, bước dọn. Chỉ một dòng đổi |
+| `backend/src/bo19/entrypoints/api_main.py`, `backend/tests/test_spike_s4.py` | **Gỡ hẳn** khối SPIKE S4 — khôi phục đúng bản của `main`; xoá test |
+| `tools/render-probes/` | Giữ `s4_witness_poll.py`, `test_s4_witness.py`; `README.md` thêm mục đo lại trước production |
+
+**Kết quả (Web Service free, có nhân chứng độc lập với log):** `SIGKILL` ≈ 5 s sau `SIGTERM`, khoảng (4.9, 5.2] s, ở cả đường deploy và đường ngủ; không phải 30 s mặc định. `SIGTERM` của deploy đến vào lúc instance mới Live, không phải 60 s sau. `SIGTERM` ngủ đến 899.27–899.81 s sau request cuối.
+
+**Không đổi, theo quyết định PO:** WV-01 (30 s), WV-02, bước kiểm khởi động #11, ADR-016 — rủi ro chấp nhận cho giai đoạn build. **Không thử** `maxShutdownDelaySeconds` (A-087).
+
+**Sự cố ghi nhận:** (1) deploy 2 hỏng (`Port scan timeout`) khi bắt đầu chồng với `SIGTERM` ngủ của instance cũ; nguyên nhân chưa biết; Render dựng lại deploy 1 khi deploy hỏng, khoảng 14 phút không có instance nào mở cổng. (2) Hai lần phép tính của tôi lỗi do thiếu ngày hoặc `sed` sai — không ảnh hưởng kết luận (các mốc tương đối đúng).
+
+**Việc nợ track build** (mục Mục mở của Sprint 1 của `12-roadmap.md`): O1-5 log `SIGTERM_RECEIVED`/`PROCESS_EXIT` + giờ UTC theo log JSON của `11-ops.md`, phủ mọi entrypoint, có test; O1-6 điều kiện `combined_main`; O1-7 PID 1 với `soffice` (ADR-015).
