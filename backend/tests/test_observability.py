@@ -255,7 +255,7 @@ class QuetVanBan(unittest.TestCase):
     và không có trong kế hoạch B2 — xin PO quyết ở báo cáo B2 trước khi chuyển. Danh sách miễn trừ bị khoá: thêm file vào đây
     mà không sửa test là đỏ."""
 
-    EXEMPT = {"entrypoints/migrate_main.py", "entrypoints/api_main.py"}  # api_main: tạm — chuyển sang observability ở commit tích hợp runner
+    EXEMPT = {"entrypoints/migrate_main.py"}
     PATTERNS = (r"^\s*(import|from)\s+structlog\b", r"\blogging\.getLogger\(", r"\blogging\.basicConfig\(", r"\blogging\.\w*Handler\(",
                 r"\.addHandler\(")
 
