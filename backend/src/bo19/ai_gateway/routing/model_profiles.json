@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "models": {
+    "openai/gpt-oss-20b": { "allowed_params": { "reasoning_effort": ["low", "medium", "high"] } },
+    "openai/gpt-oss-120b": { "allowed_params": { "reasoning_effort": ["low", "medium", "high"] } }
+  },
+  "tiers": {
+    "CHEAP": { "model": "openai/gpt-oss-20b", "params": { "reasoning_effort": "low" } },
+    "STRONG": { "model": "openai/gpt-oss-120b", "params": {} }
+  }
+}

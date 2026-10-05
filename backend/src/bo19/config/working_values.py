@@ -16,6 +16,29 @@ ARGON2_MAX_CONCURRENT_VERIFY = 4
 # WV-17 — token phiên: 8 giờ, tính tuyệt đối, không gia hạn trượt.
 SESSION_TOKEN_TTL_SECONDS = 8 * 60 * 60
 
+# WV-04 / WV-06 — HẠN CHÓT TỔNG của một lời gọi `ai_gateway.call` (PO, 2026-10-05): bao mọi lần thử, quãng nghỉ WV-05 và mọi lần chờ `retry-after`.
+LLM_CALL_DEADLINE_CHEAP_SECONDS = 8
+LLM_CALL_DEADLINE_STRONG_SECONDS = 60
+# WV-05 — một lần thử lại (tổng hai lần gọi), nghỉ cố định 1 s.
+LLM_RETRY_COUNT = 1
+LLM_RETRY_PAUSE_SECONDS = 1
+# WV-19 — `retry-after` của 429 vượt ngưỡng này thì không chờ (coi là hết hạn mức theo ngày). Trong lượt chat WV-02 đã chặn mọi lần chờ.
+LLM_RETRY_AFTER_CEILING_SECONDS = 120
+
+# Trần budget (mục Định cỡ A-022 của 11-ops.md, mục 10.2 và 10.4) — bước kiểm khởi động #5. Nhãn: "chưa hiệu chỉnh" (A-031), trừ khi ghi "cận trên cứng".
+# Trần MỖI LỜI GỌI chưa chặn được trước lời gọi (A-090): B4 chỉ đo và cảnh báo. Trần theo CHỦ BUDGET (chat_session, request) chặn.
+TOKEN_CEILING_PER_CALL = {
+    "classify_intent": 1500,  # ước lượng — O1-1: đếm offline 1.467–1.602 cho đầu vào P1; PO giữ 1.500 tới khi có `usage` thật (2026-10-05)
+    "extract_slots": 3500,  # ước lượng
+    "select_procedure_passages": 6000,  # ước lượng
+    "embed_query": 500,  # ước lượng có căn cứ
+    "draft_free_content": 4000,  # cận trên cứng
+    "revise_free_content": 4000,  # cận trên cứng
+}
+TOKEN_CEILING_CHAT_SESSION = 46_500  # đang hiệu lực sau khi A-068 đóng (mục 10.4)
+TOKEN_CEILING_REQUEST = 92_000  # 64.000 (drafting, cận trên cứng) + 26.500 (intake, điển hình), làm tròn (mục 10.2)
+CHANGES_REQUESTED_MAX_ROUNDS = 3  # R — cận trên cứng (A-022, ADR-009)
+
 # WV-07 — timeout lớp tool chỉ chạm `postgresql`: dùng làm thời gian chờ mượn connection của nghiệp vụ.
 POOL_ACQUIRE_TIMEOUT_SECONDS = 5
 

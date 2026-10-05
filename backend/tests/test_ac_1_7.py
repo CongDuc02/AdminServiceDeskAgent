@@ -119,8 +119,8 @@ class AC17(unittest.TestCase):
         self.set_operating_mode(None)  # chưa có dòng nào — D-009
         report = self.start("bo19_app")
         self.assertTrue(report.ok, report.failures)
-        self.assertEqual(report.passed, ("1", "2", "10", "11", "12", "13", "15", "16", "17", "19", "20"))
-        self.assertEqual(report.pending, ("3", "4a", "4b", "4c", "5", "8", "9", "14", "21"))  # chưa làm — không tính là đạt
+        self.assertEqual(report.passed, ("1", "2", "5", "10", "11", "12", "13", "15", "16", "17", "19", "20", "21"))
+        self.assertEqual(report.pending, ("3", "4a", "4b", "4c", "8", "9", "14"))  # chưa làm — không tính là đạt
         self.assertEqual(report.skipped, ())
         info = [json.loads(x) for x in self.out.getvalue().splitlines() if '"STARTUP_CHECK_INFO"' in x]
         self.assertEqual([(i["step"], i["mode"], i["source"]) for i in info], [("15", "NON_PRODUCTION", "DEFAULT_NO_ROW")])
@@ -130,7 +130,7 @@ class AC17(unittest.TestCase):
     def test_worker_va_cron_chay_dung_cot_cua_bang(self):
         self.set_operating_mode(None)
         worker = self.start("bo19_app", Entry.WORKER)
-        self.assertEqual(worker.passed, ("1", "2", "10", "11", "13", "15", "16", "17", "19"))  # không có #12, #20: chỉ cột api
+        self.assertEqual(worker.passed, ("1", "2", "5", "10", "11", "13", "15", "16", "17", "19", "21"))  # không có #12, #20: chỉ cột api
         cron = self.start("bo19_app", Entry.CRON)
         self.assertEqual(cron.passed, ("1", "2", "10", "13", "16", "19"))  # cron không có #11, #15, #17
 

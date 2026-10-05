@@ -99,3 +99,15 @@ ADR-032 chọn Groq cho mốc 1: `openai/gpt-oss-20b` tier rẻ, `openai/gpt-oss
 ## Open Questions
 
 - Không có — cách đọc tiêu chí 1 đã được xác nhận. Mục mở O1-3 nằm ở `12-roadmap.md`.
+
+---
+
+## Cập nhật — B4, 2026-10-05: những chỗ BUILD MODE đã chốt
+
+PO duyệt kế hoạch B4 (2026-10-05): hồ sơ model là file JSON trong repo; chỉ `base_url` và khoá là biến môi trường; hạn chót tổng mỗi lời gọi; không log thân lỗi thô; khoá API không lộ.
+
+- **Hạn chót tổng cho mỗi lời gọi `call`** — WV-04 (tier rẻ) và WV-06 (tier mạnh) — bao mọi lần thử, quãng nghỉ và lần chờ `retry-after`; cài bằng một lần huỷ ở mức coroutine, không bằng timeout từng pha của `httpx` (`read` tính lại sau mỗi byte nên server nhỏ giọt không bao giờ chạm). Điều này **thay** câu "tier rẻ chỉ retry khi còn ≥ WV-04" của WV-05 và vế "còn ít nhất `retry-after` cộng một timeout lời gọi WV-04" của điều kiện 4 ở trên: chờ `retry-after` chỉ khi `retry-after` nhỏ hơn thời gian còn lại của hạn chót hiệu lực (hạn chót tổng, hoặc hạn chót lượt nếu cái đó đến trước); lần chờ vẫn là lần thử lại duy nhất.
+- **Lỗi provider chỉ để lại mã HTTP, loại lỗi và `code` nếu có** — ở log, ở exception, ở mọi chuỗi. Thân response thô không bao giờ được giữ: nó có thể trích lại input, kể cả `RES`.
+- **Khoá `BO19_LLM_API_KEY` không xuất hiện** trong log, exception hay `repr` của đối tượng nào, kể cả khi provider trả 401.
+- **`async`.** Xem mục Triển khai ở B4 của `06-structure.md`.
+- **Dạng request** `response_format` lấy từ nguồn gốc: `docs/reference/llm-groq-structured-request.md`.
