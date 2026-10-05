@@ -54,24 +54,24 @@ paths:
       x-bo19-execution: SYNC
       x-bo19-idempotency-key: none
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: "#/components/parameters/CsrfHeader"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/LoginBody' }
+            schema: { $ref: "#/components/schemas/LoginBody" }
       responses:
-        '204':
+        "204":
           description: Đã phát token — phiên không lưu DB (ADR-013)
           headers:
             Set-Cookie:
               description: bo19_session; HttpOnly; Secure; SameSite=Strict; Path=/api
               schema: { type: string }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '429': { $ref: '#/components/responses/RateLimited' }
-        '500': { $ref: '#/components/responses/InternalError' }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/InternalError" }
     delete:
       tags: [auth]
       operationId: deleteSession
@@ -80,12 +80,15 @@ paths:
       x-bo19-execution: SYNC
       x-bo19-idempotency-key: none
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: "#/components/parameters/CsrfHeader"
       responses:
-        '204': { description: Đã xoá cookie ở trình duyệt này — token đã phát KHÔNG bị thu hồi trước hạn (A-048) }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '500': { $ref: '#/components/responses/InternalError' }
+        "204":
+          {
+            description: Đã xoá cookie ở trình duyệt này — token đã phát KHÔNG bị thu hồi trước hạn (A-048),
+          }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /me:
     get:
@@ -94,13 +97,13 @@ paths:
       summary: Nhân viên đang đăng nhập, permission hiệu lực, chế độ vận hành
       x-bo19-feature: NFR-05
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Me' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/Me" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /operating-mode/transitions:
     get:
@@ -110,17 +113,17 @@ paths:
       x-bo19-permission: [audit.read_all]
       x-bo19-feature: NFR-03
       parameters:
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/OperatingModeChangePage' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/OperatingModeChangePage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "500": { $ref: "#/components/responses/InternalError" }
     post:
       tags: [config]
       operationId: createOperatingModeTransition
@@ -138,27 +141,28 @@ paths:
       x-bo19-execution: SYNC
       x-bo19-idempotency-key: operating_mode_change
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/OperatingModeTransitionBody' }
+            schema: { $ref: "#/components/schemas/OperatingModeTransitionBody" }
       responses:
-        '201':
+        "201":
           description: Đã ghi
           headers:
-            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+            Idempotent-Replayed:
+              { $ref: "#/components/headers/IdempotentReplayed" }
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/OperatingModeChange' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/OperatingModeChange" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /chat-sessions:
     post:
@@ -171,48 +175,49 @@ paths:
       x-bo19-idempotency-key: chat_session
       x-bo19-feature: F1
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
       responses:
-        '200':
+        "200":
           description: Phiên đang mở có sẵn
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ChatSession' }
-        '201':
+              schema: { $ref: "#/components/schemas/ChatSession" }
+        "201":
           description: Phiên mới
           headers:
-            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+            Idempotent-Replayed:
+              { $ref: "#/components/headers/IdempotentReplayed" }
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ChatSession' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/ChatSession" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /chat-sessions/{chat_session_id}:
     parameters:
-      - $ref: '#/components/parameters/ChatSessionId'
+      - $ref: "#/components/parameters/ChatSessionId"
     get:
       tags: [chat]
       operationId: getChatSession
       summary: Một phiên — chỉ chủ phiên
       x-bo19-feature: F1
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ChatSession' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/ChatSession" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /chat-sessions/{chat_session_id}/messages:
     parameters:
-      - $ref: '#/components/parameters/ChatSessionId'
+      - $ref: "#/components/parameters/ChatSessionId"
     get:
       tags: [chat]
       operationId: listChatMessages
@@ -220,22 +225,22 @@ paths:
       description: Nguồn có thẩm quyền của mọi lượt chat. Index uq_chat_message_seq.
       x-bo19-feature: F1
       parameters:
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ChatMessagePage' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/ChatMessagePage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /chat-sessions/{chat_session_id}/turns:
     parameters:
-      - $ref: '#/components/parameters/ChatSessionId'
+      - $ref: "#/components/parameters/ChatSessionId"
     post:
       tags: [chat]
       operationId: postChatTurn
@@ -249,35 +254,36 @@ paths:
       x-bo19-idempotency-key: chat_message
       x-bo19-feature: F1
       x-bo19-sse-events:
-        turn.accepted: { $ref: '#/components/schemas/TurnAcceptedEvent' }
-        turn.progress: { $ref: '#/components/schemas/TurnProgressEvent' }
-        turn.reply: { $ref: '#/components/schemas/TurnReplyEvent' }
-        turn.error: { $ref: '#/components/schemas/ErrorEnvelope' }
+        turn.accepted: { $ref: "#/components/schemas/TurnAcceptedEvent" }
+        turn.progress: { $ref: "#/components/schemas/TurnProgressEvent" }
+        turn.reply: { $ref: "#/components/schemas/TurnReplyEvent" }
+        turn.error: { $ref: "#/components/schemas/ErrorEnvelope" }
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/AcceptEventStream'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/AcceptEventStream"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/TurnBody' }
+            schema: { $ref: "#/components/schemas/TurnBody" }
       responses:
-        '200':
+        "200":
           description: Stream lượt chat
           headers:
-            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+            Idempotent-Replayed:
+              { $ref: "#/components/headers/IdempotentReplayed" }
           content:
             text/event-stream:
               schema: { type: string }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '406': { $ref: '#/components/responses/NotAcceptable' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "406": { $ref: "#/components/responses/NotAcceptable" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /requests:
     get:
@@ -287,52 +293,54 @@ paths:
       description: |
         OWN — do mình tạo, index ix_request_created_by. ALL — mặc định lọc bốn trạng thái mở sau SUBMITTED,
         sắp theo status_changed_at, CHƯA có index (Open Questions của 05-api.md). ASSIGNED — index ix_approval_step_assignee.
-      x-bo19-permission: [request.read_own, request.read_all, request.read_assigned]
+      x-bo19-permission:
+        [request.read_own, request.read_all, request.read_assigned]
       x-bo19-feature: F4
       parameters:
         - name: scope
           in: query
           required: true
-          schema: { $ref: '#/components/schemas/RequestListScope' }
+          schema: { $ref: "#/components/schemas/RequestListScope" }
         - name: status
           in: query
           required: false
-          schema: { $ref: '#/components/schemas/RequestStatus' }
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+          schema: { $ref: "#/components/schemas/RequestStatus" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RequestSummaryPage' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/RequestSummaryPage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /requests/{request_id}:
     parameters:
-      - $ref: '#/components/parameters/RequestId'
+      - $ref: "#/components/parameters/RequestId"
     get:
       tags: [requests]
       operationId: getRequest
       summary: Chi tiết request — slot, còn thiếu gì, cần sửa gì, artifact
-      x-bo19-permission: [request.read_own, request.read_all, request.read_assigned]
+      x-bo19-permission:
+        [request.read_own, request.read_all, request.read_assigned]
       x-bo19-feature: F4
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RequestDetail' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/RequestDetail" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /requests/{request_id}/actions/confirm-slots:
     parameters:
-      - $ref: '#/components/parameters/RequestId'
+      - $ref: "#/components/parameters/RequestId"
     post:
       tags: [requests]
       operationId: confirmSlots
@@ -344,28 +352,28 @@ paths:
       x-bo19-idempotency-key: none
       x-bo19-feature: F1
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: "#/components/parameters/CsrfHeader"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/SlotConfirmBody' }
+            schema: { $ref: "#/components/schemas/SlotConfirmBody" }
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RequestDetail' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/RequestDetail" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /requests/{request_id}/actions/submit:
     parameters:
-      - $ref: '#/components/parameters/RequestId'
+      - $ref: "#/components/parameters/RequestId"
     post:
       tags: [requests]
       operationId: submitRequest
@@ -377,32 +385,33 @@ paths:
       x-bo19-idempotency-key: decision_record (SUBMITTED | RESUBMITTED)
       x-bo19-feature: F1
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/SubmitBody' }
+            schema: { $ref: "#/components/schemas/SubmitBody" }
       responses:
-        '200':
+        "200":
           description: OK
           headers:
-            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+            Idempotent-Replayed:
+              { $ref: "#/components/headers/IdempotentReplayed" }
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/DecisionResult' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/DecisionResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /requests/{request_id}/actions/cancel:
     parameters:
-      - $ref: '#/components/parameters/RequestId'
+      - $ref: "#/components/parameters/RequestId"
     post:
       tags: [requests]
       operationId: cancelRequest
@@ -414,27 +423,28 @@ paths:
       x-bo19-idempotency-key: decision_record (REQUEST_CANCELLED)
       x-bo19-feature: F1
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CancelBody' }
+            schema: { $ref: "#/components/schemas/CancelBody" }
       responses:
-        '200':
+        "200":
           description: OK
           headers:
-            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+            Idempotent-Replayed:
+              { $ref: "#/components/headers/IdempotentReplayed" }
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/DecisionResult' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/DecisionResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /review-queue:
     get:
@@ -446,26 +456,27 @@ paths:
         status — PENDING_APPROVAL: document.approve_content; PENDING_SIGNATURE: document.sign;
         PENDING_SEAL: document.apply_seal — tool_layer kiểm. request.read_all thấy mọi văn bản;
         chỉ có request.read_assigned thì thấy văn bản có bước duyệt giao cho mình.
-      x-bo19-permission: [document.approve_content, document.sign, document.apply_seal]
+      x-bo19-permission:
+        [document.approve_content, document.sign, document.apply_seal]
       x-bo19-permission-also: [[request.read_all, request.read_assigned]]
       x-bo19-feature: F4
       parameters:
         - name: status
           in: query
           required: true
-          schema: { $ref: '#/components/schemas/ReviewQueueStatus' }
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+          schema: { $ref: "#/components/schemas/ReviewQueueStatus" }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ReviewQueuePage' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/ReviewQueuePage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /issue-queue:
     get:
@@ -479,18 +490,18 @@ paths:
       x-bo19-permission: [document.issue]
       x-bo19-feature: F3
       parameters:
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ReviewQueuePage' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/ReviewQueuePage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /takeover-queue:
     get:
@@ -501,26 +512,27 @@ paths:
         Theo approval_step loại TAKEOVER đang OPEN, thứ tự ix_approval_step_open_by_kind
         (migration 0007). request.read_all bắt buộc — bước TAKEOVER không giao cho ai
         (mục Dừng có kiểm soát và tiếp quản của 08-hitl.md).
-      x-bo19-permission: [document.approve_content, document.reject, document.issue]
+      x-bo19-permission:
+        [document.approve_content, document.reject, document.issue]
       x-bo19-permission-also: [[request.read_all]]
       x-bo19-feature: NFR-06
       parameters:
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ReviewQueuePage' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/ReviewQueuePage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /documents/{document_id}:
     parameters:
-      - $ref: '#/components/parameters/DocumentId'
+      - $ref: "#/components/parameters/DocumentId"
     get:
       tags: [documents]
       operationId: getDocumentForReview
@@ -528,18 +540,18 @@ paths:
       x-bo19-permission: [request.read_all, request.read_assigned]
       x-bo19-feature: F2
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/DocumentReviewView' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/DocumentReviewView" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /documents/{document_id}/actions/approve-content:
     parameters:
-      - $ref: '#/components/parameters/DocumentId'
+      - $ref: "#/components/parameters/DocumentId"
     post:
       tags: [documents]
       operationId: approveContent
@@ -551,26 +563,26 @@ paths:
       x-bo19-idempotency-key: decision_record (APPROVED)
       x-bo19-feature: F3
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ApproveContentBody' }
+            schema: { $ref: "#/components/schemas/ApproveContentBody" }
       responses:
-        '200': { $ref: '#/components/responses/DecisionOk' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+        "200": { $ref: "#/components/responses/DecisionOk" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /documents/{document_id}/actions/request-changes:
     parameters:
-      - $ref: '#/components/parameters/DocumentId'
+      - $ref: "#/components/parameters/DocumentId"
     post:
       tags: [documents]
       operationId: requestChanges
@@ -582,26 +594,26 @@ paths:
       x-bo19-idempotency-key: decision_record (CHANGES_REQUESTED)
       x-bo19-feature: F3
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RequestChangesBody' }
+            schema: { $ref: "#/components/schemas/RequestChangesBody" }
       responses:
-        '200': { $ref: '#/components/responses/DecisionOk' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+        "200": { $ref: "#/components/responses/DecisionOk" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /documents/{document_id}/actions/reject:
     parameters:
-      - $ref: '#/components/parameters/DocumentId'
+      - $ref: "#/components/parameters/DocumentId"
     post:
       tags: [documents]
       operationId: rejectDocument
@@ -613,26 +625,26 @@ paths:
       x-bo19-idempotency-key: decision_record (REJECTED)
       x-bo19-feature: F3
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RejectBody' }
+            schema: { $ref: "#/components/schemas/RejectBody" }
       responses:
-        '200': { $ref: '#/components/responses/DecisionOk' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+        "200": { $ref: "#/components/responses/DecisionOk" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /documents/{document_id}/actions/sign:
     parameters:
-      - $ref: '#/components/parameters/DocumentId'
+      - $ref: "#/components/parameters/DocumentId"
     post:
       tags: [documents]
       operationId: signDocument
@@ -647,26 +659,26 @@ paths:
       x-bo19-idempotency-key: decision_record (SIGNED)
       x-bo19-feature: F3
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/SignBody' }
+            schema: { $ref: "#/components/schemas/SignBody" }
       responses:
-        '200': { $ref: '#/components/responses/DecisionOk' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+        "200": { $ref: "#/components/responses/DecisionOk" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /documents/{document_id}/actions/apply-seal:
     parameters:
-      - $ref: '#/components/parameters/DocumentId'
+      - $ref: "#/components/parameters/DocumentId"
     post:
       tags: [documents]
       operationId: applySeal
@@ -679,26 +691,26 @@ paths:
       x-bo19-idempotency-key: decision_record (SEALED)
       x-bo19-feature: F3
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ApplySealBody' }
+            schema: { $ref: "#/components/schemas/ApplySealBody" }
       responses:
-        '200': { $ref: '#/components/responses/DecisionOk' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+        "200": { $ref: "#/components/responses/DecisionOk" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /documents/{document_id}/actions/issue:
     parameters:
-      - $ref: '#/components/parameters/DocumentId'
+      - $ref: "#/components/parameters/DocumentId"
     post:
       tags: [documents]
       operationId: orderIssue
@@ -711,32 +723,33 @@ paths:
       x-bo19-idempotency-key: decision_record (ISSUE_ORDERED)
       x-bo19-feature: F3
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/IssueBody' }
+            schema: { $ref: "#/components/schemas/IssueBody" }
       responses:
-        '202':
+        "202":
           description: Đã ghi lệnh phát hành
           headers:
-            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+            Idempotent-Replayed:
+              { $ref: "#/components/headers/IdempotentReplayed" }
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/DecisionResult' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/DecisionResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /documents/{document_id}/actions/resolve-halt:
     parameters:
-      - $ref: '#/components/parameters/DocumentId'
+      - $ref: "#/components/parameters/DocumentId"
     post:
       tags: [documents]
       operationId: resolveHalt
@@ -747,32 +760,33 @@ paths:
         dùng tuỳ at_node và reason_code (mục Bảng mã của 08-hitl.md); sai thì
         TAKEOVER_RESOLUTION_NOT_ALLOWED kèm details.allowed_resolutions.
       x-bo19-operation: document_takeover_resolve
-      x-bo19-permission: [document.approve_content, document.reject, document.issue]
+      x-bo19-permission:
+        [document.approve_content, document.reject, document.issue]
       x-bo19-execution: SYNC_ENQUEUE
       x-bo19-enqueues: [resume_document_graph]
       x-bo19-idempotency-key: decision_record (TAKEOVER_RESOLVED)
       x-bo19-feature: NFR-06
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ResolveHaltBody' }
+            schema: { $ref: "#/components/schemas/ResolveHaltBody" }
       responses:
-        '200': { $ref: '#/components/responses/DecisionOk' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+        "200": { $ref: "#/components/responses/DecisionOk" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /documents/{document_id}/actions/revoke-initiate:
     parameters:
-      - $ref: '#/components/parameters/DocumentId'
+      - $ref: "#/components/parameters/DocumentId"
     post:
       tags: [documents]
       operationId: initiateRevocation
@@ -784,26 +798,26 @@ paths:
       x-bo19-feature: F5
       x-bo19-scope: Should
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RevokeInitiateBody' }
+            schema: { $ref: "#/components/schemas/RevokeInitiateBody" }
       responses:
-        '200': { $ref: '#/components/responses/DecisionOk' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+        "200": { $ref: "#/components/responses/DecisionOk" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /documents/{document_id}/actions/revoke-confirm:
     parameters:
-      - $ref: '#/components/parameters/DocumentId'
+      - $ref: "#/components/parameters/DocumentId"
     post:
       tags: [documents]
       operationId: confirmRevocation
@@ -819,27 +833,27 @@ paths:
       x-bo19-feature: F5
       x-bo19-scope: Should
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RevokeConfirmBody' }
+            schema: { $ref: "#/components/schemas/RevokeConfirmBody" }
       responses:
-        '200': { $ref: '#/components/responses/DecisionOk' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+        "200": { $ref: "#/components/responses/DecisionOk" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /documents/{document_id}/renders/{render_id}/file:
     parameters:
-      - $ref: '#/components/parameters/DocumentId'
-      - $ref: '#/components/parameters/RenderId'
+      - $ref: "#/components/parameters/DocumentId"
+      - $ref: "#/components/parameters/RenderId"
     get:
       tags: [files]
       operationId: downloadRender
@@ -849,7 +863,8 @@ paths:
         request.read_own — chỉ bản FINAL, chỉ pdf, chỉ khi document đã ISSUED hoặc sau đó.
         So checksum trước byte đầu tiên; ghi audit_event.
       x-bo19-operation: stored_file_fetch
-      x-bo19-permission: [request.read_all, request.read_assigned, request.read_own]
+      x-bo19-permission:
+        [request.read_all, request.read_assigned, request.read_own]
       x-bo19-execution: SYNC_OBJECT_STORAGE
       x-bo19-feature: F3
       parameters:
@@ -860,7 +875,7 @@ paths:
             type: string
             enum: [pdf, docx]
       responses:
-        '200':
+        "200":
           description: File
           headers:
             Content-Disposition:
@@ -877,11 +892,11 @@ paths:
               schema:
                 type: string
                 contentMediaType: application/vnd.openxmlformats-officedocument.wordprocessingml.document
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
-        '503': { $ref: '#/components/responses/FileUnavailable' }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/FileUnavailable" }
 
   /notifications:
     get:
@@ -890,17 +905,17 @@ paths:
       summary: Thông báo của mình, mới nhất trước
       x-bo19-feature: F4
       parameters:
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/NotificationPage' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/NotificationPage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /signals:
     get:
@@ -913,18 +928,18 @@ paths:
       x-bo19-execution: STREAM
       x-bo19-feature: F4
       x-bo19-sse-events:
-        signal: { $ref: '#/components/schemas/SignalEvent' }
+        signal: { $ref: "#/components/schemas/SignalEvent" }
       parameters:
-        - $ref: '#/components/parameters/AcceptEventStream'
+        - $ref: "#/components/parameters/AcceptEventStream"
       responses:
-        '200':
+        "200":
           description: Stream tín hiệu
           content:
             text/event-stream:
               schema: { type: string }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '406': { $ref: '#/components/responses/NotAcceptable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "406": { $ref: "#/components/responses/NotAcceptable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /templates:
     get:
@@ -934,18 +949,18 @@ paths:
       x-bo19-permission: [template.manage]
       x-bo19-feature: F6
       parameters:
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/TemplatePage' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/TemplatePage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
     post:
       tags: [config]
       operationId: createTemplate
@@ -956,31 +971,32 @@ paths:
       x-bo19-idempotency-key: audit_event (template.create) — ngoại lệ tường minh
       x-bo19-feature: F6
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/TemplateCreateBody' }
+            schema: { $ref: "#/components/schemas/TemplateCreateBody" }
       responses:
-        '201':
+        "201":
           description: Đã tạo
           headers:
-            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+            Idempotent-Replayed:
+              { $ref: "#/components/headers/IdempotentReplayed" }
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Template' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/Template" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /templates/{template_id}:
     parameters:
-      - $ref: '#/components/parameters/TemplateId'
+      - $ref: "#/components/parameters/TemplateId"
     get:
       tags: [config]
       operationId: getTemplate
@@ -988,19 +1004,19 @@ paths:
       x-bo19-permission: [template.manage]
       x-bo19-feature: F6
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Template' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/Template" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /templates/{template_id}/versions:
     parameters:
-      - $ref: '#/components/parameters/TemplateId'
+      - $ref: "#/components/parameters/TemplateId"
     post:
       tags: [config]
       operationId: uploadTemplateVersion
@@ -1011,38 +1027,39 @@ paths:
       x-bo19-idempotency-key: template_version
       x-bo19-feature: F6
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           multipart/form-data:
-            schema: { $ref: '#/components/schemas/TemplateVersionUpload' }
+            schema: { $ref: "#/components/schemas/TemplateVersionUpload" }
             encoding:
               manifest:
                 contentType: application/json
       responses:
-        '201':
+        "201":
           description: Đã tải lên, ở UPLOADED
           headers:
-            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+            Idempotent-Replayed:
+              { $ref: "#/components/headers/IdempotentReplayed" }
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/TemplateVersion' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '413': { $ref: '#/components/responses/PayloadTooLarge' }
-        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/TemplateVersion" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /templates/{template_id}/versions/{template_version_id}/actions/activate:
     parameters:
-      - $ref: '#/components/parameters/TemplateId'
-      - $ref: '#/components/parameters/TemplateVersionId'
+      - $ref: "#/components/parameters/TemplateId"
+      - $ref: "#/components/parameters/TemplateVersionId"
     post:
       tags: [config]
       operationId: activateTemplateVersion
@@ -1053,29 +1070,29 @@ paths:
       x-bo19-idempotency-key: none
       x-bo19-feature: F6
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: "#/components/parameters/CsrfHeader"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ActivateBody' }
+            schema: { $ref: "#/components/schemas/ActivateBody" }
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/TemplateVersion' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/TemplateVersion" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /templates/{template_id}/versions/{template_version_id}/source:
     parameters:
-      - $ref: '#/components/parameters/TemplateId'
-      - $ref: '#/components/parameters/TemplateVersionId'
+      - $ref: "#/components/parameters/TemplateId"
+      - $ref: "#/components/parameters/TemplateVersionId"
     get:
       tags: [files]
       operationId: downloadTemplateSource
@@ -1085,7 +1102,7 @@ paths:
       x-bo19-execution: SYNC_OBJECT_STORAGE
       x-bo19-feature: F6
       responses:
-        '200':
+        "200":
           description: File
           headers:
             Content-Disposition:
@@ -1098,11 +1115,11 @@ paths:
               schema:
                 type: string
                 contentMediaType: application/vnd.openxmlformats-officedocument.wordprocessingml.document
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '500': { $ref: '#/components/responses/InternalError' }
-        '503': { $ref: '#/components/responses/FileUnavailable' }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/FileUnavailable" }
 
   /employee-imports:
     post:
@@ -1115,33 +1132,34 @@ paths:
       x-bo19-idempotency-key: audit_event (employee.import) — ngoại lệ tường minh
       x-bo19-feature: F6
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           multipart/form-data:
-            schema: { $ref: '#/components/schemas/EmployeeImportUpload' }
+            schema: { $ref: "#/components/schemas/EmployeeImportUpload" }
       responses:
-        '201':
+        "201":
           description: Đã import
           headers:
-            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+            Idempotent-Replayed:
+              { $ref: "#/components/headers/IdempotentReplayed" }
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/EmployeeImportResult' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '413': { $ref: '#/components/responses/PayloadTooLarge' }
-        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/EmployeeImportResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /employee-imports/{import_id}:
     parameters:
-      - $ref: '#/components/parameters/ImportId'
+      - $ref: "#/components/parameters/ImportId"
     get:
       tags: [config]
       operationId: getEmployeeImport
@@ -1149,15 +1167,15 @@ paths:
       x-bo19-permission: [employee.import]
       x-bo19-feature: F6
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/EmployeeImportResult' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/EmployeeImportResult" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /procedures:
     get:
@@ -1167,18 +1185,18 @@ paths:
       x-bo19-permission: [procedure.manage]
       x-bo19-feature: F1
       parameters:
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ProcedurePage' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/ProcedurePage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /procedures/versions:
     post:
@@ -1192,37 +1210,38 @@ paths:
       x-bo19-idempotency-key: procedure_document_version
       x-bo19-feature: F1
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           multipart/form-data:
-            schema: { $ref: '#/components/schemas/ProcedureUpload' }
+            schema: { $ref: "#/components/schemas/ProcedureUpload" }
             encoding:
               metadata:
                 contentType: application/json
       responses:
-        '202':
+        "202":
           description: Đã nhận; phiên bản chưa hiệu lực cho tới khi job nạp kho xong
           headers:
-            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+            Idempotent-Replayed:
+              { $ref: "#/components/headers/IdempotentReplayed" }
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ProcedureVersion' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '413': { $ref: '#/components/responses/PayloadTooLarge' }
-        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/ProcedureVersion" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /procedures/{procedure_document_id}/versions/{version_id}/actions/deactivate:
     parameters:
-      - $ref: '#/components/parameters/ProcedureDocumentId'
-      - $ref: '#/components/parameters/ProcedureVersionId'
+      - $ref: "#/components/parameters/ProcedureDocumentId"
+      - $ref: "#/components/parameters/ProcedureVersionId"
     post:
       tags: [config]
       operationId: deactivateProcedureVersion
@@ -1233,23 +1252,23 @@ paths:
       x-bo19-idempotency-key: none
       x-bo19-feature: F1
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: "#/components/parameters/CsrfHeader"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/DeactivateBody' }
+            schema: { $ref: "#/components/schemas/DeactivateBody" }
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ProcedureVersion' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/ProcedureVersion" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /config/request-types:
     get:
@@ -1259,22 +1278,22 @@ paths:
       x-bo19-permission: [request_type.manage, template.manage]
       x-bo19-feature: F6
       parameters:
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RequestTypeConfigPage' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/RequestTypeConfigPage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /config/request-types/{request_type_code}:
     parameters:
-      - $ref: '#/components/parameters/RequestTypeCodePath'
+      - $ref: "#/components/parameters/RequestTypeCodePath"
     get:
       tags: [config]
       operationId: getRequestTypeConfig
@@ -1282,15 +1301,15 @@ paths:
       x-bo19-permission: [request_type.manage, template.manage]
       x-bo19-feature: F6
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RequestTypeConfig' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/RequestTypeConfig" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
     put:
       tags: [config]
       operationId: upsertRequestType
@@ -1301,28 +1320,28 @@ paths:
       x-bo19-idempotency-key: none
       x-bo19-feature: F6
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: "#/components/parameters/CsrfHeader"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RequestTypeUpsertBody' }
+            schema: { $ref: "#/components/schemas/RequestTypeUpsertBody" }
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RequestTypeConfig' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/RequestTypeConfig" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /config/request-types/{request_type_code}/slots/{slot_name}:
     parameters:
-      - $ref: '#/components/parameters/RequestTypeCodePath'
-      - $ref: '#/components/parameters/SlotNamePath'
+      - $ref: "#/components/parameters/RequestTypeCodePath"
+      - $ref: "#/components/parameters/SlotNamePath"
     put:
       tags: [config]
       operationId: upsertSlotDefinition
@@ -1333,29 +1352,29 @@ paths:
       x-bo19-idempotency-key: none
       x-bo19-feature: F6
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: "#/components/parameters/CsrfHeader"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/SlotDefinitionUpsertBody' }
+            schema: { $ref: "#/components/schemas/SlotDefinitionUpsertBody" }
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/SlotDefinitionConfig' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/SlotDefinitionConfig" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /config/request-types/{request_type_code}/slots/{slot_name}/sensitivity-change-preview:
     parameters:
-      - $ref: '#/components/parameters/RequestTypeCodePath'
-      - $ref: '#/components/parameters/SlotNamePath'
+      - $ref: "#/components/parameters/RequestTypeCodePath"
+      - $ref: "#/components/parameters/SlotNamePath"
     get:
       tags: [config]
       operationId: previewSensitivityChange
@@ -1366,23 +1385,23 @@ paths:
         - name: to
           in: query
           required: true
-          schema: { $ref: '#/components/schemas/SlotSensitivity' }
+          schema: { $ref: "#/components/schemas/SlotSensitivity" }
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/SensitivityChangePreview' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/SensitivityChangePreview" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /config/request-types/{request_type_code}/slots/{slot_name}/actions/change-sensitivity:
     parameters:
-      - $ref: '#/components/parameters/RequestTypeCodePath'
-      - $ref: '#/components/parameters/SlotNamePath'
+      - $ref: "#/components/parameters/RequestTypeCodePath"
+      - $ref: "#/components/parameters/SlotNamePath"
     post:
       tags: [config]
       operationId: changeSlotSensitivity
@@ -1393,24 +1412,24 @@ paths:
       x-bo19-idempotency-key: none
       x-bo19-feature: F6
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: "#/components/parameters/CsrfHeader"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ChangeSensitivityBody' }
+            schema: { $ref: "#/components/schemas/ChangeSensitivityBody" }
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/SensitivityChangeResult' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/SensitivityChangeResult" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /audit-events:
     get:
@@ -1424,33 +1443,33 @@ paths:
         - name: request_id
           in: query
           required: false
-          schema: { $ref: '#/components/schemas/Uuid' }
+          schema: { $ref: "#/components/schemas/Uuid" }
         - name: document_id
           in: query
           required: false
-          schema: { $ref: '#/components/schemas/Uuid' }
+          schema: { $ref: "#/components/schemas/Uuid" }
         - name: severity
           in: query
           required: false
-          schema: { $ref: '#/components/schemas/AuditSeverity' }
+          schema: { $ref: "#/components/schemas/AuditSeverity" }
         - name: action
           in: query
           required: false
           schema:
             type: string
             pattern: '^[a-z_]+\.[a-z_]+$'
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/AuditEventPage' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/AuditEventPage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /self-approvals:
     get:
@@ -1460,18 +1479,18 @@ paths:
       x-bo19-permission: [audit.read_all]
       x-bo19-feature: F3
       parameters:
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/SelfApprovalPage' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/SelfApprovalPage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /delegations:
     get:
@@ -1479,7 +1498,7 @@ paths:
       operationId: listDelegations
       summary: Uỷ quyền — chỉ hình dạng
       x-bo19-permission: [delegation.manage]
-      x-bo19-feature: 'Scope — định tuyến ký nhiều cấp, SIGNER, uỷ quyền'
+      x-bo19-feature: "Scope — định tuyến ký nhiều cấp, SIGNER, uỷ quyền"
       x-bo19-scope: Should
       parameters:
         - name: as
@@ -1488,82 +1507,83 @@ paths:
           schema:
             type: string
             enum: [DELEGATOR, DELEGATE]
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/DelegationPage' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/DelegationPage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
     post:
       tags: [delegations]
       operationId: createDelegation
       summary: Lập uỷ quyền — chỉ hình dạng
       x-bo19-operation: delegation_create
       x-bo19-permission: [delegation.manage]
-      x-bo19-feature: 'Scope — định tuyến ký nhiều cấp, SIGNER, uỷ quyền'
+      x-bo19-feature: "Scope — định tuyến ký nhiều cấp, SIGNER, uỷ quyền"
       x-bo19-execution: SYNC
       x-bo19-idempotency-key: audit_event (delegation.create) — ngoại lệ tường minh
       x-bo19-scope: Should
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/DelegationCreateBody' }
+            schema: { $ref: "#/components/schemas/DelegationCreateBody" }
       responses:
-        '201':
+        "201":
           description: Đã lập
           headers:
-            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+            Idempotent-Replayed:
+              { $ref: "#/components/headers/IdempotentReplayed" }
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Delegation' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/Delegation" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /delegations/{delegation_id}/actions/revoke:
     parameters:
-      - $ref: '#/components/parameters/DelegationId'
+      - $ref: "#/components/parameters/DelegationId"
     post:
       tags: [delegations]
       operationId: revokeDelegation
       summary: Thu hồi uỷ quyền — chỉ hình dạng
       x-bo19-operation: delegation_revoke
       x-bo19-permission: [delegation.manage]
-      x-bo19-feature: 'Scope — định tuyến ký nhiều cấp, SIGNER, uỷ quyền'
+      x-bo19-feature: "Scope — định tuyến ký nhiều cấp, SIGNER, uỷ quyền"
       x-bo19-execution: SYNC
       x-bo19-idempotency-key: none
       x-bo19-scope: Should
       parameters:
-        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: "#/components/parameters/CsrfHeader"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RevokeDelegationBody' }
+            schema: { $ref: "#/components/schemas/RevokeDelegationBody" }
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Delegation' }
-        '401': { $ref: '#/components/responses/Unauthenticated' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '500': { $ref: '#/components/responses/InternalError' }
+              schema: { $ref: "#/components/schemas/Delegation" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
 components:
   securitySchemes:
@@ -1614,96 +1634,96 @@ components:
       name: chat_session_id
       in: path
       required: true
-      schema: { $ref: '#/components/schemas/Uuid' }
+      schema: { $ref: "#/components/schemas/Uuid" }
     RequestId:
       name: request_id
       in: path
       required: true
-      schema: { $ref: '#/components/schemas/Uuid' }
+      schema: { $ref: "#/components/schemas/Uuid" }
     DocumentId:
       name: document_id
       in: path
       required: true
-      schema: { $ref: '#/components/schemas/Uuid' }
+      schema: { $ref: "#/components/schemas/Uuid" }
     RenderId:
       name: render_id
       in: path
       required: true
-      schema: { $ref: '#/components/schemas/Uuid' }
+      schema: { $ref: "#/components/schemas/Uuid" }
     TemplateId:
       name: template_id
       in: path
       required: true
-      schema: { $ref: '#/components/schemas/Uuid' }
+      schema: { $ref: "#/components/schemas/Uuid" }
     TemplateVersionId:
       name: template_version_id
       in: path
       required: true
-      schema: { $ref: '#/components/schemas/Uuid' }
+      schema: { $ref: "#/components/schemas/Uuid" }
     ImportId:
       name: import_id
       in: path
       required: true
-      schema: { $ref: '#/components/schemas/Uuid' }
+      schema: { $ref: "#/components/schemas/Uuid" }
     ProcedureDocumentId:
       name: procedure_document_id
       in: path
       required: true
-      schema: { $ref: '#/components/schemas/Uuid' }
+      schema: { $ref: "#/components/schemas/Uuid" }
     ProcedureVersionId:
       name: version_id
       in: path
       required: true
-      schema: { $ref: '#/components/schemas/Uuid' }
+      schema: { $ref: "#/components/schemas/Uuid" }
     RequestTypeCodePath:
       name: request_type_code
       in: path
       required: true
-      schema: { $ref: '#/components/schemas/RequestTypeCode' }
+      schema: { $ref: "#/components/schemas/RequestTypeCode" }
     SlotNamePath:
       name: slot_name
       in: path
       required: true
-      schema: { $ref: '#/components/schemas/SlotName' }
+      schema: { $ref: "#/components/schemas/SlotName" }
     DelegationId:
       name: delegation_id
       in: path
       required: true
-      schema: { $ref: '#/components/schemas/Uuid' }
+      schema: { $ref: "#/components/schemas/Uuid" }
 
   responses:
     DecisionOk:
       description: Quyết định đã ghi; bước tiếp theo chạy ở queue_worker nếu có job
       headers:
-        Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+        Idempotent-Replayed: { $ref: "#/components/headers/IdempotentReplayed" }
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/DecisionResult' }
+          schema: { $ref: "#/components/schemas/DecisionResult" }
     BadRequest:
       description: IDEMPOTENCY_KEY_REQUIRED
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
     Unauthenticated:
       description: UNAUTHENTICATED · INVALID_CREDENTIALS
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
     Forbidden:
       description: CSRF_HEADER_MISSING · PERMISSION_DENIED · SELF_APPROVAL_BLOCKED · ENVIRONMENT_NOT_ALLOWED
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
     NotFound:
       description: NOT_FOUND — cả khi tài nguyên tồn tại mà người gọi không được xem
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
     NotAcceptable:
       description: NOT_ACCEPTABLE
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
     Conflict:
       description: |
         IDEMPOTENCY_KEY_CONFLICT · STATE_CONFLICT · SEPARATION_OF_DUTIES_VIOLATION · DOCUMENT_AWAITING_TAKEOVER ·
@@ -1711,17 +1731,17 @@ components:
         TURN_IN_PROGRESS · TURN_NOT_FINISHED · USE_SENSITIVITY_CHANGE · DESTRUCTIVE_COUNT_CHANGED
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
     PayloadTooLarge:
       description: PAYLOAD_TOO_LARGE — trần TBD (A-031)
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
     UnsupportedMediaType:
       description: UNSUPPORTED_MEDIA_TYPE
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
     Unprocessable:
       description: |
         VALIDATION_FAILED · SELF_APPROVAL_REASON_REQUIRED · REQUEST_NOT_READY · CHANGE_TARGET_INVALID ·
@@ -1729,24 +1749,24 @@ components:
         OPERATING_MODE_UNCHANGED · TAKEOVER_RESOLUTION_NOT_ALLOWED
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
     RateLimited:
       description: RATE_LIMITED — chỉ POST /auth/session ở Sprint đầu (mục Rate limit của 09-security.md). details.retry_after_seconds
       headers:
         Retry-After: { schema: { type: integer } }
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
     InternalError:
       description: INTERNAL_ERROR — mọi mã lỗi nội bộ lọt tới api đều thành mã này
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
     FileUnavailable:
       description: FILE_UNAVAILABLE — mất object hoặc lệch checksum (ADR-014)
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
 
   schemas:
     # ------------------------------------------------------------------ nền
@@ -1759,10 +1779,10 @@ components:
     RequestTypeCode:
       description: Chuỗi theo mẫu, không phải enum đóng — F6 thêm loại mới không sửa code
       type: string
-      pattern: '^[A-Z][A-Z_]*$'
+      pattern: "^[A-Z][A-Z_]*$"
     SlotName:
       type: string
-      pattern: '^[a-z][a-z0-9_]*$'
+      pattern: "^[a-z][a-z0-9_]*$"
     PermissionCode:
       type: string
       pattern: '^[a-z_]+\.[a-z_]+$'
@@ -1771,15 +1791,42 @@ components:
       required: [next_cursor]
       properties:
         next_cursor:
-          type: [string, 'null']
+          type: [string, "null"]
 
     # ------------------------------------------------------------------ enum (GLOSSARY.md)
     RequestStatus:
       type: string
-      enum: [DRAFT, NEEDS_INFO, SUBMITTED, IN_REVIEW, CHANGES_REQUESTED, APPROVED, FULFILLED, REJECTED, CANCELLED, EXPIRED]
+      enum:
+        [
+          DRAFT,
+          NEEDS_INFO,
+          SUBMITTED,
+          IN_REVIEW,
+          CHANGES_REQUESTED,
+          APPROVED,
+          FULFILLED,
+          REJECTED,
+          CANCELLED,
+          EXPIRED,
+        ]
     DocumentStatus:
       type: string
-      enum: [DRAFT, PENDING_APPROVAL, CHANGES_REQUESTED, REJECTED, APPROVED, PENDING_SIGNATURE, SIGNED, PENDING_SEAL, SEALED, ISSUED, REVOKED, SUPERSEDED, ARCHIVED]
+      enum:
+        [
+          DRAFT,
+          PENDING_APPROVAL,
+          CHANGES_REQUESTED,
+          REJECTED,
+          APPROVED,
+          PENDING_SIGNATURE,
+          SIGNED,
+          PENDING_SEAL,
+          SEALED,
+          ISSUED,
+          REVOKED,
+          SUPERSEDED,
+          ARCHIVED,
+        ]
     ReviewQueueStatus:
       type: string
       enum: [PENDING_APPROVAL, PENDING_SIGNATURE, PENDING_SEAL]
@@ -1801,7 +1848,17 @@ components:
     ApprovalStepKind:
       description: ISSUE_ORDER và REVOKE_INITIATE sinh ra đã DECIDED, không bao giờ OPEN (ADR-027)
       type: string
-      enum: [CONTENT_REVIEW, SIGNATURE, SEAL, BOOKING_CONFIRM, TAKEOVER, ISSUE_ORDER, REVOKE_INITIATE, REVOKE_CONFIRM]
+      enum:
+        [
+          CONTENT_REVIEW,
+          SIGNATURE,
+          SEAL,
+          BOOKING_CONFIRM,
+          TAKEOVER,
+          ISSUE_ORDER,
+          REVOKE_INITIATE,
+          REVOKE_CONFIRM,
+        ]
     ApprovalStepStatus:
       type: string
       enum: [OPEN, DECIDED, CANCELLED]
@@ -1822,17 +1879,58 @@ components:
       enum: [APPROVED_CONTENT, ISSUED]
     DecisionKind:
       type: string
-      enum: [SUBMITTED, RESUBMITTED, REQUEST_CANCELLED, APPROVED, CHANGES_REQUESTED, REJECTED, SIGNED, SEALED, ISSUE_ORDERED, REVOKE_INITIATED, REVOKE_CONFIRMED, TAKEOVER_RESOLVED, BOOKING_CONFIRMED]
+      enum:
+        [
+          SUBMITTED,
+          RESUBMITTED,
+          REQUEST_CANCELLED,
+          APPROVED,
+          CHANGES_REQUESTED,
+          REJECTED,
+          SIGNED,
+          SEALED,
+          ISSUE_ORDERED,
+          REVOKE_INITIATED,
+          REVOKE_CONFIRMED,
+          TAKEOVER_RESOLVED,
+          BOOKING_CONFIRMED,
+        ]
     TakeoverResolution:
       type: string
       enum: [RETRY, REJECT_REQUEST, RETURN_TO_ISSUE_QUEUE]
     HaltReasonCode:
       description: Bảng mã ở mục Bảng mã của 08-hitl.md — không phải nguyên văn mã lỗi của tool
       type: string
-      enum: [FREE_CONTENT_INVALID, PARSE_FAILED, PROVIDER_UNAVAILABLE, BUDGET_EXCEEDED, BUDGET_UNAVAILABLE, SYSTEM_DEFECT, TEMPLATE_NOT_ACTIVE, RENDER_INPUT_INVALID, RENDER_CONVERSION_FAILED, FONT_MISSING, REVIEW_NOT_READY, MAX_ROUNDS_EXCEEDED, NO_ELIGIBLE_SIGNER, RENDER_CHECKSUM_MISMATCH, RENDER_OBJECT_MISSING, CONTENT_HASH_MISMATCH, ISSUE_RETRIES_EXHAUSTED]
+      enum:
+        [
+          FREE_CONTENT_INVALID,
+          PARSE_FAILED,
+          PROVIDER_UNAVAILABLE,
+          BUDGET_EXCEEDED,
+          BUDGET_UNAVAILABLE,
+          SYSTEM_DEFECT,
+          TEMPLATE_NOT_ACTIVE,
+          RENDER_INPUT_INVALID,
+          RENDER_CONVERSION_FAILED,
+          FONT_MISSING,
+          REVIEW_NOT_READY,
+          MAX_ROUNDS_EXCEEDED,
+          NO_ELIGIBLE_SIGNER,
+          RENDER_CHECKSUM_MISMATCH,
+          RENDER_OBJECT_MISSING,
+          CONTENT_HASH_MISMATCH,
+          ISSUE_RETRIES_EXHAUSTED,
+        ]
     NotificationEventCode:
       type: string
-      enum: [DOCUMENT_ISSUED, DOCUMENT_HALTED, NEEDS_INFO_REMINDER, DOCUMENT_JOB_FAILED, RENDER_JOB_FAILED]
+      enum:
+        [
+          DOCUMENT_ISSUED,
+          DOCUMENT_HALTED,
+          NEEDS_INFO_REMINDER,
+          DOCUMENT_JOB_FAILED,
+          RENDER_JOB_FAILED,
+        ]
     DecisionTextKind:
       type: string
       enum: [CHANGE_REASON, REJECTION_REASON, REVOCATION_REASON]
@@ -1874,7 +1972,15 @@ components:
       enum: [NOTIFICATIONS, MY_REQUESTS, REVIEW_QUEUE]
     PendingQuestionKind:
       type: string
-      enum: [CLARIFY_TYPE, ASK_SLOT, CONFIRM_PROPOSALS, OFFER_SUBMIT, OFFER_NEXT_INTENT, EXPLAIN_TERMINAL]
+      enum:
+        [
+          CLARIFY_TYPE,
+          ASK_SLOT,
+          CONFIRM_PROPOSALS,
+          OFFER_SUBMIT,
+          OFFER_NEXT_INTENT,
+          EXPLAIN_TERMINAL,
+        ]
 
     # ------------------------------------------------------------------ lỗi
     ErrorCode:
@@ -1920,10 +2026,18 @@ components:
         - FILE_UNAVAILABLE
     FieldErrorCode:
       type: string
-      enum: [REQUIRED, BLANK, INVALID_FORMAT, OUT_OF_RANGE, NOT_ALLOWED, TOO_LONG]
+      enum:
+        [REQUIRED, BLANK, INVALID_FORMAT, OUT_OF_RANGE, NOT_ALLOWED, TOO_LONG]
     VariableErrorCode:
       type: string
-      enum: [MISSING_REQUIRED, NOT_IN_FILE, NOT_IN_MANIFEST, INPUT_NOT_ALLOWED, SOURCE_SLOT_UNKNOWN]
+      enum:
+        [
+          MISSING_REQUIRED,
+          NOT_IN_FILE,
+          NOT_IN_MANIFEST,
+          INPUT_NOT_ALLOWED,
+          SOURCE_SLOT_UNKNOWN,
+        ]
     FontErrorCode:
       description: NOT_IN_MANIFEST — file .docx khai dùng font không có trong required_fonts. NOT_INSTALLED — font trong required_fonts không có mặt trong image đang chạy phép kiểm (ADR-015)
       type: string
@@ -1933,7 +2047,7 @@ components:
       additionalProperties: false
       required: [error_code, message, trace_id]
       properties:
-        error_code: { $ref: '#/components/schemas/ErrorCode' }
+        error_code: { $ref: "#/components/schemas/ErrorCode" }
         message:
           description: Tiếng Việt, nói rõ cần làm gì tiếp. Không bao giờ chứa giá trị slot
           type: string
@@ -1941,27 +2055,27 @@ components:
           description: UUID v4 chữ thường (ADR-024)
           type: string
           format: uuid
-        details: { $ref: '#/components/schemas/ErrorDetails' }
+        details: { $ref: "#/components/schemas/ErrorDetails" }
     ErrorDetails:
       description: Chỉ tên, mã, số đếm — không giá trị
       type: object
       additionalProperties: false
       properties:
-        permission: { $ref: '#/components/schemas/PermissionCode' }
+        permission: { $ref: "#/components/schemas/PermissionCode" }
         current_status: { type: string }
-        close_reason: { $ref: '#/components/schemas/ChatSessionCloseReason' }
+        close_reason: { $ref: "#/components/schemas/ChatSessionCloseReason" }
         slot_names:
           type: array
-          items: { $ref: '#/components/schemas/SlotName' }
+          items: { $ref: "#/components/schemas/SlotName" }
         missing_slots:
           type: array
-          items: { $ref: '#/components/schemas/SlotName' }
+          items: { $ref: "#/components/schemas/SlotName" }
         unconfirmed_slots:
           type: array
-          items: { $ref: '#/components/schemas/SlotName' }
+          items: { $ref: "#/components/schemas/SlotName" }
         failed_rules:
           type: array
-          items: { $ref: '#/components/schemas/FailedRule' }
+          items: { $ref: "#/components/schemas/FailedRule" }
         targets:
           type: array
           items: { type: string }
@@ -1973,7 +2087,7 @@ components:
             required: [field, code]
             properties:
               field: { type: string }
-              code: { $ref: '#/components/schemas/FieldErrorCode' }
+              code: { $ref: "#/components/schemas/FieldErrorCode" }
         variables:
           type: array
           items:
@@ -1982,7 +2096,7 @@ components:
             required: [variable_name, code]
             properties:
               variable_name: { type: string }
-              code: { $ref: '#/components/schemas/VariableErrorCode' }
+              code: { $ref: "#/components/schemas/VariableErrorCode" }
         fonts:
           type: array
           items:
@@ -1991,7 +2105,7 @@ components:
             required: [font_name, code]
             properties:
               font_name: { type: string }
-              code: { $ref: '#/components/schemas/FontErrorCode' }
+              code: { $ref: "#/components/schemas/FontErrorCode" }
         rows:
           type: array
           items:
@@ -2001,21 +2115,21 @@ components:
             properties:
               row_number: { type: integer, minimum: 1 }
               column: { type: string }
-              code: { $ref: '#/components/schemas/FieldErrorCode' }
+              code: { $ref: "#/components/schemas/FieldErrorCode" }
         erase_count: { type: integer, minimum: 0 }
         message_saved: { type: boolean }
         turn_abandoned: { type: boolean }
         retry_after_seconds: { type: integer, minimum: 0 }
-        current_mode: { $ref: '#/components/schemas/OperatingMode' }
+        current_mode: { $ref: "#/components/schemas/OperatingMode" }
         allowed_resolutions:
           type: array
-          items: { $ref: '#/components/schemas/TakeoverResolution' }
+          items: { $ref: "#/components/schemas/TakeoverResolution" }
     FailedRule:
       type: object
       additionalProperties: false
       required: [slot_name, rule_code]
       properties:
-        slot_name: { $ref: '#/components/schemas/SlotName' }
+        slot_name: { $ref: "#/components/schemas/SlotName" }
         rule_code: { type: string }
 
     # ------------------------------------------------------------------ người, phiên
@@ -2023,7 +2137,7 @@ components:
       type: object
       required: [id, employee_code, full_name]
       properties:
-        id: { $ref: '#/components/schemas/Uuid' }
+        id: { $ref: "#/components/schemas/Uuid" }
         employee_code: { type: string }
         full_name: { type: string }
     Me:
@@ -2032,7 +2146,7 @@ components:
       properties:
         employee:
           allOf:
-            - $ref: '#/components/schemas/EmployeeBrief'
+            - $ref: "#/components/schemas/EmployeeBrief"
             - type: object
               required: [department_code, department_name, job_title]
               properties:
@@ -2042,60 +2156,78 @@ components:
         permissions:
           description: Permission hiệu lực — gói vai trò cộng quyền cấp lẻ còn hiệu lực
           type: array
-          items: { $ref: '#/components/schemas/PermissionCode' }
-        operating_mode: { $ref: '#/components/schemas/OperatingMode' }
+          items: { $ref: "#/components/schemas/PermissionCode" }
+        operating_mode: { $ref: "#/components/schemas/OperatingMode" }
     LoginBody:
       type: object
       additionalProperties: false
       required: [employee_code, password]
       properties:
-        employee_code: { type: string, minLength: 1 }
-        password: { type: string, minLength: 1, format: password, writeOnly: true }
+        employee_code: { type: string, minLength: 1, maxLength: 64 }
+        password:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 128,
+            format: password,
+            writeOnly: true,
+          }
 
     # ------------------------------------------------------------------ chat
     ChatSession:
       type: object
-      required: [id, status, opened_at, last_message_at, closed_at, close_reason]
+      required:
+        [id, status, opened_at, last_message_at, closed_at, close_reason]
       properties:
-        id: { $ref: '#/components/schemas/Uuid' }
-        status: { $ref: '#/components/schemas/ChatSessionStatus' }
-        opened_at: { $ref: '#/components/schemas/Timestamp' }
-        last_message_at: { $ref: '#/components/schemas/Timestamp' }
+        id: { $ref: "#/components/schemas/Uuid" }
+        status: { $ref: "#/components/schemas/ChatSessionStatus" }
+        opened_at: { $ref: "#/components/schemas/Timestamp" }
+        last_message_at: { $ref: "#/components/schemas/Timestamp" }
         closed_at:
           anyOf:
-            - $ref: '#/components/schemas/Timestamp'
-            - type: 'null'
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
         close_reason:
           anyOf:
-            - $ref: '#/components/schemas/ChatSessionCloseReason'
-            - type: 'null'
+            - $ref: "#/components/schemas/ChatSessionCloseReason"
+            - type: "null"
     ChatMessage:
       type: object
-      required: [id, seq, author, request_id, body, content_erased, reply_template_id, created_at]
+      required:
+        [
+          id,
+          seq,
+          author,
+          request_id,
+          body,
+          content_erased,
+          reply_template_id,
+          created_at,
+        ]
       properties:
-        id: { $ref: '#/components/schemas/Uuid' }
+        id: { $ref: "#/components/schemas/Uuid" }
         seq: { type: integer, minimum: 1 }
-        author: { $ref: '#/components/schemas/ChatMessageAuthor' }
+        author: { $ref: "#/components/schemas/ChatMessageAuthor" }
         request_id:
           anyOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
+            - $ref: "#/components/schemas/Uuid"
+            - type: "null"
         body:
           description: RES. null khi đã bị xoá theo luật
-          type: [string, 'null']
+          type: [string, "null"]
         content_erased: { type: boolean }
         reply_template_id:
-          type: [string, 'null']
-        created_at: { $ref: '#/components/schemas/Timestamp' }
+          type: [string, "null"]
+        created_at: { $ref: "#/components/schemas/Timestamp" }
     ChatMessagePage:
       allOf:
-        - $ref: '#/components/schemas/Page'
+        - $ref: "#/components/schemas/Page"
         - type: object
           required: [items]
           properties:
             items:
               type: array
-              items: { $ref: '#/components/schemas/ChatMessage' }
+              items: { $ref: "#/components/schemas/ChatMessage" }
     TurnBody:
       type: object
       additionalProperties: false
@@ -2110,36 +2242,36 @@ components:
       type: object
       required: [kind, slot_names, candidate_types]
       properties:
-        kind: { $ref: '#/components/schemas/PendingQuestionKind' }
+        kind: { $ref: "#/components/schemas/PendingQuestionKind" }
         slot_names:
           type: array
-          items: { $ref: '#/components/schemas/SlotName' }
+          items: { $ref: "#/components/schemas/SlotName" }
         candidate_types:
           type: array
-          items: { $ref: '#/components/schemas/RequestTypeCode' }
+          items: { $ref: "#/components/schemas/RequestTypeCode" }
     TurnAcceptedEvent:
       type: object
       required: [message]
       properties:
-        message: { $ref: '#/components/schemas/ChatMessage' }
+        message: { $ref: "#/components/schemas/ChatMessage" }
     TurnProgressEvent:
       type: object
       required: [stage]
       properties:
-        stage: { $ref: '#/components/schemas/TurnStage' }
+        stage: { $ref: "#/components/schemas/TurnStage" }
     TurnReplyEvent:
       type: object
       required: [message, active_request, pending_question]
       properties:
-        message: { $ref: '#/components/schemas/ChatMessage' }
+        message: { $ref: "#/components/schemas/ChatMessage" }
         active_request:
           anyOf:
-            - $ref: '#/components/schemas/RequestSummary'
-            - type: 'null'
+            - $ref: "#/components/schemas/RequestSummary"
+            - type: "null"
         pending_question:
           anyOf:
-            - $ref: '#/components/schemas/PendingQuestionView'
-            - type: 'null'
+            - $ref: "#/components/schemas/PendingQuestionView"
+            - type: "null"
     SignalEvent:
       type: object
       required: [topics]
@@ -2147,156 +2279,209 @@ components:
         topics:
           type: array
           minItems: 1
-          items: { $ref: '#/components/schemas/SignalTopic' }
+          items: { $ref: "#/components/schemas/SignalTopic" }
 
     # ------------------------------------------------------------------ request
     ArtifactRef:
       type: object
       required: [kind, id, status, status_label]
       properties:
-        kind: { $ref: '#/components/schemas/ArtifactKind' }
-        id: { $ref: '#/components/schemas/Uuid' }
+        kind: { $ref: "#/components/schemas/ArtifactKind" }
+        id: { $ref: "#/components/schemas/Uuid" }
         status: { type: string }
         status_label: { type: string }
     RequestSummary:
       type: object
-      required: [id, request_type_code, request_type_name, status, status_label, status_changed_at, created_at, created_by_employee_id, beneficiary, row_version, artifacts]
+      required:
+        [
+          id,
+          request_type_code,
+          request_type_name,
+          status,
+          status_label,
+          status_changed_at,
+          created_at,
+          created_by_employee_id,
+          beneficiary,
+          row_version,
+          artifacts,
+        ]
       properties:
-        id: { $ref: '#/components/schemas/Uuid' }
-        request_type_code: { $ref: '#/components/schemas/RequestTypeCode' }
+        id: { $ref: "#/components/schemas/Uuid" }
+        request_type_code: { $ref: "#/components/schemas/RequestTypeCode" }
         request_type_name: { type: string }
-        status: { $ref: '#/components/schemas/RequestStatus' }
+        status: { $ref: "#/components/schemas/RequestStatus" }
         status_label: { type: string }
         status_changed_at:
           description: Mốc của "thời gian chờ" ở F4 (mục Nguyên tắc chung của 05-api.md)
           allOf:
-            - $ref: '#/components/schemas/Timestamp'
-        created_at: { $ref: '#/components/schemas/Timestamp' }
-        created_by_employee_id: { $ref: '#/components/schemas/Uuid' }
-        beneficiary: { $ref: '#/components/schemas/EmployeeBrief' }
+            - $ref: "#/components/schemas/Timestamp"
+        created_at: { $ref: "#/components/schemas/Timestamp" }
+        created_by_employee_id: { $ref: "#/components/schemas/Uuid" }
+        beneficiary: { $ref: "#/components/schemas/EmployeeBrief" }
         chat_session_id:
           anyOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
+            - $ref: "#/components/schemas/Uuid"
+            - type: "null"
         submitted_at:
           anyOf:
-            - $ref: '#/components/schemas/Timestamp'
-            - type: 'null'
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
         expires_at:
           anyOf:
-            - $ref: '#/components/schemas/Timestamp'
-            - type: 'null'
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
         row_version: { type: integer, minimum: 1 }
         artifacts:
           type: array
-          items: { $ref: '#/components/schemas/ArtifactRef' }
+          items: { $ref: "#/components/schemas/ArtifactRef" }
     RequestSummaryPage:
       allOf:
-        - $ref: '#/components/schemas/Page'
+        - $ref: "#/components/schemas/Page"
         - type: object
           required: [items]
           properties:
             items:
               type: array
-              items: { $ref: '#/components/schemas/RequestSummary' }
+              items: { $ref: "#/components/schemas/RequestSummary" }
     Provenance:
       type: object
       required: [source, synced_at]
       properties:
         source: { type: string }
-        synced_at: { $ref: '#/components/schemas/Timestamp' }
+        synced_at: { $ref: "#/components/schemas/Timestamp" }
     SlotView:
       type: object
-      required: [slot_name, description, data_type, source, sensitivity, is_required, value, value_status, erased, provenance, proposed_from_request_id, confirmed_at, row_version]
+      required:
+        [
+          slot_name,
+          description,
+          data_type,
+          source,
+          sensitivity,
+          is_required,
+          value,
+          value_status,
+          erased,
+          provenance,
+          proposed_from_request_id,
+          confirmed_at,
+          row_version,
+        ]
       properties:
-        slot_name: { $ref: '#/components/schemas/SlotName' }
+        slot_name: { $ref: "#/components/schemas/SlotName" }
         description: { type: string }
-        data_type: { $ref: '#/components/schemas/SlotDataType' }
-        source: { $ref: '#/components/schemas/SlotSource' }
-        sensitivity: { $ref: '#/components/schemas/SlotSensitivity' }
+        data_type: { $ref: "#/components/schemas/SlotDataType" }
+        source: { $ref: "#/components/schemas/SlotSource" }
+        sensitivity: { $ref: "#/components/schemas/SlotSensitivity" }
         is_required: { type: boolean }
         value:
           description: Giá trị JSON; null khi chưa có hoặc đã xoá
         value_status:
           description: null nghĩa là slot chưa có dòng nào — còn thiếu
           anyOf:
-            - $ref: '#/components/schemas/SlotValueStatus'
-            - type: 'null'
+            - $ref: "#/components/schemas/SlotValueStatus"
+            - type: "null"
         erased: { type: boolean }
         provenance:
           description: Bắt buộc với nguồn HR_PROFILE (D-002 ràng buộc 3)
           anyOf:
-            - $ref: '#/components/schemas/Provenance'
-            - type: 'null'
+            - $ref: "#/components/schemas/Provenance"
+            - type: "null"
         proposed_from_request_id:
           anyOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
+            - $ref: "#/components/schemas/Uuid"
+            - type: "null"
         confirmed_at:
           anyOf:
-            - $ref: '#/components/schemas/Timestamp'
-            - type: 'null'
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
         row_version:
           description: Gửi lại ở confirm-slots để gắn lần xác nhận vào đúng giá trị đang hiển thị
-          type: [integer, 'null']
+          type: [integer, "null"]
     ChangesRequestedView:
       type: object
-      required: [decision_record_id, change_scope, change_targets, change_reason, created_at]
+      required:
+        [
+          decision_record_id,
+          change_scope,
+          change_targets,
+          change_reason,
+          created_at,
+        ]
       properties:
-        decision_record_id: { $ref: '#/components/schemas/Uuid' }
-        change_scope: { $ref: '#/components/schemas/ChangeScope' }
+        decision_record_id: { $ref: "#/components/schemas/Uuid" }
+        change_scope: { $ref: "#/components/schemas/ChangeScope" }
         change_targets:
           type: array
           items: { type: string }
         change_reason:
           description: null khi văn bản lý do đã bị xoá theo thời hạn lưu
-          type: [string, 'null']
-        created_at: { $ref: '#/components/schemas/Timestamp' }
+          type: [string, "null"]
+        created_at: { $ref: "#/components/schemas/Timestamp" }
     DocumentOwnerView:
       type: object
-      required: [id, status, status_label, issue_in_progress, document_number, issued_date, final_render_id]
+      required:
+        [
+          id,
+          status,
+          status_label,
+          issue_in_progress,
+          document_number,
+          issued_date,
+          final_render_id,
+        ]
       properties:
-        id: { $ref: '#/components/schemas/Uuid' }
-        status: { $ref: '#/components/schemas/DocumentStatus' }
+        id: { $ref: "#/components/schemas/Uuid" }
+        status: { $ref: "#/components/schemas/DocumentStatus" }
         status_label: { type: string }
         issue_in_progress: { type: boolean }
         document_number:
-          type: [string, 'null']
+          type: [string, "null"]
         issued_date:
-          type: [string, 'null']
+          type: [string, "null"]
           format: date
         final_render_id:
           anyOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
+            - $ref: "#/components/schemas/Uuid"
+            - type: "null"
     RequestDetail:
       allOf:
-        - $ref: '#/components/schemas/RequestSummary'
+        - $ref: "#/components/schemas/RequestSummary"
         - type: object
-          required: [slots, missing_slots, unconfirmed_slots, failed_rules, submit_ready, changes_requested, documents]
+          required:
+            [
+              slots,
+              missing_slots,
+              unconfirmed_slots,
+              failed_rules,
+              submit_ready,
+              changes_requested,
+              documents,
+            ]
           properties:
             slots:
               type: array
-              items: { $ref: '#/components/schemas/SlotView' }
+              items: { $ref: "#/components/schemas/SlotView" }
             missing_slots:
               type: array
-              items: { $ref: '#/components/schemas/SlotName' }
+              items: { $ref: "#/components/schemas/SlotName" }
             unconfirmed_slots:
               type: array
-              items: { $ref: '#/components/schemas/SlotName' }
+              items: { $ref: "#/components/schemas/SlotName" }
             failed_rules:
               type: array
-              items: { $ref: '#/components/schemas/FailedRule' }
+              items: { $ref: "#/components/schemas/FailedRule" }
             submit_ready:
               description: Kết quả của đúng hàm kiểm mà check_completeness và request_submit dùng
               type: boolean
             changes_requested:
               anyOf:
-                - $ref: '#/components/schemas/ChangesRequestedView'
-                - type: 'null'
+                - $ref: "#/components/schemas/ChangesRequestedView"
+                - type: "null"
             documents:
               type: array
-              items: { $ref: '#/components/schemas/DocumentOwnerView' }
+              items: { $ref: "#/components/schemas/DocumentOwnerView" }
     SlotConfirmBody:
       type: object
       additionalProperties: false
@@ -2310,7 +2495,7 @@ components:
             additionalProperties: false
             required: [slot_name, expected_row_version]
             properties:
-              slot_name: { $ref: '#/components/schemas/SlotName' }
+              slot_name: { $ref: "#/components/schemas/SlotName" }
               expected_row_version: { type: integer, minimum: 1 }
     SubmitBody:
       type: object
@@ -2328,22 +2513,40 @@ components:
     # ------------------------------------------------------------------ văn bản
     DocumentSummary:
       type: object
-      required: [id, request_id, request_type_code, status, status_label, status_changed_at, revision_round, operating_mode, requires_seal, seal_type, issue_in_progress, halted, job_failed, document_number, issued_date, row_version]
+      required:
+        [
+          id,
+          request_id,
+          request_type_code,
+          status,
+          status_label,
+          status_changed_at,
+          revision_round,
+          operating_mode,
+          requires_seal,
+          seal_type,
+          issue_in_progress,
+          halted,
+          job_failed,
+          document_number,
+          issued_date,
+          row_version,
+        ]
       properties:
-        id: { $ref: '#/components/schemas/Uuid' }
-        request_id: { $ref: '#/components/schemas/Uuid' }
-        request_type_code: { $ref: '#/components/schemas/RequestTypeCode' }
-        status: { $ref: '#/components/schemas/DocumentStatus' }
+        id: { $ref: "#/components/schemas/Uuid" }
+        request_id: { $ref: "#/components/schemas/Uuid" }
+        request_type_code: { $ref: "#/components/schemas/RequestTypeCode" }
+        status: { $ref: "#/components/schemas/DocumentStatus" }
         status_label: { type: string }
-        status_changed_at: { $ref: '#/components/schemas/Timestamp' }
+        status_changed_at: { $ref: "#/components/schemas/Timestamp" }
         revision_round: { type: integer, minimum: 0 }
-        operating_mode: { $ref: '#/components/schemas/OperatingMode' }
+        operating_mode: { $ref: "#/components/schemas/OperatingMode" }
         requires_seal:
-          type: [boolean, 'null']
+          type: [boolean, "null"]
         seal_type:
           anyOf:
-            - $ref: '#/components/schemas/SealType'
-            - type: 'null'
+            - $ref: "#/components/schemas/SealType"
+            - type: "null"
         issue_in_progress:
           description: Cờ dẫn xuất — khoảng hoàn tất phát hành
           type: boolean
@@ -2358,193 +2561,256 @@ components:
           type: boolean
         document_number:
           description: Chỉ có từ ISSUED trở đi
-          type: [string, 'null']
+          type: [string, "null"]
         issued_date:
-          type: [string, 'null']
+          type: [string, "null"]
           format: date
         row_version: { type: integer, minimum: 1 }
     DecisionResult:
       type: object
       required: [decision_record_id, kind, created_at, request, document]
       properties:
-        decision_record_id: { $ref: '#/components/schemas/Uuid' }
-        kind: { $ref: '#/components/schemas/DecisionKind' }
-        created_at: { $ref: '#/components/schemas/Timestamp' }
-        request: { $ref: '#/components/schemas/RequestSummary' }
+        decision_record_id: { $ref: "#/components/schemas/Uuid" }
+        kind: { $ref: "#/components/schemas/DecisionKind" }
+        created_at: { $ref: "#/components/schemas/Timestamp" }
+        request: { $ref: "#/components/schemas/RequestSummary" }
         document:
           anyOf:
-            - $ref: '#/components/schemas/DocumentSummary'
-            - type: 'null'
+            - $ref: "#/components/schemas/DocumentSummary"
+            - type: "null"
     ReviewQueueItem:
       type: object
       required: [document, request_type_name, beneficiary]
       properties:
-        document: { $ref: '#/components/schemas/DocumentSummary' }
+        document: { $ref: "#/components/schemas/DocumentSummary" }
         request_type_name: { type: string }
-        beneficiary: { $ref: '#/components/schemas/EmployeeBrief' }
+        beneficiary: { $ref: "#/components/schemas/EmployeeBrief" }
     ReviewQueuePage:
       allOf:
-        - $ref: '#/components/schemas/Page'
+        - $ref: "#/components/schemas/Page"
         - type: object
           required: [items]
           properties:
             items:
               type: array
-              items: { $ref: '#/components/schemas/ReviewQueueItem' }
+              items: { $ref: "#/components/schemas/ReviewQueueItem" }
     VariableView:
       type: object
-      required: [variable_name, kind, value, value_erased, source_slot_name, slot_source, sensitivity, provenance, fill_after_approval]
+      required:
+        [
+          variable_name,
+          kind,
+          value,
+          value_erased,
+          source_slot_name,
+          slot_source,
+          sensitivity,
+          provenance,
+          fill_after_approval,
+        ]
       properties:
         variable_name: { type: string }
-        kind: { $ref: '#/components/schemas/TemplateVariableKind' }
+        kind: { $ref: "#/components/schemas/TemplateVariableKind" }
         value:
-          type: [string, 'null']
+          type: [string, "null"]
         value_erased: { type: boolean }
         source_slot_name:
           anyOf:
-            - $ref: '#/components/schemas/SlotName'
-            - type: 'null'
+            - $ref: "#/components/schemas/SlotName"
+            - type: "null"
         slot_source:
           anyOf:
-            - $ref: '#/components/schemas/SlotSource'
-            - type: 'null'
+            - $ref: "#/components/schemas/SlotSource"
+            - type: "null"
         sensitivity:
           anyOf:
-            - $ref: '#/components/schemas/SlotSensitivity'
-            - type: 'null'
+            - $ref: "#/components/schemas/SlotSensitivity"
+            - type: "null"
         provenance:
           anyOf:
-            - $ref: '#/components/schemas/Provenance'
-            - type: 'null'
+            - $ref: "#/components/schemas/Provenance"
+            - type: "null"
         fill_after_approval: { type: boolean }
     RenderRef:
       type: object
-      required: [id, render_kind, revision_round, template_version_id, created_at, pin_reason]
+      required:
+        [
+          id,
+          render_kind,
+          revision_round,
+          template_version_id,
+          created_at,
+          pin_reason,
+        ]
       properties:
-        id: { $ref: '#/components/schemas/Uuid' }
-        render_kind: { $ref: '#/components/schemas/RenderKind' }
+        id: { $ref: "#/components/schemas/Uuid" }
+        render_kind: { $ref: "#/components/schemas/RenderKind" }
         revision_round: { type: integer, minimum: 0 }
-        template_version_id: { $ref: '#/components/schemas/Uuid' }
-        created_at: { $ref: '#/components/schemas/Timestamp' }
+        template_version_id: { $ref: "#/components/schemas/Uuid" }
+        created_at: { $ref: "#/components/schemas/Timestamp" }
         pin_reason:
           anyOf:
-            - $ref: '#/components/schemas/PinReason'
-            - type: 'null'
+            - $ref: "#/components/schemas/PinReason"
+            - type: "null"
     ApprovalStepView:
       type: object
-      required: [id, step_kind, level, revision_round, status, assignee_employee_id, opened_at, closed_at, self_approval_expected, self_approved, self_approval_reason]
+      required:
+        [
+          id,
+          step_kind,
+          level,
+          revision_round,
+          status,
+          assignee_employee_id,
+          opened_at,
+          closed_at,
+          self_approval_expected,
+          self_approved,
+          self_approval_reason,
+        ]
       properties:
-        id: { $ref: '#/components/schemas/Uuid' }
-        step_kind: { $ref: '#/components/schemas/ApprovalStepKind' }
+        id: { $ref: "#/components/schemas/Uuid" }
+        step_kind: { $ref: "#/components/schemas/ApprovalStepKind" }
         level: { type: integer, minimum: 1 }
         revision_round: { type: integer, minimum: 0 }
-        status: { $ref: '#/components/schemas/ApprovalStepStatus' }
+        status: { $ref: "#/components/schemas/ApprovalStepStatus" }
         assignee_employee_id:
           anyOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
-        opened_at: { $ref: '#/components/schemas/Timestamp' }
+            - $ref: "#/components/schemas/Uuid"
+            - type: "null"
+        opened_at: { $ref: "#/components/schemas/Timestamp" }
         closed_at:
           anyOf:
-            - $ref: '#/components/schemas/Timestamp'
-            - type: 'null'
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
         self_approval_expected: { type: boolean }
         self_approved: { type: boolean }
         self_approval_reason:
-          type: [string, 'null']
+          type: [string, "null"]
     DecisionTextView:
       type: object
       required: [text_kind, body, erased]
       properties:
-        text_kind: { $ref: '#/components/schemas/DecisionTextKind' }
+        text_kind: { $ref: "#/components/schemas/DecisionTextKind" }
         body:
-          type: [string, 'null']
+          type: [string, "null"]
         erased: { type: boolean }
     DecisionView:
       type: object
-      required: [id, kind, actor, delegation_id, created_at, change_scope, change_targets, texts]
+      required:
+        [
+          id,
+          kind,
+          actor,
+          delegation_id,
+          created_at,
+          change_scope,
+          change_targets,
+          texts,
+        ]
       properties:
-        id: { $ref: '#/components/schemas/Uuid' }
-        kind: { $ref: '#/components/schemas/DecisionKind' }
-        actor: { $ref: '#/components/schemas/EmployeeBrief' }
+        id: { $ref: "#/components/schemas/Uuid" }
+        kind: { $ref: "#/components/schemas/DecisionKind" }
+        actor: { $ref: "#/components/schemas/EmployeeBrief" }
         delegation_id:
           anyOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
-        created_at: { $ref: '#/components/schemas/Timestamp' }
+            - $ref: "#/components/schemas/Uuid"
+            - type: "null"
+        created_at: { $ref: "#/components/schemas/Timestamp" }
         change_scope:
           anyOf:
-            - $ref: '#/components/schemas/ChangeScope'
-            - type: 'null'
+            - $ref: "#/components/schemas/ChangeScope"
+            - type: "null"
         change_targets:
-          type: [array, 'null']
+          type: [array, "null"]
           items: { type: string }
         texts:
           type: array
-          items: { $ref: '#/components/schemas/DecisionTextView' }
+          items: { $ref: "#/components/schemas/DecisionTextView" }
     HaltView:
       description: >-
         Lần dừng gần nhất. allowed_resolutions do server tính từ at_node và reason_code,
         không theo permission của người xem (mục Dừng có kiểm soát và tiếp quản của 08-hitl.md)
       type: object
-      required: [document_halt_id, reason_code, at_node, created_at, open, allowed_resolutions]
+      required:
+        [
+          document_halt_id,
+          reason_code,
+          at_node,
+          created_at,
+          open,
+          allowed_resolutions,
+        ]
       properties:
-        document_halt_id: { $ref: '#/components/schemas/Uuid' }
-        reason_code: { $ref: '#/components/schemas/HaltReasonCode' }
-        at_node: { type: string, pattern: '^[a-z][a-z0-9_]*$' }
-        created_at: { $ref: '#/components/schemas/Timestamp' }
+        document_halt_id: { $ref: "#/components/schemas/Uuid" }
+        reason_code: { $ref: "#/components/schemas/HaltReasonCode" }
+        at_node: { type: string, pattern: "^[a-z][a-z0-9_]*$" }
+        created_at: { $ref: "#/components/schemas/Timestamp" }
         open:
           description: Bước TAKEOVER của lần dừng này còn OPEN
           type: boolean
         allowed_resolutions:
           type: array
-          items: { $ref: '#/components/schemas/TakeoverResolution' }
+          items: { $ref: "#/components/schemas/TakeoverResolution" }
     TemplateRef:
       type: object
       required: [template_id, template_code, template_version_id, version_no]
       properties:
-        template_id: { $ref: '#/components/schemas/Uuid' }
+        template_id: { $ref: "#/components/schemas/Uuid" }
         template_code: { type: string }
-        template_version_id: { $ref: '#/components/schemas/Uuid' }
+        template_version_id: { $ref: "#/components/schemas/Uuid" }
         version_no: { type: integer, minimum: 1 }
     DocumentReviewView:
       type: object
-      required: [document, request, template, variables, renders, current_draft_render_id, approved_render_id, final_render_id, approval_steps, decisions, latest_halt]
+      required:
+        [
+          document,
+          request,
+          template,
+          variables,
+          renders,
+          current_draft_render_id,
+          approved_render_id,
+          final_render_id,
+          approval_steps,
+          decisions,
+          latest_halt,
+        ]
       properties:
-        document: { $ref: '#/components/schemas/DocumentSummary' }
-        request: { $ref: '#/components/schemas/RequestSummary' }
-        template: { $ref: '#/components/schemas/TemplateRef' }
+        document: { $ref: "#/components/schemas/DocumentSummary" }
+        request: { $ref: "#/components/schemas/RequestSummary" }
+        template: { $ref: "#/components/schemas/TemplateRef" }
         variables:
           type: array
-          items: { $ref: '#/components/schemas/VariableView' }
+          items: { $ref: "#/components/schemas/VariableView" }
         renders:
           type: array
-          items: { $ref: '#/components/schemas/RenderRef' }
+          items: { $ref: "#/components/schemas/RenderRef" }
         current_draft_render_id:
           anyOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
+            - $ref: "#/components/schemas/Uuid"
+            - type: "null"
         approved_render_id:
           anyOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
+            - $ref: "#/components/schemas/Uuid"
+            - type: "null"
         final_render_id:
           anyOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
+            - $ref: "#/components/schemas/Uuid"
+            - type: "null"
         approval_steps:
           type: array
-          items: { $ref: '#/components/schemas/ApprovalStepView' }
+          items: { $ref: "#/components/schemas/ApprovalStepView" }
         decisions:
           type: array
-          items: { $ref: '#/components/schemas/DecisionView' }
+          items: { $ref: "#/components/schemas/DecisionView" }
         latest_halt:
           anyOf:
-            - $ref: '#/components/schemas/HaltView'
-            - type: 'null'
+            - $ref: "#/components/schemas/HaltView"
+            - type: "null"
     SelfApprovalReason:
       description: Chỉ khi rơi vào đường thoát tự duyệt (D-006). Không có giá trị mặc định
-      type: [string, 'null']
+      type: [string, "null"]
       minLength: 1
     ApproveContentBody:
       type: object
@@ -2552,19 +2818,21 @@ components:
       required: [expected_row_version]
       properties:
         expected_row_version: { type: integer, minimum: 1 }
-        self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
+        self_approval_reason:
+          { $ref: "#/components/schemas/SelfApprovalReason" }
     RequestChangesBody:
       type: object
       additionalProperties: false
       required: [expected_row_version, change_scope, change_reason]
       properties:
         expected_row_version: { type: integer, minimum: 1 }
-        change_scope: { $ref: '#/components/schemas/ChangeScope' }
+        change_scope: { $ref: "#/components/schemas/ChangeScope" }
         change_reason: { type: string, minLength: 1 }
         change_targets:
           type: array
           items: { type: string }
-        self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
+        self_approval_reason:
+          { $ref: "#/components/schemas/SelfApprovalReason" }
     RejectBody:
       type: object
       additionalProperties: false
@@ -2572,14 +2840,16 @@ components:
       properties:
         expected_row_version: { type: integer, minimum: 1 }
         rejection_reason: { type: string, minLength: 1 }
-        self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
+        self_approval_reason:
+          { $ref: "#/components/schemas/SelfApprovalReason" }
     SignBody:
       type: object
       additionalProperties: false
       required: [expected_row_version]
       properties:
         expected_row_version: { type: integer, minimum: 1 }
-        self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
+        self_approval_reason:
+          { $ref: "#/components/schemas/SelfApprovalReason" }
     ApplySealBody:
       type: object
       additionalProperties: false
@@ -2589,29 +2859,32 @@ components:
         copies_count: { type: integer, minimum: 1 }
         page_count:
           description: Bắt buộc và >= 2 khi seal_type của document là EDGE_STAMP
-          type: [integer, 'null']
+          type: [integer, "null"]
           minimum: 1
-        self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
+        self_approval_reason:
+          { $ref: "#/components/schemas/SelfApprovalReason" }
     IssueBody:
       type: object
       additionalProperties: false
       required: [expected_row_version]
       properties:
         expected_row_version: { type: integer, minimum: 1 }
-        self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
+        self_approval_reason:
+          { $ref: "#/components/schemas/SelfApprovalReason" }
     ResolveHaltBody:
       type: object
       additionalProperties: false
       required: [expected_row_version, document_halt_id, resolution]
       properties:
         expected_row_version: { type: integer, minimum: 1 }
-        document_halt_id: { $ref: '#/components/schemas/Uuid' }
-        resolution: { $ref: '#/components/schemas/TakeoverResolution' }
+        document_halt_id: { $ref: "#/components/schemas/Uuid" }
+        resolution: { $ref: "#/components/schemas/TakeoverResolution" }
         rejection_reason:
           description: Bắt buộc khi và chỉ khi resolution = REJECT_REQUEST
-          type: [string, 'null']
+          type: [string, "null"]
           minLength: 1
-        self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
+        self_approval_reason:
+          { $ref: "#/components/schemas/SelfApprovalReason" }
     RevokeInitiateBody:
       type: object
       additionalProperties: false
@@ -2619,15 +2892,17 @@ components:
       properties:
         expected_row_version: { type: integer, minimum: 1 }
         revocation_reason: { type: string, minLength: 1 }
-        self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
+        self_approval_reason:
+          { $ref: "#/components/schemas/SelfApprovalReason" }
     RevokeConfirmBody:
       type: object
       additionalProperties: false
       required: [expected_row_version, initiation_decision_id]
       properties:
         expected_row_version: { type: integer, minimum: 1 }
-        initiation_decision_id: { $ref: '#/components/schemas/Uuid' }
-        self_approval_reason: { $ref: '#/components/schemas/SelfApprovalReason' }
+        initiation_decision_id: { $ref: "#/components/schemas/Uuid" }
+        self_approval_reason:
+          { $ref: "#/components/schemas/SelfApprovalReason" }
 
     # ------------------------------------------------------------------ thông báo, audit
     Notification:
@@ -2635,137 +2910,183 @@ components:
       type: object
       required: [id, event_code, request_id, document_id, created_at]
       properties:
-        id: { $ref: '#/components/schemas/Uuid' }
-        event_code: { $ref: '#/components/schemas/NotificationEventCode' }
+        id: { $ref: "#/components/schemas/Uuid" }
+        event_code: { $ref: "#/components/schemas/NotificationEventCode" }
         request_id:
           anyOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
+            - $ref: "#/components/schemas/Uuid"
+            - type: "null"
         document_id:
           anyOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
-        created_at: { $ref: '#/components/schemas/Timestamp' }
+            - $ref: "#/components/schemas/Uuid"
+            - type: "null"
+        created_at: { $ref: "#/components/schemas/Timestamp" }
     NotificationPage:
       allOf:
-        - $ref: '#/components/schemas/Page'
+        - $ref: "#/components/schemas/Page"
         - type: object
           required: [items]
           properties:
             items:
               type: array
-              items: { $ref: '#/components/schemas/Notification' }
+              items: { $ref: "#/components/schemas/Notification" }
     AuditEvent:
       type: object
-      required: [id, occurred_at, actor_kind, actor_employee_id, action, severity, entity_type, entity_id, request_id, document_id, decision_record_id, payload, trace_id]
+      required:
+        [
+          id,
+          occurred_at,
+          actor_kind,
+          actor_employee_id,
+          action,
+          severity,
+          entity_type,
+          entity_id,
+          request_id,
+          document_id,
+          decision_record_id,
+          payload,
+          trace_id,
+        ]
       properties:
-        id: { $ref: '#/components/schemas/Uuid' }
-        occurred_at: { $ref: '#/components/schemas/Timestamp' }
-        actor_kind: { $ref: '#/components/schemas/AuditActorKind' }
+        id: { $ref: "#/components/schemas/Uuid" }
+        occurred_at: { $ref: "#/components/schemas/Timestamp" }
+        actor_kind: { $ref: "#/components/schemas/AuditActorKind" }
         actor_employee_id:
           anyOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
+            - $ref: "#/components/schemas/Uuid"
+            - type: "null"
         action: { type: string }
-        severity: { $ref: '#/components/schemas/AuditSeverity' }
+        severity: { $ref: "#/components/schemas/AuditSeverity" }
         entity_type: { type: string }
         entity_id: { type: string }
         request_id:
           anyOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
+            - $ref: "#/components/schemas/Uuid"
+            - type: "null"
         document_id:
           anyOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
+            - $ref: "#/components/schemas/Uuid"
+            - type: "null"
         decision_record_id:
           anyOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
+            - $ref: "#/components/schemas/Uuid"
+            - type: "null"
         payload:
           description: Chỉ mã, id, tên slot, số đếm
           type: object
         trace_id:
           description: UUID v4 chữ thường (ADR-024)
-          type: [string, 'null']
+          type: [string, "null"]
           format: uuid
     AuditEventPage:
       allOf:
-        - $ref: '#/components/schemas/Page'
+        - $ref: "#/components/schemas/Page"
         - type: object
           required: [items]
           properties:
             items:
               type: array
-              items: { $ref: '#/components/schemas/AuditEvent' }
+              items: { $ref: "#/components/schemas/AuditEvent" }
     SelfApprovalEntry:
       type: object
-      required: [approval_step_id, document_id, request_id, step_kind, closed_at, self_approval_reason, actor]
+      required:
+        [
+          approval_step_id,
+          document_id,
+          request_id,
+          step_kind,
+          closed_at,
+          self_approval_reason,
+          actor,
+        ]
       properties:
-        approval_step_id: { $ref: '#/components/schemas/Uuid' }
-        document_id: { $ref: '#/components/schemas/Uuid' }
-        request_id: { $ref: '#/components/schemas/Uuid' }
-        step_kind: { $ref: '#/components/schemas/ApprovalStepKind' }
-        closed_at: { $ref: '#/components/schemas/Timestamp' }
+        approval_step_id: { $ref: "#/components/schemas/Uuid" }
+        document_id: { $ref: "#/components/schemas/Uuid" }
+        request_id: { $ref: "#/components/schemas/Uuid" }
+        step_kind: { $ref: "#/components/schemas/ApprovalStepKind" }
+        closed_at: { $ref: "#/components/schemas/Timestamp" }
         self_approval_reason: { type: string }
-        actor: { $ref: '#/components/schemas/EmployeeBrief' }
+        actor: { $ref: "#/components/schemas/EmployeeBrief" }
     SelfApprovalPage:
       allOf:
-        - $ref: '#/components/schemas/Page'
+        - $ref: "#/components/schemas/Page"
         - type: object
           required: [items]
           properties:
             items:
               type: array
-              items: { $ref: '#/components/schemas/SelfApprovalEntry' }
+              items: { $ref: "#/components/schemas/SelfApprovalEntry" }
 
     # ------------------------------------------------------------------ template
     TemplateSummary:
       type: object
       required: [id, code, request_type_code, name]
       properties:
-        id: { $ref: '#/components/schemas/Uuid' }
+        id: { $ref: "#/components/schemas/Uuid" }
         code: { type: string }
-        request_type_code: { $ref: '#/components/schemas/RequestTypeCode' }
+        request_type_code: { $ref: "#/components/schemas/RequestTypeCode" }
         name: { type: string }
     TemplatePage:
       allOf:
-        - $ref: '#/components/schemas/Page'
+        - $ref: "#/components/schemas/Page"
         - type: object
           required: [items]
           properties:
             items:
               type: array
-              items: { $ref: '#/components/schemas/TemplateSummary' }
+              items: { $ref: "#/components/schemas/TemplateSummary" }
     TemplateVariableView:
       type: object
-      required: [variable_name, kind, source_slot_name, fill_after_approval, variable_guidance, max_length, inputs]
+      required:
+        [
+          variable_name,
+          kind,
+          source_slot_name,
+          fill_after_approval,
+          variable_guidance,
+          max_length,
+          inputs,
+        ]
       properties:
         variable_name: { type: string }
-        kind: { $ref: '#/components/schemas/TemplateVariableKind' }
+        kind: { $ref: "#/components/schemas/TemplateVariableKind" }
         source_slot_name:
           anyOf:
-            - $ref: '#/components/schemas/SlotName'
-            - type: 'null'
+            - $ref: "#/components/schemas/SlotName"
+            - type: "null"
         fill_after_approval: { type: boolean }
         variable_guidance:
-          type: [string, 'null']
+          type: [string, "null"]
         max_length:
-          type: [integer, 'null']
+          type: [integer, "null"]
           minimum: 1
         inputs:
           description: Danh sách input tự khai — chỉ biến FREE_CONTENT có phần tử
           type: array
-          items: { $ref: '#/components/schemas/SlotName' }
+          items: { $ref: "#/components/schemas/SlotName" }
     TemplateVersion:
       type: object
-      required: [id, template_id, version_no, status, uploaded_by_employee_id, required_fonts, activated_at, retired_at, created_at, row_version, variables]
+      required:
+        [
+          id,
+          template_id,
+          version_no,
+          status,
+          uploaded_by_employee_id,
+          required_fonts,
+          activated_at,
+          retired_at,
+          created_at,
+          row_version,
+          variables,
+        ]
       properties:
-        id: { $ref: '#/components/schemas/Uuid' }
-        template_id: { $ref: '#/components/schemas/Uuid' }
+        id: { $ref: "#/components/schemas/Uuid" }
+        template_id: { $ref: "#/components/schemas/Uuid" }
         version_no: { type: integer, minimum: 1 }
-        status: { $ref: '#/components/schemas/TemplateVersionStatus' }
-        uploaded_by_employee_id: { $ref: '#/components/schemas/Uuid' }
+        status: { $ref: "#/components/schemas/TemplateVersionStatus" }
+        uploaded_by_employee_id: { $ref: "#/components/schemas/Uuid" }
         required_fonts:
           description: Manifest font của phiên bản (ADR-015)
           type: array
@@ -2773,54 +3094,54 @@ components:
           items: { type: string, minLength: 1 }
         activated_at:
           anyOf:
-            - $ref: '#/components/schemas/Timestamp'
-            - type: 'null'
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
         retired_at:
           anyOf:
-            - $ref: '#/components/schemas/Timestamp'
-            - type: 'null'
-        created_at: { $ref: '#/components/schemas/Timestamp' }
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+        created_at: { $ref: "#/components/schemas/Timestamp" }
         row_version: { type: integer, minimum: 1 }
         variables:
           type: array
-          items: { $ref: '#/components/schemas/TemplateVariableView' }
+          items: { $ref: "#/components/schemas/TemplateVariableView" }
     Template:
       allOf:
-        - $ref: '#/components/schemas/TemplateSummary'
+        - $ref: "#/components/schemas/TemplateSummary"
         - type: object
           required: [versions]
           properties:
             versions:
               type: array
-              items: { $ref: '#/components/schemas/TemplateVersion' }
+              items: { $ref: "#/components/schemas/TemplateVersion" }
     TemplateCreateBody:
       type: object
       additionalProperties: false
       required: [code, request_type_code, name]
       properties:
         code: { type: string, minLength: 1 }
-        request_type_code: { $ref: '#/components/schemas/RequestTypeCode' }
+        request_type_code: { $ref: "#/components/schemas/RequestTypeCode" }
         name: { type: string, minLength: 1 }
     TemplateVariableDecl:
       type: object
       additionalProperties: false
       required: [variable_name, kind]
       properties:
-        variable_name: { type: string, pattern: '^[a-z][a-z0-9_]*$' }
-        kind: { $ref: '#/components/schemas/TemplateVariableKind' }
+        variable_name: { type: string, pattern: "^[a-z][a-z0-9_]*$" }
+        kind: { $ref: "#/components/schemas/TemplateVariableKind" }
         source_slot_name:
           anyOf:
-            - $ref: '#/components/schemas/SlotName'
-            - type: 'null'
+            - $ref: "#/components/schemas/SlotName"
+            - type: "null"
         fill_after_approval: { type: boolean, default: false }
         variable_guidance:
-          type: [string, 'null']
+          type: [string, "null"]
         max_length:
-          type: [integer, 'null']
+          type: [integer, "null"]
           minimum: 1
         inputs:
           type: array
-          items: { $ref: '#/components/schemas/SlotName' }
+          items: { $ref: "#/components/schemas/SlotName" }
     TemplateManifest:
       type: object
       additionalProperties: false
@@ -2829,7 +3150,7 @@ components:
         variables:
           type: array
           minItems: 1
-          items: { $ref: '#/components/schemas/TemplateVariableDecl' }
+          items: { $ref: "#/components/schemas/TemplateVariableDecl" }
         required_fonts:
           description: Tên họ font mà template cần. Phải phủ mọi font file .docx khai dùng, và mọi font phải có trong image (ADR-015)
           type: array
@@ -2843,7 +3164,7 @@ components:
         file:
           type: string
           contentMediaType: application/vnd.openxmlformats-officedocument.wordprocessingml.document
-        manifest: { $ref: '#/components/schemas/TemplateManifest' }
+        manifest: { $ref: "#/components/schemas/TemplateManifest" }
     ActivateBody:
       type: object
       additionalProperties: false
@@ -2863,14 +3184,23 @@ components:
     EmployeeImportResult:
       description: Chỉ mã và số đếm — không giá trị cũ hay mới
       type: object
-      required: [import_id, source, synced_at, inserted_count, updated_count, unchanged_count, updated]
+      required:
+        [
+          import_id,
+          source,
+          synced_at,
+          inserted_count,
+          updated_count,
+          unchanged_count,
+          updated,
+        ]
       properties:
         import_id:
           description: id của audit_event của đợt import
           allOf:
-            - $ref: '#/components/schemas/Uuid'
+            - $ref: "#/components/schemas/Uuid"
         source: { type: string }
-        synced_at: { $ref: '#/components/schemas/Timestamp' }
+        synced_at: { $ref: "#/components/schemas/Timestamp" }
         inserted_count: { type: integer, minimum: 0 }
         updated_count: { type: integer, minimum: 0 }
         unchanged_count: { type: integer, minimum: 0 }
@@ -2888,57 +3218,80 @@ components:
     # ------------------------------------------------------------------ kho quy trình
     ProcedureVersion:
       type: object
-      required: [id, procedure_document_id, version_no, procedure_visibility, department_scope, effective_from, is_active, activated_at, deactivated_at, ingested_by_employee_id, row_version]
+      required:
+        [
+          id,
+          procedure_document_id,
+          version_no,
+          procedure_visibility,
+          department_scope,
+          effective_from,
+          is_active,
+          activated_at,
+          deactivated_at,
+          ingested_by_employee_id,
+          row_version,
+        ]
       properties:
-        id: { $ref: '#/components/schemas/Uuid' }
-        procedure_document_id: { $ref: '#/components/schemas/Uuid' }
+        id: { $ref: "#/components/schemas/Uuid" }
+        procedure_document_id: { $ref: "#/components/schemas/Uuid" }
         version_no: { type: integer, minimum: 1 }
-        procedure_visibility: { $ref: '#/components/schemas/ProcedureVisibility' }
+        procedure_visibility:
+          { $ref: "#/components/schemas/ProcedureVisibility" }
         department_scope:
-          type: [array, 'null']
+          type: [array, "null"]
           items: { type: string }
         effective_from: { type: string, format: date }
         is_active: { type: boolean }
         activated_at:
           anyOf:
-            - $ref: '#/components/schemas/Timestamp'
-            - type: 'null'
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
         deactivated_at:
           anyOf:
-            - $ref: '#/components/schemas/Timestamp'
-            - type: 'null'
-        ingested_by_employee_id: { $ref: '#/components/schemas/Uuid' }
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+        ingested_by_employee_id: { $ref: "#/components/schemas/Uuid" }
         row_version: { type: integer, minimum: 1 }
     ProcedureDocument:
       type: object
       required: [id, code, title, versions]
       properties:
-        id: { $ref: '#/components/schemas/Uuid' }
+        id: { $ref: "#/components/schemas/Uuid" }
         code: { type: string }
         title: { type: string }
         versions:
           type: array
-          items: { $ref: '#/components/schemas/ProcedureVersion' }
+          items: { $ref: "#/components/schemas/ProcedureVersion" }
     ProcedurePage:
       allOf:
-        - $ref: '#/components/schemas/Page'
+        - $ref: "#/components/schemas/Page"
         - type: object
           required: [items]
           properties:
             items:
               type: array
-              items: { $ref: '#/components/schemas/ProcedureDocument' }
+              items: { $ref: "#/components/schemas/ProcedureDocument" }
     ProcedureUploadMetadata:
       type: object
       additionalProperties: false
-      required: [procedure_code, title, procedure_visibility, department_scope, effective_from, pii_free_attested]
+      required:
+        [
+          procedure_code,
+          title,
+          procedure_visibility,
+          department_scope,
+          effective_from,
+          pii_free_attested,
+        ]
       properties:
         procedure_code: { type: string, minLength: 1 }
         title: { type: string, minLength: 1 }
-        procedure_visibility: { $ref: '#/components/schemas/ProcedureVisibility' }
+        procedure_visibility:
+          { $ref: "#/components/schemas/ProcedureVisibility" }
         department_scope:
           description: null khi và chỉ khi ORG_WIDE; không rỗng khi DEPARTMENT_ONLY
-          type: [array, 'null']
+          type: [array, "null"]
           minItems: 1
           items: { type: string }
         effective_from: { type: string, format: date }
@@ -2950,7 +3303,7 @@ components:
       required: [file, metadata]
       properties:
         file: { type: string }
-        metadata: { $ref: '#/components/schemas/ProcedureUploadMetadata' }
+        metadata: { $ref: "#/components/schemas/ProcedureUploadMetadata" }
     DeactivateBody:
       type: object
       additionalProperties: false
@@ -2961,13 +3314,25 @@ components:
     # ------------------------------------------------------------------ cấu hình loại yêu cầu
     SlotDefinitionConfig:
       type: object
-      required: [request_type_code, slot_name, data_type, source, sensitivity, is_required, validation_rules, description, display_order, row_version]
+      required:
+        [
+          request_type_code,
+          slot_name,
+          data_type,
+          source,
+          sensitivity,
+          is_required,
+          validation_rules,
+          description,
+          display_order,
+          row_version,
+        ]
       properties:
-        request_type_code: { $ref: '#/components/schemas/RequestTypeCode' }
-        slot_name: { $ref: '#/components/schemas/SlotName' }
-        data_type: { $ref: '#/components/schemas/SlotDataType' }
-        source: { $ref: '#/components/schemas/SlotSource' }
-        sensitivity: { $ref: '#/components/schemas/SlotSensitivity' }
+        request_type_code: { $ref: "#/components/schemas/RequestTypeCode" }
+        slot_name: { $ref: "#/components/schemas/SlotName" }
+        data_type: { $ref: "#/components/schemas/SlotDataType" }
+        source: { $ref: "#/components/schemas/SlotSource" }
+        sensitivity: { $ref: "#/components/schemas/SlotSensitivity" }
         is_required: { type: boolean }
         validation_rules: { type: object }
         description: { type: string }
@@ -2975,26 +3340,40 @@ components:
         row_version: { type: integer, minimum: 1 }
     RequestTypeConfig:
       type: object
-      required: [code, name_vi, description, support_status, artifact_kind, requires_seal_default, seal_type_default, document_register_id, sla_target, example_phrases, row_version]
+      required:
+        [
+          code,
+          name_vi,
+          description,
+          support_status,
+          artifact_kind,
+          requires_seal_default,
+          seal_type_default,
+          document_register_id,
+          sla_target,
+          example_phrases,
+          row_version,
+        ]
       properties:
-        code: { $ref: '#/components/schemas/RequestTypeCode' }
+        code: { $ref: "#/components/schemas/RequestTypeCode" }
         name_vi: { type: string }
         description: { type: string }
-        support_status: { $ref: '#/components/schemas/RequestTypeSupportStatus' }
-        artifact_kind: { $ref: '#/components/schemas/ArtifactKind' }
+        support_status:
+          { $ref: "#/components/schemas/RequestTypeSupportStatus" }
+        artifact_kind: { $ref: "#/components/schemas/ArtifactKind" }
         requires_seal_default:
-          type: [boolean, 'null']
+          type: [boolean, "null"]
         seal_type_default:
           anyOf:
-            - $ref: '#/components/schemas/SealType'
-            - type: 'null'
+            - $ref: "#/components/schemas/SealType"
+            - type: "null"
         document_register_id:
           anyOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
+            - $ref: "#/components/schemas/Uuid"
+            - type: "null"
         sla_target:
           description: Khoảng thời gian ISO 8601 [CẦN XÁC MINH — bản gốc chưa có trong docs/reference/, AUD-21]; TBD (A-002)
-          type: [string, 'null']
+          type: [string, "null"]
         example_phrases:
           type: array
           items: { type: string }
@@ -3002,69 +3381,80 @@ components:
         slots:
           description: Chỉ có ở GET một loại
           type: array
-          items: { $ref: '#/components/schemas/SlotDefinitionConfig' }
+          items: { $ref: "#/components/schemas/SlotDefinitionConfig" }
     RequestTypeConfigPage:
       allOf:
-        - $ref: '#/components/schemas/Page'
+        - $ref: "#/components/schemas/Page"
         - type: object
           required: [items]
           properties:
             items:
               type: array
-              items: { $ref: '#/components/schemas/RequestTypeConfig' }
+              items: { $ref: "#/components/schemas/RequestTypeConfig" }
     RequestTypeUpsertBody:
       type: object
       additionalProperties: false
-      required: [name_vi, description, support_status, artifact_kind, example_phrases]
+      required:
+        [name_vi, description, support_status, artifact_kind, example_phrases]
       properties:
         name_vi: { type: string, minLength: 1 }
         description: { type: string, minLength: 1 }
-        support_status: { $ref: '#/components/schemas/RequestTypeSupportStatus' }
-        artifact_kind: { $ref: '#/components/schemas/ArtifactKind' }
+        support_status:
+          { $ref: "#/components/schemas/RequestTypeSupportStatus" }
+        artifact_kind: { $ref: "#/components/schemas/ArtifactKind" }
         requires_seal_default:
-          type: [boolean, 'null']
+          type: [boolean, "null"]
         seal_type_default:
           anyOf:
-            - $ref: '#/components/schemas/SealType'
-            - type: 'null'
+            - $ref: "#/components/schemas/SealType"
+            - type: "null"
         document_register_id:
           anyOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
+            - $ref: "#/components/schemas/Uuid"
+            - type: "null"
         sla_target:
-          type: [string, 'null']
+          type: [string, "null"]
         example_phrases:
           type: array
           items: { type: string }
         expected_row_version:
           description: Vắng là tạo mới; có là sửa có điều kiện
-          type: [integer, 'null']
+          type: [integer, "null"]
           minimum: 1
     SlotDefinitionUpsertBody:
       type: object
       additionalProperties: false
-      required: [data_type, source, sensitivity, is_required, validation_rules, description, display_order]
+      required:
+        [
+          data_type,
+          source,
+          sensitivity,
+          is_required,
+          validation_rules,
+          description,
+          display_order,
+        ]
       properties:
-        data_type: { $ref: '#/components/schemas/SlotDataType' }
-        source: { $ref: '#/components/schemas/SlotSource' }
+        data_type: { $ref: "#/components/schemas/SlotDataType" }
+        source: { $ref: "#/components/schemas/SlotSource" }
         sensitivity:
           description: Với slot đã có, phải bằng độ nhạy hiện hành — khác thì USE_SENSITIVITY_CHANGE
           allOf:
-            - $ref: '#/components/schemas/SlotSensitivity'
+            - $ref: "#/components/schemas/SlotSensitivity"
         is_required: { type: boolean }
         validation_rules: { type: object }
         description: { type: string, minLength: 1 }
         display_order: { type: integer }
         expected_row_version:
-          type: [integer, 'null']
+          type: [integer, "null"]
           minimum: 1
     SensitivityChangePreview:
       type: object
       required: [slot_name, from, to, destructive, erase_count]
       properties:
-        slot_name: { $ref: '#/components/schemas/SlotName' }
-        from: { $ref: '#/components/schemas/SlotSensitivity' }
-        to: { $ref: '#/components/schemas/SlotSensitivity' }
+        slot_name: { $ref: "#/components/schemas/SlotName" }
+        from: { $ref: "#/components/schemas/SlotSensitivity" }
+        to: { $ref: "#/components/schemas/SlotSensitivity" }
         destructive: { type: boolean }
         erase_count: { type: integer, minimum: 0 }
     ChangeSensitivityBody:
@@ -3072,56 +3462,73 @@ components:
       additionalProperties: false
       required: [to, expected_row_version]
       properties:
-        to: { $ref: '#/components/schemas/SlotSensitivity' }
+        to: { $ref: "#/components/schemas/SlotSensitivity" }
         expected_row_version: { type: integer, minimum: 1 }
         expected_erase_count:
           description: Bắt buộc khi thay đổi là phá huỷ
-          type: [integer, 'null']
+          type: [integer, "null"]
           minimum: 0
     SensitivityChangeResult:
       type: object
       required: [slot_name, from, to, erased_count]
       properties:
-        slot_name: { $ref: '#/components/schemas/SlotName' }
-        from: { $ref: '#/components/schemas/SlotSensitivity' }
-        to: { $ref: '#/components/schemas/SlotSensitivity' }
+        slot_name: { $ref: "#/components/schemas/SlotName" }
+        from: { $ref: "#/components/schemas/SlotSensitivity" }
+        to: { $ref: "#/components/schemas/SlotSensitivity" }
         erased_count: { type: integer, minimum: 0 }
 
     # ------------------------------------------------------------------ uỷ quyền [Should]
     Delegation:
       type: object
-      required: [id, delegator_employee_id, delegate_employee_id, permission_code, valid_from, valid_to, revoked_at, row_version]
+      required:
+        [
+          id,
+          delegator_employee_id,
+          delegate_employee_id,
+          permission_code,
+          valid_from,
+          valid_to,
+          revoked_at,
+          row_version,
+        ]
       properties:
-        id: { $ref: '#/components/schemas/Uuid' }
-        delegator_employee_id: { $ref: '#/components/schemas/Uuid' }
-        delegate_employee_id: { $ref: '#/components/schemas/Uuid' }
-        permission_code: { $ref: '#/components/schemas/PermissionCode' }
-        valid_from: { $ref: '#/components/schemas/Timestamp' }
-        valid_to: { $ref: '#/components/schemas/Timestamp' }
+        id: { $ref: "#/components/schemas/Uuid" }
+        delegator_employee_id: { $ref: "#/components/schemas/Uuid" }
+        delegate_employee_id: { $ref: "#/components/schemas/Uuid" }
+        permission_code: { $ref: "#/components/schemas/PermissionCode" }
+        valid_from: { $ref: "#/components/schemas/Timestamp" }
+        valid_to: { $ref: "#/components/schemas/Timestamp" }
         revoked_at:
           anyOf:
-            - $ref: '#/components/schemas/Timestamp'
-            - type: 'null'
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
         row_version: { type: integer, minimum: 1 }
     DelegationPage:
       allOf:
-        - $ref: '#/components/schemas/Page'
+        - $ref: "#/components/schemas/Page"
         - type: object
           required: [items]
           properties:
             items:
               type: array
-              items: { $ref: '#/components/schemas/Delegation' }
+              items: { $ref: "#/components/schemas/Delegation" }
     DelegationCreateBody:
       type: object
       additionalProperties: false
-      required: [delegator_employee_id, delegate_employee_id, permission_code, valid_from, valid_to]
+      required:
+        [
+          delegator_employee_id,
+          delegate_employee_id,
+          permission_code,
+          valid_from,
+          valid_to,
+        ]
       properties:
-        delegator_employee_id: { $ref: '#/components/schemas/Uuid' }
-        delegate_employee_id: { $ref: '#/components/schemas/Uuid' }
-        permission_code: { $ref: '#/components/schemas/PermissionCode' }
-        valid_from: { $ref: '#/components/schemas/Timestamp' }
-        valid_to: { $ref: '#/components/schemas/Timestamp' }
+        delegator_employee_id: { $ref: "#/components/schemas/Uuid" }
+        delegate_employee_id: { $ref: "#/components/schemas/Uuid" }
+        permission_code: { $ref: "#/components/schemas/PermissionCode" }
+        valid_from: { $ref: "#/components/schemas/Timestamp" }
+        valid_to: { $ref: "#/components/schemas/Timestamp" }
     RevokeDelegationBody:
       type: object
       additionalProperties: false
@@ -3133,26 +3540,35 @@ components:
       additionalProperties: false
       required: [to_mode, decision_reference]
       properties:
-        to_mode: { $ref: '#/components/schemas/OperatingMode' }
+        to_mode: { $ref: "#/components/schemas/OperatingMode" }
         decision_reference: { type: string, minLength: 1 }
-        effective_at: { $ref: '#/components/schemas/Timestamp' }
+        effective_at: { $ref: "#/components/schemas/Timestamp" }
     OperatingModeChange:
       type: object
-      required: [id, from_mode, to_mode, decided_by_employee_id, decision_reference, effective_at, created_at]
+      required:
+        [
+          id,
+          from_mode,
+          to_mode,
+          decided_by_employee_id,
+          decision_reference,
+          effective_at,
+          created_at,
+        ]
       properties:
-        id: { $ref: '#/components/schemas/Uuid' }
-        from_mode: { $ref: '#/components/schemas/OperatingMode' }
-        to_mode: { $ref: '#/components/schemas/OperatingMode' }
-        decided_by_employee_id: { $ref: '#/components/schemas/Uuid' }
+        id: { $ref: "#/components/schemas/Uuid" }
+        from_mode: { $ref: "#/components/schemas/OperatingMode" }
+        to_mode: { $ref: "#/components/schemas/OperatingMode" }
+        decided_by_employee_id: { $ref: "#/components/schemas/Uuid" }
         decision_reference: { type: string }
-        effective_at: { $ref: '#/components/schemas/Timestamp' }
-        created_at: { $ref: '#/components/schemas/Timestamp' }
+        effective_at: { $ref: "#/components/schemas/Timestamp" }
+        created_at: { $ref: "#/components/schemas/Timestamp" }
     OperatingModeChangePage:
       allOf:
-        - $ref: '#/components/schemas/Page'
+        - $ref: "#/components/schemas/Page"
         - type: object
           required: [items]
           properties:
             items:
               type: array
-              items: { $ref: '#/components/schemas/OperatingModeChange' }
+              items: { $ref: "#/components/schemas/OperatingModeChange" }
