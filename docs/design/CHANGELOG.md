@@ -3236,3 +3236,19 @@ PO duyệt kế hoạch B4 (2026-10-05): transport giả, B4b (lời gọi Groq 
 **Chưa làm ở B4:** P3, P5, E1, E2 (A-028), nhánh B ép JSON, trần nạp kho, lời gọi Groq thật (B4b — đóng O1-1, O1-3, A-089, A-091).
 
 **CI:** run xanh cả ba job trên nhánh `build/b4-ai-gateway` — https://github.com/CongDuc02/AdminServiceDeskAgent/actions/runs/37317922464 — 478 test, `lint-imports` 8 contract giữ.
+
+---
+
+## 2026-10-05 — B4 merge vào `main`; quyết định A-090 của PO
+
+CI của `dcb8c4d` xanh ([run 37318116931](https://github.com/CongDuc02/AdminServiceDeskAgent/actions/runs/37318116931)); merge `3b12154`, push, xoá nhánh `build/b4-ai-gateway`. Không có ca thời gian nào chớp đỏ.
+
+| File | Thay đổi |
+|---|---|
+| `docs/reference/llm-groq-chat-params.md` | **Mới.** `max_completion_tokens`, `temperature`, `top_p`, `reasoning_effort`, `reasoning_format`, `include_reasoning`, `seed` — từ `curl` (sha256 trong file). Nguồn **không nói** `max_completion_tokens` có tính `reasoning_tokens` hay không |
+| `ASSUMPTIONS.md` → 0.61 | **A-090 theo quyết định PO:** trần input chỉ cảnh báo; **trần output cứng** `max_completion_tokens` theo module trong hồ sơ model; trần nạp kho là nợ gắn lát P3/embedding; tham số ảnh hưởng output tường minh. A-031: WV-04/06 đổi nghĩa |
+| `proposals/sprint1-working-values-a031-a048.md` | WV-04, WV-05, WV-06 sửa lời: hạn chót tổng thay điều kiện cũ |
+| `proposals/model-profile-values.md` | **Mới, chờ PO duyệt:** giá trị `temperature`, `reasoning_effort`, `max_completion_tokens` cho cả hai tier, kèm nguồn và ba điều chưa biết |
+| `06-structure.md` → 0.33 | Bước kiểm **#22** (`BO19_LLM_API_KEY`, **chưa có code, gắn lát `intake_graph`**); trần output cứng; O1-11 |
+| `ADR-035` | Quyết định PO sau B4 |
+| `12-roadmap.md` → 0.40 | O1-11 (trần nạp kho, gắn lát P3/embedding), O1-12 (hồ sơ model tường minh + trần output cứng, B4b) |

@@ -111,3 +111,4 @@ PO duyệt kế hoạch B4 (2026-10-05): hồ sơ model là file JSON trong repo
 - **Khoá `BO19_LLM_API_KEY` không xuất hiện** trong log, exception hay `repr` của đối tượng nào, kể cả khi provider trả 401.
 - **`async`.** Xem mục Triển khai ở B4 của `06-structure.md`.
 - **Dạng request** `response_format` lấy từ nguồn gốc: `docs/reference/llm-groq-structured-request.md`.
+- **Quyết định PO sau B4 (2026-10-05):** (1) trần output là **tham số cứng gửi kèm request** — `max_completion_tokens` — theo từng module, nằm trong hồ sơ model; có tính `reasoning_tokens` hay không chưa rõ, đo ở B4b; (2) `temperature`, `reasoning_effort` và mọi tham số ảnh hưởng output ghi **tường minh** trong hồ sơ model của cả hai tier, không dựa mặc định provider (điều kiện 1 và 2 ở trên áp cho từng tham số mới); (3) thiếu `BO19_LLM_API_KEY` thì **chặn khởi động khi `api` bắt đầu gọi LLM** — bước kiểm #22, gắn với lát `intake_graph`. Nguồn: `docs/reference/llm-groq-chat-params.md`.
