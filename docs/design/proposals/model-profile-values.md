@@ -16,6 +16,8 @@ Mọi giá trị dưới đây là **lựa chọn có lý do**, không phải s�
 
 "Không đặt" ở đây là quyết định **tường minh có ghi trong đề xuất này**, khác với "dựa mặc định chưa ai xem xét".
 
+**Cập nhật PO, 2026-10-05 (sau B4b):** `include_reasoning: false` vào hồ sơ cả hai tier (thay hàng "`reasoning_format`, `include_reasoning` — không đặt" ở trên). Số đo: cả hai tham số `include_reasoning: false` và `reasoning_format: "hidden"` được hai model chấp nhận và làm biến mất trường suy luận (`llm-groq-do-thuc-te-b4b.md`); chọn `include_reasoning: false`.
+
 ## 2. Trần output cứng — theo từng module (`max_completion_tokens`)
 
 | Module | Đề xuất | Căn cứ | Ghi chú |
