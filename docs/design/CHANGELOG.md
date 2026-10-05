@@ -3199,3 +3199,15 @@ Track build. Nhánh `build/b3-api-xac-thuc`. Roadmap không có nhãn "B3": đâ
 **Chạy thật trên máy triển khai** (container `pgvector/pgvector:0.8.1-pg18`, trước CI): `migrate_main` → seed (lần hai không đổi gì) → `check_grants.py --app-dsn`: `Lệch: 0`, mã thoát 0 (180 phép phủ định, 69 khẳng định) → `api_main` thật qua các bước kiểm khởi động đã có, tham số `argon2id` thật (WV-16): `GET /api/v1/me` chưa đăng nhập 401 `UNAUTHENTICATED`; `GET /api/v1/khong-co` 404 `NOT_FOUND`; sai mã và sai mật khẩu cùng 401 `INVALID_CREDENTIALS`; đăng nhập `GIA-0101` 204, cookie `HttpOnly; Secure; SameSite=Strict; Path=/api; Max-Age=28800`; `/me` 200 với `document.sign` và không có `operating_mode.change`; đăng nhập `GIA-0001` 204, `/me` 200 không có `document.sign`. Log của lần chạy: 0 dòng chứa mật khẩu, secret phiên, DSN hay cookie; mọi dòng request mang `trace_id`. Thời lượng một lần đăng nhập đo được 0,04 s trên máy này — **không phải số đo Render** (WV-16, A-085: đo ở Sprint 2).
 
 **CI:** run xanh cả ba job (`backend`, `contracts`, `lock`) trên nhánh `build/b3-api-xac-thuc` — https://github.com/CongDuc02/AdminServiceDeskAgent/actions/runs/37299275924 — 326 test, 0 bỏ qua (các ca cần PostgreSQL chạy thật, gồm `test_ac_1_10` và `test_seed_dev` với `check_grants.py --app-dsn`), `lint-imports` 8 contract giữ.
+
+---
+
+## 2026-10-05 — B3 merge vào `main`; nợ và chặn ghi sau merge
+
+PO cho phép merge `build/b3-api-xac-thuc` vào `main` bằng `--no-ff` khi CI của `aae0b51` xanh — đã xanh ([run 37299457256](https://github.com/CongDuc02/AdminServiceDeskAgent/actions/runs/37299457256)); merge `70de1b7`, push, xoá nhánh. PO xác nhận `BO19_SESSION_SECRET` trên Render đã đặt 64 ký tự.
+
+| File | Thay đổi |
+|---|---|
+| `12-roadmap.md` → 0.37 | Cổng 2.7 **chặn thêm: không seed bất kỳ tài khoản nào lên Render** trước khi đạt (PO). O1-9: nợ access log có cấu trúc — PO hoãn, hạn trước AC-2.1, không làm. O1-10: nợ `LoginBody` `maxLength` và trần body — chờ PO duyệt diff, hạn trước cổng 2.8 |
+| `ASSUMPTIONS.md` → 0.59 | A-062: cổng 2.7 chặn thêm seed lên Render, kèm lý do (cả hệ thống chung một ngưỡng 20 lần mỗi 15 phút — ai cũng khoá được đăng nhập của mọi người) |
+| `proposals/login-body-limits.md` | **Mới, chờ PO duyệt:** diff đề xuất `openapi.yaml` và `05-api.md`. **Chưa sửa contract.** Các con số 64, 128, 4096 là đề xuất chưa có căn cứ nguồn |
