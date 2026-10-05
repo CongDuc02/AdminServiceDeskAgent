@@ -3104,3 +3104,39 @@ Phần còn mở của S3: A-086 (Sprint 4, R4-4); đoạn log Render quanh 21:4
 **Sự cố ghi nhận:** (1) deploy 2 hỏng (`Port scan timeout`) khi bắt đầu chồng với `SIGTERM` ngủ của instance cũ; nguyên nhân chưa biết; Render dựng lại deploy 1 khi deploy hỏng, khoảng 14 phút không có instance nào mở cổng. (2) Hai lần phép tính của tôi lỗi do thiếu ngày hoặc `sed` sai — không ảnh hưởng kết luận (các mốc tương đối đúng).
 
 **Việc nợ track build** (mục Mục mở của Sprint 1 của `12-roadmap.md`): O1-5 log `SIGTERM_RECEIVED`/`PROCESS_EXIT` + giờ UTC theo log JSON của `11-ops.md`, phủ mọi entrypoint, có test; O1-6 điều kiện `combined_main`; O1-7 PID 1 với `soffice` (ADR-015).
+
+---
+
+## 2026-10-05 — B1 xong: CI, 8 contract import-linter, lock dev; AC-1.12 phần import-linter
+
+Track build, tầng nền. Nhánh `build/b1-ci`.
+
+| File | Thay đổi |
+|---|---|
+| `.github/workflows/ci.yml` | Mới. Push mọi nhánh và `pull_request`, **không secret**, `permissions: contents: read`. Ba job độc lập trong container `python:3.11-slim` ghim digest (cùng `Dockerfile`): `backend` (`lint-imports` + toàn bộ test, kể cả ca PostgreSQL trên container `pgvector/pgvector:0.8.1-pg18` ghim digest của ADR-033), `contracts` (`check_grants.py --local-migrated` + test của bộ kiểm), `lock` (so lock sinh lại, ADR-030). `actions/checkout` ghim sha `3d3c42e5…` (v7) |
+| `backend/.importlinter` | 8 contract thật, theo mục Đặc tả `.importlinter` của `06-structure.md`; xem hai chỉnh bên dưới |
+| `backend/requirements-dev-linux.lock`, `backend/pyproject.toml` | Lock dev tách riêng (81 gói, thêm đúng sáu gói của `import-linter==2.15`); nhóm `dev` ở `[project.optional-dependencies]`. **Lock của image không đổi một byte** (đã kiểm bằng sinh lại) |
+| `backend/tests/test_import_contracts.py` | Mới. 12 ca: mỗi contract một vi phạm cố ý + ca sạch + ca gián tiếp hợp lệ + hai cặp tầng độc lập. Bỏ qua khi không có `import-linter` (image runtime). Đột biến thử: bỏ `allow_indirect_imports`, bỏ một contract, đổi `|` thành `:` ở tầng `api | queue_worker` — test đỏ |
+| `backend/src/bo19/orchestrator/runner.py`, `backend/src/bo19/persistence/write.py` | Mới, file khung — có trong cây thư mục của `06-structure.md`; 2.15 báo lỗi khi contract nêu module không tồn tại |
+| `docs/reference/import-linter-2.15.md` | Mới. Tài liệu lấy bằng `curl` (sha256 từng trang), phiên bản 2.15 do công cụ khoá chọn, quan sát khi chạy |
+| `decisions/ADR-030-…md` | Ghi chú **Cập nhật 2026-10-05** — lock dev tách riêng, image không chứa, quyết định không đổi; không viết ADR mới (PO) |
+| `06-structure.md` → 0.29 | Mục Đặc tả `.importlinter`: gỡ `[CẦN XÁC MINH]`; khối ini khớp từng dòng với file thật; cây gốc: `ci.yml` |
+| `12-roadmap.md` → 0.34 | AC-1.12: phần import-linter đã làm, **phần ESLint hoãn tới khi dựng khung client** (PO); **O1-8** — B-router, luật 404 |
+| `tools/contract-checks/README.md` | Một đoạn: bộ kiểm chạy trong CI từ B1 |
+
+**Hai chỗ khác bản đặc tả trước, theo tài liệu 2.15:**
+
+1. Mọi contract `forbidden` có `allow_indirect_imports = True`. Theo tài liệu, `forbidden` mặc định kiểm cả import **gián tiếp**; ý của thiết kế là **trực tiếp** — chuỗi hợp lệ `bo19.api` → `bo19.orchestrator.runner` → `bo19.ai_gateway` không được tính là api chạm `ai_gateway`. Test `test_import_gian_tiep_hop_le_van_dat` giữ điều đó.
+2. Hai chỗ giữ chỗ `<sdk-s3>` (A-024) và `<sdk-embedding>` (A-028) bỏ khỏi `forbidden_modules` cho tới khi có SDK: 2.15 dừng với "Module … does not exist" khi gặp module không tồn tại.
+
+**AC-1.12 — run đỏ, nhánh bỏ đi, không merge, đã xoá:** nhánh `build/b1-violation` (commit `2edc8f1`) có hai phá hoại độc lập:
+
+- run xanh để so (nhánh `build/b1-ci`, `f397fa8`): https://github.com/CongDuc02/AdminServiceDeskAgent/actions/runs/37288451327 — 3 job `success`, 73 s; 8 contract kept; 37 test, không ca nào bị bỏ qua; `check_grants` 180 / 69 / Lệch 0; hai lock giống từng byte.
+- **run đỏ:** https://github.com/CongDuc02/AdminServiceDeskAgent/actions/runs/37288692525 —
+  - job `backend` **đỏ**: `api chỉ vào orchestrator qua runner, không chạm ai_gateway hay lối ghi BROKEN` — `Contracts: 7 kept, 1 broken.` — `bo19.api.routers.violation_ac112 -> bo19.ai_gateway.gateway (l.2)`;
+  - job `lock` **đỏ**: `requirements-dev-linux.lock` sinh lại ra `import-linter==2.14` khác `2.15` đã commit (ghim đổi trong `pyproject.toml`, lock không sinh lại); lock của image vẫn giống từng byte;
+  - job `contracts` xanh (`Lệch: 0`).
+
+**Hoãn:** ESLint (client chưa có khung; `frontend/package.json` rỗng). Job `migrate_main` từ CI bằng credential `bo19_migrator` (ADR-022, cổng 2.1/2.6) — cần secret, ngoài B1.
+
+**Sự cố ghi nhận:** `git push` bị GitHub từ chối khi thêm file workflow — token của Git Credential Manager (và `gh`) không có quyền `workflow`. PO cấp quyền cho `gh` (`gh auth refresh -h github.com -s workflow`); push nhánh `build/*` dùng token của `gh` qua `-c credential.helper=!gh auth git-credential` cho riêng lệnh push, không đổi cấu hình git của máy.
