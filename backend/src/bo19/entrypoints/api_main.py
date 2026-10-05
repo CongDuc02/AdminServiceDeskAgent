@@ -98,8 +98,9 @@ async def _s4_lifespan(app):  # noqa: ANN001
         _s4_emit(f"SHUTDOWN_HOLD n={n} utc={_s4_utc()} since_sigterm={time.monotonic() - base:.3f}")
         await asyncio.sleep(max(0.0, t0 + n - time.monotonic()))
     _s4_emit(f"HOLD_CAP_REACHED n={n} utc={_s4_utc()} since_sigterm={time.monotonic() - base:.3f}")
-    # uvicorn 0.34.2: sau shutdown êm, capture_signals gọi lại signal.raise_signal với handler gốc — tiến trình chết vì SIGTERM,
-    # không thoát mã 0. PROCESS_EXIT vì vậy phải ghi ở đây, trước lúc đó.
+    # uvicorn 0.34.2: sau shutdown êm, capture_signals gọi lại signal.raise_signal với handler gốc. Ngoài container, tiến trình sẽ chết
+    # vì SIGTERM (không phải mã 0); trong container api_main là PID 1 nên tín hiệu bị bỏ qua và thoát mã 0 (đã thấy ở đối chứng local).
+    # PROCESS_EXIT vì vậy phải ghi ở đây, trước lúc đó.
     _s4_emit(f"PROCESS_EXIT utc={_s4_utc()} since_sigterm={time.monotonic() - base:.3f}")
 
 
