@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import atexit
 import datetime as dt
+import itertools
 import logging
 import os
+import random
 import shutil
 import tempfile
 import uuid
@@ -85,6 +87,15 @@ class PgDb:
     def set_active(self, employee_id: uuid.UUID, active: bool) -> None:
         with self.connect("bo19_migrator") as c:
             c.execute("update employee set is_active = %s where id = %s", (active, employee_id))
+
+
+_ip_counter = itertools.count(random.randrange(1 << 15))
+
+
+def unique_ip() -> str:
+    """Một IPv4 thuộc dải 198.18.0.0/15 (dành cho benchmark, RFC 2544 — không bao giờ là IP thật) chưa dùng ở lần chạy này: mỗi test một `scope` rate limit riêng."""
+    n = next(_ip_counter)
+    return f"198.18.{(n >> 8) & 255}.{n & 255}"
 
 
 def get_db() -> "PgDb | None":

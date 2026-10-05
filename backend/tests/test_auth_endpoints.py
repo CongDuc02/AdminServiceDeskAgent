@@ -9,8 +9,6 @@ Cần BO19_TEST_PG_SUPERUSER_DSN. Chạy từ backend/:  PYTHONPATH=src python -
 from __future__ import annotations
 
 import datetime as dt
-import io
-import logging
 import unittest
 import uuid
 from unittest import mock
@@ -20,69 +18,12 @@ from fastapi.testclient import TestClient
 
 from bo19.api.app import create_app
 from bo19.api.auth import token
-from bo19.api.auth.hasher import PasswordVerifier
 from bo19.api.deps.state import AppState
-from bo19.observability.log import configure_logging
-from bo19.observability.trace import is_trace_id
 from bo19.persistence.pool import Pool
 from tests import pg_support
+from tests.auth_support import CSRF, PASSWORD, SECRET, AuthBase
 
-SECRET = "b3-test-" + "s" * 40  # ≥ 32 byte
-PASSWORD = "Mật-khẩu-GIẢ-của-test-1"
-CSRF = {"X-BO19-CSRF": "1"}
-
-
-@unittest.skipUnless(pg_support.SUPERUSER_DSN, "cần BO19_TEST_PG_SUPERUSER_DSN")
-class Base(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.db = pg_support.get_db()
-        cls.verifier = PasswordVerifier(time_cost=1, memory_cost_kib=8, parallelism=1)
-        cls.pool = Pool(cls.db.dsn("bo19_app"), application_name="bo19-test-auth", min_size=1, max_size=5)
-        cls.pool.open()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.pool.close()
-
-    def setUp(self):
-        self.out = io.StringIO()
-        h = configure_logging(self.out)
-        self.addCleanup(logging.getLogger().removeHandler, h)
-        self.app = create_app(AppState(pool=self.pool, session_secret=SECRET, verifier=self.verifier))
-        self.client = TestClient(self.app, raise_server_exceptions=False, base_url="https://testserver", client=("203.0.113.5", 50000))
-
-    # --- tiện ích --------------------------------------------------------------------------------------------------------------
-
-    def employee(self, **kw):
-        kw.setdefault("roles", ("EMPLOYEE",))
-        kw.setdefault("password_hash", self.verifier.hash(PASSWORD))
-        return self.db.make_employee(**kw)
-
-    def login(self, code: str, password: str = PASSWORD, **headers):
-        return self.client.post("/api/v1/auth/session", json={"employee_code": code, "password": password}, headers={**CSRF, **headers})
-
-    def session_cookie(self, response) -> str:
-        cookie = response.headers["set-cookie"].split(";")[0]
-        self.assertTrue(cookie.startswith("bo19_session="))
-        return cookie
-
-    def as_user(self, employee_id: uuid.UUID, **issue_kw) -> dict[str, str]:
-        return {"Cookie": f"bo19_session={token.issue(SECRET, employee_id, **issue_kw)}"}
-
-    def get_me(self, headers: dict[str, str] | None = None):
-        return self.client.get("/api/v1/me", headers=headers or {})
-
-    def assert_envelope(self, r, error_code: str, status: int):
-        self.assertEqual(r.status_code, status, r.text)
-        body = r.json()
-        self.assertEqual(body["error_code"], error_code)
-        self.assertTrue(is_trace_id(body["trace_id"]))
-        self.assertEqual(set(body) - {"details"}, {"error_code", "message", "trace_id"})
-        return body
-
-
-class DangNhap(Base):
+class DangNhap(AuthBase):
     def test_thanh_cong_204_khong_than_va_dat_cookie_dung_thuoc_tinh(self):
         _, code = self.employee()
         r = self.login(code)
@@ -130,7 +71,7 @@ class DangNhap(Base):
         self.assertNotIn(SECRET, self.out.getvalue())
 
 
-class MotMaLoiChoMoiTruongHopSai(Base):
+class MotMaLoiChoMoiTruongHopSai(AuthBase):
     """INVALID_CREDENTIALS — cùng một mã cho sai mã nhân viên lẫn sai mật khẩu, và không phân biệt được ở thân response."""
 
     def failure(self, response):
@@ -177,7 +118,7 @@ class MotMaLoiChoMoiTruongHopSai(Base):
         self.assertEqual(spy.call_count, 1)
 
 
-class Me(Base):
+class Me(AuthBase):
     def test_hinh_dang_va_permission_cua_vai_tro(self):
         eid, code = self.employee(roles=("EMPLOYEE",))
         body = self.get_me(self.as_user(eid)).json()
@@ -217,7 +158,7 @@ class Me(Base):
         self.assertEqual((r.status_code, r.json()["employee"]["id"]), (200, str(eid)))
 
 
-class MeDocLaiDbMoiRequest(Base):
+class MeDocLaiDbMoiRequest(AuthBase):
     """ADR-013: token chỉ mang `sub` và `exp`; `is_active` và permission đọc lại từ DB ở mỗi request."""
 
     def test_tat_is_active_thi_request_ke_tiep_la_unauthenticated(self):
@@ -246,7 +187,7 @@ class MeDocLaiDbMoiRequest(Base):
         self.assertEqual(self.get_me(headers).json()["permissions"], [])
 
 
-class TokenKhongHopLe(Base):
+class TokenKhongHopLe(AuthBase):
     def test_khong_cookie_cookie_rac_het_han_nguoi_la_sai_secret_deu_unauthenticated(self):
         eid, _ = self.employee()
         cases = {
@@ -284,7 +225,7 @@ class TokenKhongHopLe(Base):
         self.assertEqual(client.get("/api/v1/me", headers={"Cookie": f"bo19_session={good}"}).status_code, 200)
 
 
-class DangXuat(Base):
+class DangXuat(AuthBase):
     def test_xoa_cookie_dung_path_va_thuoc_tinh(self):
         eid, _ = self.employee()
         r = self.client.delete("/api/v1/auth/session", headers={**self.as_user(eid), **CSRF})
@@ -311,7 +252,7 @@ class DangXuat(Base):
         self.assertEqual(self.get_me(headers).status_code, 200)
 
 
-class LoiHeThong(Base):
+class LoiHeThong(AuthBase):
     def test_pool_can_la_500_internal_error_khong_lo_gi(self):
         small = Pool(self.db.dsn("bo19_app"), application_name="bo19-test-small", min_size=1, max_size=1, acquire_timeout_s=0.2)
         small.open()
