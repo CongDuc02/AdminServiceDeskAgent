@@ -143,7 +143,7 @@ class Gateway:
             outcome = "PARSE_FAILED" if violations else "PARSE_REPAIRED"
 
         await self._record(module, budget_owner, spent["in"], spent["out"], spent["reasoning"], outcome)
-        total_tokens = sum(v or 0 for v in spent.values())
+        total_tokens = (spent["in"] or 0) + (spent["out"] or 0)  # `completion_tokens` đã gồm suy luận (O1-3): không cộng `reasoning` lần nữa
         fingerprint = catalog_fingerprint(inputs["request_type_catalog"]) if module is CLASSIFY_INTENT else None
         log.info("LLM_CALL_DONE", call_name=module.call_name, tier=module.tier, model=profile.model, outcome=outcome, prompt_module_version=module.version,
                  input_tokens=spent["in"], output_tokens=spent["out"], reasoning_tokens=spent["reasoning"], prompt_time=response.prompt_time if response else None,

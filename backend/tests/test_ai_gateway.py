@@ -217,15 +217,15 @@ class ChuBudget(Base):
                       "values (%s, 'classify_intent', 'CHEAP', %s, %s, %s, 'OK', %s, %s, %s)",
                       (uuid.uuid4(), cols["input_tokens"], cols["output_tokens"], cols["reasoning_tokens"], str(uuid.uuid4()), session_id, request_id))
 
-    async def test_tran_chat_session_46500_dung_ngay_bien(self):
-        self.assertEqual(wv.TOKEN_CEILING_CHAT_SESSION, 46_500)
-        self.spend(self.session, input_tokens=20_000, output_tokens=16_000, reasoning_tokens=10_499)  # 46.499 — cộng cả completion lẫn reasoning (tính dư, O1-3)
+    async def test_tran_chat_session_51900_dung_ngay_bien(self):
+        self.assertEqual(wv.TOKEN_CEILING_CHAT_SESSION, 51_900)
+        self.spend(self.session, input_tokens=30_000, output_tokens=21_899, reasoning_tokens=40_000)  # 51.899 theo input + output; reasoning (40.000) KHÔNG cộng — completion_tokens đã gồm suy luận (O1-3)
         rec = Recorder(reply(GOOD_P1))
         await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)  # còn dưới trần: qua
         self.assertEqual(len(rec.requests), 1)
         rows = self.rows()
         self.assertEqual([r[6] for r in rows], ["OK", "OK"])
-        # dòng vừa ghi thêm 162 token → tổng 46.661 ≥ 46.500: lần sau bị chặn
+        # dòng vừa ghi thêm 150 token (120 + 30) → tổng 52.049 ≥ 51.900: lần sau bị chặn
         rec2 = Recorder(reply(GOOD_P1))
         with self.assertRaises(BudgetExceeded) as cm:
             await self.gateway(rec2).call(CLASSIFY_INTENT, P1, self.owner)
@@ -234,7 +234,7 @@ class ChuBudget(Base):
         self.assertEqual(self.rows()[-1][3], 0)
 
     async def test_dung_bang_tran_la_chan_va_thieu_mot_token_thi_qua(self):
-        for spent, blocked in ((46_500, True), (46_499, False)):
+        for spent, blocked in ((51_900, True), (51_899, False)):
             owner = BudgetOwner(chat_session_id=self.db.make_chat_session(self.db.make_employee()[0]))
             self.spend(owner.chat_session_id, input_tokens=spent)
             rec = Recorder(reply(GOOD_P1))
@@ -246,10 +246,11 @@ class ChuBudget(Base):
                 await self.gateway(rec).call(CLASSIFY_INTENT, P1, owner)
                 self.assertEqual(len(rec.requests), 1)
 
-    async def test_reasoning_tokens_duoc_tinh_vao_tran(self):
-        self.spend(self.session, input_tokens=0, output_tokens=0, reasoning_tokens=46_500)  # chỉ reasoning
-        with self.assertRaises(BudgetExceeded):
-            await self.gateway(Recorder(reply(GOOD_P1))).call(CLASSIFY_INTENT, P1, self.owner)
+    async def test_reasoning_tokens_khong_cong_them_vao_tran(self):  # O1-3 đóng 2026-10-05: completion_tokens đã gồm suy luận
+        self.spend(self.session, input_tokens=0, output_tokens=0, reasoning_tokens=1_000_000)  # chỉ reasoning, rất lớn
+        rec = Recorder(reply(GOOD_P1))
+        await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)  # không bị chặn
+        self.assertEqual(len(rec.requests), 1)
 
     async def test_tran_request_92000(self):
         self.assertEqual(wv.TOKEN_CEILING_REQUEST, 92_000)
@@ -540,12 +541,12 @@ class LogVaCanhBao(Base):
         self.assertIsNone(event["catalog_fingerprint"])
 
     async def test_vuot_tran_moi_loi_goi_chi_canh_bao_khong_chan(self):  # A-090
-        big = {**USAGE, "prompt_tokens": 1700, "completion_tokens": 100}  # > 1.500 của classify_intent
+        big = {**USAGE, "prompt_tokens": 1750, "completion_tokens": 100}  # input + output = 1.850 > 1.800 của classify_intent (reasoning 12 đã nằm trong completion)
         r = await self.gateway(Recorder(reply(GOOD_P1, big))).call(CLASSIFY_INTENT, P1, self.owner)
         self.assertEqual(r.outcome, "OK")
         (event,) = [e for e in self.logged() if e["message"] == "LLM_CALL_OVER_CEILING"]
-        self.assertEqual((event["total_tokens"], event["ceiling"], event["call_name"]), (1812, 1500, "classify_intent"))
-        self.assertEqual(self.rows()[0][3], 1700)  # và vẫn được ghi, cộng vào tổng của chủ budget
+        self.assertEqual((event["total_tokens"], event["ceiling"], event["call_name"]), (1850, 1800, "classify_intent"))
+        self.assertEqual(self.rows()[0][3], 1750)  # và vẫn được ghi, cộng vào tổng của chủ budget
 
     async def test_van_ban_suy_luan_cua_provider_khong_vao_log_hay_so(self):  # PO, 2026-10-05
         body = {"choices": [{"message": {"content": json.dumps(GOOD_P1), "reasoning": f"suy luận {RES}"}, "finish_reason": "stop"}], "usage": USAGE}

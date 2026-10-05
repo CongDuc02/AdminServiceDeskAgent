@@ -42,9 +42,9 @@ class Buoc5(unittest.TestCase):
         self.assertEqual(set(CEILED_CALLS), set(wv.TOKEN_CEILING_PER_CALL))
 
     def test_gia_tri_theo_bang_11_ops(self):  # mục Định cỡ A-022 của 11-ops.md
-        self.assertEqual(wv.TOKEN_CEILING_PER_CALL, {"classify_intent": 1500, "extract_slots": 3500, "select_procedure_passages": 6000,
+        self.assertEqual(wv.TOKEN_CEILING_PER_CALL, {"classify_intent": 1800, "extract_slots": 3500, "select_procedure_passages": 6000,
                                                       "embed_query": 500, "draft_free_content": 4000, "revise_free_content": 4000})
-        self.assertEqual((wv.TOKEN_CEILING_CHAT_SESSION, wv.TOKEN_CEILING_REQUEST, wv.CHANGES_REQUESTED_MAX_ROUNDS), (46_500, 92_000, 3))
+        self.assertEqual((wv.TOKEN_CEILING_CHAT_SESSION, wv.TOKEN_CEILING_REQUEST, wv.CHANGES_REQUESTED_MAX_ROUNDS), (51_900, 92_000, 3))
 
     def test_thieu_tran_nao_cung_chan_voi_ma_rieng(self):  # ADR-019 ca 2: thiếu không bao giờ là "không có trần"
         for call in CEILED_CALLS:

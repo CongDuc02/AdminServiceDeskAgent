@@ -7,7 +7,8 @@ Ghi đúng một bảng, `llm_usage`; phép đọc duy nhất cũng trên bảng
 thiếu chủ budget → `BudgetOwnerMissing` — lỗi lập trình, không ghi được dòng vì `ck_llm_usage_has_budget_owner`.
 Trần là hằng số của `config.working_values` (bước kiểm khởi động #5 đòi chúng có mặt); trần mỗi LỜI GỌI chưa chặn được trước lời gọi (A-090) — chỉ trần theo chủ budget chặn.
 
-**Token cộng dồn tính dư (O1-3):** tổng = `input_tokens + output_tokens + reasoning_tokens`, tức cộng cả `completion_tokens` lẫn `reasoning_tokens` cho tới khi O1-3 đóng ở loạt gọi Groq thật đầu tiên.
+**Token cộng dồn (O1-3 đã đóng, 2026-10-05):** tổng = `input_tokens + output_tokens`. `completion_tokens` của Groq **đã gồm** token suy luận (số đo B4b lần 2, `docs/reference/llm-groq-do-thuc-te-b4b-lan2.md`),
+nên cộng thêm `reasoning_tokens` là đếm trùng. `reasoning_tokens` vẫn được ghi vào `llm_usage` để theo dõi, không cộng vào trần.
 Ghi sổ lỗi (DB hỏng) không làm hỏng lời gọi đã có kết quả — token đã tiêu, đếm thiếu tối đa một lời gọi là cái ADR-019 chấp nhận; lỗi được log, không im lặng.
 """
 from __future__ import annotations
@@ -58,7 +59,7 @@ class BudgetOwner:
             raise BudgetOwnerMissing
 
 
-_SPENT = "SELECT coalesce(sum(input_tokens + coalesce(output_tokens, 0) + coalesce(reasoning_tokens, 0)), 0) FROM llm_usage WHERE {col} = %s"
+_SPENT = "SELECT coalesce(sum(input_tokens + coalesce(output_tokens, 0)), 0) FROM llm_usage WHERE {col} = %s"
 
 
 class Budget:
