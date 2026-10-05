@@ -143,3 +143,31 @@ Không có `SIGTERM` thứ hai, không SIGINT, và không có `SIGHUP`, `SIGQUIT
 - **Deploy 4** (instance cũ boot 07:31:04.807, do lệnh đánh thức dựng lên): `SIGTERM_RECEIVED` 07:32:42.747, hold dừng n=5 (4.155 s) — lần chỉ-log thứ sáu.
 - Instance mới của deploy 5 (`boot_utc` 07:36:46.021) giữ nguyên, bộ poll vẫn chạy; `SIGTERM` ngủ của nó, nếu đến (khoảng 15 phút sau `GET /` 07:36:55.640, tức khoảng 07:51:55Z), sẽ có nhân chứng — lần ngủ đầu tiên có nhân chứng.
 - **Chưa sửa** WV-01, bước kiểm khởi động #11 hay ADR-016. Theo chỉ thị: xác nhận kill ≈ 5 s thì dừng và báo người quyết.
+
+### 7.5 Lần ngủ có nhân chứng — instance của deploy 5, 2026-10-05 07:51Z
+
+Cùng instance (`boot_utc` 07:36:46.021) sau deploy 5, để yên, không ai mở URL. Log PO dán:
+
+```text
+SIGNAL_RECEIVED sig=SIGTERM nth=1 total=1 utc=2026-10-05T07:51:55.203+00:00 pid=1
+SIGTERM_RECEIVED utc=2026-10-05T07:51:55.203+00:00 pid=1 boot_utc=2026-10-05T07:36:46.021+00:00
+… Shutting down / Waiting for application shutdown
+SHUTDOWN_HOLD n=1 … since_sigterm=0.147  →  n=5 … since_sigterm=4.148 (07:51:59.351); không có dòng nào sau n=5
+```
+
+| | Giá trị |
+|---|---|
+| `SIGTERM_RECEIVED` | 07:51:55.203 |
+| Request cuối của instance (theo log đã có): `GET /` của Render | 07:36:55.640 → khoảng cách **899.563 s** (905.407 s nếu tính từ `HEAD /` 07:36:49.796). **Cần xác nhận** không có dòng access log nào khác giữa 07:36:55.640 và 07:51:55.203 (PO dán log chỉ từ 07:51) |
+| **(a) `n` cuối đọc được** | **5** (nhân chứng) = `SHUTDOWN_HOLD` cuối trong log |
+| **(b) kết nối biến mất** | lần hỏi cuối còn thấy 07:52:00.333 (+5.130 s so với `SIGTERM_RECEIVED`), lần hỏi đầu không thấy 07:52:00.583 (+5.380 s); **1.000 s sau lần đổi `n` cuối**, **5.000 s sau lúc thấy `n=1`** |
+| Độ lệch hiệu chỉnh (n=1 thấy − `SIGTERM` − 0.147 s) | 0.233 s |
+| Kill sau hiệu chỉnh | **(4.90, 5.15] s sau `SIGTERM`** (deploy 5: (4.92, 5.17]) |
+| **Nhãn theo khai báo trước (mục 5)** | **Kill ≈ 5 s sau `SIGTERM`** — `n` cuối 5, kết nối biến mất 1.000 s sau lần đổi `n` cuối |
+| `SIGNAL_RECEIVED` | **một** dòng: `SIGTERM nth=1 total=1`. Không SIGINT, không `SIGTERM` thứ hai, không tín hiệu nào trong số đã đặt handler ghi |
+
+**Dự đoán của mục 6 cho lần ngủ này** (ghi trước, trước khi có số): `SIGTERM` ngủ ≈ 07:51:55Z. Quan sát 07:51:55.203 — khớp.
+
+**Tóm tắt có nhân chứng, hai đường:** deploy (deploy 5) và ngủ (07:51Z) cho cùng kết quả — `n` cuối 5, kết nối biến mất 1.000 s sau lần đổi `n` cuối, T1 + 5.000 s, kill trong khoảng (4.9, 5.2] s sau `SIGTERM`. Độ lệch giữa hai đường ≤ 0.05 s sau hiệu chỉnh.
+
+**Bằng chứng thô:** `docs/reference/render-s4-nhan-chung-poll.jsonl` — 65 lần hỏi quanh ba mốc (07:33:00–07:33:03, 07:36:53.5–07:37:01.5, 07:51:53.5–07:52:01.5). Toàn bộ chạy: 7200 lần hỏi, 0 lỗi, tới 08:03:01Z. Dòng thô chỉ có `pid`, `application_name` và `state`; không có host, DSN hay địa chỉ.
