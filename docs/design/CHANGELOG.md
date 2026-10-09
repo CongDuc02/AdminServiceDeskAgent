@@ -3345,3 +3345,5 @@ PO duyệt kế hoạch B6, chia B6a (dữ liệu, F1, tool) và B6b (graph, API
 | `04-data.md`, `contracts/README.md` | `slot_definition.label_vi` (migration `0011`); mô tả từ vựng `validation_rules` |
 | `12-roadmap.md` | O1-14 duyệt; cổng **4.7** (PO duyệt `example_phrases`, do Claude soạn) và **4.8** (đếm lần `min_tokens` từ chối `purpose`) |
 | `ASSUMPTIONS.md` | A-093 `Đã chốt` |
+
+**B6a — chi tiết tool ghi trong lúc làm (2026-10-09), mỗi dòng đã sửa tài liệu trước mã:** `request_slots_write` kiểm bằng chứng trên NFC, tính lại `evidence_span`, và đòi `value` của slot `STRING`/`TEXT` nằm nguyên văn trong đoạn trích; `chat_message.body` lưu NFC; `request_slots_propose` nguồn `HR_PROFILE` chỉ đề xuất slot **bắt buộc**.
