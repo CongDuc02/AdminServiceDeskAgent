@@ -34,7 +34,7 @@ from bo19.observability.log import configure_logging
 from bo19.observability.trace import is_trace_id, trace_scope
 from bo19.persistence.pool import Pool
 from tests import pg_support
-from tests.test_provider_adapter import Drip, Recorder
+from tests.test_provider_adapter import Drip, KhongDocThan, Recorder, status
 
 RES = "GIA_TRI_RES_GIA_079123456789_KHONG_DUOC_LOT_RA"
 KEY = "KHOA_API_KHONG_DUOC_LOT_RA_9f3a7c1e"
@@ -83,6 +83,9 @@ class Base(unittest.IsolatedAsyncioTestCase):
 
     def rows(self, owner: BudgetOwner | None = None) -> list[tuple]:
         return self.db.usage_rows(chat_session_id=(owner or self.owner).chat_session_id)
+
+    def rows_ext(self, owner: BudgetOwner | None = None) -> list[dict]:
+        return self.db.usage_rows_ext(chat_session_id=(owner or self.owner).chat_session_id)
 
     def logged(self) -> list[dict]:
         return [json.loads(x) for x in self.out.getvalue().splitlines() if x.startswith("{")]
@@ -372,8 +375,10 @@ class JsonValidateFailed(Base):
         self.assertEqual(roles, ["system", "user", "user"])  # không có output cũ để gửi lại
         self.assertIn("$: JSON_VALIDATE_FAILED", self.sent(rec, 1)["messages"][2]["content"])
         self.assertIn("quá dài", self.sent(rec, 1)["messages"][2]["content"])
-        (row,) = self.rows()
-        self.assertEqual((row[3], row[4], row[5], row[6]), (120, 30, 12, "PARSE_REPAIRED"))  # token chỉ của lần có usage
+        (row,) = self.rows_ext()
+        # B5 (ADR-019 mục Bổ sung): lần 400 không có usage được ước lượng — input = byte thân request lần đó, output = trần 512; cộng token thật của lần sửa
+        self.assertEqual((row["input_tokens"], row["output_tokens"], row["reasoning_tokens"], row["outcome"], row["estimated"]),
+                         (len(rec.requests[0].content) + 120, 512 + 30, 12, "PARSE_REPAIRED", True))
         self.assertEqual(self.sent(rec, 0)["max_completion_tokens"], 512)
 
     async def test_log_ma_con_rieng_co_tran_va_so_lan_thu(self):
@@ -390,8 +395,9 @@ class JsonValidateFailed(Base):
             await self.gateway(rec).call(DRAFT_FREE_CONTENT, P4, self.owner, variable=VAR)
         self.assertEqual(len(rec.requests), 2)  # đúng một lần sửa
         self.assertEqual([(v.path, v.code) for v in cm.exception.violations], [("$", "JSON_VALIDATE_FAILED")])
-        (row,) = self.rows()
-        self.assertEqual((row[0], row[1], row[3], row[6]), ("draft_free_content", "STRONG", 0, "PARSE_FAILED"))
+        (row,) = self.rows_ext()
+        self.assertEqual((row["call_name"], row["outcome"], row["estimated"]), ("draft_free_content", "PARSE_FAILED", True))
+        self.assertEqual((row["input_tokens"], row["output_tokens"]), (len(rec.requests[0].content) + len(rec.requests[1].content), 2 * 2048))  # hai lần cắt, mỗi lần ước lượng đủ trần
         events = [e for e in self.logged() if e["message"] == "LLM_PROVIDER_JSON_VALIDATE_FAILED"]
         self.assertEqual([(e["attempt"], e["max_completion_tokens"]) for e in events], [(1, 2048), (2, 2048)])
         self.assertNoLeak(RES, cm.exception, cm.exception.__dict__, "".join(traceback.format_exception(cm.exception)), self.rows())
@@ -511,11 +517,245 @@ class HanChotTong(Base):
             await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
         self.assertEqual((cm.exception.kind, len(rec.requests)), ("DEADLINE", 2))
         self.assertLess(time.monotonic() - t, 1.25)  # nếu lần sửa được cấp lại cả 1.0 s thì tổng ≈ 1.5 s
-        (row,) = self.rows()
-        self.assertEqual((row[3], row[4], row[5], row[6]), (120, 30, 12, "PROVIDER_ERROR"))  # token của lần đầu đã tiêu thật — không mất khỏi sổ
+        (row,) = self.rows_ext()
+        # token thật của lần đầu không mất khỏi sổ; lần sửa bị cắt giữa chừng SAU khi thân request đã gửi xong nên được ước lượng (B5)
+        self.assertEqual((row["input_tokens"], row["output_tokens"], row["outcome"], row["estimated"]),
+                         (120 + len(rec.requests[1].content), 30 + 512, "PROVIDER_ERROR", True))
 
     async def test_gia_tri_mac_dinh_theo_wv(self):
         self.assertEqual((wv.LLM_CALL_DEADLINE_CHEAP_SECONDS, wv.LLM_CALL_DEADLINE_STRONG_SECONDS), (8, 60))
+
+
+
+class SoUocLuong(Base):
+    """B5 (PO, 2026-10-09; ADR-019 mục Bổ sung B5): dòng `llm_usage` ước lượng cho lần thử có thể đã sinh token mà không có `usage`, theo bảng phân loại. Mỗi nhánh một test."""
+
+    def jvf(self) -> httpx.Response:
+        return status(400, "json_validate_failed")
+
+    def gateway_with(self, transport: httpx.AsyncBaseTransport) -> Gateway:
+        return Gateway(profiles=self.profiles, client=ProviderClient(base_url="https://llm.example.test/openai/v1", api_key=KEY, transport=transport), budget=Budget(self.pool))
+
+    async def test_400_json_validate_failed_uoc_luong(self):
+        rec = Recorder(self.jvf(), reply(GOOD_P1))
+        r = await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
+        (row,) = self.rows_ext()
+        self.assertEqual((row["input_tokens"], row["output_tokens"], row["estimated"]), (len(rec.requests[0].content) + 120, 512 + 30, True))
+        self.assertTrue(r.estimated)
+        self.assertEqual((r.input_tokens, r.output_tokens), (row["input_tokens"], row["output_tokens"]))  # kết quả trả về và dòng sổ cùng một số
+
+    async def test_5xx_roi_thanh_cong_uoc_luong_lan_5xx(self):
+        rec = Recorder(status(503), reply(GOOD_P1))
+        r = await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
+        (row,) = self.rows_ext()
+        self.assertEqual((r.outcome, row["outcome"], row["estimated"]), ("OK", "OK", True))
+        self.assertEqual((row["input_tokens"], row["output_tokens"]), (len(rec.requests[0].content) + 120, 512 + 30))
+
+    async def test_5xx_ca_hai_lan_la_provider_error_uoc_luong_hai_lan(self):
+        rec = Recorder(status(500))
+        with self.assertRaises(ProviderError):
+            await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
+        (row,) = self.rows_ext()
+        self.assertEqual((row["outcome"], row["estimated"], row["input_tokens"], row["output_tokens"]), ("PROVIDER_ERROR", True, 2 * len(rec.requests[0].content), 2 * 512))
+
+    async def test_429_khong_uoc_luong(self):
+        rec = Recorder(status(429), reply(GOOD_P1))
+        await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
+        (row,) = self.rows_ext()
+        self.assertEqual((row["input_tokens"], row["output_tokens"], row["estimated"]), (120, 30, False))
+        rec = Recorder(status(429))
+        with self.assertRaises(ProviderError):
+            await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
+        last = self.rows_ext()[-1]
+        self.assertEqual((last["outcome"], last["input_tokens"], last["output_tokens"], last["estimated"]), ("PROVIDER_ERROR", 0, None, False))
+
+    async def test_4xx_khac_khong_uoc_luong(self):
+        for code, error_code in ((401, "invalid_api_key"), (400, "invalid_request"), (422, None)):
+            owner = BudgetOwner(chat_session_id=self.db.make_chat_session(self.db.make_employee()[0]))
+            with self.assertRaises(ProviderError):
+                await self.gateway(Recorder(status(code, error_code))).call(CLASSIFY_INTENT, P1, owner)
+            (row,) = self.rows_ext(owner)
+            self.assertEqual((row["outcome"], row["input_tokens"], row["output_tokens"], row["estimated"]), ("PROVIDER_ERROR", 0, None, False), (code, error_code))
+
+    async def test_het_han_chot_sau_khi_gui_xong_uoc_luong(self):  # đột biến "không ước lượng khi timeout" phải đỏ (PO, 2026-10-09)
+        self.addCleanup(setattr, wv, "LLM_CALL_DEADLINE_CHEAP_SECONDS", wv.LLM_CALL_DEADLINE_CHEAP_SECONDS)
+        wv.LLM_CALL_DEADLINE_CHEAP_SECONDS = 0.3
+
+        async def slow():
+            await asyncio.sleep(1)
+            return reply(GOOD_P1)
+
+        rec = Recorder(slow)
+        with self.assertRaises(ProviderError) as cm:
+            await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
+        self.assertEqual(cm.exception.kind, "DEADLINE")
+        (row,) = self.rows_ext()
+        self.assertEqual((row["outcome"], row["estimated"], row["input_tokens"], row["output_tokens"]), ("PROVIDER_ERROR", True, len(rec.requests[0].content), 512))
+
+    async def test_het_han_chot_truoc_khi_gui_xong_khong_uoc_luong(self):
+        self.addCleanup(setattr, wv, "LLM_CALL_DEADLINE_CHEAP_SECONDS", wv.LLM_CALL_DEADLINE_CHEAP_SECONDS)
+        wv.LLM_CALL_DEADLINE_CHEAP_SECONDS = 0.3
+
+        async def stall():
+            await asyncio.sleep(1)
+            return reply(GOOD_P1)
+
+        with self.assertRaises(ProviderError) as cm:
+            await self.gateway_with(KhongDocThan(stall)).call(CLASSIFY_INTENT, P1, self.owner)
+        self.assertEqual(cm.exception.kind, "DEADLINE")
+        (row,) = self.rows_ext()
+        self.assertEqual((row["outcome"], row["estimated"], row["input_tokens"], row["output_tokens"]), ("PROVIDER_ERROR", False, 0, None))
+
+    async def test_mat_ket_noi_truoc_khi_gui_xong_khong_uoc_luong(self):
+        async def refuse():
+            raise httpx.ConnectError("khong noi duoc")
+
+        with self.assertRaises(ProviderError):
+            await self.gateway_with(KhongDocThan(refuse)).call(CLASSIFY_INTENT, P1, self.owner)
+        (row,) = self.rows_ext()
+        self.assertEqual((row["estimated"], row["input_tokens"], row["output_tokens"]), (False, 0, None))
+
+    async def test_uoc_luong_duoc_tinh_vao_tran_chu_budget(self):  # fail-closed: không đếm thiếu
+        rec = Recorder(self.jvf(), reply(GOOD_P1))
+        await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
+        (row,) = self.rows_ext()
+        spent = row["input_tokens"] + row["output_tokens"]
+        self.assertGreater(spent, 1000)  # số byte của thân P1 đã vào tổng
+        self.addCleanup(setattr, wv, "TOKEN_CEILING_CHAT_SESSION", wv.TOKEN_CEILING_CHAT_SESSION)
+        wv.TOKEN_CEILING_CHAT_SESSION = spent  # chạm đúng bằng tổng đã tính cả ước lượng
+        with self.assertRaises(BudgetExceeded):
+            await self.gateway(Recorder(reply(GOOD_P1))).call(CLASSIFY_INTENT, P1, self.owner)
+        wv.TOKEN_CEILING_CHAT_SESSION = spent + 1
+        await self.gateway(Recorder(reply(GOOD_P1))).call(CLASSIFY_INTENT, P1, self.owner)  # sát dưới trần thì vẫn qua: không đếm dư
+
+    async def test_hai_ca_tu_choi_va_thanh_cong_thuan_khong_bao_gio_uoc_luong(self):
+        rec = Recorder(reply(GOOD_P1))
+        await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
+        with self.assertRaises(AllowlistRejected):
+            await self.gateway(rec).call(CLASSIFY_INTENT, {**P1, "extra": 1}, self.owner)
+        self.addCleanup(setattr, wv, "TOKEN_CEILING_CHAT_SESSION", wv.TOKEN_CEILING_CHAT_SESSION)
+        wv.TOKEN_CEILING_CHAT_SESSION = 1
+        with self.assertRaises(BudgetExceeded):
+            await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
+        self.assertEqual([(r["outcome"], r["estimated"]) for r in self.rows_ext()], [("OK", False), ("ALLOWLIST_REJECTED", False), ("BUDGET_EXCEEDED", False)])
+
+    async def test_log_so_do_cho_a092_chi_co_so(self):
+        rec = Recorder(self.jvf(), reply(GOOD_P1))
+        await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
+        (event,) = [e for e in self.logged() if e["message"] == "LLM_ATTEMPT_MEASURED"]
+        self.assertEqual((event["request_bytes"], event["prompt_tokens"], event["unmetered_attempts"], event["attempt"]), (len(rec.requests[1].content), 120, 0, 2))
+        done = [e for e in self.logged() if e["message"] == "LLM_CALL_DONE"][-1]
+        self.assertIs(done["estimated"], True)
+        self.assertIsInstance(done["duration_ms"], int)
+        self.assertNoLeak(RES)
+
+
+class ThoiLuong(Base):
+    """B5: `duration_ms` (phía client, cả `call`) và `provider_completion_ms` (tổng `usage.completion_time`, chỉ khi mọi phản hồi đều có và không lần thử nào thiếu usage)."""
+
+    async def test_mot_phan_hoi_thanh_cong(self):
+        async def slow():
+            await asyncio.sleep(0.2)
+            return reply(GOOD_P1)
+
+        r = await self.gateway(Recorder(slow)).call(CLASSIFY_INTENT, P1, self.owner)
+        (row,) = self.rows_ext()
+        self.assertGreaterEqual(row["duration_ms"], 180)  # đo phía client quanh cả lời gọi, không chỉ completion_time
+        self.assertLess(row["duration_ms"], 3000)
+        self.assertEqual(row["provider_completion_ms"], 200)  # USAGE.completion_time = 0.2 s
+        self.assertEqual(r.duration_ms, row["duration_ms"])
+
+    async def test_hai_phan_hoi_cong_completion_time(self):
+        rec = Recorder(reply("{hong", {**USAGE, "completion_time": 0.3}), reply(GOOD_P1, {**USAGE, "completion_time": 0.1}))
+        r = await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
+        (row,) = self.rows_ext()
+        self.assertEqual((r.outcome, row["provider_completion_ms"]), ("PARSE_REPAIRED", 400))
+
+    async def test_thieu_completion_time_o_bat_ky_phan_hoi_nao_thi_de_trong(self):
+        without = {k: v for k, v in USAGE.items() if k != "completion_time"}
+        await self.gateway(Recorder(reply(GOOD_P1, without))).call(CLASSIFY_INTENT, P1, self.owner)
+        owner2 = BudgetOwner(chat_session_id=self.db.make_chat_session(self.db.make_employee()[0]))
+        await self.gateway(Recorder(reply("{hong"), reply(GOOD_P1, {**USAGE, "completion_time": 0.1}))).call(CLASSIFY_INTENT, P1, owner2)
+        (a,), (b,) = self.rows_ext(), self.rows_ext(owner2)
+        self.assertIsNone(a["provider_completion_ms"])
+        self.assertEqual(b["provider_completion_ms"], 300)  # lần đầu 0.2 (USAGE mặc định) + lần sửa 0.1
+
+    async def test_co_lan_thu_khong_usage_thi_de_trong_nhung_van_co_duration(self):
+        rec = Recorder(status(400, "json_validate_failed"), reply(GOOD_P1))
+        await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
+        (row,) = self.rows_ext()
+        self.assertIsNone(row["provider_completion_ms"])
+        self.assertIsNotNone(row["duration_ms"])
+
+    async def test_provider_error_khong_co_completion_time_nhung_co_duration(self):
+        with self.assertRaises(ProviderError):
+            await self.gateway(Recorder(status(401))).call(CLASSIFY_INTENT, P1, self.owner)
+        (row,) = self.rows_ext()
+        self.assertEqual((row["outcome"], row["provider_completion_ms"]), ("PROVIDER_ERROR", None))
+        self.assertGreaterEqual(row["duration_ms"], 0)
+
+    async def test_duration_gom_ca_quang_nghi_va_lan_sua(self):
+        async def slow_bad():
+            await asyncio.sleep(0.2)
+            return reply("{hong")
+
+        async def slow_good():
+            await asyncio.sleep(0.2)
+            return reply(GOOD_P1)
+
+        await self.gateway(Recorder(slow_bad, slow_good)).call(CLASSIFY_INTENT, P1, self.owner)
+        (row,) = self.rows_ext()
+        self.assertGreaterEqual(row["duration_ms"], 380)  # hai lần chờ 0.2 s
+
+    async def test_ca_tu_choi_khong_co_duration(self):
+        with self.assertRaises(AllowlistRejected):
+            await self.gateway(Recorder(reply(GOOD_P1))).call(CLASSIFY_INTENT, {**P1, "extra": 1}, self.owner)
+        (row,) = self.rows_ext()
+        self.assertEqual((row["outcome"], row["duration_ms"], row["provider_completion_ms"], row["estimated"]), ("ALLOWLIST_REJECTED", None, None, False))
+
+
+class RangBuocDbCuaSoUocLuong(Base):
+    """`0010_llm_usage_estimated_duration.sql`: hình dạng dòng ước lượng và thời lượng không âm do DB giữ, không chỉ ứng dụng."""
+
+    def insert(self, **over) -> None:
+        import psycopg
+        row = {"id": uuid.uuid4(), "call_name": "classify_intent", "model_tier": "CHEAP", "chat_session_id": self.session, "input_tokens": 5, "output_tokens": 7,
+               "outcome": "OK", "trace_id": str(uuid.uuid4()), "estimated": True, "duration_ms": 1, "provider_completion_ms": 1, **over}
+        cols = ", ".join(row)
+        with psycopg.connect(self.db.dsn("bo19_app"), autocommit=True) as c:
+            c.execute(f"INSERT INTO llm_usage ({cols}) VALUES ({', '.join(['%s'] * len(row))})", tuple(row.values()))
+
+    def test_dong_hop_le_vao_duoc_bang_vai_tro_runtime(self):
+        self.insert()
+        self.insert(estimated=False, output_tokens=None, duration_ms=None, provider_completion_ms=None, outcome="PROVIDER_ERROR")
+
+    def test_dong_uoc_luong_phai_co_output(self):
+        import psycopg
+        with self.assertRaises(psycopg.errors.CheckViolation) as cm:
+            self.insert(output_tokens=None)
+        self.assertIn("ck_llm_usage_estimated_shape", str(cm.exception))
+
+    def test_dong_uoc_luong_khong_the_la_tu_choi_hay_budget_unavailable(self):
+        import psycopg
+        for outcome in ("BUDGET_EXCEEDED", "BUDGET_UNAVAILABLE", "ALLOWLIST_REJECTED"):
+            with self.assertRaises(psycopg.errors.CheckViolation, msg=outcome):
+                self.insert(outcome=outcome)
+        for outcome in ("OK", "PARSE_REPAIRED", "PARSE_FAILED", "PROVIDER_ERROR"):
+            self.insert(outcome=outcome)
+
+    def test_thoi_luong_khong_am(self):
+        import psycopg
+        for col in ("duration_ms", "provider_completion_ms"):
+            with self.assertRaises(psycopg.errors.CheckViolation, msg=col) as cm:
+                self.insert(**{col: -1})
+            self.assertIn("ck_llm_usage_durations", str(cm.exception))
+
+    def test_mac_dinh_khong_uoc_luong(self):
+        import psycopg
+        with psycopg.connect(self.db.dsn("bo19_app"), autocommit=True) as c:
+            c.execute("INSERT INTO llm_usage (id, call_name, model_tier, chat_session_id, input_tokens, outcome, trace_id) VALUES (%s, 'classify_intent', 'CHEAP', %s, 1, 'OK', %s)",
+                      (uuid.uuid4(), self.session, str(uuid.uuid4())))
+        self.assertEqual([r["estimated"] for r in self.rows_ext()], [False])
 
 
 class LogVaCanhBao(Base):

@@ -24,7 +24,7 @@ from typing import Any
 
 import httpx
 
-from bo19.ai_gateway.providers import CALL_FAILED, RATE_LIMITED, ProviderClient, ProviderError
+from bo19.ai_gateway.providers import CALL_FAILED, RATE_LIMITED, ProviderClient, ProviderError, _Attempts, may_have_generated
 from bo19.ai_gateway.routing.profiles import ModelProfile
 from bo19.config import working_values as wv
 from bo19.observability.log import configure_logging
@@ -180,7 +180,8 @@ class NoiDungSuyLuan(Base):
         r = await self.call(self.client(Recorder(ok(body))))
         self.assertEqual(r.reasoning_tokens, 12)  # chỉ đếm số token suy luận
         names = {f.name for f in dataclasses.fields(r)}
-        self.assertEqual(names, {"content", "prompt_tokens", "completion_tokens", "reasoning_tokens", "prompt_time", "completion_time", "finish_reason"})  # không có chỗ cho văn bản suy luận
+        self.assertEqual(names, {"content", "prompt_tokens", "completion_tokens", "reasoning_tokens", "prompt_time", "completion_time", "finish_reason",
+                          "unmetered_attempts", "request_bytes"})  # không có chỗ cho văn bản suy luận; hai trường cuối (B5) chỉ là số
         for value in dataclasses.astuple(r):
             self.assertNotIn(RES, str(value))
         self.assertNoLeak(RES, r, vars(r))
@@ -379,7 +380,8 @@ class LoiKhongLoThanThô(Base):
 
     async def test_gateway_ghi_log_chi_ba_truong(self):
         e = await self.fail_with(httpx.Response(400, json=self.bodies()["message trích input"]))
-        self.assertEqual(set(e.log_fields()), {"subcode", "kind", "http_status", "provider_error_type", "provider_error_code", "retry_after_seconds", "attempts"})
+        self.assertEqual(set(e.log_fields()), {"subcode", "kind", "http_status", "provider_error_type", "provider_error_code", "retry_after_seconds", "attempts",
+                                                  "unmetered_attempts"})  # thêm ở B5: chỉ là số
 
     async def test_log_cua_httpx_cua_ban_than_cung_khong_lo(self):
         logging.getLogger("httpx").setLevel(logging.DEBUG)
@@ -392,6 +394,152 @@ class LoiKhongLoThanThô(Base):
         with self.assertRaises(ProviderError) as cm:
             await self.call(self.client(Recorder(response)))
         return cm.exception
+
+
+
+class KhongDocThan(httpx.AsyncBaseTransport):
+    """Transport không tiêu thụ thân request: mô phỏng lỗi xảy ra TRƯỚC khi thân request ghi xong ra socket."""
+
+    def __init__(self, action) -> None:
+        self.action = action
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        return await self.action()
+
+
+def status(code: int, error_code: str | None = None) -> httpx.Response:
+    return httpx.Response(code, json={"error": {"type": "x_error", **({"code": error_code} if error_code else {})}})
+
+
+class LanThuKhongCoUsage(Base):
+    """B5 — bảng phân loại của ADR-019 (mục Bổ sung B5): lần thử nào có thể đã sinh token mà không có `usage`. Adapter chỉ đếm; gateway nhân."""
+
+    async def outcome(self, *script, deadline: float = 5):
+        rec = Recorder(*script)
+        try:
+            return await self.call(self.client(rec), deadline=deadline), rec
+        except ProviderError as e:
+            return e, rec
+
+    def check(self, result, rec: Recorder, unmetered: int, requests: int | None = None):
+        self.assertEqual(result.unmetered_attempts, unmetered)
+        self.assertEqual(result.request_bytes, len(rec.requests[0].content))
+        if requests is not None:
+            self.assertEqual(len(rec.requests), requests)
+
+    async def test_429_khong_dem_du_thu_lai_hay_that_bai(self):
+        r, rec = await self.outcome(status(429), ok())
+        self.check(r, rec, 0, 2)
+        e, rec = await self.outcome(status(429))
+        self.assertEqual(e.subcode, RATE_LIMITED)
+        self.check(e, rec, 0, 2)
+
+    async def test_5xx_dem_tung_lan_thu(self):
+        r, rec = await self.outcome(status(503), ok())
+        self.check(r, rec, 1, 2)  # lần 503 có thể đã sinh; lần sau thành công có usage thật
+        e, rec = await self.outcome(status(500))
+        self.check(e, rec, 2, 2)  # cả hai lần thử đều hỏng
+
+    async def test_400_json_validate_failed_dem_mot(self):
+        e, rec = await self.outcome(status(400, "json_validate_failed"))
+        self.assertEqual((e.http_status, e.error_code), (400, "json_validate_failed"))
+        self.check(e, rec, 1, 1)  # không thử lại (400 không phải lỗi tạm) nhưng chính lần thử này đã sinh
+
+    async def test_4xx_khac_khong_dem(self):
+        for code, error_code in ((400, "invalid_request"), (400, None), (400, "json_validate_failed_khac"), (401, "invalid_api_key"), (413, None), (422, "json_validate_failed")):
+            e, rec = await self.outcome(status(code, error_code))
+            self.check(e, rec, 0, 1)
+
+    async def test_200_than_hong_dem_mot(self):
+        e, rec = await self.outcome(httpx.Response(200, content=b"khong phai json"))
+        self.assertEqual(e.kind, "BAD_RESPONSE")
+        self.check(e, rec, 1, 1)
+        e, rec = await self.outcome(httpx.Response(200, json={"choices": []}))
+        self.check(e, rec, 1, 1)
+
+    async def test_mat_ket_noi_sau_khi_gui_xong_dem_tung_lan(self):
+        e, rec = await self.outcome(httpx.ReadError("dut ket noi"))  # transport giả đã đọc hết thân trước khi ném: thân đã ghi xong
+        self.assertEqual(e.kind, "CONNECTION")
+        self.check(e, rec, 2, 2)
+
+    async def test_mat_ket_noi_truoc_khi_gui_xong_khong_dem(self):
+        async def refuse():
+            raise httpx.ConnectError("khong noi duoc")
+
+        rec = Recorder(ok())
+        c = ProviderClient(base_url="https://llm.example.test/openai/v1", api_key=KEY, transport=KhongDocThan(refuse))
+        with self.assertRaises(ProviderError) as cm:
+            await self.call(c)
+        self.assertEqual((cm.exception.kind, cm.exception.attempts, cm.exception.unmetered_attempts), ("CONNECTION", 2, 0))
+        self.assertGreater(cm.exception.request_bytes, 0)
+        self.assertEqual(rec.requests, [])
+
+    async def test_het_han_chot_sau_khi_gui_xong_dem_mot(self):
+        async def slow():
+            await asyncio.sleep(1)
+            return ok()
+
+        e, rec = await self.outcome(slow, deadline=0.3)
+        self.assertEqual(e.kind, "DEADLINE")
+        self.check(e, rec, 1, 1)  # provider có thể vẫn đang sinh — yêu cầu của PO, 2026-10-09
+
+    async def test_het_han_chot_truoc_khi_gui_xong_khong_dem(self):
+        async def stall():
+            await asyncio.sleep(1)
+            return ok()
+
+        c = ProviderClient(base_url="https://llm.example.test/openai/v1", api_key=KEY, transport=KhongDocThan(stall))
+        with self.assertRaises(ProviderError) as cm:
+            await self.call(c, deadline=0.3)
+        self.assertEqual((cm.exception.kind, cm.exception.unmetered_attempts), ("DEADLINE", 0))
+        self.assertGreater(cm.exception.request_bytes, 0)
+
+    async def test_het_han_chot_giua_hai_lan_thu_khong_dem_lan_dang_nghi(self):
+        t = _Attempts()  # không có lần thử nào đang bay
+        e = ProviderError(CALL_FAILED, "DEADLINE")
+        t.settle(e)
+        self.assertEqual(e.unmetered_attempts, 0)
+        t.begin()
+        t.sent = True
+        t.settle(e)  # đang bay và đã gửi xong
+        self.assertEqual(e.unmetered_attempts, 1)
+        t.settle(e)  # đã settle: không đếm lại
+        self.assertEqual(e.unmetered_attempts, 1)
+        fresh, e5xx = _Attempts(), ProviderError(CALL_FAILED, "HTTP_STATUS", 503)
+        fresh.settle(e5xx)  # lỗi 5xx nhưng không có lần thử nào đang bay (đã settle trước đó): không đếm đôi
+        self.assertEqual(e5xx.unmetered_attempts, 0)
+
+    async def test_bang_phan_loai_truc_tiep(self):
+        def err(kind, http=None, code=None):
+            return ProviderError(CALL_FAILED, kind, http, None, code)
+
+        table = [
+            (err("HTTP_STATUS", 429), True, False), (err("HTTP_STATUS", 429), False, False),
+            (err("HTTP_STATUS", 500), False, True), (err("HTTP_STATUS", 503), True, True), (err("HTTP_STATUS", 599), False, True),
+            (err("HTTP_STATUS", 400, "json_validate_failed"), False, True), (err("HTTP_STATUS", 400, "khac"), True, False), (err("HTTP_STATUS", 400), True, False),
+            (err("HTTP_STATUS", 401), True, False), (err("HTTP_STATUS", 413), True, False), (err("HTTP_STATUS", 422, "json_validate_failed"), True, False),
+            (err("BAD_RESPONSE", 200), False, True),
+            (err("CONNECTION"), True, True), (err("CONNECTION"), False, False),
+            (err("DEADLINE"), True, True), (err("DEADLINE"), False, False),
+            (err("NO_API_KEY"), True, False),
+        ]
+        for error, sent, want in table:
+            self.assertIs(may_have_generated(error, sent), want, (error.kind, error.http_status, error.error_code, sent))
+
+    async def test_request_bytes_la_so_byte_utf8_cua_than_va_content_length_tuong_minh(self):
+        r, rec = await self.outcome(ok())
+        req = rec.requests[0]
+        self.assertEqual(r.request_bytes, len(req.content))
+        self.assertGreater(r.request_bytes, len(req.content.decode("utf-8")))  # tiếng Việt có dấu: byte > ký tự — số byte, không phải số ký tự
+        self.assertEqual(req.headers["content-length"], str(len(req.content)))
+        self.assertNotIn("transfer-encoding", req.headers)  # thân là bộ sinh byte nhưng không gửi chunked
+        self.assertEqual(r.unmetered_attempts, 0)
+
+    async def test_request_bytes_la_cua_mot_lan_thu_khong_cong_don(self):
+        e, rec = await self.outcome(status(503), status(503), ok())  # LLM_RETRY_COUNT = 1: hai lần 503 là dừng, lần ok không bao giờ tới
+        self.assertEqual((len(rec.requests), e.unmetered_attempts), (2, 2))
+        self.assertEqual(e.request_bytes, len(rec.requests[0].content))  # số byte của MỘT lần thử — gateway nhân với số lần
+        self.assertEqual(len({len(q.content) for q in rec.requests}), 1)  # các lần thử cùng một thân
 
 
 class KhoaApi(Base):

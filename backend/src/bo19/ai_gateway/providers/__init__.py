@@ -8,6 +8,8 @@ Bốn điều giữ cố định, mỗi điều có test và có trong phép th�
    vào log, vào exception hay vào chuỗi nào: nó có thể trích lại input, kể cả `RES`. Exception ném `from None`: chuỗi nguyên nhân của `httpx` mang URL và có thể mang thân.
 3. **Khoá API** nằm trong một đối tượng bọc `_Secret` — không vào `repr`, `str`, `vars` hay pickle của client; chỉ `Authorization` lúc gửi đọc nó. Provider trả 401 cũng không để lộ khoá.
 4. **Không suy ra số token:** trường `usage` nào provider không trả thì để `None` (ADR-035, mục Decision).
+5. **Theo dõi từng lần thử có thể đã sinh token mà không có `usage`** (B5, ADR-019 mục Bổ sung B5): thân request đi bằng một bộ sinh byte báo khi `httpx` đã lấy hết byte (đã ghi xong ra
+   socket); lần thử nào hỏng theo bảng phân loại của ADR-019 thì tăng `unmetered_attempts`. Adapter chỉ **đếm** — việc đổi số lần thử thành token ước lượng là của gateway.
 
 Dạng request lấy từ nguồn gốc: `docs/reference/llm-groq-structured-request.md`. Thân lỗi của chat completions chưa có nguồn gốc (A-091): đọc dung thứ, không dựa vào để phân loại.
 """
@@ -16,7 +18,8 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from dataclasses import dataclass, field
+from collections.abc import AsyncIterator
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 import httpx
@@ -62,13 +65,16 @@ class ProviderError(Exception):
         super().__init__(f"{subcode}:{kind}")
         self.subcode, self.kind, self.http_status = subcode, kind, http_status
         self.error_type, self.error_code, self.retry_after_seconds, self.attempts = error_type, error_code, retry_after_seconds, attempts
+        # B5: số lần thử có thể đã sinh token mà không có `usage` (kể cả lần thử gây ra chính lỗi này) và số byte thân request — gateway ước lượng từ hai số này
+        self.unmetered_attempts, self.request_bytes = 0, 0
 
     code = property(lambda self: self.subcode)
 
     def log_fields(self) -> dict[str, Any]:
         # `error_type` là tên dành riêng của log (kiểu exception) — nên đổi tên trường của provider
         return {"subcode": self.subcode, "kind": self.kind, "http_status": self.http_status, "provider_error_type": self.error_type,
-                "provider_error_code": self.error_code, "retry_after_seconds": self.retry_after_seconds, "attempts": self.attempts}
+                "provider_error_code": self.error_code, "retry_after_seconds": self.retry_after_seconds, "attempts": self.attempts,
+                "unmetered_attempts": self.unmetered_attempts}
 
 
 @dataclass(frozen=True)
@@ -82,6 +88,8 @@ class ProviderResponse:
     prompt_time: float | None
     completion_time: float | None
     finish_reason: str | None = None  # `stop`, `length`, … — khuôn ngắn; `length` nghĩa là output bị cắt ở trần
+    unmetered_attempts: int = 0  # B5: các lần thử TRƯỚC lần thành công có thể đã sinh token mà không có `usage`
+    request_bytes: int = 0  # B5: số byte UTF-8 của thân request (một lần thử) — đầu vào của ước lượng
 
 
 def _short(value: Any) -> str | None:
@@ -110,6 +118,51 @@ class _Transient(Exception):
         self.error = error
 
 
+JSON_VALIDATE_FAILED_CODE = "json_validate_failed"  # `error.code` của Groq khi output không hợp schema hay bị cắt ở trần (docs/reference/llm-groq-do-thuc-te-b4b.md)
+
+
+def may_have_generated(error: ProviderError, body_sent: bool) -> bool:
+    """Bảng phân loại của ADR-019 (mục Bổ sung B5): lần thử hỏng này **có thể đã sinh token** mà không có `usage` không? Không biết → có (fail-closed).
+
+    `body_sent` — thân request đã được ghi xong ra socket ở lần thử này."""
+    if error.kind == "HTTP_STATUS":
+        if error.http_status == 429:
+            return False  # từ chối vì hạn mức, trước khi sinh
+        if error.http_status is not None and error.http_status >= 500:
+            return True
+        return error.http_status == 400 and error.error_code == JSON_VALIDATE_FAILED_CODE  # 4xx khác: bị từ chối khi kiểm, trước khi sinh
+    if error.kind == "BAD_RESPONSE":
+        return True  # HTTP 200 nhưng không đọc được: đã sinh, chỉ không đọc được `usage`
+    if error.kind in ("CONNECTION", "DEADLINE"):
+        return body_sent  # chưa ghi xong thân request thì provider chưa có đủ request để sinh
+    return False
+
+
+class _Attempts:
+    """Theo dõi các lần thử của MỘT lời gọi `ProviderClient.call`."""
+
+    __slots__ = ("request_bytes", "unmetered", "in_flight", "sent")
+
+    def __init__(self) -> None:
+        self.request_bytes, self.unmetered, self.in_flight, self.sent = 0, 0, False, False
+
+    def begin(self) -> None:
+        self.in_flight, self.sent = True, False
+
+    def settle(self, error: ProviderError) -> None:
+        """Lần thử đang bay đã kết thúc bằng `error`: đếm nó nếu có thể đã sinh token, rồi gắn số liệu vào lỗi."""
+        if self.in_flight and may_have_generated(error, self.sent):
+            self.unmetered += 1
+        self.in_flight = self.sent = False
+        error.unmetered_attempts, error.request_bytes = self.unmetered, self.request_bytes
+
+
+async def _body(data: bytes, tracker: _Attempts) -> AsyncIterator[bytes]:
+    """Thân request cho `httpx`. Khi `httpx` xin phần kế tiếp sau byte cuối, byte cuối đã được ghi ra socket: lúc đó đặt cờ "đã gửi xong"."""
+    yield data
+    tracker.sent = True
+
+
 class ProviderClient:
     def __init__(self, *, base_url: str, api_key: str | None, transport: httpx.AsyncBaseTransport | None = None) -> None:
         self._url = base_url.rstrip("/") + "/chat/completions"
@@ -126,15 +179,22 @@ class ProviderClient:
             raise ProviderError(CALL_FAILED, "NO_API_KEY", attempts=0)
         loop = asyncio.get_running_loop()
         started, attempts = loop.time(), 0
+        tracker = _Attempts()
         try:
             async with asyncio.timeout(total_deadline_s):
                 while True:
                     attempts += 1
                     try:
-                        return await self._once(profile, messages, schema_name, schema, total_deadline_s)
+                        response = await self._once(profile, messages, schema_name, schema, total_deadline_s, tracker)
+                        tracker.in_flight = False
+                        return replace(response, unmetered_attempts=tracker.unmetered, request_bytes=tracker.request_bytes)
+                    except ProviderError as e:  # lỗi không thử lại được: 4xx, thân 200 hỏng
+                        tracker.settle(e)
+                        raise
                     except _Transient as t:
                         error = t.error
                         error.attempts = attempts
+                        tracker.settle(error)
                         if attempts > wv.LLM_RETRY_COUNT:
                             raise error from None
                         remaining = total_deadline_s - (loop.time() - started)
@@ -148,9 +208,12 @@ class ProviderClient:
                             raise error from None
                         await asyncio.sleep(wait)
         except TimeoutError:
-            raise ProviderError(CALL_FAILED, "DEADLINE", attempts=attempts) from None
+            error = ProviderError(CALL_FAILED, "DEADLINE", attempts=attempts)
+            tracker.settle(error)  # lần thử đang bay (nếu có) bị cắt giữa chừng: đếm nếu thân request đã ghi xong
+            raise error from None
 
-    async def _once(self, profile: ModelProfile, messages: list[dict[str, str]], schema_name: str, schema: dict[str, Any], backstop_s: float) -> ProviderResponse:
+    async def _once(self, profile: ModelProfile, messages: list[dict[str, str]], schema_name: str, schema: dict[str, Any], backstop_s: float,
+                    tracker: _Attempts) -> ProviderResponse:
         body = {
             "model": profile.model,
             "messages": messages,
@@ -158,10 +221,14 @@ class ProviderClient:
             "response_format": {"type": "json_schema", "json_schema": {"name": schema_name, "strict": True, "schema": schema}},
             **profile.params,  # tham số riêng của model, đã qua bước kiểm #21 — không bao giờ `logprobs`, `logit_bias`, `top_logprobs`, `n`
         }
-        headers = {"Authorization": f"Bearer {self._key.reveal()}", "Content-Type": "application/json"}
+        raw_body = json.dumps(body, ensure_ascii=False).encode("utf-8")
+        # `Content-Length` tường minh để `httpx` không chuyển sang chunked khi thân là bộ sinh byte.
+        headers = {"Authorization": f"Bearer {self._key.reveal()}", "Content-Type": "application/json", "Content-Length": str(len(raw_body))}
+        tracker.request_bytes = len(raw_body)
+        tracker.begin()
         try:
             async with httpx.AsyncClient(transport=self._transport, timeout=httpx.Timeout(backstop_s), follow_redirects=False, trust_env=False) as client:
-                async with client.stream("POST", self._url, headers=headers, content=json.dumps(body, ensure_ascii=False).encode("utf-8")) as response:
+                async with client.stream("POST", self._url, headers=headers, content=_body(raw_body, tracker)) as response:
                     status = response.status_code
                     limit = MAX_RESPONSE_BYTES if status == 200 else _ERROR_BODY_BYTES
                     chunks: list[bytes] = []

@@ -106,6 +106,15 @@ class PgDb:
             return c.execute(f"select call_name, model_tier, prompt_module_version, input_tokens, output_tokens, reasoning_tokens, outcome, trace_id "
                              f"from llm_usage where {col} = %s order by created_at, id", (value,)).fetchall()
 
+    def usage_rows_ext(self, **owner) -> list[dict]:
+        """Như `usage_rows` nhưng trả dict kèm ba cột B5: `estimated`, `duration_ms`, `provider_completion_ms` (và `outcome`, `input_tokens`, `output_tokens`)."""
+        (col, value), = owner.items()
+        with self.connect("bo19_migrator") as c:
+            cur = c.execute(f"select call_name, outcome, input_tokens, output_tokens, reasoning_tokens, estimated, duration_ms, provider_completion_ms "
+                            f"from llm_usage where {col} = %s order by created_at, id", (value,))
+            names = [d.name for d in cur.description]
+            return [dict(zip(names, r)) for r in cur.fetchall()]
+
     def set_active(self, employee_id: uuid.UUID, active: bool) -> None:
         with self.connect("bo19_migrator") as c:
             c.execute("update employee set is_active = %s where id = %s", (active, employee_id))

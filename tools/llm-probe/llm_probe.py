@@ -64,6 +64,8 @@ class Call:
     error_type: str | None = None
     error_code: str | None = None
     remaining_tokens_header: str | None = None
+    client_ms: int | None = None  # B5 (PO, 2026-10-09): thời lượng phía client của request cuối cùng (không tính quãng chờ giữa hai lần thử hay giãn cách TPM)
+    completion_time_ms: int | None = None  # B5: `usage.completion_time` của Groq đổi ra mili giây; None khi Groq không trả
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -107,14 +109,19 @@ class Probe:
         if schema is not None:
             body["response_format"] = {"type": "json_schema", "json_schema": {"name": label[:40].replace("-", "_"), "strict": True, "schema": schema}}
         headers = {"Authorization": f"Bearer {auth if auth is not None else self._key}", "Content-Type": "application/json"}
+        payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
         with httpx.Client(transport=self._transport, timeout=90, trust_env=False, follow_redirects=False) as client:
-            r = client.post(self._base + "/chat/completions", headers=headers, content=json.dumps(body, ensure_ascii=False).encode("utf-8"))
+            t0 = time.monotonic()
+            r = client.post(self._base + "/chat/completions", headers=headers, content=payload)
+            client_ms = round((time.monotonic() - t0) * 1000)
             if r.status_code == 429:  # đúng một lần chờ `retry-after` — lời gọi thứ hai tính vào hạn mức
                 wait = r.headers.get("retry-after", "")
                 time.sleep(min(90, int(wait)) if wait.isdigit() else 30)
                 self._guard(model)
-                r = client.post(self._base + "/chat/completions", headers=headers, content=json.dumps(body, ensure_ascii=False).encode("utf-8"))
-        call = Call(label, model, r.status_code, remaining_tokens_header=r.headers.get("x-ratelimit-remaining-tokens"))
+                t0 = time.monotonic()
+                r = client.post(self._base + "/chat/completions", headers=headers, content=payload)
+                client_ms = round((time.monotonic() - t0) * 1000)  # chỉ request cuối: quãng chờ `retry-after` không phải thời lượng của lời gọi
+        call = Call(label, model, r.status_code, remaining_tokens_header=r.headers.get("x-ratelimit-remaining-tokens"), client_ms=client_ms)
         data: Any = None
         try:
             data = r.json()
@@ -138,6 +145,8 @@ class Probe:
         usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
         details = usage.get("completion_tokens_details") if isinstance(usage.get("completion_tokens_details"), dict) else {}
         call.prompt_tokens, call.completion_tokens, call.reasoning_tokens = usage.get("prompt_tokens"), usage.get("completion_tokens"), details.get("reasoning_tokens")
+        ct = usage.get("completion_time")
+        call.completion_time_ms = round(ct * 1000) if isinstance(ct, (int, float)) and not isinstance(ct, bool) and ct >= 0 else None
         choice = (data.get("choices") or [{}])[0]
         message = choice.get("message") if isinstance(choice.get("message"), dict) else {}
         fr = choice.get("finish_reason")
@@ -280,10 +289,10 @@ def publish(probe: Probe, secrets: list[str]) -> tuple[bool, list[str]]:
     lines = ["# Groq — số đo lời gọi thật ở B4b, lần 2 (có `tiktoken`; số và mã; không có nội dung model trả về)", "",
              f"- **Ngày đo:** {time.strftime('%Y-%m-%d')}. **Công cụ:** `tools/llm-probe/llm_probe.py`. Nội dung gửi đi: văn bản bịa có nhãn \"(giả)\" (A-080). Lần 1 (ngoài kế hoạch, không có `tiktoken`): `llm-groq-do-thuc-te-b4b.md`.",
              "- Bảng dưới chỉ có số token, mã HTTP, `finish_reason` và cờ. Thân lỗi bên dưới đã che định danh bằng `<masked>` và `self_check` của tool đạt trước khi ghi.", "",
-             "## Lời gọi", "", "| nhãn | model | HTTP | prompt | completion | reasoning | nhìn thấy | finish | hợp schema | có trường suy luận | loại lỗi | code |", "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+             "## Lời gọi", "", "| nhãn | model | HTTP | prompt | completion | reasoning | nhìn thấy | finish | hợp schema | có trường suy luận | loại lỗi | code | client ms | completion_time ms |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for c in probe.calls:
         lines.append(f"| {c.label} | {c.model} | {c.status} | {c.prompt_tokens} | {c.completion_tokens} | {c.reasoning_tokens} | {c.visible_tokens} | {c.finish_reason} | {c.valid_schema} | "
-                     f"{c.has_reasoning_field} ({c.reasoning_field_chars_bucket}) | {c.error_type} | {c.error_code} |")
+                     f"{c.has_reasoning_field} ({c.reasoning_field_chars_bucket}) | {c.error_type} | {c.error_code} | {c.client_ms} | {c.completion_time_ms} |")
     lines += ["", "## Gợi ý O1-3 (không phải kết luận)", "", "```json", json.dumps(suggest_o1_3(probe.calls), ensure_ascii=False, indent=2), "```", "",
               "## Gợi ý ngữ nghĩa trần output — E4b (không phải kết luận)", "", "```json", json.dumps(suggest_cap(probe.calls, probe.cap_under_test), ensure_ascii=False, indent=2), "```", "",
               "## Thân lỗi (E5, E6) — đã che", ""]
