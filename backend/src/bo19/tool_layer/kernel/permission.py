@@ -33,13 +33,18 @@ _EFFECTIVE = (
 )
 
 
+def effective_permissions(conn: psycopg.Connection, employee_id: uuid.UUID) -> frozenset[str]:
+    """Permission hiệu lực lúc này, bằng truy vấn thường — **không** mở giao dịch (gọi được bên trong một `unit_of_work`)."""
+    return frozenset(r[0] for r in conn.execute(_EFFECTIVE, {"id": employee_id}).fetchall())
+
+
 def employee_context(conn: psycopg.Connection, employee_id: uuid.UUID, trace_id: str | None = None) -> ToolContext:
     """Ngữ cảnh của một nhân viên **đang hoạt động**, với permission hiệu lực đọc từ DB lúc này. Không tồn tại hay `is_active = false` → `ActorInactive`."""
     with read_only(conn):
         row = conn.execute("SELECT is_active FROM employee WHERE id = %s", (employee_id,)).fetchone()
         if row is None or not row[0]:
             raise ActorInactive
-        permissions = frozenset(r[0] for r in conn.execute(_EFFECTIVE, {"id": employee_id}).fetchall())
+        permissions = effective_permissions(conn, employee_id)
     return ToolContext.create(Actor.employee(employee_id, permissions), trace_id)
 
 
