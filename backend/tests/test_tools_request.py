@@ -54,6 +54,15 @@ class MoRequest(ToolBase):
         self.assertEqual(len(self.audit(rid)), 1)
         self.assertEqual(len(self.slot_rows(rid)), 2)
 
+    def test_tin_nhan_da_mo_request_cua_nguoi_khac_khong_tra_lai_cho_toi(self):  # phòng thủ: không rò request của người khác qua idempotency
+        eid, ctx = self.employee()
+        other, _ = self.employee()
+        sid, mid, rid, _ = self.open_request(eid, ctx)
+        with self.db.connect("bo19_migrator") as c:
+            c.execute("update request set created_by_employee_id = %s where id = %s", (other, rid))
+        with self.assertRaises(NotOwnRequest):
+            ro.request_open(self.pool, ctx, chat_session_id=sid, request_type="WORK_CONFIRMATION", beneficiary_employee_id=eid, opened_by_message_id=mid)
+
     def test_dong_thoi_cung_tin_nhan_chi_mot_request(self):
         eid, ctx = self.employee()
         sid, mid = self.say(eid, ctx, "xin giấy xác nhận công tác")

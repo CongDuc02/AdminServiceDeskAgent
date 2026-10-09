@@ -125,6 +125,15 @@ class GhiSlot(Scenario):
         sid, mid = self.say(eid, ctx, "gửi tới Ngân hàng ABC")
         return mid
 
+    def test_doan_trich_nguyen_van_nhung_qua_300_ky_tu_van_bi_loai(self):  # khớp maxLength của evidence_quote ở schema P2
+        long_text = "mục đích " + " ".join(["bổ sung hồ sơ vay vốn"] * 20)
+        assert len(long_text) > 300
+        mid = self.msg(long_text)
+        r = self.write([self.item("purpose", long_text, long_text, mid=mid)])
+        self.assertEqual(([x.code for x in r.rejected], r.written), (["EVIDENCE_MISMATCH"], ()))
+        ok = self.write([self.item("purpose", long_text[:300], long_text[:300], mid=mid)])  # đúng 300 thì qua
+        self.assertEqual(ok.written, ("purpose",))
+
     def test_rule_hong_bi_loai_kem_ma_rule_khong_kem_gia_tri(self):
         mid = self.msg("mục đích cần gấp, lấy 0 bản, bản 2,5")
         r = self.write([self.item("purpose", "cần gấp", "cần gấp", mid=mid), self.item("copies_count", 0, "0 bản", mid=mid), self.item("copies_count", "2", "2,5", mid=mid)])

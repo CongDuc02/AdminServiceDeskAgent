@@ -55,6 +55,23 @@ class MoPhien(ToolBase):
         self.assertEqual(len({o.chat_session_id for o in out}), 1)
         self.assertEqual(sum(o.created for o in out), 1)
 
+    def test_mo_phien_khoa_hang_nhan_vien_de_khong_tao_hai_phien(self):  # xác định, không dựa vào may rủi của thời điểm
+        eid, ctx = self.employee()
+        done = {}
+
+        def go():
+            done["r"] = ch.chat_session_open(self.pool, ctx)
+
+        with self.db.connect("bo19_migrator") as c:
+            c.execute("select id from employee where id = %s for no key update", (eid,))  # giữ khoá hàng employee chưa commit; NO KEY UPDATE xung đột với FOR UPDATE của tool nhưng KHÔNG với khoá KEY SHARE của khoá ngoại, nên phân biệt được "có khoá" với "chỉ chờ khoá ngoại"
+            t = threading.Thread(target=go)
+            t.start()
+            t.join(0.6)
+            self.assertTrue(t.is_alive(), "chat_session_open phải chờ khoá hàng employee, không chạy chen")
+            c.commit()
+        t.join(10)
+        self.assertEqual(done["r"].created, True)
+
     def test_phien_cua_hai_nguoi_khac_nhau(self):
         _, a = self.employee()
         _, b = self.employee()

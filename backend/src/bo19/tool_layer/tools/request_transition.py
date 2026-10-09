@@ -25,8 +25,6 @@ def request_transition(pool: Pool, ctx: ToolContext, *, request_id: uuid.UUID, t
         row = conn.execute("SELECT status FROM request WHERE id = %s FOR UPDATE", (request_id,)).fetchone()
         if row is None:
             raise kernel.RowNotFound("request")
-        if row[0] not in GRAPH_STATUSES:
-            raise kernel.IllegalTransition(f"{row[0]}>{to}")
         result = kernel.transition(conn, "request", request_id, to=to)
         if result.changed:
             audit.record(conn, ctx, action="request.transition", entity_type="request", entity_id=request_id, request_id=request_id, payload={"from": row[0], "to": to})

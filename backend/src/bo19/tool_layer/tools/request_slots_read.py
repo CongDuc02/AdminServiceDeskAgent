@@ -1,4 +1,4 @@
-"""`request_slots_read` — nạp giá trị slot cho prompt, theo đúng danh sách tự khai của prompt module (mục Tool Registry của 03-agents.md; INV-03).
+"""`request_slots_read` — nạp giá trị slot cho prompt (slot `ERASED` có `value` NULL nên không bao giờ được trả), theo đúng danh sách tự khai của prompt module (mục Tool Registry của 03-agents.md; INV-03).
 
 Chỉ tác nhân hệ thống của graph đang xử lý `request` đó. Xin một slot không có trong khai báo của module gọi → `SLOT_NOT_DECLARED`: đây là **bug** (prompt module xin slot nó không khai),
 không bao giờ lộ ra client — lộ ra là rò cấu trúc prompt. Kiểm TRƯỚC khi đọc dòng nào. Chỉ đọc (giao dịch `READ ONLY`).
@@ -29,6 +29,6 @@ def request_slots_read(pool: Pool, ctx: ToolContext, *, request_id: uuid.UUID, s
     with pool.acquire() as conn, read_only(conn):
         if conn.execute("SELECT 1 FROM request WHERE id = %s", (request_id,)).fetchone() is None:
             raise RequestNotFound
-        rows = conn.execute("SELECT slot_name, value FROM request_slot WHERE request_id = %s AND slot_name = ANY(%s) AND value_status <> 'ERASED' AND value IS NOT NULL",
+        rows = conn.execute("SELECT slot_name, value FROM request_slot WHERE request_id = %s AND slot_name = ANY(%s) AND value IS NOT NULL",
                             (request_id, list(slot_names))).fetchall()
     return {name: value for name, value in rows}

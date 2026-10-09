@@ -3347,3 +3347,14 @@ PO duyệt kế hoạch B6, chia B6a (dữ liệu, F1, tool) và B6b (graph, API
 | `ASSUMPTIONS.md` | A-093 `Đã chốt` |
 
 **B6a — chi tiết tool ghi trong lúc làm (2026-10-09), mỗi dòng đã sửa tài liệu trước mã:** `request_slots_write` kiểm bằng chứng trên NFC, tính lại `evidence_span`, và đòi `value` của slot `STRING`/`TEXT` nằm nguyên văn trong đoạn trích; `chat_message.body` lưu NFC; `request_slots_propose` nguồn `HR_PROFILE` chỉ đề xuất slot **bắt buộc**.
+
+### B6a — kết quả mã (2026-10-09)
+
+| Hạng mục | Kết quả |
+|---|---|
+| Cấu hình | Migration `0011` (`label_vi`); data migration `0002` (6 loại, 16 slot, 1 sổ). Test đọc lại bảng 3.2 của `00-domain.md` và đòi DB khớp |
+| Domain | `slot_rules`, `eligibility` (F1), `status_labels` — hàm thuần, test bảng chân trị |
+| Tool | 8 tool của `intake_agent` + `request_slot_confirm` + hai thao tác chat |
+| Đột biến | **96 mẫu: 91 đỏ ngay; 5 sống sót đã xử lý** — 3 thiếu test (T16 trích > 300 ký tự, O11 `request` của người khác qua idempotency, H9 khoá `employee` khi mở phiên — test xác định bằng `FOR NO KEY UPDATE`), 2 là điều kiện thừa nên bỏ khỏi mã (R2: máy trạng thái của kernel đã chặn; S2: `ERASED` ⇒ `value` NULL do `ck_request_slot_value_presence`). Chạy lại: đỏ |
+| **Mẫu tương đương, nêu rõ** | Bỏ chuẩn hoá NFC trong `slot_rules.tokens`/`non_blank` **không** làm test nào đỏ: tách theo khoảng trắng và nhóm ký tự `L*`/`N*` không đổi giữa dạng dựng sẵn và tổ hợp. Giữ NFC vì PO chỉ định ("sau NFC") và vì body đã lưu NFC; không tính là lỗ hổng test |
+| Ngoài kế hoạch, ghi rõ | (1) `request_slots_write` đòi `value` `STRING`/`TEXT` nằm trong đoạn trích và tính lại `evidence_span` (siết thêm; đã sửa `03-agents.md` trước). (2) `request_slots_propose` chỉ đề xuất slot `HR_PROFILE` **bắt buộc** (tối thiểu hoá dữ liệu; đã sửa `03-agents.md` trước). (3) `chat_message.body` lưu NFC (đã sửa `04-data.md` trước). Cả ba PO xem lại khi duyệt merge |
