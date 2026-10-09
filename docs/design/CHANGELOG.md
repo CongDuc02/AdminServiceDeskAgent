@@ -3303,3 +3303,19 @@ PO chạy lại E2 + E4B có `tiktoken`: 12 lời gọi, `self-check` đạt (k�
 | **Ngữ nghĩa `max_completion_tokens` đóng** | Trần gồm cả suy luận: E4B trần 87 > nhìn thấy lớn nhất 57 mà 3/3 HTTP 400 `json_validate_failed`. Mẫu nhỏ (n = 3), nhưng các điểm của lần chạy 1 cùng chiều và không điểm nào ngược. **Chưa biết:** phần dư 12–19 token là gì; token của lời gọi bị cắt (400 không có `usage`, sổ đếm thiếu); thời lượng so với hạn chót 8 s (tool không ghi `completion_time`) |
 | **Đề xuất trần output — CHƯA ÁP** | `proposals/model-profile-values.md` mục 4: chỉ `extract_slots` 1.536 → 2.048 (1,9× → 2,5× max đo 817; phương sai suy luận lớn, tới 8 slot); `classify_intent` 512 và `draft_free_content` 2.048 giữ. PO duyệt trước khi dùng thật |
 | Cổng 4.6 | Tính lại hạn mức Groq cho UAT với `chat_session` 51.900: mốc từ số đo — một lượt P1 + P2 ≈ 2.960–3.110 token trên `gpt-oss-20b`; 8K TPM ⇒ ~2 lượt/phút; 200K TPD ⇒ chưa tới 4 phiên đủ trần mỗi ngày hoặc ≈ 64–67 lượt; thay bằng `usage` thật khi tới cổng |
+
+### B5 — docs-first: trần output, sổ ước lượng, thời lượng, O1-10 (2026-10-09)
+
+PO duyệt kế hoạch B5/B6 (tách hai nhánh). Thiết kế đổi **trước** khi có mã:
+
+| Tệp | Đổi |
+|---|---|
+| `decisions/ADR-019` | Mục **Bổ sung B5**: dòng `llm_usage` ước lượng khi provider không trả `usage`. Input = byte UTF-8 của thân request — **cận trên thực tế, không chứng minh được** (provider thêm token khung chat, 12–19 token ở B4b, không có trong thân request); output = `max_completion_tokens`. Bảng phân loại từng lần thử: **ước lượng** 400 `json_validate_failed`, 5xx, hết hạn chót hoặc mất kết nối **sau** khi thân request ghi xong, HTTP 200 thân hỏng; **không** 429, lỗi trước khi ghi xong, hết hạn chót giữa hai lần thử, 4xx khác |
+| `04-data.md` | `llm_usage` thêm `estimated`, `duration_ms`, `provider_completion_ms` (migration `0010`) |
+| `contracts/README.md` | Dòng `0010_llm_usage_estimated_duration.sql` |
+| `11-ops.md` | Mục 10.5: điều kiện thời lượng P1 + P2 trước AC-1.1 |
+| `12-roadmap.md` | O1-10 làm ở B5; O1-12 trần output duyệt; **O1-13** thời lượng trước AC-1.1 |
+| `05-api.md`, `contracts/openapi.yaml` | `PAYLOAD_TOO_LARGE` gồm body `POST /auth/session` > 4096 byte; phản hồi `413` của `POST /auth/session`. **Ghi rõ:** `maxLength` 64/128 PO đã commit; hai dòng `413` là phần còn lại của diff ở `proposals/login-body-limits.md`, B5 áp theo duyệt "làm code O1-10" — PO xem lại diff khi duyệt merge |
+| `06-structure.md` | Mục Triển khai ở B5 |
+| `ASSUMPTIONS.md` | **A-092** mới; A-090 ghi trần output đã duyệt |
+| `proposals/*` | Trạng thái duyệt của `model-profile-values.md` mục 4 và `login-body-limits.md` |

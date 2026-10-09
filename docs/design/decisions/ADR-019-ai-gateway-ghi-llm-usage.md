@@ -41,6 +41,36 @@ Ca thường — `OK`, `PARSE_REPAIRED`, `PARSE_FAILED`, `PROVIDER_ERROR`: dòng
 
 **Không có chủ budget thì không có lời gọi.** `ck_llm_usage_has_budget_owner` buộc mỗi dòng có ít nhất một trong `request_id`, `chat_session_id`, `procedure_document_version_id`. `ai_gateway` từ chối lời gọi thiếu chủ budget **trước** khi gọi provider; không ghi được dòng nào cho ca này vì chính `CHECK` đó, nên nó chỉ để lại log. Đây là lỗi lập trình, không phải ca vận hành.
 
+## Bổ sung B5 — dòng ước lượng khi provider không trả `usage` (PO, 2026-10-09)
+
+**Vấn đề.** Sổ chỉ đếm được token mà provider báo. Có lần thử mà provider **có thể đã sinh token** nhưng không trả `usage`: HTTP 400 `json_validate_failed` (output bị cắt ở trần `max_completion_tokens`, B4b), 5xx, hết hạn chót khi request đã gửi xong. Bỏ qua chúng là đếm thiếu, và đếm thiếu mở lỗ ở đúng chỗ trần budget phải kín — fail-open.
+
+**Quyết định.** Mỗi lần thử như vậy được **ước lượng bảo thủ** và cộng vào dòng sổ của lời gọi, dòng đó mang `estimated = true`:
+
+- **Input ước lượng** = số byte UTF-8 của thân request đã gửi. Đây là **cận trên thực tế**, không phải cận trên chứng minh được: mỗi token mã hoá ít nhất một byte nên số byte thường lớn hơn số token, **nhưng** provider thêm token khung chat — phần dư 12–19 token đo ở B4b (`docs/reference/llm-groq-do-thuc-te-b4b-lan2.md`) — không có trong thân request. Tỷ lệ byte/token của thân request thật **chưa đo**: B5 ghi `request_bytes` cạnh `prompt_tokens` thật trong log để đo (A-092). Thiết kế không dựa vào bất đẳng thức "byte ≥ token".
+- **Output ước lượng** = `max_completion_tokens` của module — trần cứng đã gửi kèm request (A-090), không thể sinh hơn.
+- Mỗi lần thử không có `usage` được ước lượng **riêng** (một lời gọi có thể có tới hai lần thử ở tầng adapter và hai lần ở tầng sửa parse).
+
+**Bảng phân loại — lần thử nào được ước lượng.** Nguyên tắc: ước lượng khi provider **có thể đã sinh** token; không khi request chắc chắn bị từ chối trước khi sinh. Không biết → ước lượng (fail-closed).
+
+| Kết quả lần thử | Ước lượng? | Lý do |
+|---|---|---|
+| HTTP 400 `json_validate_failed` | **Có** | Provider đã sinh output rồi mới thấy nó hỏng schema hay bị cắt |
+| HTTP 5xx | **Có** | Không biết provider đã sinh đến đâu |
+| Hết hạn chót **sau khi** thân request đã ghi xong ra socket | **Có** | Provider có thể vẫn đang sinh |
+| Mất kết nối **sau khi** thân request đã ghi xong | **Có** | Như trên |
+| HTTP 200 nhưng thân không đọc được (`BAD_RESPONSE`) | **Có** | Đã sinh, chỉ không đọc được `usage` |
+| HTTP 429 | Không | Từ chối vì hạn mức, trước khi sinh |
+| Lỗi kết nối hay hết hạn chót **trước khi** thân request ghi xong | Không | Provider chưa có đủ request để sinh |
+| Hết hạn chót ở quãng nghỉ giữa hai lần thử (không có lần thử nào đang bay) | Không | Không có request nào ngoài kia |
+| HTTP 4xx khác (400 mã khác, 401, 413, 422) | Không | Request bị từ chối khi kiểm, trước khi sinh |
+
+"Thân request đã ghi xong" = `httpx` đã trao byte cuối của thân cho socket (adapter nhận biết bằng một bộ sinh byte báo khi đã được tiêu thụ hết). Ca cạnh biên — byte cuối vào bộ đệm nhân nhưng chưa tới provider — bị tính là đã gửi: ước lượng dư, hướng fail-closed.
+
+**Fail-closed.** Không ghi được dòng ước lượng thì không thêm gì vào hành vi hiện có của ADR này (ca 1 và ca "ghi sổ lỗi" ở Consequences): lỗi ghi được log, lời gọi vẫn trả kết quả của nó. Dòng ước lượng **được tính vào tổng token của chủ budget** ở lần kiểm kế tiếp (truy vấn tổng không đổi: nó cộng `input_tokens + output_tokens` của mọi dòng).
+
+**Hệ quả chấp nhận.** Phiên có nhiều lượt hỏng bị đếm dư và chạm trần `chat_session` sớm hơn thực tế. Chọn dư thay vì thiếu: trần là chốt chi phí, không phải hoá đơn. Phép đếm dư đo được qua tỷ lệ dòng `estimated` trên tổng dòng (Phase 11).
+
 ## Consequences
 
 **Tích cực**
