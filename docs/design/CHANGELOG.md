@@ -3330,5 +3330,5 @@ PO duyệt kế hoạch B5/B6 (tách hai nhánh). Thiết kế đổi **trước
 | `tool_layer.kernel` | 5 module; 36 đột biến đỏ (3 mẫu đa dòng chạy lại bằng mẫu một dòng). CI quét văn bản `status` và `audit_event` |
 | `domain.request_machine` | 14 cạnh, khớp sơ đồ Mermaid của `00-domain.md` bằng test đọc lại sơ đồ |
 | **Hoãn sang B6** | Hàm F1 và `tool_layer.checks` — thiếu từ vựng `validation_rules` (A-093, O1-14); đề xuất ở B6, PO duyệt trước khi viết |
-| **Chênh lệch thiết kế** | `status_changed_at` chỉ có ở `request` và `document`, không ở bốn bảng như `06-structure.md` mô tả — kernel ghi nơi cột tồn tại |
+| **Chênh lệch thiết kế — đã sửa** | `06-structure.md` nói `status_changed_at` ghi ở bốn bảng; `04-data.md` và schema chỉ có cột đó ở `request` và `document`. PO (2026-10-09) yêu cầu sửa câu cho khớp `04-data.md`: mục Nghĩa vụ kế thừa của `06-structure.md` nay nói hai bảng; kernel ghi nơi cột tồn tại |
 | **Ngoài kế hoạch, ghi rõ** | Bộ sinh byte của thân request cũng dùng cho cả nhánh kết nối (mất kết nối sau khi gửi xong được ước lượng) và 200 thân hỏng — cùng nguyên tắc 'có thể đã sinh' của bảng ADR-019, PO chỉ nêu bốn ca nên hai ca này cần PO xem lại |
