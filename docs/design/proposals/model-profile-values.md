@@ -43,7 +43,7 @@ Mọi giá trị dưới đây là **lựa chọn có lý do**, không phải s�
 - PO duyệt, sửa hay bác từng giá trị ở mục 1 và 2?
 - Có muốn đặt `reasoning_effort` của `STRONG` thấp hơn `medium` (rẻ hơn, nhanh hơn) hay cao hơn (`high`) — hay để eval quyết?
 
-## 4. Đề xuất lại trần output theo số đo B4b — **CHƯA ÁP, chờ PO duyệt** (2026-10-05)
+## 4. Đề xuất lại trần output theo số đo B4b — **PO duyệt 2026-10-09; áp ở B5** (đề xuất 2026-10-05)
 
 Ngữ nghĩa đã kết luận (ADR-035, mục B4b): `max_completion_tokens` so với tổng token sinh ra **gồm suy luận**; trần quá thấp trả HTTP 400 `json_validate_failed` (đi đường sửa parse, tốn thêm một lời gọi, và nếu lần sửa cũng hỏng thì `NEED_CLARIFICATION` ở lượt chat hay `halt_for_human` ở `document_graph`).
 

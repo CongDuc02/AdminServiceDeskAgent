@@ -84,17 +84,21 @@ class Budget:
             raise BudgetUnavailable from None  # không đọc được số đã tiêu thì không biết đã chạm trần chưa — từ chối, không gọi provider
 
     def record(self, *, call_name: str, tier: str, prompt_module_version: str | None, owner: BudgetOwner, input_tokens: int | None, output_tokens: int | None,
-               reasoning_tokens: int | None, outcome: str) -> bool:
-        """Một dòng, một giao dịch riêng, commit xong mới trả. Trả `False` (và log) nếu không ghi được — không ném. `input_tokens` thiếu thì 0 (cột NOT NULL), không suy ra."""
+               reasoning_tokens: int | None, outcome: str, estimated: bool = False, duration_ms: int | None = None, provider_completion_ms: int | None = None) -> bool:
+        """Một dòng, một giao dịch riêng, commit xong mới trả. Trả `False` (và log) nếu không ghi được — không ném. `input_tokens` thiếu thì 0 (cột NOT NULL), không suy ra.
+
+        `estimated` (B5, ADR-019 mục Bổ sung B5): dòng có phần token ước lượng — đã tính vào `input_tokens`/`output_tokens`, nên truy vấn tổng không đổi và ước lượng được tính vào trần.
+        Chỉ hợp lệ với bốn kết quả có lời gọi tới provider (`ck_llm_usage_estimated_shape`)."""
         assert outcome in OUTCOMES
         try:
             with self._pool.acquire() as conn, unit_of_work(conn):
                 conn.execute(
                     "INSERT INTO llm_usage (id, call_name, model_tier, prompt_module_version, request_id, chat_session_id, document_id, "
-                    "procedure_document_version_id, input_tokens, output_tokens, reasoning_tokens, outcome, trace_id) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    "procedure_document_version_id, input_tokens, output_tokens, reasoning_tokens, outcome, trace_id, estimated, duration_ms, provider_completion_ms) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (uuid.uuid4(), call_name, tier, prompt_module_version, owner.request_id, owner.chat_session_id, owner.document_id,
-                     owner.procedure_document_version_id, input_tokens or 0, output_tokens, reasoning_tokens, outcome, current_trace_id() or new_trace_id()))
+                     owner.procedure_document_version_id, input_tokens or 0, output_tokens, reasoning_tokens, outcome, current_trace_id() or new_trace_id(),
+                     estimated, duration_ms, provider_completion_ms))
             return True
         except Exception as e:  # noqa: BLE001 — mọi lỗi ghi sổ: log mã và kiểu, không nuốt im lặng
             log.error("LLM_USAGE_WRITE_FAILED", exc=e, call_name=call_name, outcome=outcome, internal_code=getattr(e, "code", None))

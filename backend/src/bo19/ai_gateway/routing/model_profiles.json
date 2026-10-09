@@ -24,7 +24,12 @@
   },
   "module_params": {
     "classify_intent": { "max_completion_tokens": 512 },
-    "extract_slots": { "max_completion_tokens": 1536 },
+    "extract_slots": { "max_completion_tokens": 2048 },
     "draft_free_content": { "max_completion_tokens": 2048 }
+  },
+  "calibration": {
+    "classify_intent": "hiệu chỉnh theo B4b, n nhỏ",
+    "extract_slots": "hiệu chỉnh theo B4b, n nhỏ",
+    "draft_free_content": "hiệu chỉnh theo B4b, n nhỏ"
   }
 }

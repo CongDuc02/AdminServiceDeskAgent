@@ -5,6 +5,8 @@
 - `models[<mã model>].allowed_params` — tham số được phép gửi kèm và miền giá trị của từng tham số: `{"values": [...]}` (danh sách đóng) hoặc
   `{"type": "integer" | "number", "min": ..., "max": ...}` (khoảng, `max` tuỳ chọn).
 - `tiers[<tier>]` — mã model và `params`. **Mọi tham số ảnh hưởng output ghi tường minh, không dựa mặc định provider:** `reasoning_effort`, `temperature` và `include_reasoning` là bắt buộc ở cả hai tier. `include_reasoning: false` bảo Groq không trả văn bản suy luận; adapter vẫn bỏ trường suy luận nếu provider trả về (lớp thứ hai).
+- `calibration[<call_name>]` — **tuỳ chọn**: nhãn một dòng nói trần output của module đã hiệu chỉnh theo đâu (PO, 2026-10-09: "hiệu chỉnh theo B4b, n nhỏ"). JSON không có comment nên nhãn là dữ liệu;
+  không gửi cho provider. Khoá phải là module có thật, giá trị là chuỗi không rỗng, tối đa 120 ký tự.
 - `module_params[<call_name>]` — tham số theo từng module. **Trần output cứng** `max_completion_tokens` là bắt buộc cho mọi module có prompt module (A-090). Tham số của module và của tier không được trùng tên.
 
 `max_tokens` (deprecated, `docs/reference/llm-groq-chat-params.md`) không bao giờ gửi: nằm trong `RESERVED_PARAMS`.
@@ -27,6 +29,7 @@ REQUIRED_MODULE_PARAMS = ("max_completion_tokens",)
 # Module có prompt module và tier của nó — `tests/test_checks_gateway.py` đòi khớp `prompt_modules.MODULES`.
 MODULE_TIERS = {"classify_intent": "CHEAP", "extract_slots": "CHEAP", "draft_free_content": "STRONG"}
 SCHEMA_VERSION = 2
+MAX_CALIBRATION_LABEL = 120
 
 # Tham số do `ai_gateway` tự đặt, provider từ chối, hoặc đã bị thay thế (docs/reference/llm-groq.md mục 6a; llm-groq-chat-params.md) — không bao giờ khai được qua cấu hình.
 RESERVED_PARAMS = frozenset({"model", "messages", "response_format", "stream", "stream_options", "n", "logprobs", "logit_bias", "top_logprobs", "name", "max_tokens"})
@@ -43,6 +46,7 @@ class ModelProfile:
 class Profiles:
     tiers: dict[str, ModelProfile]
     modules: dict[str, dict[str, Any]] = field(default_factory=dict)
+    calibration: dict[str, str] = field(default_factory=dict)
 
     def for_tier(self, tier: str) -> ModelProfile:
         return self.tiers[tier]
@@ -190,9 +194,19 @@ def validate(raw: Any) -> ProfileCheck:
                 mod_ok = False
         if mod_ok:
             modules[call] = dict(params)
+    calibration: dict[str, str] = {}
+    raw_cal = raw.get("calibration", {})
+    if not isinstance(raw_cal, dict):
+        codes.append("PROFILE_CALIBRATION_INVALID")
+    else:
+        for call, label in raw_cal.items():
+            if call not in MODULE_TIERS or not isinstance(label, str) or not label.strip() or len(label) > MAX_CALIBRATION_LABEL or not label.isprintable():
+                codes.append(f"PROFILE_CALIBRATION_INVALID:{_safe(call)}")  # không ghi nhãn
+            else:
+                calibration[call] = label
     if codes:
         return ProfileCheck(None, tuple(codes))
-    return ProfileCheck(Profiles(out, modules), ())
+    return ProfileCheck(Profiles(out, modules, calibration), ())
 
 
 def _safe(text: object) -> str:

@@ -6,11 +6,13 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
+from bo19.config import working_values as wv
+
 
 class LoginBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    employee_code: str = Field(min_length=1)
-    password: SecretStr = Field(min_length=1)  # `format: password`, `writeOnly` — không vào repr, không vào log
+    employee_code: str = Field(min_length=1, max_length=wv.LOGIN_EMPLOYEE_CODE_MAX_LENGTH)
+    password: SecretStr = Field(min_length=1, max_length=wv.LOGIN_PASSWORD_MAX_LENGTH)  # `format: password`, `writeOnly` — không vào repr, không vào log; mật khẩu quá dài không bao giờ tới argon2
 
 
 class MeEmployee(BaseModel):

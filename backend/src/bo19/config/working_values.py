@@ -10,6 +10,15 @@ from __future__ import annotations
 LOGIN_RATE_LIMIT_WINDOW_SECONDS = 15 * 60
 LOGIN_RATE_LIMIT_MAX_ATTEMPTS = 20
 
+# O1-10 (PO duyệt 2026-10-09, `proposals/login-body-limits.md`) — giới hạn đầu vào của `POST /auth/session`. **Ba con số là đề xuất của người triển khai, chưa có căn cứ nguồn**
+# (nhãn "chưa hiệu chỉnh"); `contracts/openapi.yaml` ghi 64 và 128 — `tests/test_login_limits.py` đối chiếu. Thay khi tổ chức có chính sách mật khẩu hay định dạng mã nhân viên.
+LOGIN_EMPLOYEE_CODE_MAX_LENGTH = 64
+LOGIN_PASSWORD_MAX_LENGTH = 128
+LOGIN_BODY_MAX_BYTES = 4096
+
+# `job.max_attempts` theo `job_type` — mục Retry, backoff và job lỗi vĩnh viễn của 11-ops.md, nhãn "chưa hiệu chỉnh" (A-031). Backoff (`base × 2^attempts`) thuộc `tool_layer.jobs`, chưa có.
+JOB_MAX_ATTEMPTS = {"render_document": 5, "resume_document_graph": 5, "finalize_issue": 5, "checkpoint_purge": 5, "notification_send": 5, "procedure_ingest": 3}
+
 # WV-16b — trần số lần verify `argon2id` đồng thời trong MỘT tiến trình (ADR-034). Lần thứ năm chờ.
 ARGON2_MAX_CONCURRENT_VERIFY = 4
 

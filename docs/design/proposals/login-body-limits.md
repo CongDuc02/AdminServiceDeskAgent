@@ -1,6 +1,6 @@
 # Đề xuất sửa contract — giới hạn độ dài và kích thước body của `POST /auth/session`
 
-**Trạng thái:** ✋ **Chờ PO duyệt** — chưa sửa `contracts/openapi.yaml`, chưa sửa code. · **Ngày:** 2026-10-05 · **Người đề xuất:** người triển khai · **Hạn làm:** trước cổng 2.8 (PO, 2026-10-05) · **Nợ từ:** B3 (`CHANGELOG.md`, mục B3 xong)
+**Trạng thái:** ✅ **PO duyệt 2026-10-09** (`maxLength` 64/128 đã vào `openapi.yaml` do PO; B5 thêm `413` và làm code). · **Ngày:** 2026-10-05 · **Người đề xuất:** người triển khai · **Hạn làm:** trước cổng 2.8 (PO, 2026-10-05) · **Nợ từ:** B3 (`CHANGELOG.md`, mục B3 xong)
 
 ## 1. Vấn đề
 

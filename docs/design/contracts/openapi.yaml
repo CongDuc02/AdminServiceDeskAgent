@@ -69,6 +69,7 @@ paths:
               schema: { type: string }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "422": { $ref: "#/components/responses/Unprocessable" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "500": { $ref: "#/components/responses/InternalError" }
@@ -1733,7 +1734,7 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorEnvelope" }
     PayloadTooLarge:
-      description: PAYLOAD_TOO_LARGE — trần TBD (A-031)
+      description: PAYLOAD_TOO_LARGE — file vượt trần (trần TBD, A-031); và body của POST /auth/session vượt 4096 byte
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorEnvelope" }

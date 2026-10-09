@@ -14,6 +14,7 @@ import json
 import re
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -189,6 +190,50 @@ class ChayThuVoiServerGia(unittest.TestCase):
     def run_all(self, p):
         for fn in (p.e1_o1_1, p.e2_o1_3, p.e3_a089, p.e4_cap, p.e5_a091, p.e6_reasoning_off):
             fn()
+
+    def timed_probe(self, handler):
+        return llm_probe.Probe(KEY, "https://llm.example.test/openai/v1", transport=httpx.MockTransport(handler), pace=False)
+
+    def test_ghi_thoi_luong_client_va_completion_time(self):  # B5 (PO, 2026-10-09): thời lượng mỗi lời gọi — từ usage nếu Groq trả, không thì đo phía client
+        inner = server(usage={"prompt_tokens": 10, "completion_tokens": 5, "completion_time": 0.25, "completion_tokens_details": {"reasoning_tokens": 0}})
+
+        def slow(request: httpx.Request) -> httpx.Response:
+            time.sleep(0.06)
+            return inner.handle_request(request)
+
+        c = self.timed_probe(slow).raw("x", "openai/gpt-oss-20b", [{"role": "user", "content": "ping (giả)"}], None, {}, expected_tokens=10)
+        self.assertEqual(c.completion_time_ms, 250)  # đọc từ usage, giây → mili giây
+        self.assertGreaterEqual(c.client_ms, 55)  # đo phía client, độc lập với completion_time
+        self.assertLess(c.client_ms, 3000)
+
+    def test_khong_co_hay_sai_completion_time_thi_de_trong_nhung_van_co_client_ms(self):
+        for bad in ({}, {"completion_time": None}, {"completion_time": True}, {"completion_time": -1}, {"completion_time": "0.2"}):
+            inner = server(usage={"prompt_tokens": 10, "completion_tokens": 5, "completion_tokens_details": {"reasoning_tokens": 0}, **bad})
+            c = self.timed_probe(inner.handle_request).raw("x", "openai/gpt-oss-20b", [{"role": "user", "content": "ping (giả)"}], None, {}, expected_tokens=10)
+            self.assertIsNone(c.completion_time_ms, bad)
+            self.assertIsInstance(c.client_ms, int, bad)
+
+    def test_client_ms_chi_tinh_request_cuoi_khong_tinh_quang_cho_retry_after(self):
+        inner = server()
+        seen = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(1)
+            if len(seen) == 1:
+                time.sleep(0.4)
+                return httpx.Response(429, json={"error": {"type": "tokens", "code": "rate_limit_exceeded"}}, headers={"retry-after": "0"})
+            return inner.handle_request(request)
+
+        c = self.timed_probe(handler).raw("x", "openai/gpt-oss-20b", [{"role": "user", "content": "ping (giả)"}], None, {}, expected_tokens=10)
+        self.assertEqual((c.status, len(seen)), (200, 2))
+        self.assertLess(c.client_ms, 300)  # lần 429 mất 0.4 s nhưng không tính vào thời lượng của lời gọi thành công
+
+    def test_thoi_luong_la_so_khong_phai_noi_dung(self):
+        p = self.probe()
+        p.e1_o1_1(2)
+        for call in p.calls:
+            self.assertIsInstance(call.client_ms, int)
+            self.assertNotIn(CONTENT_MARK, json.dumps(call.__dict__, ensure_ascii=False))
 
     def test_chay_het_trong_han_muc_40_loi_goi(self):
         p = self.probe()
