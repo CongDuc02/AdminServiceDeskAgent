@@ -3358,3 +3358,13 @@ PO duyệt kế hoạch B6, chia B6a (dữ liệu, F1, tool) và B6b (graph, API
 | Đột biến | **96 mẫu: 91 đỏ ngay; 5 sống sót đã xử lý** — 3 thiếu test (T16 trích > 300 ký tự, O11 `request` của người khác qua idempotency, H9 khoá `employee` khi mở phiên — test xác định bằng `FOR NO KEY UPDATE`), 2 là điều kiện thừa nên bỏ khỏi mã (R2: máy trạng thái của kernel đã chặn; S2: `ERASED` ⇒ `value` NULL do `ck_request_slot_value_presence`). Chạy lại: đỏ |
 | **Mẫu tương đương, nêu rõ** | Bỏ chuẩn hoá NFC trong `slot_rules.tokens`/`non_blank` **không** làm test nào đỏ: tách theo khoảng trắng và nhóm ký tự `L*`/`N*` không đổi giữa dạng dựng sẵn và tổ hợp. Giữ NFC vì PO chỉ định ("sau NFC") và vì body đã lưu NFC; không tính là lỗ hổng test |
 | Ngoài kế hoạch, ghi rõ | (1) `request_slots_write` đòi `value` `STRING`/`TEXT` nằm trong đoạn trích và tính lại `evidence_span` (siết thêm; đã sửa `03-agents.md` trước). (2) `request_slots_propose` chỉ đề xuất slot `HR_PROFILE` **bắt buộc** (tối thiểu hoá dữ liệu; đã sửa `03-agents.md` trước). (3) `chat_message.body` lưu NFC (đã sửa `04-data.md` trước). Cả ba PO xem lại khi duyệt merge |
+
+### B6b — bước 0 docs-first: so khớp bằng chứng hai độ chặt; P2 1.1 (2026-10-09)
+
+PO duyệt kế hoạch B6b (Q1–Q7) và giao bước 0 làm đầu tiên. Đổi ngữ nghĩa của `request_slots_write` so với bản đã duyệt ở B6a — theo lệnh của PO.
+
+| Tệp | Đổi |
+|---|---|
+| `03-agents.md` | `request_slots_write`: `evidence_quote` ⊂ tin nhắn **khớp chính xác** (NFC); `value` ⊂ `evidence_quote` **nới** — NFC + `casefold` + gộp khoảng trắng; `value` rỗng sau chuẩn hoá không khớp; mã ra ngoài vẫn `EVIDENCE_MISMATCH`, thêm mã con `QUOTE_NOT_IN_MESSAGE` / `VALUE_NOT_IN_QUOTE` |
+| `07-prompts.md` | P2 `extract_slots` **1.0 → 1.1** (đổi wording ⇒ đổi `minor`): `value` chép đúng từng chữ từ `evidence_quote`. P2 chưa có lần chạy thật nào, nên không có số hiệu chỉnh nào bị đổi nghĩa |
+| Chưa làm, theo PO | Nếu số đo của `turn-trial` cho thấy phần lớn hỏng ở `QUOTE_NOT_IN_MESSAGE`: đề xuất so khớp nới cho `quote` kèm ánh xạ vị trí về tin nhắn gốc — sẽ đề xuất, không tự làm |
