@@ -1,6 +1,6 @@
 # Đề xuất — nơi lưu và cách lắp khuôn trả lời của `intake_graph` (`reply_template_id`)
 
-**Trạng thái:** ✋ **Chờ PO duyệt** — chưa viết mã, chưa sửa `04-data.md` hay `06-structure.md`. · **Ngày:** 2026-10-09 · **Người đề xuất:** người triển khai (Claude) · **Đã đọc:** `03-agents.md` (mục `intake_agent`, mục State schema, mục `intake_graph`), `08-hitl.md`, `04-data.md` (mục `chat_message`), `05-api.md` (mục SSE, `ChatMessage`), `07-prompts.md`, `openapi.yaml`
+**Trạng thái:** ✅ **PO duyệt 2026-10-09** — R1–R6 theo mặc định; PO sửa câu chữ trước UAT. Phần mã khuôn thuộc **B6b**; B6a chỉ thêm cột `label_vi` (S1) và `status_labels` (S2). · **Ngày:** 2026-10-09 · **Người đề xuất:** người triển khai (Claude) · **Đã đọc:** `03-agents.md` (mục `intake_agent`, mục State schema, mục `intake_graph`), `08-hitl.md`, `04-data.md` (mục `chat_message`), `05-api.md` (mục SSE, `ChatMessage`), `07-prompts.md`, `openapi.yaml`
 
 ## 1. Thiết kế đã chốt gì — và còn thiếu gì
 
@@ -68,6 +68,7 @@
 | `CLARIFY_LIMIT_REACHED` | quá ngưỡng hỏi làm rõ (A-031) | — | "Mình chưa hiểu rõ yêu cầu của bạn sau vài lần hỏi. Bạn vui lòng liên hệ trực tiếp Phòng Hành chính để được hỗ trợ." |
 | `ASK_SLOT` | `ask_missing`; `PendingQuestion.ASK_SLOT` | `type_name`, `slot_labels` | "Để làm {type_name}, mình cần thêm: {slot_labels}. Bạn cho mình biết nhé." |
 | `ASK_SLOT_RETRY` | slot bị loại (`EVIDENCE_MISMATCH`, `RULE_FAILED`) | `slot_labels` | "Mình chưa ghi nhận được thông tin cho: {slot_labels}. Bạn nhập lại giúp mình, nêu cụ thể hơn nhé." |
+| `ASK_PURPOSE_RETRY` | `purpose` bị loại (`RULE_FAILED` do `min_tokens`/`non_blank`, hoặc `EVIDENCE_MISMATCH`) — thêm theo chỉnh V2 của PO | — | "Mình chưa ghi nhận đủ rõ mục đích. Bạn viết cụ thể hơn một chút nhé, ví dụ: \"bổ sung hồ sơ vay vốn tại ngân hàng\"." |
 | `CONFIRM_PROPOSALS` | `propose_values` có đề xuất | `slot_labels` | "Mình đã điền sẵn từ hồ sơ của bạn: {slot_labels}. Bạn mở yêu cầu của mình để kiểm tra và xác nhận từng mục." |
 | `OFFER_SUBMIT` | `offer_submit` | `type_name` | "Hồ sơ cho {type_name} đã đủ thông tin. Bạn mở yêu cầu của mình để xem lại và bấm gửi." |
 | `OUT_OF_SCOPE_KNOWN` | dòng 7 của bảng ánh xạ P1 | `unsupported_type_name`, `type_names` | "Mình chưa hỗ trợ {unsupported_type_name}. Hiện mình hỗ trợ: {type_names}. Với {unsupported_type_name}, bạn vui lòng liên hệ trực tiếp Phòng Hành chính." |
@@ -76,7 +77,7 @@
 | `ERROR_BUSY` | lỗi gọi model, hết hạn chót lượt | — | "Hệ thống đang bận, bạn thử lại sau một lúc nhé. Tin nhắn của bạn đã được lưu." |
 | `BUDGET_LIMIT` | `BUDGET_EXCEEDED` | — | "Phiên trò chuyện này đã đạt giới hạn xử lý. Bạn vui lòng liên hệ trực tiếp Phòng Hành chính." |
 
-12 khuôn. **Không bịa:** không có số điện thoại, thư điện tử hay giờ làm việc của Phòng Hành chính — chưa có trong thiết kế. Khi PO cấp thông tin liên hệ, nó vào khuôn qua một kiểu tham số mới `ADMIN_CONTACT` lấy từ cấu hình; đến lúc đó khuôn chỉ nói "liên hệ trực tiếp Phòng Hành chính". `OFFER_NEXT_INTENT` (EC-CV-01) và `EXPLAIN_TERMINAL` (EC-CV-04, `EXPIRED`) là khuôn của **Sprint 2** — không nằm trong kho B6.
+13 khuôn (12 của đề xuất đầu + `ASK_PURPOSE_RETRY`). Câu ví dụ trong `ASK_PURPOSE_RETRY` là chữ cố định, không phải tham số. **Không bịa:** không có số điện thoại, thư điện tử hay giờ làm việc của Phòng Hành chính — chưa có trong thiết kế. Khi PO cấp thông tin liên hệ, nó vào khuôn qua một kiểu tham số mới `ADMIN_CONTACT` lấy từ cấu hình; đến lúc đó khuôn chỉ nói "liên hệ trực tiếp Phòng Hành chính". `OFFER_NEXT_INTENT` (EC-CV-01) và `EXPLAIN_TERMINAL` (EC-CV-04, `EXPIRED`) là khuôn của **Sprint 2** — không nằm trong kho B6.
 
 ## 6. Hai đề xuất đi kèm
 

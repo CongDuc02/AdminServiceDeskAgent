@@ -23,6 +23,7 @@ Không sửa `schema.sql` — kể cả chỉ một dòng chú thích. Sửa th�
 | `0008_temporary_permission_grant.sql` | Ba cột `employee_permission_grant.grant_reason`, `approved_by_employee_id`, `expected_revoke_on` và ba `CHECK` cho lần cấp permission tạm | A-078; mục Runbook — cấp và thu hồi permission tạm của `11-ops.md` |
 | `0009_llm_usage_reasoning_tokens.sql` | Cột `llm_usage.reasoning_tokens` và `CHECK` không âm | ADR-035; mục Định cỡ A-022 của `11-ops.md` |
 | `0010_llm_usage_estimated_duration.sql` | Ba cột `llm_usage`: `estimated`, `duration_ms`, `provider_completion_ms`; ba `CHECK` | ADR-019, mục Bổ sung B5; mục `llm_usage` của `04-data.md` |
+| `0011_slot_definition_label.sql` | Cột `slot_definition.label_vi` (`NOT NULL`, không rỗng) | R4 của `proposals/reply-templates.md`; mục `slot_definition` của `04-data.md` |
 
 Diễn giải từng bảng, cột và index — kể cả phần do migration thêm — ở mục Bảng chi tiết của `04-data.md`. Ngoài schema, còn hai thư mục migration khác: `backend/migrations/data/` (dữ liệu danh mục) và `backend/migrations/library/` (quyền trên bảng của thư viện checkpointer). Thứ tự áp cả ba thư mục ở mục Migration và checkpointer của `06-structure.md`.
 

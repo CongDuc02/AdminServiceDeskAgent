@@ -319,7 +319,7 @@ Tên **agent**, **node LangGraph** cụ thể bên trong `orchestrator`, và **t
 
 **Tool của `tool_layer`, theo nhóm được gọi** — bảng đầy đủ, kèm vị trí so với cổng HITL, ở mục Tool Registry của `03-agents.md`:
 
-- `intake_agent`: `employee_lookup` · `request_open` · `request_slots_write` · `request_slots_read` · `request_transition` · `prior_attempt_lookup` · `procedure_store_status` *(thêm ở đợt sửa A-073 — chỉ đọc, `route_intent` gọi ở lượt ngoài phạm vi để biết kho có sẵn sàng cho người đang chat không)* · `procedure_retrieval` · `room_availability_check` `[Should]`
+- `intake_agent`: `employee_lookup` · `request_open` · `request_slots_write` · `request_slots_read` · `request_transition` · `request_slots_propose` *(thêm ở B6a)* · `prior_attempt_lookup` · `procedure_store_status` *(thêm ở đợt sửa A-073 — chỉ đọc, `route_intent` gọi ở lượt ngoài phạm vi để biết kho có sẵn sàng cho người đang chat không)* · `procedure_retrieval` · `room_availability_check` `[Should]`
 - `drafting_agent`, toàn bộ trước cổng 1: `template_fetch` · `request_slots_read` · `document_draft_save` · `review_readiness_check` · `document_transition` (ba chuyển đổi trước cổng) · `docx_render` và `pdf_export` (bản nháp)
 - Node tất định sau cổng, không thuộc agent nào: `render_integrity_check` *(thêm ở Phase 4 — kiểm toàn vẹn byte của bản render ngay trước người hay bước đầu tiên dựa vào byte)* · `signing_route` · `document_number_assign` · `document_transition` (sang `ISSUED`) · `docx_render` và `pdf_export` (bản cuối) · `notification_send`
 - Node dùng chung của `document_graph`: `notification_send` và `document_halt_record` (cùng gọi từ `halt_for_human`)

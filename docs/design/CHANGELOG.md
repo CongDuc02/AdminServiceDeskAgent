@@ -3332,3 +3332,16 @@ PO duyệt kế hoạch B5/B6 (tách hai nhánh). Thiết kế đổi **trước
 | **Hoãn sang B6** | Hàm F1 và `tool_layer.checks` — thiếu từ vựng `validation_rules` (A-093, O1-14); đề xuất ở B6, PO duyệt trước khi viết |
 | **Chênh lệch thiết kế — đã sửa** | `06-structure.md` nói `status_changed_at` ghi ở bốn bảng; `04-data.md` và schema chỉ có cột đó ở `request` và `document`. PO (2026-10-09) yêu cầu sửa câu cho khớp `04-data.md`: mục Nghĩa vụ kế thừa của `06-structure.md` nay nói hai bảng; kernel ghi nơi cột tồn tại |
 | **Ngoài kế hoạch, ghi rõ** | Bộ sinh byte của thân request cũng dùng cho cả nhánh kết nối (mất kết nối sau khi gửi xong được ước lượng) và 200 thân hỏng — cùng nguyên tắc 'có thể đã sinh' của bảng ADR-019, PO chỉ nêu bốn ca nên hai ca này cần PO xem lại |
+
+### B6a — docs-first (2026-10-09)
+
+PO duyệt kế hoạch B6, chia B6a (dữ liệu, F1, tool) và B6b (graph, API, #22, đo).
+
+| Tệp | Đổi |
+|---|---|
+| `proposals/validation-rules-vocabulary.md` | Duyệt. `min_words` → **`min_tokens`** (đếm đơn vị cách nhau bởi khoảng trắng sau NFC = đếm tiếng; "xin visa" = 2 bị hỏi lại). N = 3 "chưa hiệu chỉnh". Mã `RULE_MIN_TOKENS` |
+| `proposals/reply-templates.md` | Duyệt R1–R6. Thêm khuôn `ASK_PURPOSE_RETRY` (ví dụ cụ thể) → 13 khuôn. Mã khuôn thuộc B6b |
+| `03-agents.md`, `GLOSSARY.md`, `05-api.md` | **Tool mới `request_slots_propose`** (G1): tự đọc nguồn (hồ sơ của chính người yêu cầu, hoặc `EXPIRED` của chính họ); từ chối khi `request` lập hộ người khác (EC-IL-01); không đè `PROVIDED`/`CONFIRMED`; `audit_event` chỉ mã |
+| `04-data.md`, `contracts/README.md` | `slot_definition.label_vi` (migration `0011`); mô tả từ vựng `validation_rules` |
+| `12-roadmap.md` | O1-14 duyệt; cổng **4.7** (PO duyệt `example_phrases`, do Claude soạn) và **4.8** (đếm lần `min_tokens` từ chối `purpose`) |
+| `ASSUMPTIONS.md` | A-093 `Đã chốt` |
