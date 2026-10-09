@@ -3319,3 +3319,16 @@ PO duyệt kế hoạch B5/B6 (tách hai nhánh). Thiết kế đổi **trước
 | `06-structure.md` | Mục Triển khai ở B5 |
 | `ASSUMPTIONS.md` | **A-092** mới; A-090 ghi trần output đã duyệt |
 | `proposals/*` | Trạng thái duyệt của `model-profile-values.md` mục 4 và `login-body-limits.md` |
+
+### B5 — kết quả mã (2026-10-09)
+
+| Hạng mục | Kết quả |
+|---|---|
+| Trần output | `extract_slots` 2.048; nhãn `calibration` ở `model_profiles.json`; 4 đột biến đỏ |
+| Sổ ước lượng + thời lượng | Migration `0010`; adapter theo dõi từng lần thử (cờ 'thân request đã ghi xong' qua bộ sinh byte, `Content-Length` tường minh); gateway nhân ước lượng; `duration_ms`, `provider_completion_ms`; `llm-probe` ghi `client_ms` và `completion_time_ms`. 25 + 5 đột biến: 22/25 đỏ ngay, 3 sống sót đã xử lý (M10 thêm test; M18, M19 là điều kiện thừa nên bỏ khỏi mã) rồi chạy lại đỏ |
+| O1-10 | Xem `12-roadmap.md` O1-10. 17/17 đột biến đỏ |
+| `tool_layer.kernel` | 5 module; 36 đột biến đỏ (3 mẫu đa dòng chạy lại bằng mẫu một dòng). CI quét văn bản `status` và `audit_event` |
+| `domain.request_machine` | 14 cạnh, khớp sơ đồ Mermaid của `00-domain.md` bằng test đọc lại sơ đồ |
+| **Hoãn sang B6** | Hàm F1 và `tool_layer.checks` — thiếu từ vựng `validation_rules` (A-093, O1-14); đề xuất ở B6, PO duyệt trước khi viết |
+| **Chênh lệch thiết kế** | `status_changed_at` chỉ có ở `request` và `document`, không ở bốn bảng như `06-structure.md` mô tả — kernel ghi nơi cột tồn tại |
+| **Ngoài kế hoạch, ghi rõ** | Bộ sinh byte của thân request cũng dùng cho cả nhánh kết nối (mất kết nối sau khi gửi xong được ước lượng) và 200 thân hỏng — cùng nguyên tắc 'có thể đã sinh' của bảng ADR-019, PO chỉ nêu bốn ca nên hai ca này cần PO xem lại |

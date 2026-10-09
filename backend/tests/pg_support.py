@@ -90,14 +90,22 @@ class PgDb:
             c.execute("insert into chat_session (id, employee_id) values (%s, %s)", (sid, employee_id))
         return sid
 
-    def make_request(self) -> uuid.UUID:
+    def make_request(self, status: str = "DRAFT") -> uuid.UUID:
         """Một dòng `request` tối thiểu cho khoá ngoại của `llm_usage` — superuser, tắt kiểm khoá ngoại (như `set_operating_mode` của test_ac_1_7): fixture không cần dựng loại yêu cầu."""
         rid = uuid.uuid4()
         with self.connect(autocommit=True) as c:
             c.execute("set session_replication_role = replica")
-            c.execute("insert into request (id, request_type_code, status, created_by_employee_id, beneficiary_employee_id) values (%s, 'WORK_CONFIRMATION', 'DRAFT', %s, %s)",
-                      (rid, uuid.uuid4(), uuid.uuid4()))
+            # `status` khác DRAFT kéo theo cột mà ràng buộc đòi: NEEDS_INFO cần mốc hỏi, trạng thái cuối cần `closed_at`
+            c.execute("insert into request (id, request_type_code, status, created_by_employee_id, beneficiary_employee_id, needs_info_asked_at, closed_at) "
+                      "values (%s, 'WORK_CONFIRMATION', %s, %s, %s, %s, %s)",
+                      (rid, status, uuid.uuid4(), uuid.uuid4(), dt.datetime.now(dt.timezone.utc) if status == "NEEDS_INFO" else None,
+                       dt.datetime.now(dt.timezone.utc) if status in ("FULFILLED", "REJECTED", "CANCELLED", "EXPIRED") else None))
         return rid
+
+    def request_row(self, request_id: uuid.UUID) -> dict:
+        with self.connect("bo19_migrator") as c:
+            cur = c.execute("select status, row_version, status_changed_at, updated_at, closed_at, needs_info_asked_at, submitted_at from request where id = %s", (request_id,))
+            return dict(zip([d.name for d in cur.description], cur.fetchone()))
 
     def usage_rows(self, **owner) -> list[tuple]:
         """Các dòng `llm_usage` của một chủ budget: (call_name, model_tier, prompt_module_version, input, output, reasoning, outcome, trace_id)."""

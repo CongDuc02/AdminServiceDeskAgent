@@ -16,6 +16,9 @@ LOGIN_EMPLOYEE_CODE_MAX_LENGTH = 64
 LOGIN_PASSWORD_MAX_LENGTH = 128
 LOGIN_BODY_MAX_BYTES = 4096
 
+# `job.max_attempts` theo `job_type` — mục Retry, backoff và job lỗi vĩnh viễn của 11-ops.md, nhãn "chưa hiệu chỉnh" (A-031). Backoff (`base × 2^attempts`) thuộc `tool_layer.jobs`, chưa có.
+JOB_MAX_ATTEMPTS = {"render_document": 5, "resume_document_graph": 5, "finalize_issue": 5, "checkpoint_purge": 5, "notification_send": 5, "procedure_ingest": 3}
+
 # WV-16b — trần số lần verify `argon2id` đồng thời trong MỘT tiến trình (ADR-034). Lần thứ năm chờ.
 ARGON2_MAX_CONCURRENT_VERIFY = 4
 
