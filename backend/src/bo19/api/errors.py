@@ -39,6 +39,7 @@ CATALOG: dict[str, ErrorSpec] = {
     "INVALID_CREDENTIALS": ErrorSpec(401, "Mã nhân viên hoặc mật khẩu không đúng. Hãy kiểm lại thông tin đăng nhập."),
     "CSRF_HEADER_MISSING": ErrorSpec(403, "Yêu cầu thiếu thông tin bảo vệ của trang. Hãy tải lại trang rồi thử lại."),
     "NOT_FOUND": ErrorSpec(404, "Không tìm thấy nội dung được yêu cầu. Hãy kiểm lại đường dẫn."),
+    "PAYLOAD_TOO_LARGE": ErrorSpec(413, "Dữ liệu gửi lên vượt giới hạn cho phép. Hãy gửi lại nội dung nhỏ hơn."),
     "VALIDATION_FAILED": ErrorSpec(422, "Dữ liệu gửi lên chưa đúng. Hãy sửa các trường được nêu rồi gửi lại."),
     "RATE_LIMITED": ErrorSpec(429, "Đã thử đăng nhập quá nhiều lần. Hãy chờ một lúc rồi thử lại."),
     "INTERNAL_ERROR": ErrorSpec(500, "Hệ thống gặp lỗi không lường trước. Hãy thử lại sau; nếu lặp lại, hãy báo mã trace_id."),
@@ -88,7 +89,8 @@ def _field_code(pydantic_type: str, ctx: dict | None = None) -> str:
     # `SecretStr` (mật khẩu) báo `too_short` với `field_type = "Value"`; danh sách cũng `too_short` nhưng `field_type = "List"` — chỉ giá trị vô hướng là BLANK.
     if pydantic_type == "string_too_short" or (pydantic_type == "too_short" and (ctx or {}).get("field_type") == "Value"):
         return "BLANK"
-    if pydantic_type == "string_too_long":
+    # `SecretStr` quá dài báo `too_long` với `field_type = "Value"` (như `too_short` ở trên); danh sách quá dài cũng `too_long` nhưng `field_type = "List"` → không phải TOO_LONG của chuỗi.
+    if pydantic_type == "string_too_long" or (pydantic_type == "too_long" and (ctx or {}).get("field_type") == "Value"):
         return "TOO_LONG"
     if pydantic_type == "extra_forbidden":
         return "NOT_ALLOWED"

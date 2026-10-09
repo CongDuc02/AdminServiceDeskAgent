@@ -9,13 +9,16 @@ from collections.abc import Sequence
 
 from fastapi import APIRouter, Depends, FastAPI
 
+from bo19.api.body_limit import BodyLimitMiddleware
 from bo19.api.deps.csrf import require_csrf_header
 from bo19.api.deps.state import AppState
 from bo19.api.errors import install_exception_handlers
 from bo19.api.routers import auth
 from bo19.api.trace import TraceMiddleware
+from bo19.config import working_values as wv
 
 API_PREFIX = "/api/v1"
+BODY_LIMITS = {("POST", f"{API_PREFIX}/auth/session"): wv.LOGIN_BODY_MAX_BYTES}  # O1-10: endpoint công khai duy nhất
 
 
 def default_routers() -> list[APIRouter]:
@@ -25,6 +28,7 @@ def default_routers() -> list[APIRouter]:
 def create_app(state: AppState, *, routers: Sequence[APIRouter] | None = None) -> FastAPI:
     app = FastAPI(title="bo19", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.bo19 = state
+    app.add_middleware(BodyLimitMiddleware, limits=BODY_LIMITS)  # thêm trước Trace: Trace là lớp ngoài, nên 413 cũng mang trace_id
     app.add_middleware(TraceMiddleware)
     install_exception_handlers(app)
 
