@@ -1,8 +1,9 @@
 """`request_slots_write` — ghi giá trị slot `USER_INPUT` do `extract_slots` (P2) trích (mục Tool Registry của 03-agents.md).
 
-**Kiểm bằng chứng nằm TRONG tool, không trong node:** bỏ qua node thì không bỏ qua được kiểm tra. Mỗi mục phải có `evidence_quote` nằm **nguyên văn** trong tin nhắn bằng chứng (tin của chính
-nhân viên, trong chính phiên của `request`; so khớp trên NFC — `chat_message_append` lưu `body` dạng NFC). Đoạn trích không khớp là **suy diễn** → `EVIDENCE_MISMATCH`, mục bị loại, không ghi.
-Với slot `STRING`/`TEXT`, `value` cũng phải nằm nguyên văn trong đoạn trích. Vị trí `evidence_span` do tool tính lại từ đoạn trích — chỉ số model đếm không đáng tin.
+**Kiểm bằng chứng nằm TRONG tool, không trong node:** bỏ qua node thì không bỏ qua được kiểm tra. Hai phép, khác độ chặt (PO, B6b):
+(a) `evidence_quote` nằm **nguyên văn** trong tin nhắn bằng chứng (tin của chính nhân viên, trong chính phiên của `request`; so khớp chính xác trên NFC — `chat_message_append` lưu `body` dạng NFC) → mã con
+`QUOTE_NOT_IN_MESSAGE` khi trượt; (b) với slot `STRING`/`TEXT`, `value` nằm trong đoạn trích, so khớp **nới** — NFC, `casefold`, gộp khoảng trắng — → mã con `VALUE_NOT_IN_QUOTE` khi trượt.
+Trượt một trong hai là **suy diễn** → `EVIDENCE_MISMATCH` (mã duy nhất ra ngoài), mục bị loại, không ghi. Vị trí `evidence_span` do tool tính lại từ phép (a) — chỉ số model đếm không đáng tin.
 
 Không ghi xác nhận của nhân viên — việc đó là `request_slot_confirm`. Kết quả từng mục: ghi, không đổi (đã có từ chính tin nhắn này — idempotent theo (`request_id`, tin nhắn bằng chứng)),
 hay bị loại kèm mã (`SLOT_NOT_ALLOWED`, `EVIDENCE_MISMATCH`, `RULE_FAILED` cộng mã rule). Cả lời gọi lỗi khi: không phải `request` của mình, thiếu `request.supply_info`, `NOT_EDITABLE`.
@@ -26,6 +27,7 @@ from bo19.tool_layer.kernel.context import ToolContext
 from bo19.tool_layer.kernel.permission import require
 from bo19.tool_layer.tools._common import jsonb, load_own_request, require_editable
 
+QUOTE_NOT_IN_MESSAGE, VALUE_NOT_IN_QUOTE = "QUOTE_NOT_IN_MESSAGE", "VALUE_NOT_IN_QUOTE"
 MAX_QUOTE_CHARS = 300  # khớp `maxLength` của `evidence_quote` trong schema P2
 
 
@@ -43,6 +45,7 @@ class Rejection:
     slot_name: str
     code: str  # SLOT_NOT_ALLOWED | EVIDENCE_MISMATCH | RULE_FAILED
     rule_codes: tuple[str, ...] = ()
+    reason: str | None = None  # mã con của EVIDENCE_MISMATCH: QUOTE_NOT_IN_MESSAGE | VALUE_NOT_IN_QUOTE — cho đếm và rejection_codes, không ra client
 
 
 @dataclass(frozen=True)
@@ -54,6 +57,11 @@ class WriteResult:
 
 def _nfc(text: str) -> str:
     return unicodedata.normalize("NFC", text)
+
+
+def loose(text: str) -> str:
+    """Dạng so khớp nới của `value` với `evidence_quote`: NFC, `casefold`, gộp mọi dãy khoảng trắng thành một dấu cách."""
+    return " ".join(_nfc(_nfc(text).casefold()).split())
 
 
 def _evidence_span(body: str, quote: str, claimed: tuple[int, int] | None) -> tuple[int, int] | None:
@@ -85,9 +93,11 @@ def request_slots_write(pool: Pool, ctx: ToolContext, *, request_id: uuid.UUID, 
             body = _nfc(message[0]) if message is not None and message[0] is not None else None
             quote = _nfc(item.evidence_quote)
             span = _evidence_span(body, quote, item.evidence_span) if body is not None else None
-            value_ok = not isinstance(item.value, str) or d.data_type not in ("STRING", "TEXT") or _nfc(item.value) in quote
-            if span is None or not value_ok:
-                rejected.append(Rejection(item.slot_name, "EVIDENCE_MISMATCH"))
+            if span is None:
+                rejected.append(Rejection(item.slot_name, "EVIDENCE_MISMATCH", reason=QUOTE_NOT_IN_MESSAGE))
+                continue
+            if isinstance(item.value, str) and d.data_type in ("STRING", "TEXT") and not (loose(item.value) and loose(item.value) in loose(quote)):  # rỗng sau chuẩn hoá thì không khớp
+                rejected.append(Rejection(item.slot_name, "EVIDENCE_MISMATCH", reason=VALUE_NOT_IN_QUOTE))
                 continue
             value = _nfc(item.value) if isinstance(item.value, str) else item.value  # chuỗi lưu dạng NFC (cùng body của tin nhắn)
             failed = slot_rules.check_value(d.data_type, d.rules, value)

@@ -31,7 +31,7 @@ from bo19.tool_layer.tools.employee_lookup import FieldNotAllowed, Forbidden, No
 from bo19.tool_layer.tools.prior_attempt_lookup import BeneficiaryNotSelf, prior_attempt_lookup
 from bo19.tool_layer.tools.request_open import request_open
 from bo19.tool_layer.tools.request_slots_propose import ProposeResult, UnknownOrigin, request_slots_propose
-from bo19.tool_layer.tools.request_slots_write import SlotWrite, request_slots_write
+from bo19.tool_layer.tools.request_slots_write import QUOTE_NOT_IN_MESSAGE, VALUE_NOT_IN_QUOTE, SlotWrite, request_slots_write
 from bo19.tool_layer.tools.request_transition import request_transition
 from tests.tool_support import RES, ToolBase
 
@@ -116,9 +116,49 @@ class GhiSlot(Scenario):
         for label, it in cases.items():
             r = self.write([it])
             self.assertEqual([(x.slot_name, x.code) for x in r.rejected], [(it.slot_name, "EVIDENCE_MISMATCH")], label)
+            self.assertEqual([x.reason for x in r.rejected], [QUOTE_NOT_IN_MESSAGE if label != "đoạn trích thật nhưng giá trị bịa" else VALUE_NOT_IN_QUOTE], label)
             self.assertEqual(r.written, (), label)
         self.assertEqual(set(self.slot_rows(self.rid)), {"requester_employee_code", "beneficiary_employee_id"})  # chỉ còn hai slot hệ thống
         self.assertEqual([e["action"] for e in self.audit(self.rid)], ["request.open"])  # không có gì được ghi → không audit
+
+    def test_value_khop_noi_theo_nfc_casefold_va_gop_khoang_trang_con_quote_van_chinh_xac(self):  # PO, B6b: hai phép khác độ chặt
+        mid = self.msg("gửi tới ngân hàng  vietcombank,	mục đích   bổ sung hồ sơ")
+        r = self.write([self.item("recipient_org", "Ngân hàng Vietcombank", "ngân hàng  vietcombank", mid=mid)])  # model viết hoa lại, gộp khoảng trắng
+        self.assertEqual((r.written, r.rejected), (("recipient_org",), ()))
+        self.assertEqual(self.slot_rows(self.rid)["recipient_org"]["value"], "Ngân hàng Vietcombank")  # giá trị lưu là value của model, không phải đoạn trích
+        r = self.write([self.item("purpose", "bổ sung hồ sơ", "mục đích   bổ sung hồ sơ", mid=mid), self.item("recipient_org", "ĐẠI HỌC", "đại học", mid=self.msg("gửi tới đại học x"))])
+        self.assertEqual((set(r.written), r.rejected), ({"purpose", "recipient_org"}, ()))  # gộp khoảng trắng nhiều loại (cả tab); Đ ↔ đ
+        nfd = unicodedata.normalize("NFD", "NGÂN HÀNG VIETCOMBANK")
+        self.assertNotEqual(nfd, unicodedata.normalize("NFC", nfd))
+        self.assertEqual(self.write([self.item("recipient_org", nfd, "ngân hàng  vietcombank", mid=mid)]).written, ("recipient_org",))  # NFD + hoa: vẫn khớp
+
+    def test_value_bia_hoac_dai_hon_doan_trich_van_la_evidence_mismatch_voi_ma_con(self):
+        mid = self.msg("gửi tới ngân hàng  vietcombank, mục đích bổ sung hồ sơ")
+        cases = {
+            "giá trị bịa": self.item("recipient_org", "Ngân hàng Techcombank", "ngân hàng  vietcombank", mid=mid),
+            "dài hơn đoạn trích": self.item("recipient_org", "Ngân hàng Vietcombank chi nhánh 1", "ngân hàng  vietcombank", mid=mid),
+            "chỉ khác dấu": self.item("recipient_org", "Ngan hang Vietcombank", "ngân hàng  vietcombank", mid=mid),
+            "rỗng": self.item("purpose", "", "mục đích bổ sung hồ sơ", mid=mid),
+            "chỉ khoảng trắng": self.item("purpose", " 	 ", "mục đích bổ sung hồ sơ", mid=mid),
+        }
+        for label, it in cases.items():
+            r = self.write([it])
+            self.assertEqual([(x.code, x.reason) for x in r.rejected], [("EVIDENCE_MISMATCH", VALUE_NOT_IN_QUOTE)], label)
+            self.assertEqual(r.written, (), label)
+        self.assertNotIn("recipient_org", self.slot_rows(self.rid))
+
+    def test_quote_van_phai_khop_chinh_xac_voi_tin_nhan_ke_ca_khi_value_khop(self):
+        mid = self.msg("gửi tới Ngân hàng ABC")
+        for quote in ("ngân hàng abc", "Ngân  hàng ABC", "Ngân hàng ABC "):  # lệch hoa/thường, khoảng trắng, khoảng trắng thừa
+            r = self.write([self.item("recipient_org", "Ngân hàng ABC", quote, mid=mid)])
+            self.assertEqual([(x.code, x.reason) for x in r.rejected], [("EVIDENCE_MISMATCH", QUOTE_NOT_IN_MESSAGE)], quote)
+
+    def test_audit_chi_mang_ma_ngoai_khong_mang_ma_con_hay_gia_tri(self):
+        mid = self.msg("gửi tới ngân hàng  vietcombank")
+        self.write([self.item("recipient_org", "ngân hàng vietcombank", "ngân hàng  vietcombank", mid=mid), self.item("purpose", RES, RES, mid=mid)])
+        payload = [e for e in self.audit(self.rid) if e["action"] == "request.slots_write"][0]["payload"]
+        self.assertEqual(payload["rejected"], ["purpose:EVIDENCE_MISMATCH"])
+        self.assertNotIn(RES, self.audit_dump())
 
     def say_in_other_session(self) -> uuid.UUID:
         eid, ctx = self.employee()

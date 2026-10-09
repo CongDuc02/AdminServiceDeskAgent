@@ -111,7 +111,7 @@ class KhaiBao(unittest.TestCase):
 
     def test_ten_tier_phien_ban(self):
         self.assertEqual({k: (m.tier, m.version) for k, m in MODULES.items()},
-                         {"classify_intent": ("CHEAP", "1.0"), "extract_slots": ("CHEAP", "1.0"), "draft_free_content": ("STRONG", "1.0")})
+                         {"classify_intent": ("CHEAP", "1.0"), "extract_slots": ("CHEAP", "1.1"), "draft_free_content": ("STRONG", "1.0")})
         for m in MODULES.values():
             self.assertRegex(m.version, r"^\d+\.\d+$")
 
