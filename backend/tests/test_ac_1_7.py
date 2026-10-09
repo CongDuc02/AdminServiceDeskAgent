@@ -13,6 +13,8 @@ Cần BO19_TEST_PG_SUPERUSER_DSN (PostgreSQL mới, ví dụ pgvector/pgvector:0
 """
 from __future__ import annotations
 
+from tests import _guard  # noqa: F401 — chốt chặn mạng và khoá API của bộ test (tests/_guard.py)
+
 import io
 import json
 import logging

@@ -8,8 +8,11 @@ Không có lời gọi mạng nào: mọi response đến từ `httpx.MockTransp
 """
 from __future__ import annotations
 
+from tests import _guard  # noqa: F401 — chốt chặn mạng và khoá API của bộ test (tests/_guard.py)
+
 import asyncio
 import copy
+import dataclasses
 import io
 import json
 import logging
@@ -159,6 +162,46 @@ class DocPhanHoi(Base):
         with self.assertRaises(ProviderError) as cm:
             await self.call(self.client(Recorder(big)))
         self.assertEqual(cm.exception.kind, "BAD_RESPONSE")
+
+
+class NoiDungSuyLuan(Base):
+    """Yêu cầu của PO (2026-10-05): adapter không bao giờ log hay lưu văn bản suy luận, kể cả khi provider trả về — chỉ đếm `reasoning_tokens`."""
+
+    def with_reasoning(self, **place) -> dict:
+        body = json.loads(json.dumps(OK_BODY))
+        body["choices"][0]["message"].update(place.get("message", {}))
+        body["choices"][0].update(place.get("choice", {}))
+        body.update(place.get("top", {}))
+        return body
+
+    async def test_response_chua_van_ban_suy_luan_khong_giu_lai_o_dau(self):
+        body = self.with_reasoning(message={"reasoning": f"nghĩ về {RES}", "reasoning_content": RES, "reasoning_details": [{"text": RES}]},
+                                   choice={"reasoning": RES}, top={"reasoning": RES, "x_groq": {"reasoning": RES}})
+        r = await self.call(self.client(Recorder(ok(body))))
+        self.assertEqual(r.reasoning_tokens, 12)  # chỉ đếm số token suy luận
+        names = {f.name for f in dataclasses.fields(r)}
+        self.assertEqual(names, {"content", "prompt_tokens", "completion_tokens", "reasoning_tokens", "prompt_time", "completion_time", "finish_reason"})  # không có chỗ cho văn bản suy luận
+        for value in dataclasses.astuple(r):
+            self.assertNotIn(RES, str(value))
+        self.assertNoLeak(RES, r, vars(r))
+
+    async def test_repr_cua_response_khong_in_noi_dung_output(self):
+        body = self.with_reasoning(message={"content": json.dumps({"a": RES})})
+        r = await self.call(self.client(Recorder(ok(body))))
+        self.assertIn(RES, r.content)  # nội dung vẫn có cho gateway
+        self.assertNotIn(RES, repr(r))  # nhưng không vào repr — output có thể trích lại input
+
+    async def test_finish_reason(self):
+        for given, want in (("stop", "stop"), ("length", "length"), ("co dau cach", None), (None, None), (5, None), ("x" * 80, None)):
+            body = self.with_reasoning(choice={"finish_reason": given})
+            r = await self.call(self.client(Recorder(ok(body))))
+            self.assertEqual(r.finish_reason, want, given)
+
+    async def test_loi_khong_mang_van_ban_suy_luan(self):
+        body = {"error": {"type": "invalid_request_error", "code": "x", "reasoning": RES}, "reasoning": RES}
+        with self.assertRaises(ProviderError) as cm:
+            await self.call(self.client(Recorder(httpx.Response(400, json=body))))
+        self.assertNoLeak(RES, cm.exception, cm.exception.__dict__, "".join(traceback.format_exception(cm.exception)))
 
 
 class LoiHttpVaThuLai(Base):

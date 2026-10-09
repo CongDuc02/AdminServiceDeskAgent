@@ -16,7 +16,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
@@ -73,12 +73,15 @@ class ProviderError(Exception):
 
 @dataclass(frozen=True)
 class ProviderResponse:
-    content: str
+    """Chỉ giữ thứ gateway cần. **Không có trường nào cho nội dung suy luận** (PO, 2026-10-05): nếu provider trả `message.reasoning` hay trường tương tự, adapter bỏ nó
+    ngay lúc đọc — không giữ, không log, không đưa vào exception; chỉ đếm `reasoning_tokens`. `content` ẩn khỏi `repr` vì output có thể trích lại input (kể cả `RES`)."""
+    content: str = field(repr=False)
     prompt_tokens: int | None
     completion_tokens: int | None
     reasoning_tokens: int | None
     prompt_time: float | None
     completion_time: float | None
+    finish_reason: str | None = None  # `stop`, `length`, … — khuôn ngắn; `length` nghĩa là output bị cắt ở trần
 
 
 def _short(value: Any) -> str | None:
@@ -198,12 +201,13 @@ class ProviderClient:
             if too_large:
                 raise ValueError
             data = json.loads(raw)
-            content = data["choices"][0]["message"]["content"]
+            choice = data["choices"][0]
+            content = choice["message"]["content"]  # chỉ `content`; `message.reasoning` (nếu có) không bao giờ được đọc
             if not isinstance(content, str):
                 raise ValueError
             usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
             details = usage.get("completion_tokens_details") if isinstance(usage.get("completion_tokens_details"), dict) else {}
             return ProviderResponse(content, _int(usage.get("prompt_tokens")), _int(usage.get("completion_tokens")), _int(details.get("reasoning_tokens")),
-                                    _num(usage.get("prompt_time")), _num(usage.get("completion_time")))
+                                    _num(usage.get("prompt_time")), _num(usage.get("completion_time")), (choice.get("finish_reason") if isinstance(choice.get("finish_reason"), str) and _SHORT.match(choice["finish_reason"]) else None))
         except (ValueError, KeyError, IndexError, TypeError, UnicodeDecodeError, AttributeError, RecursionError):
             raise ProviderError(CALL_FAILED, "BAD_RESPONSE", 200) from None

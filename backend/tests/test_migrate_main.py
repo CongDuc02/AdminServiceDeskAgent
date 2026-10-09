@@ -6,6 +6,8 @@ rồi chạy migrate_main bằng một role migrator riêng.
 """
 from __future__ import annotations
 
+from tests import _guard  # noqa: F401 — chốt chặn mạng và khoá API của bộ test (tests/_guard.py)
+
 import logging
 import os
 import shutil

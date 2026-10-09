@@ -250,7 +250,7 @@ Không lặp lại **nội dung** tín hiệu (đã phát biểu đủ ở `_PLA
 | Bộ phát hiện thread kẹt dạng (2) | Đối chiếu `graph_thread.status = WAITING` với trạng thái kết thúc của `request` cha | **Có** |
 | Token trung bình `classify_intent`, cạnh số `request_type` đang hiệu lực | Phát hiện độ trôi trước khi `BUDGET_EXCEEDED` (mục 10.3) | **Có** — `llm_usage` (`call_name`, `token`) + `COUNT(request_type WHERE support_status='SUPPORTED')` |
 | Số lời gọi `extract_slots` bão hoà ở `maxItems: 8` | Tín hiệu ma sát khai gộp tăng (mục 10.3) | **Có, sau quy ước mục 6.1 (điểm 4)** — `output_item_count` trong log, không phải cột `llm_usage` |
-| Trần token `chat_session` đang dùng giá trị nào | A-068 đã đóng — 46.500 (mục 10.4); log vẫn giữ để thấy cấu hình có được cập nhật cùng lúc không | **Có** — log giá trị cấu hình hiện hành lúc khởi động |
+| Trần token `chat_session` đang dùng giá trị nào | A-068 đã đóng — 51.900 sau khi P1 nâng lên 1.800 (mục 10.4); log vẫn giữ để thấy cấu hình có được cập nhật cùng lúc không | **Có** — log giá trị cấu hình hiện hành lúc khởi động |
 
 ### 6.4 Alert — nguyên tắc, không bịa ngưỡng
 
@@ -300,6 +300,8 @@ Chi_phi(request) = Sigma(loi_goi_LLM) [ token_input x gia_input(tier) + token_ou
 
 **Cập nhật 2026-10-02 (ADR-035):** token suy luận — `reasoning_tokens` trong `usage` của provider — **tính vào** mọi trần ở mục này, và được ghi vào `llm_usage.reasoning_tokens` (migration 0009). `completion_tokens` đã gồm token suy luận hay chưa: dòng O1-3 ở mục Mục mở của Sprint 1 của `12-roadmap.md`; tới khi có kết luận, budget cộng cả hai.
 
+**Cập nhật 2026-10-05 (B4b, O1-3 đã đóng):** `completion_tokens` của Groq **đã gồm** `reasoning_tokens` (số đo `docs/reference/llm-groq-do-thuc-te-b4b-lan2.md`) — budget **chỉ cộng `input_tokens + output_tokens`**, không cộng `reasoning_tokens` lần nữa; cột `llm_usage.reasoning_tokens` vẫn ghi để theo dõi. Câu "budget cộng cả hai" ở đoạn trên không còn hiệu lực.
+
 ### 10.1 Đơn vị đã chốt
 
 Nguyên tử chi phí (một lời gọi LLM sinh một biến), cận trên `(1+R)×V×2×2` — ADR-009, mục Đơn vị render lại của `03-agents.md`. Cơ chế dừng — mục Dừng có kiểm soát và tiếp quản của `08-hitl.md`.
@@ -313,15 +315,15 @@ Nguyên tử chi phí (một lời gọi LLM sinh một biến), cận trên `(1
 | Trần token/lời gọi `drafting_agent` | 4.000 | **Cận trên cứng** |
 | **Trần token/`request` — phần `drafting_agent`** | **64.000** | **Cận trên cứng** |
 | `C` — trần lượt `CLARIFY_TYPE` | 5 | **Cận trên cứng** (A-031) — điều kiện reset xem mục 10.4 (A-068) |
-| Trần token/lời gọi `classify_intent` | 1.500 | Ước lượng — phụ thuộc kích thước `request_type_catalog` (mục 10.3) |
+| Trần token/lời gọi `classify_intent` | **1.800** (nâng từ 1.500, PO 2026-10-05) | **Đo thật (B4b)** — `prompt_tokens` 1.640–1.642 trên tin nhắn trần 2.000 ký tự có dấu và catalog 6 loại giả, cộng ~10% biên; phụ thuộc kích thước `request_type_catalog` (mục 10.3) |
 | Trần token/lời gọi `extract_slots` | 3.500 | Ước lượng — phụ thuộc số slot của loại đang mở + trần output đã cố định ở Phase 7 (`maxItems:8`, `evidence_quote` 300 ký tự); biên rộng có chủ đích vì đây là ô ước lượng thô nhất bảng |
 | Trần token/lời gọi `select_procedure_passages` | 6.000 | Ước lượng — input lớn hơn (đoạn quy trình ứng viên) |
 | Trần token/lời gọi `embed_query` | 500 | Ước lượng có căn cứ — `retrieval_query.maxLength = 200` ký tự (mục Output contract của `07-prompts.md`), ~100–150 token `[CẦN XÁC MINH]` — bản gốc chưa có trong `docs/reference/` (AUD-21): quy đổi ký tự tiếng Việt ra token phụ thuộc tokenizer của model chưa chọn, A-026, dư ~3× |
 | Số lượt thu slot điển hình (sau `request_open`) | 4 | **Kích cỡ điển hình** — không có trần lượt cho `ASK_SLOT` |
 | Số yêu cầu nối tiếp điển hình/phiên (`N`) | 3 | **Kích cỡ điển hình** |
 | Giả định: 1 lần đi lạc ngoài phạm vi mỗi chu kỳ yêu cầu | — | **Giả định kích cỡ, chưa có số liệu (A-002)** — không phải quan sát thật, phán đoán worst-case |
-| **Trần token/`request` — phần `intake_agent`** (`4×(1.500+3.500) + 6.500`) | **26.500** | **Kích cỡ điển hình** |
-| **Trần token/`request` — TỔNG** (`64.000 + 26.500`) | **92.000** (làm tròn từ 90.500) | **Hỗn hợp** — 64.000 cứng + 26.500 điển hình. Đã khoá |
+| **Trần token/`request` — phần `intake_agent`** (`4×(1.800+3.500) + 6.500`) | **27.700** | **Kích cỡ điển hình** |
+| **Trần token/`request` — TỔNG** (`64.000 + 27.700`) | **92.000** (làm tròn từ 91.700 — cùng luật làm tròn lên bội của 2.000 đã dùng cho 90.500) | **Hỗn hợp** — 64.000 cứng + 27.700 điển hình. Đã khoá |
 
 ### 10.3 Trần `V` và `1.500`/`extract_slots` — mốc F6, không phải mốc vỡ
 
@@ -336,7 +338,8 @@ Nguyên tử chi phí (một lời gọi LLM sinh một biến), cận trên `(1
 | Giá trị | Trạng thái | Điều kiện |
 |---|---|---|
 | 32.000 | Giá trị cũ — hiệu lực tới khi A-068 đóng (2026-09-25) | `(C+N)×1.500 + N×6.500` = `8×1.500+3×6.500` — đúng với thiết kế cũ, `clarification_count` không reset |
-| **46.500** | **ĐANG HIỆU LỰC** — A-068 đóng theo (b') ngày 2026-09-25 | `N×C×1.500 + N×1.500 + N×6.500` = `3×5×1.500+3×1.500+3×6.500` — mỗi chu kỳ yêu cầu được cấp lại đủ `C` lượt làm rõ |
+| 46.500 | Giá trị trước khi P1 nâng lên 1.800 (2026-10-05) | `N×C×1.500 + N×1.500 + N×6.500` = `3×5×1.500+3×1.500+3×6.500` |
+| **51.900** | **ĐANG HIỆU LỰC** — P1 1.800 (PO, 2026-10-05) | `N×C×1.800 + N×1.800 + N×6.500` = `3×5×1.800+3×1.800+3×6.500` = 27.000 + 5.400 + 19.500 — mỗi chu kỳ yêu cầu được cấp lại đủ `C` lượt làm rõ |
 
 Đây là **một điều kiện đảo ngược có tên** (chỗ quan sát ở mục 6.3): trần build với 32.000 nếu A-068 chưa đóng khi build; đổi sang 46.500 ngay khi A-068 đóng theo (b') — cấu hình phải cập nhật cùng lúc, không trễ. **A-068 đã đóng trước khi có build nào** (2026-09-25), nên bản build đầu tiên dùng thẳng 46.500.
 

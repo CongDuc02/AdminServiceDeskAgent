@@ -52,3 +52,6 @@ tools/render-probes/out/
 
 # seed-dev — mật khẩu của tài khoản GIẢ (tools/seed-dev/README.md)
 tools/seed-dev/out/
+
+# llm-probe — kết quả đo thô (chỉ số và mã) của B4b
+tools/llm-probe/out/

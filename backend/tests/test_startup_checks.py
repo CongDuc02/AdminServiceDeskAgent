@@ -6,6 +6,8 @@ ví dụ container pgvector/pgvector:0.8.1-pg18 (ADR-033). Không có biến đ�
 """
 from __future__ import annotations
 
+from tests import _guard  # noqa: F401 — chốt chặn mạng và khoá API của bộ test (tests/_guard.py)
+
 import os
 import sys
 import tempfile

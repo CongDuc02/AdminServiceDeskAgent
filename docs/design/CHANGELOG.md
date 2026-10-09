@@ -3252,3 +3252,54 @@ CI của `dcb8c4d` xanh ([run 37318116931](https://github.com/CongDuc02/AdminSer
 | `06-structure.md` → 0.33 | Bước kiểm **#22** (`BO19_LLM_API_KEY`, **chưa có code, gắn lát `intake_graph`**); trần output cứng; O1-11 |
 | `ADR-035` | Quyết định PO sau B4 |
 | `12-roadmap.md` → 0.40 | O1-11 (trần nạp kho, gắn lát P3/embedding), O1-12 (hồ sơ model tường minh + trần output cứng, B4b) |
+
+---
+
+## 2026-10-05 — B4b: hồ sơ model tường minh, tool đo, và hai lần gọi Groq thật ngoài kế hoạch (nhánh `build/b4b-do-groq`, chờ PO)
+
+PO duyệt kế hoạch B4b: giá trị khởi đầu làm "chưa hiệu chỉnh"; `tiktoken` trong container tạm; ≤ 40 lời gọi, < 60K token mỗi model; chỉ văn bản bịa có nhãn "(giả)". Thêm: tin nhắn E1 tiếng Việt có dấu; thân response vào `docs/reference/` phải che định danh và tool tự quét; adapter không giữ/log nội dung suy luận; tool chỉ ghi số và mã.
+
+| Phần | Thay đổi |
+|---|---|
+| Hồ sơ model | Schema 2 — `reasoning_effort`, `temperature` bắt buộc cả hai tier; `module_params.max_completion_tokens` bắt buộc theo module; miền khoảng; `max_tokens` cấm; #21 kiểm. Test (HoSoModel viết lại) và đột biến |
+| Adapter | Không giữ/log nội dung suy luận (test: response chứa `message.reasoning`, `reasoning_content`, … đều không để lại dấu vết); `content` ẩn khỏi `repr`; `finish_reason`. Đột biến: giữ văn bản suy luận, `content` lộ trong `repr`, bỏ `max_completion_tokens` khỏi request — mỗi chỗ làm test đỏ |
+| `tools/llm-probe/` | `llm_probe.py`, `sanitize.py` (che `<masked>` + `self_check`), `fixtures.py` (dữ liệu giả, 2.000 ký tự có dấu), README. 27 test với server giả; đột biến 8 chỗ (ghi nội dung, ghi suy luận, publish bỏ `self_check`, không che khoá, bỏ hạn mức số lời gọi, bỏ hạn mức token, không che mã tiền tố, bỏ cờ xác nhận) — mỗi chỗ làm ít nhất một test đỏ |
+
+**SỰ CỐ — ghi trung thực.** PO đã đặt `BO19_LLM_API_KEY` vào `.env` trước khi tôi báo sẵn sàng, và tôi **không kiểm** `.env` có khoá hay chưa (không đọc `.env` theo luật; tool tự đọc nó). Hậu quả: **hai lần gọi Groq thật ngoài kế hoạch**:
+
+1. Khi chạy CLI không tham số để "kiểm mã thoát thiếu khoá", tool tìm thấy khoá trong `.env` và bắt đầu chạy thật: xong E1 (5 lời gọi), vào E2, bị tôi dừng bằng `docker kill` sau ~2 phút. Kết quả không được ghi (file kết quả ghi ở cuối). **Số lời gọi E2 đã gửi trước khi dừng không biết chính xác (0–3).**
+2. Khi chạy phép đột biến T8 (cố ý bỏ cờ `--confirm-real`) trên bản sao, một test gọi `main(["--prior-calls", "9"])` nên tool chạy thật với khoá trong `.env` — **29 lời gọi, đủ E1–E6**, và đã tự ghi `docs/reference/llm-groq-do-thuc-te-b4b.md` (sau khi `self_check` đạt). Đây là lỗi thiết kế của phép đột biến: đột biến vô hiệu hoá chính chốt chặn mà test dựa vào, trong khi môi trường có khoá thật.
+
+**Hạn mức:** tổng ước **34–37 lời gọi** (5 + 0–3 + 29) trên 40; token đã tiêu: `gpt-oss-20b` khoảng 21.500 (lần 2) cộng khoảng 12.000–15.000 (lần 1, ước) < 60.000; `gpt-oss-120b` 3.607. **Trong hạn mức, nhưng chỉ còn 3–6 lời gọi — không đủ để chạy lại E2 (9 lời gọi) với `tiktoken`.** Cần PO nới hạn mức nếu muốn đóng O1-3.
+
+**Đã sửa:** tool **không gọi mạng nếu thiếu `--confirm-real`** (mã thoát 3, in kế hoạch); `--prior-calls`; test `ChongChayNham` và đột biến T8. **Bài học cho đột biến:** không chạy phép đột biến của chốt chặn gọi mạng khi môi trường có khoá — từ nay chạy test của tool với `.env` không có trong container.
+
+**Dữ liệu thu được** (không nội dung model; che định danh; `self_check` đạt; `docs/reference/llm-groq-do-thuc-te-b4b.md`): P1 `prompt_tokens` 1.640–1.642 (> trần 1.500), completion 63–74, reasoning 19–31; P2 reasoning 398–691 ở mức `low`; P4 completion 238–341; schema thật với từ khoá `maxLength`… được `strict` chấp nhận (A-089 chốt); dạng thân lỗi (A-091 chốt); `include_reasoning: false` và `reasoning_format: "hidden"` đều được chấp nhận và làm biến mất trường suy luận; **trần output quá thấp trả HTTP 400 `json_validate_failed`, không phải `finish_reason: length`**; ngữ nghĩa trần output và O1-3 **chưa kết luận** (không có `tiktoken` trong lần chạy).
+
+### B4b — bổ sung sau quyết định của PO (2026-10-05)
+
+PO ghi nhận sự cố, cho phép dùng số đo của lần chạy ngoài kế hoạch (đã ghi rõ nguồn gốc ở đầu `docs/reference/llm-groq-do-thuc-te-b4b.md`), và yêu cầu **chốt chặn bằng code, không bằng cam kết**. Đã làm, trước khi xin merge:
+
+| Việc | Kết quả |
+|---|---|
+| `llm-probe` **không đọc `.env`** | `read_key()` chỉ đọc biến môi trường; test: `.env` giả chứa khoá không làm `read_key()` trả khoá, và nguồn không còn `REPO / ".env"` |
+| Bộ test xoá khoá và chặn mạng | `backend/tests/_guard.py`: xoá `BO19_LLM_API_KEY` trước từng test (cả test async); chặn `socket.connect`, `connect_ex`, `getaddrinfo` tới mọi host ngoài loopback, socket Unix và host PostgreSQL thử. `test_guard.py` (14 test) đòi **mọi** `test_*.py` ở `backend/tests` và `tools/*/` nhập chốt chặn — kể cả `contract-checks` và `render-probes` (chạy dưới chốt chặn: 8 và 35 test đạt) |
+| **Đột biến T8 chạy lại**, đo đỏ và không gọi mạng | (a) khoá **giả** export vào container, mạng bật: 2 test đỏ, 0 lời gọi; (b) khoá **thật** nạp bằng `--env-file .env` (docker nạp, không ai đọc) trong container `--network none`: 2 test đỏ; (c) đột biến mạnh hơn — bỏ cờ xác nhận **và** `read_key` luôn trả khoá giả, mạng bật: chỉ chốt chặn socket còn đứng giữa test và mạng — `NetworkBlocked: NETWORK_BLOCKED:getaddrinfo`, 4 test đỏ, 0 lời gọi ra ngoài. Đột biến chốt chặn: không xoá khoá / không chặn `getaddrinfo` / không chặn `connect` / cho phép mọi host / file test thiếu import — mỗi chỗ làm test đỏ (ở đột biến "không chặn `connect`" test đã thử nối thật tới một IP công cộng, chỉ mở kết nối) |
+| `include_reasoning: false` | Vào `model_profiles.json` cả hai tier, bắt buộc ở #21, có test (giá trị chỉ boolean; thiếu bị trượt); request mang `include_reasoning: false`. Phát hiện: test cũ lặp lại danh sách bắt buộc của chính module nên đột biến "bỏ khỏi danh sách" sống sót — đã thay bằng danh sách viết thẳng |
+| HTTP 400 `json_validate_failed` | Đi đường sửa parse một lần (không có output cũ để gửi lại); `PARSE_REPAIRED`/`PARSE_FAILED`; log `LLM_PROVIDER_JSON_VALIDATE_FAILED` kèm trần và số lần thử; 400 mã khác và `json_validate_failed` ở status khác vẫn là `PROVIDER_CALL_FAILED`; dùng chung hạn chót tổng. 6 test, đột biến 4 chỗ bị bắt (một đột biến vô hại — lời nhắn kèm `repr` của vi phạm, vốn không mang giá trị — sống sót và được bỏ) |
+| Tool cho lần chạy lại | `--max-calls`, thí nghiệm **E4B** (đặt trần giữa token nhìn thấy và tổng sinh ra, 3 lần) với gợi ý ngữ nghĩa trần; kết quả vào `llm-groq-do-thuc-te-b4b-lan2.md`, không ghi đè lần 1; 34 test |
+| `proposals/tran-p1-1800.md` | **Chờ PO duyệt:** diff các tổng dẫn xuất — TỔNG/request vẫn 92.000 (91.700 làm tròn lên bội 2.000), `chat_session` 46.500 → 51.900 (+11,6%); biên giữa số đo lớn nhất (1.744) và 1.800 là 56 token |
+
+**Đính chính:** dòng O1-1 ở `12-roadmap.md` ban đầu ghi "tổng một lời gọi ≈ 1.720–1.790" — sai; đúng là 1.703–1.744 (tuỳ cách cộng suy luận). Đã sửa.
+
+### B4b — lần chạy lại E2 + E4B; áp trần P1 1.800; đóng O1-3 (2026-10-05)
+
+PO chạy lại E2 + E4B có `tiktoken`: 12 lời gọi, `self-check` đạt (kết quả và tài liệu tham chiếu), tiêu `gpt-oss-20b` 10.880 và `gpt-oss-120b` 2.848 token. PO duyệt diff trần P1.
+
+| Việc | Kết quả |
+|---|---|
+| **Trần P1 1.800 — đã áp** | `11-ops.md` (trần mỗi lời gọi 1.800; phần `intake_agent` 27.700; TỔNG/request vẫn 92.000 — 91.700 làm tròn lên bội 2.000; `chat_session` **51.900**), `working_values.py`, test, A-022, A-031, roadmap, `06-structure.md`. Đột biến: trả về 1.500 và 46.500 — mỗi chỗ làm test đỏ |
+| **O1-3 đóng** | `completion_tokens` gấp 2,6–7,5 lần token nhìn thấy và bằng nhìn thấy + `reasoning_tokens` + phần dư 12–19 token (khung định dạng, chưa xác minh) ⇒ suy luận đã nằm trong `completion_tokens`. **Bỏ tính dư:** budget chỉ cộng `input_tokens + output_tokens`; `reasoning_tokens` vẫn ghi sổ. Tổng cảnh báo mỗi lời gọi cũng bỏ cộng trùng. Đột biến: cộng lại reasoning ở truy vấn budget và ở tổng cảnh báo — mỗi chỗ làm test đỏ. Ghi chú: gợi ý tự động của tool ghi "KHÔNG RÕ" vì dung sai do người triển khai chọn hẹp hơn phần dư ở các lời gọi nhỏ; kết luận ở đây đọc từ số, nêu rõ ở tài liệu tham chiếu |
+| **Ngữ nghĩa `max_completion_tokens` đóng** | Trần gồm cả suy luận: E4B trần 87 > nhìn thấy lớn nhất 57 mà 3/3 HTTP 400 `json_validate_failed`. Mẫu nhỏ (n = 3), nhưng các điểm của lần chạy 1 cùng chiều và không điểm nào ngược. **Chưa biết:** phần dư 12–19 token là gì; token của lời gọi bị cắt (400 không có `usage`, sổ đếm thiếu); thời lượng so với hạn chót 8 s (tool không ghi `completion_time`) |
+| **Đề xuất trần output — CHƯA ÁP** | `proposals/model-profile-values.md` mục 4: chỉ `extract_slots` 1.536 → 2.048 (1,9× → 2,5× max đo 817; phương sai suy luận lớn, tới 8 slot); `classify_intent` 512 và `draft_free_content` 2.048 giữ. PO duyệt trước khi dùng thật |
+| Cổng 4.6 | Tính lại hạn mức Groq cho UAT với `chat_session` 51.900: mốc từ số đo — một lượt P1 + P2 ≈ 2.960–3.110 token trên `gpt-oss-20b`; 8K TPM ⇒ ~2 lượt/phút; 200K TPD ⇒ chưa tới 4 phiên đủ trần mỗi ngày hoặc ≈ 64–67 lượt; thay bằng `usage` thật khi tới cổng |

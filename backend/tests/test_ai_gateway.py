@@ -7,6 +7,8 @@ Cần BO19_TEST_PG_SUPERUSER_DSN. Chạy từ backend/:  PYTHONPATH=src python -
 """
 from __future__ import annotations
 
+from tests import _guard  # noqa: F401 — chốt chặn mạng và khoá API của bộ test (tests/_guard.py)
+
 import asyncio
 import io
 import json
@@ -111,7 +113,10 @@ class DuongChinh(Base):
         rec = Recorder(reply(GOOD_P1))
         await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
         body = self.sent(rec)
-        self.assertEqual((body["model"], body["reasoning_effort"], body["stream"]), ("openai/gpt-oss-20b", "low", False))
+        self.assertEqual((body["model"], body["reasoning_effort"], body["temperature"], body["max_completion_tokens"], body["stream"]),
+                         ("openai/gpt-oss-20b", "low", 0.2, 512, False))  # tham số tường minh + trần output cứng của module (A-090)
+        self.assertNotIn("max_tokens", body)
+        self.assertIs(body["include_reasoning"], False)  # không nhận văn bản suy luận (PO, 2026-10-05)
         schema = body["response_format"]["json_schema"]
         self.assertEqual((schema["name"], schema["strict"]), ("classify_intent", True))
         self.assertEqual(schema["schema"]["properties"]["intent"]["enum"], ["WORK_CONFIRMATION", "ROOM_BOOKING", "OUT_OF_SCOPE", "NEED_CLARIFICATION"])  # sinh từ catalog (ADR-025)
@@ -127,7 +132,9 @@ class DuongChinh(Base):
         body = self.sent(rec)
         self.assertEqual(set(json.loads(body["messages"][1]["content"].split("\n", 1)[1])), {"purpose", "variable_guidance", "request_type"})
         self.assertEqual(body["model"], "openai/gpt-oss-120b")  # tier mạnh
-        self.assertNotIn("reasoning_effort", body)  # A-090
+        self.assertEqual((body["reasoning_effort"], body["temperature"], body["max_completion_tokens"]), ("medium", 0.3, 2048))  # tier mạnh: tường minh, không dựa mặc định
+        self.assertIs(body["include_reasoning"], False)
+        self.assertNotIn("max_tokens", body)
         prop = body["response_format"]["json_schema"]["schema"]["properties"]
         self.assertEqual((prop["variable_name"]["const"], prop["body"]["maxLength"]), ("purpose_statement", 120))
         (row,) = self.rows()
@@ -210,15 +217,15 @@ class ChuBudget(Base):
                       "values (%s, 'classify_intent', 'CHEAP', %s, %s, %s, 'OK', %s, %s, %s)",
                       (uuid.uuid4(), cols["input_tokens"], cols["output_tokens"], cols["reasoning_tokens"], str(uuid.uuid4()), session_id, request_id))
 
-    async def test_tran_chat_session_46500_dung_ngay_bien(self):
-        self.assertEqual(wv.TOKEN_CEILING_CHAT_SESSION, 46_500)
-        self.spend(self.session, input_tokens=20_000, output_tokens=16_000, reasoning_tokens=10_499)  # 46.499 — cộng cả completion lẫn reasoning (tính dư, O1-3)
+    async def test_tran_chat_session_51900_dung_ngay_bien(self):
+        self.assertEqual(wv.TOKEN_CEILING_CHAT_SESSION, 51_900)
+        self.spend(self.session, input_tokens=30_000, output_tokens=21_899, reasoning_tokens=40_000)  # 51.899 theo input + output; reasoning (40.000) KHÔNG cộng — completion_tokens đã gồm suy luận (O1-3)
         rec = Recorder(reply(GOOD_P1))
         await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)  # còn dưới trần: qua
         self.assertEqual(len(rec.requests), 1)
         rows = self.rows()
         self.assertEqual([r[6] for r in rows], ["OK", "OK"])
-        # dòng vừa ghi thêm 162 token → tổng 46.661 ≥ 46.500: lần sau bị chặn
+        # dòng vừa ghi thêm 150 token (120 + 30) → tổng 52.049 ≥ 51.900: lần sau bị chặn
         rec2 = Recorder(reply(GOOD_P1))
         with self.assertRaises(BudgetExceeded) as cm:
             await self.gateway(rec2).call(CLASSIFY_INTENT, P1, self.owner)
@@ -227,7 +234,7 @@ class ChuBudget(Base):
         self.assertEqual(self.rows()[-1][3], 0)
 
     async def test_dung_bang_tran_la_chan_va_thieu_mot_token_thi_qua(self):
-        for spent, blocked in ((46_500, True), (46_499, False)):
+        for spent, blocked in ((51_900, True), (51_899, False)):
             owner = BudgetOwner(chat_session_id=self.db.make_chat_session(self.db.make_employee()[0]))
             self.spend(owner.chat_session_id, input_tokens=spent)
             rec = Recorder(reply(GOOD_P1))
@@ -239,10 +246,11 @@ class ChuBudget(Base):
                 await self.gateway(rec).call(CLASSIFY_INTENT, P1, owner)
                 self.assertEqual(len(rec.requests), 1)
 
-    async def test_reasoning_tokens_duoc_tinh_vao_tran(self):
-        self.spend(self.session, input_tokens=0, output_tokens=0, reasoning_tokens=46_500)  # chỉ reasoning
-        with self.assertRaises(BudgetExceeded):
-            await self.gateway(Recorder(reply(GOOD_P1))).call(CLASSIFY_INTENT, P1, self.owner)
+    async def test_reasoning_tokens_khong_cong_them_vao_tran(self):  # O1-3 đóng 2026-10-05: completion_tokens đã gồm suy luận
+        self.spend(self.session, input_tokens=0, output_tokens=0, reasoning_tokens=1_000_000)  # chỉ reasoning, rất lớn
+        rec = Recorder(reply(GOOD_P1))
+        await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)  # không bị chặn
+        self.assertEqual(len(rec.requests), 1)
 
     async def test_tran_request_92000(self):
         self.assertEqual(wv.TOKEN_CEILING_REQUEST, 92_000)
@@ -347,6 +355,72 @@ class EpJson(Base):
         with self.assertRaises(ParseFailed) as cm:
             await self.gateway(rec).call(DRAFT_FREE_CONTENT, P4, self.owner, variable=VAR)
         self.assertEqual([(v.path, v.code) for v in cm.exception.violations], [("variable_name", "CONST")])
+
+
+class JsonValidateFailed(Base):
+    """PO, 2026-10-05: HTTP 400 `json_validate_failed` (output bị cắt do trần thấp / không hợp schema) đi đường sửa parse một lần; log mã con riêng."""
+
+    def jvf(self) -> httpx.Response:
+        return httpx.Response(400, json={"error": {"message": f"Failed to generate JSON. {RES}", "type": "invalid_request_error", "code": "json_validate_failed",
+                                                   "failed_generation": RES}})
+
+    async def test_lan_dau_400_json_validate_failed_roi_sua_dat(self):
+        rec = Recorder(self.jvf(), reply(GOOD_P1))
+        r = await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
+        self.assertEqual((r.outcome, r.output, len(rec.requests)), ("PARSE_REPAIRED", GOOD_P1, 2))
+        roles = [m["role"] for m in self.sent(rec, 1)["messages"]]
+        self.assertEqual(roles, ["system", "user", "user"])  # không có output cũ để gửi lại
+        self.assertIn("$: JSON_VALIDATE_FAILED", self.sent(rec, 1)["messages"][2]["content"])
+        self.assertIn("quá dài", self.sent(rec, 1)["messages"][2]["content"])
+        (row,) = self.rows()
+        self.assertEqual((row[3], row[4], row[5], row[6]), (120, 30, 12, "PARSE_REPAIRED"))  # token chỉ của lần có usage
+        self.assertEqual(self.sent(rec, 0)["max_completion_tokens"], 512)
+
+    async def test_log_ma_con_rieng_co_tran_va_so_lan_thu(self):
+        await self.gateway(Recorder(self.jvf(), reply(GOOD_P1))).call(CLASSIFY_INTENT, P1, self.owner)
+        (event,) = [e for e in self.logged() if e["message"] == "LLM_PROVIDER_JSON_VALIDATE_FAILED"]
+        self.assertEqual((event["provider_error_code"], event["max_completion_tokens"], event["attempt"], event["call_name"], event["tier"]),
+                         ("json_validate_failed", 512, 1, "classify_intent", "CHEAP"))
+        self.assertNotIn("LLM_PROVIDER_ERROR", self.out.getvalue())  # không phải lỗi provider
+        self.assertNoLeak(RES)
+
+    async def test_hai_lan_deu_400_la_parse_failed_khong_phai_provider_error(self):
+        rec = Recorder(self.jvf())
+        with self.assertRaises(ParseFailed) as cm:
+            await self.gateway(rec).call(DRAFT_FREE_CONTENT, P4, self.owner, variable=VAR)
+        self.assertEqual(len(rec.requests), 2)  # đúng một lần sửa
+        self.assertEqual([(v.path, v.code) for v in cm.exception.violations], [("$", "JSON_VALIDATE_FAILED")])
+        (row,) = self.rows()
+        self.assertEqual((row[0], row[1], row[3], row[6]), ("draft_free_content", "STRONG", 0, "PARSE_FAILED"))
+        events = [e for e in self.logged() if e["message"] == "LLM_PROVIDER_JSON_VALIDATE_FAILED"]
+        self.assertEqual([(e["attempt"], e["max_completion_tokens"]) for e in events], [(1, 2048), (2, 2048)])
+        self.assertNoLeak(RES, cm.exception, cm.exception.__dict__, "".join(traceback.format_exception(cm.exception)), self.rows())
+
+    async def test_400_khac_ma_van_la_provider_error_khong_sua(self):
+        for body in ({"error": {"type": "invalid_request_error", "code": "invalid_api_key"}}, {"error": {"type": "invalid_request_error"}},
+                     {"error": {"type": "invalid_request_error", "code": "json_validate_failed_khac"}}):
+            rec = Recorder(httpx.Response(400, json=body))
+            with self.assertRaises(ProviderError):
+                await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
+            self.assertEqual(len(rec.requests), 1)
+
+    async def test_ma_json_validate_failed_o_status_khac_400_la_provider_error(self):
+        rec = Recorder(httpx.Response(422, json={"error": {"type": "x", "code": "json_validate_failed"}}))
+        with self.assertRaises(ProviderError):
+            await self.gateway(rec).call(CLASSIFY_INTENT, P1, self.owner)
+        self.assertEqual(len(rec.requests), 1)
+
+    async def test_json_validate_failed_dung_chung_han_chot(self):
+        self.addCleanup(setattr, wv, "LLM_CALL_DEADLINE_CHEAP_SECONDS", wv.LLM_CALL_DEADLINE_CHEAP_SECONDS)
+        wv.LLM_CALL_DEADLINE_CHEAP_SECONDS = 0.3
+
+        async def slow_jvf():
+            await asyncio.sleep(0.4)
+            return self.jvf()
+
+        with self.assertRaises(ProviderError) as cm:
+            await self.gateway(Recorder(slow_jvf)).call(CLASSIFY_INTENT, P1, self.owner)
+        self.assertEqual(cm.exception.kind, "DEADLINE")
 
 
 class LoiProvider(Base):
@@ -467,12 +541,20 @@ class LogVaCanhBao(Base):
         self.assertIsNone(event["catalog_fingerprint"])
 
     async def test_vuot_tran_moi_loi_goi_chi_canh_bao_khong_chan(self):  # A-090
-        big = {**USAGE, "prompt_tokens": 1700, "completion_tokens": 100}  # > 1.500 của classify_intent
+        big = {**USAGE, "prompt_tokens": 1750, "completion_tokens": 100}  # input + output = 1.850 > 1.800 của classify_intent (reasoning 12 đã nằm trong completion)
         r = await self.gateway(Recorder(reply(GOOD_P1, big))).call(CLASSIFY_INTENT, P1, self.owner)
         self.assertEqual(r.outcome, "OK")
         (event,) = [e for e in self.logged() if e["message"] == "LLM_CALL_OVER_CEILING"]
-        self.assertEqual((event["total_tokens"], event["ceiling"], event["call_name"]), (1812, 1500, "classify_intent"))
-        self.assertEqual(self.rows()[0][3], 1700)  # và vẫn được ghi, cộng vào tổng của chủ budget
+        self.assertEqual((event["total_tokens"], event["ceiling"], event["call_name"]), (1850, 1800, "classify_intent"))
+        self.assertEqual(self.rows()[0][3], 1750)  # và vẫn được ghi, cộng vào tổng của chủ budget
+
+    async def test_van_ban_suy_luan_cua_provider_khong_vao_log_hay_so(self):  # PO, 2026-10-05
+        body = {"choices": [{"message": {"content": json.dumps(GOOD_P1), "reasoning": f"suy luận {RES}"}, "finish_reason": "stop"}], "usage": USAGE}
+        r = await self.gateway(Recorder(httpx.Response(200, json=body))).call(CLASSIFY_INTENT, P1, self.owner)
+        self.assertEqual((r.output, r.reasoning_tokens), (GOOD_P1, 12))
+        self.assertNoLeak(RES, r, self.rows())
+        (event,) = [e for e in self.logged() if e["message"] == "LLM_CALL_DONE"]
+        self.assertEqual((event["reasoning_tokens"], event["finish_reason"]), (12, "stop"))
 
     async def test_trong_tran_thi_khong_canh_bao(self):
         await self.gateway(Recorder(reply(GOOD_P1))).call(CLASSIFY_INTENT, P1, self.owner)
