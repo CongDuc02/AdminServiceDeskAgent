@@ -68,14 +68,32 @@ class Buoc5(unittest.TestCase):
 
 
 class HoSoModel(unittest.TestCase):
-    def test_file_trong_repo_hop_le_va_dung_gia_tri_khoi_dau_da_duyet(self):  # PO duyệt 2026-10-05, nhãn "chưa hiệu chỉnh"
+    def test_file_trong_repo_hop_le_va_dung_gia_tri_da_duyet(self):  # tier: PO 2026-10-05 "chưa hiệu chỉnh"; trần output: PO 2026-10-09 "hiệu chỉnh theo B4b, n nhỏ"
         check = profiles.load_profiles()
         self.assertEqual(check.codes, ())
         cheap, strong = check.profiles.for_tier("CHEAP"), check.profiles.for_tier("STRONG")
         self.assertEqual((cheap.model, cheap.params), ("openai/gpt-oss-20b", {"reasoning_effort": "low", "temperature": 0.2, "include_reasoning": False}))
         self.assertEqual((strong.model, strong.params), ("openai/gpt-oss-120b", {"reasoning_effort": "medium", "temperature": 0.3, "include_reasoning": False}))
-        self.assertEqual(check.profiles.modules, {"classify_intent": {"max_completion_tokens": 512}, "extract_slots": {"max_completion_tokens": 1536},
+        self.assertEqual(check.profiles.modules, {"classify_intent": {"max_completion_tokens": 512}, "extract_slots": {"max_completion_tokens": 2048},
                                                    "draft_free_content": {"max_completion_tokens": 2048}})
+
+    def test_ba_tran_output_mang_nhan_hieu_chinh_theo_b4b(self):  # PO, 2026-10-09
+        check = profiles.load_profiles()
+        self.assertEqual(check.profiles.calibration, {"classify_intent": "hiệu chỉnh theo B4b, n nhỏ", "extract_slots": "hiệu chỉnh theo B4b, n nhỏ",
+                                                       "draft_free_content": "hiệu chỉnh theo B4b, n nhỏ"})
+        self.assertEqual(set(check.profiles.calibration), set(profiles.MODULE_TIERS))  # không module nào thiếu nhãn
+        self.assertNotIn("calibration", profiles.load_profiles().profiles.profile_for("extract_slots", "CHEAP").params)  # nhãn không bao giờ gửi cho provider
+
+    def test_nhan_hieu_chinh_tuy_chon_nhung_hop_le_thi_moi_qua(self):
+        self.assertEqual(profiles.validate(mutated(lambda r: r.pop("calibration"))).profiles.calibration, {})
+        for bad, code in (("not-a-dict", "PROFILE_CALIBRATION_INVALID"), ({"module_la": "x"}, "PROFILE_CALIBRATION_INVALID:module_la"),
+                          ({"extract_slots": ""}, "PROFILE_CALIBRATION_INVALID:extract_slots"), ({"extract_slots": "   "}, "PROFILE_CALIBRATION_INVALID:extract_slots"),
+                          ({"extract_slots": 5}, "PROFILE_CALIBRATION_INVALID:extract_slots"), ({"extract_slots": "x" * 121}, "PROFILE_CALIBRATION_INVALID:extract_slots"),
+                          ({"extract_slots": "dòng\nhai"}, "PROFILE_CALIBRATION_INVALID:extract_slots")):
+            raw = mutated(lambda r, b=bad: r.update({"calibration": b}))
+            self.assertEqual(profiles.validate(raw).codes, (code,), repr(bad))
+        raw = mutated(lambda r: r.update({"calibration": {"extract_slots": "NHAN_BI_MAT" * 20}}))
+        self.assertNotIn("NHAN_BI_MAT", " ".join(profiles.validate(raw).codes))  # mã lỗi không mang nhãn
 
     def test_ca_hai_tier_ghi_tuong_minh_moi_tham_so_anh_huong_output(self):  # không dựa mặc định provider
         for tier in ("CHEAP", "STRONG"):
