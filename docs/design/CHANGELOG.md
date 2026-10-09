@@ -3332,3 +3332,29 @@ PO duyệt kế hoạch B5/B6 (tách hai nhánh). Thiết kế đổi **trước
 | **Hoãn sang B6** | Hàm F1 và `tool_layer.checks` — thiếu từ vựng `validation_rules` (A-093, O1-14); đề xuất ở B6, PO duyệt trước khi viết |
 | **Chênh lệch thiết kế — đã sửa** | `06-structure.md` nói `status_changed_at` ghi ở bốn bảng; `04-data.md` và schema chỉ có cột đó ở `request` và `document`. PO (2026-10-09) yêu cầu sửa câu cho khớp `04-data.md`: mục Nghĩa vụ kế thừa của `06-structure.md` nay nói hai bảng; kernel ghi nơi cột tồn tại |
 | **Ngoài kế hoạch, ghi rõ** | Bộ sinh byte của thân request cũng dùng cho cả nhánh kết nối (mất kết nối sau khi gửi xong được ước lượng) và 200 thân hỏng — cùng nguyên tắc 'có thể đã sinh' của bảng ADR-019, PO chỉ nêu bốn ca nên hai ca này cần PO xem lại |
+
+### B6a — docs-first (2026-10-09)
+
+PO duyệt kế hoạch B6, chia B6a (dữ liệu, F1, tool) và B6b (graph, API, #22, đo).
+
+| Tệp | Đổi |
+|---|---|
+| `proposals/validation-rules-vocabulary.md` | Duyệt. `min_words` → **`min_tokens`** (đếm đơn vị cách nhau bởi khoảng trắng sau NFC = đếm tiếng; "xin visa" = 2 bị hỏi lại). N = 3 "chưa hiệu chỉnh". Mã `RULE_MIN_TOKENS` |
+| `proposals/reply-templates.md` | Duyệt R1–R6. Thêm khuôn `ASK_PURPOSE_RETRY` (ví dụ cụ thể) → 13 khuôn. Mã khuôn thuộc B6b |
+| `03-agents.md`, `GLOSSARY.md`, `05-api.md` | **Tool mới `request_slots_propose`** (G1): tự đọc nguồn (hồ sơ của chính người yêu cầu, hoặc `EXPIRED` của chính họ); từ chối khi `request` lập hộ người khác (EC-IL-01); không đè `PROVIDED`/`CONFIRMED`; `audit_event` chỉ mã |
+| `04-data.md`, `contracts/README.md` | `slot_definition.label_vi` (migration `0011`); mô tả từ vựng `validation_rules` |
+| `12-roadmap.md` | O1-14 duyệt; cổng **4.7** (PO duyệt `example_phrases`, do Claude soạn) và **4.8** (đếm lần `min_tokens` từ chối `purpose`) |
+| `ASSUMPTIONS.md` | A-093 `Đã chốt` |
+
+**B6a — chi tiết tool ghi trong lúc làm (2026-10-09), mỗi dòng đã sửa tài liệu trước mã:** `request_slots_write` kiểm bằng chứng trên NFC, tính lại `evidence_span`, và đòi `value` của slot `STRING`/`TEXT` nằm nguyên văn trong đoạn trích; `chat_message.body` lưu NFC; `request_slots_propose` nguồn `HR_PROFILE` chỉ đề xuất slot **bắt buộc**.
+
+### B6a — kết quả mã (2026-10-09)
+
+| Hạng mục | Kết quả |
+|---|---|
+| Cấu hình | Migration `0011` (`label_vi`); data migration `0002` (6 loại, 16 slot, 1 sổ). Test đọc lại bảng 3.2 của `00-domain.md` và đòi DB khớp |
+| Domain | `slot_rules`, `eligibility` (F1), `status_labels` — hàm thuần, test bảng chân trị |
+| Tool | 8 tool của `intake_agent` + `request_slot_confirm` + hai thao tác chat |
+| Đột biến | **96 mẫu: 91 đỏ ngay; 5 sống sót đã xử lý** — 3 thiếu test (T16 trích > 300 ký tự, O11 `request` của người khác qua idempotency, H9 khoá `employee` khi mở phiên — test xác định bằng `FOR NO KEY UPDATE`), 2 là điều kiện thừa nên bỏ khỏi mã (R2: máy trạng thái của kernel đã chặn; S2: `ERASED` ⇒ `value` NULL do `ck_request_slot_value_presence`). Chạy lại: đỏ |
+| **Mẫu tương đương, nêu rõ** | Bỏ chuẩn hoá NFC trong `slot_rules.tokens`/`non_blank` **không** làm test nào đỏ: tách theo khoảng trắng và nhóm ký tự `L*`/`N*` không đổi giữa dạng dựng sẵn và tổ hợp. Giữ NFC vì PO chỉ định ("sau NFC") và vì body đã lưu NFC; không tính là lỗ hổng test |
+| Ngoài kế hoạch, ghi rõ | (1) `request_slots_write` đòi `value` `STRING`/`TEXT` nằm trong đoạn trích và tính lại `evidence_span` (siết thêm; đã sửa `03-agents.md` trước). (2) `request_slots_propose` chỉ đề xuất slot `HR_PROFILE` **bắt buộc** (tối thiểu hoá dữ liệu; đã sửa `03-agents.md` trước). (3) `chat_message.body` lưu NFC (đã sửa `04-data.md` trước). Cả ba PO xem lại khi duyệt merge |

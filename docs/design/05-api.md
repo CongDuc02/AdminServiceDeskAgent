@@ -579,6 +579,7 @@ Mã con của `fields[].code`: `REQUIRED` · `BLANK` · `INVALID_FORMAT` · `OUT
 | `employee_lookup` | `NOT_FOUND` · `FORBIDDEN` · `FIELD_NOT_ALLOWED` | **Không** | Graph xử lý; nhân viên thấy câu trả lời từ khuôn — ví dụ cần uỷ quyền (EC-IL-01). Khuôn không nói nhân viên thứ ba có tồn tại hay không |
 | `request_open` | `TYPE_NOT_SUPPORTED` · `REPLACED_NOT_DRAFT` | **Không** | Khuôn câu trả lời |
 | `request_slots_write` | `EVIDENCE_MISMATCH` · `RULE_FAILED` · `NOT_EDITABLE` · `SLOT_NOT_ALLOWED` | **Không** | Slot bị loại thì agent hỏi lại bằng khuôn |
+| `request_slots_propose` | `NOT_OWN_REQUEST` · `BENEFICIARY_NOT_SELF` · `NOT_EDITABLE` | **Không** | Graph xử lý; không đường nào lộ ra nhân viên — `request` lập hộ người khác không đề xuất từ hồ sơ (EC-IL-01) |
 | `request_slots_read` | `SLOT_NOT_DECLARED` | **Không bao giờ** | Đây là bug: prompt module xin một slot nó không khai. Lộ ra là rò cấu trúc prompt. Trong lượt chat nó thành khuôn "hệ thống đang bận"; trong `document_graph` nó dẫn tới `halt_for_human` với `reason_code` `SYSTEM_DEFECT` (mục Bảng mã của `08-hitl.md`) — **không** phải mã này. Chỉ `observability` thấy mã thật |
 | `request_transition`, `document_transition`, `document_draft_save`, `document_number_assign`, `document_halt_record` | `ILLEGAL_TRANSITION` · `NOT_READY` · `NO_ISSUE_ORDER` · `NOT_DRAFT` · `UNKNOWN_REASON_CODE` · `DOCUMENT_NOT_FOUND` | **Không** | Bất biến nội bộ. Lọt tới `api` thì thành `INTERNAL_ERROR` |
 | `prior_attempt_lookup` · `procedure_retrieval` | `NONE` · danh sách rỗng | Không phải lỗi | Nhánh đã thiết kế |
