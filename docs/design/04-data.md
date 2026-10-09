@@ -351,7 +351,7 @@ Không có index ngoài khoá chính.
 |---|---|---|---|
 | `author` | text | — | `EMPLOYEE` · `AGENT` |
 | `request_id` | uuid | ✔ | FK. Gắn khi `request_open` chạy, để luật xoá biết tin nhắn thuộc lần thử nào |
-| `body` | text | ✔ | `RES` — mọi tin nhắn, kể cả tin của agent vì nó nhắc lại giá trị slot. Không `NULL` cho tới khi bị xoá |
+| `body` | text | ✔ | `RES` — mọi tin nhắn, kể cả tin của agent vì nó nhắc lại giá trị slot. Không `NULL` cho tới khi bị xoá. **Lưu dạng chuẩn hoá Unicode NFC** (`chat_message_append`, B6a) để so khớp bằng chứng và đếm `min_tokens` không lệch giữa dạng dựng sẵn và dạng tổ hợp |
 | `reply_template_id` | text | ✔ | Chỉ tin của agent |
 | `retrieval_query` | text | ✔ | `RES`. Chỉ tin của nhân viên (ADR-008) |
 | `content_erased_at` | timestamptz | ✔ | Có thì `body` và `retrieval_query` phải `NULL` |
