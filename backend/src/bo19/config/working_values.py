@@ -22,6 +22,10 @@ JOB_MAX_ATTEMPTS = {"render_document": 5, "resume_document_graph": 5, "finalize_
 # WV-15 — số ký tự tối đa của MỘT tin nhắn trong chat (A-031; roadmap O1-1: giữ 2.000). `chat_message_append` chặn lần cuối; `api` chặn ở `TurnBody`.
 CHAT_MESSAGE_MAX_CHARS = 2000
 
+# WV-14 — `limit` phân trang: mặc định 20, trần 100 (mục Phân trang của 05-api.md; chưa hiệu chỉnh — kích thước hàng đợi thật là A-002).
+PAGE_LIMIT_DEFAULT = 20
+PAGE_LIMIT_MAX = 100
+
 # WV-16b — trần số lần verify `argon2id` đồng thời trong MỘT tiến trình (ADR-034). Lần thứ năm chờ.
 ARGON2_MAX_CONCURRENT_VERIFY = 4
 

@@ -48,6 +48,10 @@ class MessageIdConflict(ToolError):
     code = "MESSAGE_ID_CONFLICT"
 
 
+class SessionIdConflict(ToolError):
+    code = "SESSION_ID_CONFLICT"  # `Idempotency-Key` của `POST /chat-sessions` đã là phiên của người khác
+
+
 class TurnInProgress(ToolError):
     """Lượt trước chưa có câu trả lời và còn trong hạn chót (mục SSE của 05-api.md). `retry_after_seconds` — số nguyên ≥ 1, làm tròn lên."""
 
@@ -61,7 +65,8 @@ class TurnInProgress(ToolError):
 @dataclass(frozen=True)
 class SessionOpen:
     chat_session_id: uuid.UUID
-    created: bool
+    created: bool  # phiên mới do lần gọi này tạo
+    replayed: bool = False  # `session_id` (Idempotency-Key) đã là một phiên của chính người gọi — lặp lại hợp lệ của lần tạo trước
 
 
 @dataclass(frozen=True)
@@ -71,17 +76,25 @@ class Appended:
     created: bool
 
 
-def chat_session_open(pool: Pool, ctx: ToolContext) -> SessionOpen:
+def chat_session_open(pool: Pool, ctx: ToolContext, *, session_id: uuid.UUID | None = None) -> SessionOpen:
+    """`session_id` — `Idempotency-Key` của `POST /chat-sessions`: id của phiên MỚI nếu phải tạo (mục 1.8 của 05-api.md). Đã là phiên của chính người gọi thì đây là lặp lại: trả phiên đó, `replayed`.
+    Của người khác thì `SessionIdConflict` — không trả gì về phiên đó."""
     me = actor_id(ctx)
     require_any(ctx, ("request.create", "request.create_on_behalf"))
     with pool.acquire() as conn, unit_of_work(conn):
         conn.execute("SELECT id FROM employee WHERE id = %s FOR UPDATE", (me,))
+        if session_id is not None:
+            keyed = conn.execute("SELECT employee_id FROM chat_session WHERE id = %s", (session_id,)).fetchone()
+            if keyed is not None:
+                if keyed[0] != me:
+                    raise SessionIdConflict
+                return SessionOpen(session_id, False, True)
         row = conn.execute("SELECT id FROM chat_session WHERE employee_id = %s AND status = 'OPEN' ORDER BY opened_at DESC LIMIT 1", (me,)).fetchone()
         if row is not None:
             return SessionOpen(row[0], False)
-        session_id = uuid.uuid4()
-        conn.execute("INSERT INTO chat_session (id, employee_id) VALUES (%s, %s)", (session_id, me))
-        return SessionOpen(session_id, True)
+        new_id = session_id or uuid.uuid4()
+        conn.execute("INSERT INTO chat_session (id, employee_id) VALUES (%s, %s)", (new_id, me))
+        return SessionOpen(new_id, True)
 
 
 @dataclass(frozen=True)
