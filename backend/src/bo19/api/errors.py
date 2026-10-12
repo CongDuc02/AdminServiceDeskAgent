@@ -10,7 +10,7 @@ Thêm một mã vào đây là thêm một dòng cùng test, không sửa bảng
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -32,33 +32,45 @@ _CODE_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 class ErrorSpec:
     http: int
     message: str
+    variants: dict[str, str] = field(default_factory=dict)  # câu thay thế CỐ ĐỊNH theo tên biến thể — vẫn không dựng từ dữ liệu (ví dụ `TURN_NOT_FINISHED`)
 
 
 CATALOG: dict[str, ErrorSpec] = {
     "UNAUTHENTICATED": ErrorSpec(401, "Bạn chưa đăng nhập hoặc phiên đã hết hạn. Hãy đăng nhập lại."),
     "INVALID_CREDENTIALS": ErrorSpec(401, "Mã nhân viên hoặc mật khẩu không đúng. Hãy kiểm lại thông tin đăng nhập."),
     "CSRF_HEADER_MISSING": ErrorSpec(403, "Yêu cầu thiếu thông tin bảo vệ của trang. Hãy tải lại trang rồi thử lại."),
+    "PERMISSION_DENIED": ErrorSpec(403, "Bạn không có quyền thực hiện thao tác này. Hãy liên hệ Phòng Hành chính nếu cần quyền."),
     "NOT_FOUND": ErrorSpec(404, "Không tìm thấy nội dung được yêu cầu. Hãy kiểm lại đường dẫn."),
+    "NOT_ACCEPTABLE": ErrorSpec(406, "Yêu cầu này phải gửi kèm Accept: text/event-stream."),
+    "IDEMPOTENCY_KEY_REQUIRED": ErrorSpec(400, "Yêu cầu thiếu mã chống gửi trùng (Idempotency-Key). Hãy tải lại trang rồi thử lại."),
+    "IDEMPOTENCY_KEY_CONFLICT": ErrorSpec(409, "Mã chống gửi trùng này đã được dùng cho một thao tác khác. Hãy thử lại thao tác."),
+    "CHAT_SESSION_CLOSED": ErrorSpec(409, "Cuộc trò chuyện này đã đóng. Hãy mở cuộc trò chuyện mới."),
+    "TURN_IN_PROGRESS": ErrorSpec(409, "Hệ thống đang trả lời tin nhắn trước của bạn. Hãy chờ một chút rồi gửi tiếp."),
+    "TURN_NOT_FINISHED": ErrorSpec(409, "Tin nhắn của bạn đã được lưu. Hệ thống chưa trả lời xong — vui lòng chờ một chút rồi tải lại.",
+                                   {"abandoned": "Tin nhắn của bạn đã được lưu nhưng hệ thống không trả lời được. Vui lòng gửi lại nội dung trong một tin nhắn mới."}),
     "PAYLOAD_TOO_LARGE": ErrorSpec(413, "Dữ liệu gửi lên vượt giới hạn cho phép. Hãy gửi lại nội dung nhỏ hơn."),
     "VALIDATION_FAILED": ErrorSpec(422, "Dữ liệu gửi lên chưa đúng. Hãy sửa các trường được nêu rồi gửi lại."),
     "RATE_LIMITED": ErrorSpec(429, "Đã thử đăng nhập quá nhiều lần. Hãy chờ một lúc rồi thử lại."),
     "INTERNAL_ERROR": ErrorSpec(500, "Hệ thống gặp lỗi không lường trước. Hãy thử lại sau; nếu lặp lại, hãy báo mã trace_id."),
 }
 
-# Mã lỗi nội bộ → error_code lộ ra client. Mã không có trong bảng → INTERNAL_ERROR. Hiện chưa có mã nào cần lộ ra.
-INTERNAL_TO_API: dict[str, str] = {}
+# Mã lỗi nội bộ → error_code lộ ra client. Mã không có trong bảng → INTERNAL_ERROR.
+INTERNAL_TO_API: dict[str, str] = {"PERMISSION_DENIED": "PERMISSION_DENIED"}  # tool từ chối vì thiếu permission → 403; mã còn lại do router chat dịch rõ ràng (cần `details`)
 
 
 class ApiError(Exception):
     """Lỗi có chủ đích của `api`. `details` chỉ mang tên, mã con, số đếm — không giá trị."""
 
-    def __init__(self, error_code: str, details: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> None:
+    def __init__(self, error_code: str, details: dict[str, Any] | None = None, headers: dict[str, str] | None = None, variant: str | None = None) -> None:
         super().__init__(error_code)
         if error_code not in CATALOG:
             raise ValueError(f"error_code chưa có trong danh mục của api: {error_code}")
+        if variant is not None and variant not in CATALOG[error_code].variants:
+            raise ValueError(f"biến thể chưa có trong danh mục: {error_code}/{variant}")
         self.error_code = error_code
         self.details = details
         self.headers = headers
+        self.variant = variant
 
 
 def api_code_for(internal_code: str | None) -> str:
@@ -69,9 +81,17 @@ def _trace_id(request: Request) -> str:
     return request.scope.get(TRACE_SCOPE_KEY) or new_trace_id()
 
 
-def error_response(request: Request, error_code: str, details: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> JSONResponse:
+def error_envelope(trace_id: str, error_code: str, details: dict[str, Any] | None = None, variant: str | None = None) -> dict[str, Any]:
     spec = CATALOG[error_code]
-    body: dict[str, Any] = {"error_code": error_code, "message": spec.message, "trace_id": _trace_id(request)}
+    body: dict[str, Any] = {"error_code": error_code, "message": spec.variants[variant] if variant else spec.message, "trace_id": trace_id}
+    if details:
+        body["details"] = details
+    return body
+
+
+def error_response(request: Request, error_code: str, details: dict[str, Any] | None = None, headers: dict[str, str] | None = None, variant: str | None = None) -> JSONResponse:
+    spec = CATALOG[error_code]
+    body: dict[str, Any] = {"error_code": error_code, "message": spec.variants[variant] if variant else spec.message, "trace_id": _trace_id(request)}
     if details:
         body["details"] = details
     return JSONResponse(body, status_code=spec.http, headers=headers)
@@ -111,7 +131,7 @@ def _fields(exc: RequestValidationError) -> list[dict[str, str]]:
 def install_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
     async def _api_error(request: Request, exc: ApiError) -> JSONResponse:
-        return error_response(request, exc.error_code, exc.details, exc.headers)
+        return error_response(request, exc.error_code, exc.details, exc.headers, exc.variant)
 
     @app.exception_handler(StarletteHTTPException)
     async def _http_exception(request: Request, exc: StarletteHTTPException):

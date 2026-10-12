@@ -148,6 +148,6 @@ def load_settings(env: Mapping[str, str] = os.environ) -> Settings:
     values["llm_base_url"] = raw if _https_url(raw) else None  # bắt buộc https (bước kiểm #21)
     if values["llm_base_url"] is None:
         problems.append(("llm_base_url", _code("llm_base_url", "INVALID")))
-    values["llm_api_key"] = _get(env, "llm_api_key")  # tuỳ chọn ở B4 — `api` chưa gọi LLM; thiếu khoá không phải lỗi cấu hình lúc khởi động
+    values["llm_api_key"] = _get(env, "llm_api_key")  # không có ở `problems`: bước kiểm #22 (B6b) là nơi chặn khi thiếu khoá — `Settings` vẫn dựng được để các bước khác báo cùng lúc
 
     return Settings(problems=tuple(problems), **values)  # type: ignore[arg-type]

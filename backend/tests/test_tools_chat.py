@@ -14,6 +14,8 @@ import unicodedata
 import unittest
 import uuid
 
+import psycopg
+
 from bo19.config import working_values as wv
 from bo19.tool_layer.endpoint_ops import chat as ch
 from bo19.tool_layer.kernel.permission import PermissionDenied, SystemActorRequired
@@ -211,6 +213,284 @@ class GhiTinNhan(ToolBase):
         _, no_perm = self.employee(roles=())
         with self.assertRaises(PermissionDenied):
             ch.chat_message_append(self.pool, no_perm, chat_session_id=self.sid, message_id=uuid.uuid4(), author="EMPLOYEE", body="x")
+
+
+class LienKetTraLoi(ToolBase):
+    """Migration 0012 (B6b, Q6): mỗi tin nhân viên có tối đa một tin agent trả lời — DB giữ, không dựa vào tool, thời điểm của cờ huỷ hay của bộ giám sát."""
+
+    def setUp(self):
+        super().setUp()
+        self.eid, self.ctx_ = self.employee()
+        self.sid = ch.chat_session_open(self.pool, self.ctx_).chat_session_id
+        self.q = self.ask(self.sid, self.ctx_)
+
+    def ask(self, sid, ctx) -> uuid.UUID:
+        mid = uuid.uuid4()
+        ch.chat_message_append(self.pool, ctx, chat_session_id=sid, message_id=mid, author="EMPLOYEE", body="xin giấy xác nhận")
+        return mid
+
+    def reply(self, to, *, mid=None, sid=None):
+        return ch.chat_message_append(self.pool, self.sys, chat_session_id=sid or self.sid, message_id=mid or uuid.uuid4(), author="AGENT", body="đã nhận", reply_template_id="ASK_SLOT",
+                                      in_reply_to_message_id=to)
+
+    def raw_insert(self, user, *, sid, author, reply_to, seq, mid=None, body="x", tpl=None):
+        """INSERT thẳng bằng SQL — bỏ qua tool, để chứng minh chính DB từ chối."""
+        with self.db.connect(user) as c:
+            c.execute("insert into chat_message (id, chat_session_id, seq, author, body, reply_template_id, in_reply_to_message_id) values (%s, %s, %s, %s, %s, %s, %s)",
+                      (mid or uuid.uuid4(), sid, seq, author, body, tpl if tpl is not None else ("ASK_SLOT" if author == "AGENT" else None), reply_to))
+
+    def agent_rows(self, to):
+        with self.db.connect("bo19_migrator") as c:
+            return c.execute("select id, seq from chat_message where in_reply_to_message_id = %s and author = 'AGENT' order by seq", (to,)).fetchall()
+
+    # --- tool ---------------------------------------------------------------------------------------------------------------------
+
+    def test_tra_loi_tin_cua_chinh_phien_thi_ghi_lien_ket(self):
+        r = self.reply(self.q)
+        self.assertTrue(r.created)
+        self.assertEqual([x[0] for x in self.agent_rows(self.q)], [r.message_id])
+
+    def test_da_co_cau_tra_loi_thi_khong_ghi_them_va_tra_tin_cu(self):
+        first = self.reply(self.q)
+        second = self.reply(self.q)  # id khác — như bộ giám sát ghi sau thread của lượt
+        self.assertEqual((second.created, second.message_id, second.seq), (False, first.message_id, first.seq))
+        self.assertEqual(len(self.agent_rows(self.q)), 1)
+
+    def test_goi_lai_cung_id_van_idempotent(self):
+        mid = uuid.uuid4()
+        first = self.reply(self.q, mid=mid)
+        again = self.reply(self.q, mid=mid)
+        self.assertEqual((again.created, again.message_id), (False, first.message_id))
+
+    def test_tin_duoc_tra_loi_phai_la_tin_nhan_vien_cua_chinh_phien(self):
+        _, other = self.employee()
+        other_sid = ch.chat_session_open(self.pool, other).chat_session_id
+        foreign = self.ask(other_sid, other)
+        agent_msg = self.reply(self.q).message_id
+        for label, target in (("tin của phiên khác", foreign), ("tin của agent", agent_msg), ("không tồn tại", uuid.uuid4())):
+            with self.assertRaises(ch.MessageInvalid, msg=label):
+                self.reply(target)
+        self.assertEqual(self.agent_rows(foreign), [])
+
+    def test_tin_nhan_vien_khong_duoc_mang_lien_ket(self):
+        with self.assertRaises(ch.MessageInvalid):
+            ch.chat_message_append(self.pool, self.ctx_, chat_session_id=self.sid, message_id=uuid.uuid4(), author="EMPLOYEE", body="x", in_reply_to_message_id=self.q)
+
+    def test_tin_agent_khong_tra_loi_tin_nao_van_hop_le_va_khong_bi_gioi_han(self):  # ví dụ câu báo khi quay lại phiên mới (EC-CV-04)
+        a = ch.chat_message_append(self.pool, self.sys, chat_session_id=self.sid, message_id=uuid.uuid4(), author="AGENT", body="a", reply_template_id="ASK_SLOT")
+        b = ch.chat_message_append(self.pool, self.sys, chat_session_id=self.sid, message_id=uuid.uuid4(), author="AGENT", body="b", reply_template_id="ASK_SLOT")
+        self.assertEqual((a.created, b.created), (True, True))
+
+    def test_phien_dong_van_tra_lai_cau_tra_loi_da_co_nhung_khong_ghi_moi(self):
+        first = self.reply(self.q)
+        with self.db.connect("bo19_migrator") as c:
+            c.execute("update chat_session set status = 'CLOSED', closed_at = now(), close_reason = 'IDLE_TIMEOUT' where id = %s", (self.sid,))
+        self.assertEqual(self.reply(self.q).message_id, first.message_id)
+        q2 = self.ask_closed()
+        with self.assertRaises(ch.ChatSessionClosed):
+            self.reply(q2)
+
+    def ask_closed(self) -> uuid.UUID:  # tin nhân viên chèn thẳng trước khi phiên đóng thì không được nữa — dựng bằng chủ bảng
+        mid = uuid.uuid4()
+        with self.db.connect("bo19_migrator") as c:
+            c.execute("insert into chat_message (id, chat_session_id, seq, author, body) values (%s, %s, 99, 'EMPLOYEE', 'x')", (mid, self.sid))
+        return mid
+
+    # --- đồng thời: bộ giám sát và thread của lượt cùng ghi lúc hạn chót ------------------------------------------------------------
+
+    def test_hai_ben_ghi_dong_thoi_dung_mot_tin(self):
+        n, out, errors = 6, [], []
+        barrier = threading.Barrier(n)
+
+        def go():
+            barrier.wait()
+            try:
+                out.append(self.reply(self.q))  # mỗi bên một id riêng
+            except Exception as e:  # noqa: BLE001
+                errors.append(e)
+
+        threads = [threading.Thread(target=go) for _ in range(n)]
+        [t.start() for t in threads]
+        [t.join(30) for t in threads]
+        self.assertEqual(errors, [])
+        self.assertEqual(sum(r.created for r in out), 1)
+        self.assertEqual(len({r.message_id for r in out}), 1)  # ai cũng nhận về cùng một tin
+        self.assertEqual(len(self.agent_rows(self.q)), 1)
+
+    def test_luoi_an_toan_unique_khi_pre_check_bi_vong(self):
+        """Mô phỏng đường ghi vòng khoá/kiểm của tool: pre-check không thấy câu trả lời → INSERT đụng UNIQUE của DB → tool bắt, trả tin đã có, không lỗi."""
+        first = self.reply(self.q)
+        real = ch._agent_reply
+        calls = {"n": 0}
+
+        def blind(conn, mid):
+            calls["n"] += 1
+            return None if calls["n"] == 1 else real(conn, mid)  # lần đầu (pre-check) mù; lần hai (sau unique_violation) thấy
+
+        ch._agent_reply = blind
+        try:
+            second = self.reply(self.q)
+        finally:
+            ch._agent_reply = real
+        self.assertEqual((second.created, second.message_id), (False, first.message_id))
+        self.assertEqual(len(self.agent_rows(self.q)), 1)
+
+    # --- DB tự từ chối, kể cả khi bỏ qua tool -------------------------------------------------------------------------------------
+
+    def test_db_tu_choi_hai_tin_agent_cung_tra_loi_mot_tin(self):
+        self.reply(self.q)
+        with self.assertRaises(psycopg.errors.UniqueViolation):
+            self.raw_insert("bo19_app", sid=self.sid, author="AGENT", reply_to=self.q, seq=50)
+
+    def test_db_tu_choi_tin_agent_tro_toi_tin_cua_phien_khac_ke_ca_khi_bo_kiem_o_tool(self):
+        _, other = self.employee()
+        other_sid = ch.chat_session_open(self.pool, other).chat_session_id
+        foreign = self.ask(other_sid, other)
+        with self.assertRaises(psycopg.errors.ForeignKeyViolation):
+            self.raw_insert("bo19_app", sid=self.sid, author="AGENT", reply_to=foreign, seq=50)
+        self.assertEqual(self.agent_rows(foreign), [])
+
+    def test_db_tu_choi_tin_nhan_vien_mang_lien_ket_va_tu_tra_loi_chinh_minh(self):
+        with self.assertRaises(psycopg.errors.CheckViolation):
+            self.raw_insert("bo19_app", sid=self.sid, author="EMPLOYEE", reply_to=self.q, seq=50)
+        me = uuid.uuid4()
+        with self.assertRaises(psycopg.errors.CheckViolation):
+            self.raw_insert("bo19_app", sid=self.sid, author="AGENT", reply_to=me, seq=51, mid=me)
+
+    def test_db_cho_phep_nhieu_tin_agent_khong_tra_loi_tin_nao(self):
+        self.raw_insert("bo19_app", sid=self.sid, author="AGENT", reply_to=None, seq=60)
+        self.raw_insert("bo19_app", sid=self.sid, author="AGENT", reply_to=None, seq=61)
+
+    def test_cot_lien_ket_khong_sua_duoc_sau_khi_ghi(self):
+        r = self.reply(self.q)
+        with self.db.connect("bo19_app") as c:
+            with self.assertRaises(psycopg.errors.InsufficientPrivilege):
+                c.execute("update chat_message set in_reply_to_message_id = null where id = %s", (r.message_id,))
+
+    # --- đường xoá: luật xoá hội thoại xoá NỘI DUNG, không xoá dòng ----------------------------------------------------------------
+
+    def test_xoa_noi_dung_khong_bi_fk_chan_va_lien_ket_con_nguyen(self):
+        r = self.reply(self.q)
+        with self.db.connect("bo19_app") as c:  # đúng câu `expire_request` chạy: bo19_app, UPDATE ba cột nội dung
+            c.execute("update chat_message set body = null, retrieval_query = null, content_erased_at = now() where chat_session_id = %s", (self.sid,))
+        self.assertEqual([x[0] for x in self.agent_rows(self.q)], [r.message_id])
+        again = self.reply(self.q)  # gửi lại sau khi xoá nội dung: vẫn nhận tin cũ, không sinh tin thứ hai
+        self.assertEqual((again.created, again.message_id), (False, r.message_id))
+        with self.db.connect("bo19_migrator") as c:
+            self.assertEqual(c.execute("select count(*), count(body) from chat_message where chat_session_id = %s and author = 'AGENT'", (self.sid,)).fetchone(), (1, 0))
+
+    def test_runtime_khong_co_delete_tren_chat_message(self):
+        with self.db.connect("bo19_app") as c:
+            with self.assertRaises(psycopg.errors.InsufficientPrivilege):
+                c.execute("delete from chat_message where chat_session_id = %s", (self.sid,))
+
+    def test_xoa_cung_chi_qua_chu_bang_xoa_ca_phien_mot_cau_lenh_chay_con_xoa_le_tin_da_duoc_tra_loi_bi_chan(self):
+        self.reply(self.q)
+        with self.db.connect("bo19_migrator") as c:
+            with self.assertRaises(psycopg.errors.ForeignKeyViolation):
+                c.execute("delete from chat_message where id = %s", (self.q,))  # còn tin agent trả lời nó: NO ACTION làm việc này ồn ào
+        with self.db.connect("bo19_migrator") as c:
+            c.execute("delete from chat_message where chat_session_id = %s", (self.sid,))  # cả phiên, một câu lệnh: chạy
+            self.assertEqual(c.execute("select count(*) from chat_message where chat_session_id = %s", (self.sid,)).fetchone()[0], 0)
+
+
+class LuotDangChay(ToolBase):
+    """`turn_guard_s` (TURN_IN_PROGRESS) và `chat_turn_status` — B6b. Kiểm lượt trước và ghi tin mới chạy cùng một giao dịch dưới khoá phiên."""
+
+    GUARD = 30.0
+
+    def setUp(self):
+        super().setUp()
+        self.eid, self.ctx_ = self.employee()
+        self.sid = ch.chat_session_open(self.pool, self.ctx_).chat_session_id
+
+    def send(self, *, guard=GUARD, mid=None):
+        return ch.chat_message_append(self.pool, self.ctx_, chat_session_id=self.sid, message_id=mid or uuid.uuid4(), author="EMPLOYEE", body="xin giấy", turn_guard_s=guard)
+
+    def answer(self, to):
+        return ch.chat_message_append(self.pool, self.sys, chat_session_id=self.sid, message_id=uuid.uuid4(), author="AGENT", body="ok", reply_template_id="ASK_SLOT", in_reply_to_message_id=to)
+
+    def age(self, message_id, seconds):
+        with self.db.connect("bo19_migrator") as c:
+            c.execute("update chat_message set created_at = now() - make_interval(secs => %s) where id = %s", (seconds, message_id))
+
+    def test_tin_dau_vao_duoc_va_tin_ke_tiep_khi_chua_tra_loi_la_turn_in_progress(self):
+        first = self.send()
+        with self.assertRaises(ch.TurnInProgress) as cm:
+            self.send()
+        self.assertTrue(1 <= cm.exception.retry_after_seconds <= int(self.GUARD))
+        with self.db.connect("bo19_migrator") as c:
+            self.assertEqual(c.execute("select count(*) from chat_message where chat_session_id = %s", (self.sid,)).fetchone()[0], 1)  # tin bị từ chối không được ghi
+        self.answer(first.message_id)
+        self.assertTrue(self.send().created)  # đã có câu trả lời thì nhận lượt mới
+
+    def test_qua_han_chot_thi_nhan_luot_moi_ke_ca_khi_chua_co_cau_tra_loi(self):  # A-056: tiến trình chết giữa lượt
+        first = self.send()
+        self.age(first.message_id, self.GUARD + 5)
+        self.assertTrue(self.send().created)
+
+    def test_tin_bi_bo_quen_cu_khong_che_tin_dang_chay_gan_day(self):  # chỉ tin chưa trả lời MỚI NHẤT mới tính
+        old = self.send()
+        self.age(old.message_id, self.GUARD + 60)
+        self.send()  # tin mới, cũng chưa trả lời — tin cũ hơn không được che nó
+        with self.assertRaises(ch.TurnInProgress):
+            self.send()
+
+    def test_dung_bien_han_chot(self):
+        first = self.send()
+        self.age(first.message_id, self.GUARD - 5)
+        with self.assertRaises(ch.TurnInProgress):
+            self.send()
+
+    def test_khong_truyen_guard_thi_khong_kiem(self):
+        self.send(guard=None)
+        self.assertTrue(self.send(guard=None).created)
+
+    def test_gui_lai_cung_id_khong_bi_chan_boi_chinh_no(self):
+        mid = uuid.uuid4()
+        self.send(mid=mid)
+        again = self.send(mid=mid)  # idempotent: trả tin cũ trước khi kiểm lượt
+        self.assertFalse(again.created)
+
+    def test_dong_thoi_chi_mot_luot_duoc_nhan(self):
+        n, ok, busy, errors = 6, [], [], []
+        barrier = threading.Barrier(n)
+
+        def go():
+            barrier.wait()
+            try:
+                ok.append(self.send())
+            except ch.TurnInProgress:
+                busy.append(1)
+            except Exception as e:  # noqa: BLE001
+                errors.append(e)
+
+        threads = [threading.Thread(target=go) for _ in range(n)]
+        [t.start() for t in threads]
+        [t.join(30) for t in threads]
+        self.assertEqual((errors, len(ok), len(busy)), ([], 1, n - 1))
+
+    def test_turn_status(self):
+        first = self.send()
+        s = ch.chat_turn_status(self.pool, self.ctx_, chat_session_id=self.sid, message_id=first.message_id)
+        self.assertEqual(s.reply_message_id, None)
+        self.assertTrue(0 <= s.age_seconds < 5)
+        self.age(first.message_id, 100)
+        reply = self.answer(first.message_id)
+        s = ch.chat_turn_status(self.pool, self.ctx_, chat_session_id=self.sid, message_id=first.message_id)
+        self.assertEqual(s.reply_message_id, reply.message_id)
+        self.assertTrue(99 < s.age_seconds < 110)
+
+    def test_turn_status_chi_cho_chu_phien_va_tin_nhan_vien(self):
+        first = self.send()
+        reply = self.answer(first.message_id)
+        _, other = self.employee()
+        for who, mid in ((other, first.message_id), (self.ctx_, reply.message_id), (self.ctx_, uuid.uuid4())):
+            with self.assertRaises(ch.ChatSessionNotFound):
+                ch.chat_turn_status(self.pool, who, chat_session_id=self.sid, message_id=mid)
+        _, no_perm = self.employee(roles=())
+        with self.assertRaises(PermissionDenied):
+            ch.chat_turn_status(self.pool, no_perm, chat_session_id=self.sid, message_id=first.message_id)
 
 
 if __name__ == "__main__":

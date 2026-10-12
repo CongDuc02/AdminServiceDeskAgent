@@ -9,6 +9,7 @@ trước rate limit (không tăng bộ đếm — như 403 và 422), trước ar
 """
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 
 from starlette.requests import Request
@@ -24,14 +25,25 @@ def _declared_length(scope: Scope) -> int | None:
 
 
 class BodyLimitMiddleware:
-    """`limits` — ánh xạ (phương thức, đường dẫn đầy đủ) → số byte tối đa của body. Đường không có trong ánh xạ đi thẳng qua."""
+    """`limits` — ánh xạ (phương thức, đường dẫn) → số byte tối đa của body. Đường dẫn là chuỗi (khớp chính xác) hoặc `re.Pattern` (khớp **toàn bộ** đường, cho đường có tham số như
+    `/chat-sessions/{id}/turns` — B6b). Đường không có trong ánh xạ đi thẳng qua."""
 
-    def __init__(self, app: ASGIApp, limits: Mapping[tuple[str, str], int]) -> None:
+    def __init__(self, app: ASGIApp, limits: Mapping[tuple[str, str | re.Pattern[str]], int]) -> None:
         self.app = app
-        self._limits = dict(limits)
+        self._exact = {k: v for k, v in limits.items() if isinstance(k[1], str)}
+        self._patterns = [(method, pattern, v) for (method, pattern), v in limits.items() if not isinstance(pattern, str)]
+
+    def _limit_for(self, scope: Scope) -> int | None:
+        if scope["type"] != "http":
+            return None
+        method, path = scope["method"], scope["path"]
+        exact = self._exact.get((method, path))
+        if exact is not None:
+            return exact
+        return next((v for m, pattern, v in self._patterns if m == method and pattern.fullmatch(path)), None)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        limit = self._limits.get((scope["method"], scope["path"])) if scope["type"] == "http" else None
+        limit = self._limit_for(scope)
         if limit is None:
             await self.app(scope, receive, send)
             return

@@ -3358,3 +3358,74 @@ PO duyệt kế hoạch B6, chia B6a (dữ liệu, F1, tool) và B6b (graph, API
 | Đột biến | **96 mẫu: 91 đỏ ngay; 5 sống sót đã xử lý** — 3 thiếu test (T16 trích > 300 ký tự, O11 `request` của người khác qua idempotency, H9 khoá `employee` khi mở phiên — test xác định bằng `FOR NO KEY UPDATE`), 2 là điều kiện thừa nên bỏ khỏi mã (R2: máy trạng thái của kernel đã chặn; S2: `ERASED` ⇒ `value` NULL do `ck_request_slot_value_presence`). Chạy lại: đỏ |
 | **Mẫu tương đương, nêu rõ** | Bỏ chuẩn hoá NFC trong `slot_rules.tokens`/`non_blank` **không** làm test nào đỏ: tách theo khoảng trắng và nhóm ký tự `L*`/`N*` không đổi giữa dạng dựng sẵn và tổ hợp. Giữ NFC vì PO chỉ định ("sau NFC") và vì body đã lưu NFC; không tính là lỗ hổng test |
 | Ngoài kế hoạch, ghi rõ | (1) `request_slots_write` đòi `value` `STRING`/`TEXT` nằm trong đoạn trích và tính lại `evidence_span` (siết thêm; đã sửa `03-agents.md` trước). (2) `request_slots_propose` chỉ đề xuất slot `HR_PROFILE` **bắt buộc** (tối thiểu hoá dữ liệu; đã sửa `03-agents.md` trước). (3) `chat_message.body` lưu NFC (đã sửa `04-data.md` trước). Cả ba PO xem lại khi duyệt merge |
+
+### B6b — bước 0 docs-first: so khớp bằng chứng hai độ chặt; P2 1.1 (2026-10-09)
+
+PO duyệt kế hoạch B6b (Q1–Q7) và giao bước 0 làm đầu tiên. Đổi ngữ nghĩa của `request_slots_write` so với bản đã duyệt ở B6a — theo lệnh của PO.
+
+| Tệp | Đổi |
+|---|---|
+| `03-agents.md` | `request_slots_write`: `evidence_quote` ⊂ tin nhắn **khớp chính xác** (NFC); `value` ⊂ `evidence_quote` **nới** — NFC + `casefold` + gộp khoảng trắng; `value` rỗng sau chuẩn hoá không khớp; mã ra ngoài vẫn `EVIDENCE_MISMATCH`, thêm mã con `QUOTE_NOT_IN_MESSAGE` / `VALUE_NOT_IN_QUOTE` |
+| `07-prompts.md` | P2 `extract_slots` **1.0 → 1.1** (đổi wording ⇒ đổi `minor`): `value` chép đúng từng chữ từ `evidence_quote`. P2 chưa có lần chạy thật nào, nên không có số hiệu chỉnh nào bị đổi nghĩa |
+| Chưa làm, theo PO | Nếu số đo của `turn-trial` cho thấy phần lớn hỏng ở `QUOTE_NOT_IN_MESSAGE`: đề xuất so khớp nới cho `quote` kèm ánh xạ vị trí về tin nhắn gốc — sẽ đề xuất, không tự làm |
+
+**Bước 0 — kết quả mã (2026-10-09):** `request_slots_write` tách hai phép (`loose()` cho `value` ⊂ `evidence_quote`; `quote` ⊂ tin nhắn vẫn chính xác), `Rejection.reason` mang mã con; P2 `version = "1.1"`. 4 test mới, 1 test sửa (mã con cho 8 ca suy diễn). Bộ test 820, `lint-imports` 8/8. **Đột biến 8 mẫu, cả 8 đỏ:** bỏ `casefold`; bỏ gộp khoảng trắng; bỏ NFC ở `loose`; `value` rỗng khớp; bỏ kiểm `value` ⊂ đoạn trích; nới `quote` bằng `casefold`; đổi chỗ hai mã con; đảo chiều chứa. Ghi chú: ràng buộc LIST (mỗi phần tử nằm trong đoạn trích, `07-prompts.md` mục 3.2) vẫn chưa được tool kiểm — `WORK_CONFIRMATION` không có slot `LIST` `USER_INPUT`, để lát `INTRODUCTION_LETTER`.
+
+### B6b — docs-first: migration 0012, "một tin agent mỗi tin nhân viên" do DB giữ (2026-10-12)
+
+PO duyệt migration `0012` kèm hai chỉnh. Bước 0 đã có CI xanh ở `f3add01`.
+
+| Tệp | Đổi |
+|---|---|
+| `04-data.md`, `contracts/README.md` | `chat_message.in_reply_to_message_id`; `UNIQUE (chat_session_id, id)` + khoá ngoại ghép `(chat_session_id, in_reply_to_message_id)` → `(chat_session_id, id)` (DB giữ "cùng phiên"; "tin được trả lời là `EMPLOYEE`" do tool, không trigger); `CHECK` chỉ tin agent có cột này và không trả lời chính nó; `UNIQUE` từng phần `WHERE author = 'AGENT'` |
+| `04-data.md` | **`ON DELETE NO ACTION`, ghi rõ và có lý do:** luật xoá hội thoại xoá nội dung (`UPDATE`), không xoá dòng; không vai trò runtime nào có `DELETE`. Xoá nội dung không đụng cột khoá ngoại nên không bị chặn, và liên kết trả lời còn nguyên (gửi lại cùng `Idempotency-Key` sau khi xoá không sinh tin agent thứ hai). `SET NULL` sẽ lặng lẽ gỡ chốt chặn; `CASCADE` sẽ lặng lẽ xoá tin agent. Xoá cả phiên trong một câu lệnh vẫn chạy. Test đường xoá ở bước mã |
+| `03-agents.md`, `05-api.md` | `chat_message_append` nhận `in_reply_to_message_id`, trả tin cũ (`created = false`) khi đã có tin agent; `TURN_IN_PROGRESS` và phát lại đọc bằng `NOT EXISTS` |
+
+**Migration 0012 — kết quả mã (2026-10-12):** `0012_chat_message_reply_link.sql`; `chat_message_append` nhận `in_reply_to_message_id` (kiểm tin được trả lời là `EMPLOYEE` của chính phiên; đã có câu trả lời thì trả tin cũ, `created = False`; `unique_violation` bắt trong savepoint làm lưới thứ hai). 17 test mới (`LienKetTraLoi`): tool; đồng thời — 6 bên ghi cùng lúc, mỗi bên một id, đúng một tin; DB tự từ chối khi bỏ qua tool (hai tin cùng trả lời một tin → `unique_violation`; trỏ sang phiên khác → `foreign_key_violation`, bằng `bo19_app`); đường xoá (xoá nội dung bằng `bo19_app` không bị chặn và liên kết còn nguyên; `bo19_app` không có `DELETE`; chủ bảng xoá cả phiên một câu lệnh chạy, xoá riêng tin đã được trả lời bị khoá ngoại chặn). Bộ test 837, `lint-imports` 8/8. **Đột biến 10 mẫu, cả 10 đỏ:** bỏ `UNIQUE` từng phần; khoá ngoại đơn thay cho khoá ghép; `ON DELETE CASCADE`; bỏ hai `CHECK`; bỏ lưới `unique_violation`; không kiểm `EMPLOYEE`; không giới hạn trong phiên; tin `EMPLOYEE` mang liên kết; trả `created = True`. **Nêu rõ:** thêm điều kiện `WHERE author = 'AGENT'` vào `UNIQUE` là thừa về hành vi (`ck_chat_message_reply_only_agent` đã bảo đảm chỉ tin agent mang liên kết) — giữ theo yêu cầu của PO, không đo bằng đột biến.
+
+### B6b — docs-first: phạm vi, tool đọc, hạn chót, ghi tin agent (2026-10-12)
+
+PO duyệt kế hoạch B6b (Q1–Q7, 2026-10-09). Sửa tài liệu trước mã:
+
+| Tệp | Đổi |
+|---|---|
+| `03-agents.md` | **Tool mới `chat_turn_context_read`** (Q2): chỉ tin `EMPLOYEE` của chính phiên, chủ phiên mới đọc, không `audit_event`, lỗi không mang văn bản. `IntakeState.rejection_codes` (Q3). Phạm vi Sprint 1 của `intake_graph`: `MULTIPLE`/`TYPE_CHANGED` rẽ `ask_clarification` (G2); nhánh ngoài phạm vi không gọi tool, `procedure_store = NOT_READY` hằng (Q4). **`render_reply` ghi tin agent trong node**, `id` xác định `uuid5`, văn bản không qua state |
+| `05-api.md` | `turn_guard_s`: kiểm `TURN_IN_PROGRESS` và ghi tin nhân viên cùng một giao dịch dưới khoá phiên; `RequestSummary` rút gọn trong `turn.reply`; hai giá trị `stage` ở Sprint 1 |
+| `06-structure.md`, `decisions/ADR-016` | **Graph sync trong thread + `asyncio.run` mỗi lời gọi gateway**; hạn chót tuyệt đối truyền xuống từng lời gọi (`min(WV-04/WV-06, thời gian còn lại của lượt)`); cờ huỷ hợp tác; biên node; checkpointer; #22 và #25; `api/turns`, `api/sse`; **bước kiểm #23** (đề xuất ghi #25 — đổi số vì #23 là số trống kế tiếp) |
+| `12-roadmap.md` | O1-13 thêm hai tỷ lệ mã con; **O1-15** `CHANGES_REQUESTED` ca `SLOT_DATA` gắn lát `document_graph`; **O1-16** slot `LIST` gắn lát `INTRODUCTION_LETTER` (PO ghi mở) |
+| Ngoài kế hoạch, ghi rõ | Hai hàm đọc cấu hình `load_catalog` và `slot_specs` đặt ở `tool_layer.checks` (không phải tool): P1 cần catalog, P2 cần slot_specs, mà thiết kế chưa nêu nơi lấy. Nếu PO muốn thành tool có tên thì đổi — mặc định giữ ở `checks` cùng khuôn `check_request` |
+
+### B6b — kết quả mã (2026-10-12)
+
+| Hạng mục | Kết quả |
+|---|---|
+| Bước 0 | `request_slots_write`: `quote` ⊂ tin nhắn khớp chính xác; `value` ⊂ `quote` khớp nới (NFC + `casefold` + gộp khoảng trắng); mã con `QUOTE_NOT_IN_MESSAGE` / `VALUE_NOT_IN_QUOTE`; P2 `extract_slots` 1.1. 8 mẫu đột biến, cả 8 đỏ |
+| Migration `0012` | `chat_message.in_reply_to_message_id`, khoá ngoại ghép cùng phiên, `UNIQUE` từng phần, `ON DELETE NO ACTION` (lý do ở `04-data.md`); 10 mẫu đột biến, cả 10 đỏ |
+| Khởi động | #22 có code (`api`, `worker`); **#23** file khuôn trả lời (đề xuất ghi #25 — đổi số vì #23 là số trống kế tiếp) |
+| `orchestrator` | `state` (`IntakeState` v1, `rejection_codes`); `runtime` (`node_boundary`, `builder`, `checkpointer` không `setup()`, `threads`); `intake_graph` (12 node, ánh xạ tám dòng, khuôn trả lời, `render_reply` ghi tin agent với `id` xác định); `runner.IntakeRunner` |
+| `tool_layer` | `chat_turn_context_read`; `chat_turn_status`; `turn_guard_s` của `chat_message_append`; `chat_session_open(session_id=…)`; `checks.config` (catalog, `slot_specs`, nhãn, tên loại) |
+| `api` | bốn endpoint hội thoại; `turns` (bộ giám sát lượt: hạn chót phụ, đóng êm); `sse`; mã lỗi `PERMISSION_DENIED`, `NOT_ACCEPTABLE`, `IDEMPOTENCY_KEY_*`, `CHAT_SESSION_CLOSED`, `TURN_IN_PROGRESS`, `TURN_NOT_FINISHED` (có biến thể thông điệp cố định) |
+| Công cụ | `tools/turn-trial/` (O1-13): 11 kịch bản, ≤ 24 lời gọi, chỉ số và mã; test chạy trọn với server giả ở CI |
+| Kiểm | **956 test OK**, `lint-imports` 8/8 |
+| Đột biến lát graph + api | **39 mẫu, cả 39 đỏ:** bộ đếm làm rõ (không đặt lại, đặt lại sai, trần lệch, không tăng); `resume_context` (mỗi lượt, cả khi đang thu thập); `MULTIPLE` đi mở request; luôn mở request mới; `procedure_store`; khuôn thử lại (slot bị loại, `purpose`); `NEEDS_INFO ↔ DRAFT`; mã con; tên slot bịa; không đặt lại trường theo lượt; cờ huỷ, hạn chót lượt, **không truyền hạn chót xuống gateway**; `id` tin agent ngẫu nhiên; `BUDGET_LIMIT`; schema và trạng thái thread; **node không qua biên, biên chép thông điệp**; hạn chót phụ, cờ ở hạn chót phụ, đóng êm không huỷ; guard lượt trước; `abandoned`; `Accept`; phát lại; thứ tự và cursor của tin nhắn; quyền chủ phiên; mã HTTP lặp lại |
+| **Mẫu tương đương, nêu rõ** | Đổi phép thay chuỗi `{tên}` thành `str.format` trong `reply_templates.render` (mẫu T1 của lô khuôn) không làm test nào đỏ: `str.format` cũng không diễn giải lại giá trị đã thế — giữ thay chuỗi vì khuôn không có cú pháp thuộc tính; và `WHERE author = 'AGENT'` của `UNIQUE` từng phần là thừa về hành vi (đã nêu ở mục `0012`) |
+| **Chưa làm / nói thẳng** | **Chưa có số đo Groq thật** (O1-13) — chờ PO chạy `tools/turn-trial/`. `GET /requests/{id}`, `confirm-slots`, `submit` (PO Q5). Không có trần body cho `POST …/turns` ngoài `max_length` của `TurnBody` (nợ nhỏ: body quá lớn vẫn bị đọc hết trước khi pydantic từ chối). `SIGTERM`: cửa sổ drain trên gói free ≈ 5 s (S4) ngắn hơn hạn chót lượt — lượt đang chạy có thể mất câu trả lời, client dựng lại bằng `GET …/messages` (A-056, rủi ro đã chấp nhận) |
+
+### B6b — sau duyệt PO 2026-10-12: ghi nhận và đề xuất trần body (2026-10-12)
+
+| File | Thay đổi |
+|---|---|
+| `03-agents.md` → 0.25 | Một đoạn dưới bảng của mục `intake_agent`: P1/P2 lấy `request_type_catalog` và `slot_specs` qua `tool_layer.checks.config` — hàm đọc cấu hình, không phải tool (PO chấp nhận như hiện tại) |
+| `proposals/reply-templates.md` | R2: ghi nhận số bước kiểm là **#23, không phải #25** (PO) |
+| `proposals/turn-body-limit.md` | **Mới, chờ PO duyệt diff:** trần body `POST …/turns` = `CHAT_MESSAGE_MAX_CHARS × 12 + 1024` = 25 024 byte; `openapi.yaml` thiếu `413` cho endpoint này và `TurnBody.text` chưa có `maxLength` — chưa sửa, chưa viết code |
+
+### B6b — trần body và độ dài `POST …/turns` (PO duyệt 2026-10-12)
+
+| File | Thay đổi |
+|---|---|
+| `contracts/openapi.yaml` | `postChatTurn` thêm `413`; `PayloadTooLarge` nêu body `POST …/turns` > 37024 byte; `TurnBody.text`: `maxLength: 2000`, mô tả "độ dài tính bằng code point sau NFC" |
+| `05-api.md` → 0.23 | Mục Hội thoại: quy tắc độ dài 2000 code point **sau NFC**, **cách đếm của client** (`normalize('NFC')` rồi đếm code point, không dùng `.length` UTF-16); dòng `PAYLOAD_TOO_LARGE` thêm body `POST …/turns` |
+| `06-structure.md` → 0.42, `proposals/turn-body-limit.md` | Triển khai; đề xuất ghi **hệ số 18 thay 12** (PO: một ký tự NFC tiếng Việt có thể thành 3 code point NFD, mỗi code point `\uXXXX` = 6 byte) → `TURN_BODY_MAX_BYTES = 2000 × 18 + 1024 = 37 024` |
+| Code | `working_values.TURN_BODY_MAX_BYTES`; `BodyLimitMiddleware` nhận mẫu đường dẫn (`re.Pattern`, khớp toàn bộ); `TurnBody.text` chuẩn hoá NFC trong `field_validator(mode="before")` **trước** `max_length` |
+| Test | `test_turn_body_limit.py` (22 test): NFD 1.500 chữ có dấu (4.500 code point thô) được nhận và lưu NFC; đúng 2000 sau NFC nhận, 2001 từ chối kể cả khi nhập NFD; body mã hoá hết thành `\uXXXX` vẫn dưới trần; 413 trước xác thực, không ghi tin, không gọi LLM; khớp openapi / 05-api / working_values |
+| Đột biến | 12 mẫu: 11 đỏ (kiểm độ dài trước NFC, validator `after`, hệ số 12, bỏ 1024, mẫu chỉ uuid, mẫu quá rộng, `match` thay `fullmatch`, bỏ kiểm phương thức, không mẫu, lệch một byte, dùng trần đăng nhập). **Mẫu tương đương:** bỏ `min_length=1` trên `TurnBody.text` — `chat_message_append` trả `MessageInvalid` và router ra cùng `VALIDATION_FAILED` / `BLANK` |

@@ -283,6 +283,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "406": { $ref: "#/components/responses/NotAcceptable" }
         "409": { $ref: "#/components/responses/Conflict" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "422": { $ref: "#/components/responses/Unprocessable" }
         "500": { $ref: "#/components/responses/InternalError" }
 
@@ -1734,7 +1735,7 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorEnvelope" }
     PayloadTooLarge:
-      description: PAYLOAD_TOO_LARGE — file vượt trần (trần TBD, A-031); và body của POST /auth/session vượt 4096 byte
+      description: PAYLOAD_TOO_LARGE — file vượt trần (trần TBD, A-031); body của POST /auth/session vượt 4096 byte; body của POST /chat-sessions/{chat_session_id}/turns vượt 37024 byte
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorEnvelope" }
@@ -2235,9 +2236,10 @@ components:
       required: [text]
       properties:
         text:
-          description: Độ dài tối đa TBD (A-031)
+          description: Độ dài tính bằng code point sau chuẩn hoá NFC — server chuẩn hoá NFC trước khi kiểm độ dài (WV-15, A-031)
           type: string
           minLength: 1
+          maxLength: 2000
     PendingQuestionView:
       description: Tiện ích cho giao diện, không phải sự thật — mất khi stream đứt
       type: object

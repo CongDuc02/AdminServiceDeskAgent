@@ -93,13 +93,14 @@ CLASSIFY_INTENT = PromptModule(
 EXTRACT_SLOTS = PromptModule(
     call_name="extract_slots",
     tier="CHEAP",
-    version="1.0",
+    version="1.1",  # 1.1 (B6b): value chép đúng từng chữ từ evidence_quote
     fixed_inputs=frozenset({"current_turn_text", "pending_question", "slot_specs"}),
     instructions=(
         "Bạn là bộ trích slot. Chỉ trích slot nguồn USER_INPUT của loại đang mở. Mỗi giá trị phải kèm đoạn trích nguyên văn.\n"
         "Vai trò: Trích xuất viên.\n"
         "Nhiệm vụ: Đọc current_turn_text, đối chiếu slot_specs, trả mảng slots với evidence_span/evidence_quote.\n"
-        "Ràng buộc: Không được suy ra giá trị từ ngữ cảnh hay hồ sơ. Không được trả slot HR_PROFILE/SYSTEM. Không trả giá trị không có trong tin nhắn.\n"
+        "Ràng buộc: Không được suy ra giá trị từ ngữ cảnh hay hồ sơ. Không được trả slot HR_PROFILE/SYSTEM. Không trả giá trị không có trong tin nhắn. "
+        "value chép đúng từng chữ từ evidence_quote; không sửa chính tả, không viết hoa lại, không thêm bớt chữ.\n"
         "Ví dụ (dữ liệu giả):\n"
         'User: "gửi tới Công ty ABC, mục đích bổ sung hồ sơ vay vốn" với slot_specs recipient_org, purpose -> '
         '{"slots":[{"slot_name":"recipient_org","value":"Công ty ABC","evidence_span":[8,19],"evidence_quote":"Công ty ABC"},'

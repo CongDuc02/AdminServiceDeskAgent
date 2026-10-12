@@ -90,7 +90,7 @@
 | # | Quyết định | Mặc định |
 |---|---|---|
 | R1 | Nơi lưu khuôn: A (JSON cạnh module) / B (Python) / C (DB) | **A** |
-| R2 | Thêm bước kiểm khởi động #25 "file khuôn hợp lệ" | Thêm |
+| R2 | Thêm bước kiểm khởi động #25 "file khuôn hợp lệ" | Thêm — **ghi nhận (PO, 2026-10-12): số là #23, không phải #25** (#23 là số trống kế tiếp trong bảng của `06-structure.md`); `STARTUP_CHECK_PENDING` và `registry.py` dùng #23 |
 | R3 | `offer_submit` chỉ nêu nhãn, không lặp giá trị slot trong chat | Đồng ý |
 | R4 | Nhãn slot: cột `label_vi` (migration `0011`) / trong file khuôn | **Cột `label_vi`** |
 | R5 | `status_label`: hằng số ở `bo19.domain` | Đồng ý |

@@ -1,6 +1,6 @@
 # Prompt Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.5 · **Trạng thái:** Draft chờ duyệt · **v0.2:** đợt sửa A-075 — enum của output contract sinh từ cấu hình lúc gọi (ADR-025), `secondary_intent`, luật phiên bản khi catalog đổi — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.3:** đợt sửa 4 sau Phase 13 — slot `LIST` và `maxLength` điền lúc gọi (AUD-14); ghi chú ID `P1`–`P5` (AUD-22) · **v0.4:** đợt sửa 5 sau Phase 13 — 16 tham chiếu `file.md:dòng` thành tên mục (AUD-17); JSON Schema draft 2020-12 `[CẦN XÁC MINH]` (AUD-21) · **v0.5:** `ClassifyIntentResult`: `secondary_intent`, `retrieval_query` vào `required`, `null` = không có (PO, 2026-10-02)
+**Phiên bản:** 0.6 · **Trạng thái:** Draft chờ duyệt · **v0.2:** đợt sửa A-075 — enum của output contract sinh từ cấu hình lúc gọi (ADR-025), `secondary_intent`, luật phiên bản khi catalog đổi — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.3:** đợt sửa 4 sau Phase 13 — slot `LIST` và `maxLength` điền lúc gọi (AUD-14); ghi chú ID `P1`–`P5` (AUD-22) · **v0.4:** đợt sửa 5 sau Phase 13 — 16 tham chiếu `file.md:dòng` thành tên mục (AUD-17); JSON Schema draft 2020-12 `[CẦN XÁC MINH]` (AUD-21) · **v0.5:** `ClassifyIntentResult`: `secondary_intent`, `retrieval_query` vào `required`, `null` = không có (PO, 2026-10-02) · **v0.6:** B6b — P2 `extract_slots` 1.1: `value` chép đúng từng chữ từ đoạn trích; độ chặt hai phép so khớp (PO, 2026-10-09)
 
 > File này chốt prompt nào tồn tại, mỗi prompt được đọc gì, trả về dạng gì và bị chặn thế nào. File này **không** mô tả khung thể thức (nằm trong `template .docx` — ADR-001, D-007), **không** chọn provider/model cụ thể (A-026), **không** thiết kế màn hình duyệt hay cơ chế dừng khi chạm trần (Phase 8).
 
@@ -114,7 +114,7 @@ Hình dạng — `<…>` là chỗ `ai_gateway` điền lúc gọi, không phả
 }
 ```
 
-Ràng buộc ngoài schema (node kiểm): `slot_name` ∈ slot `USER_INPUT` của `request_type` đang mở; `value` là mảng **khi và chỉ khi** `data_type` của slot là `LIST`, và khi đó mỗi phần tử phải xuất hiện nguyên văn trong `evidence_quote` *(đợt sửa 4 sau Phase 13, AUD-14 — trước đó slot `LIST` như `accompanying_persons` không trích được)*; `evidence_quote` phải là substring nguyên văn của `current_turn_text` tại `evidence_span` — không có thì loại, coi như thiếu (`EVIDENCE_MISMATCH` của `request_slots_write`, mục Chi tiết từng tool của `03-agents.md`).
+Ràng buộc ngoài schema (node kiểm): `slot_name` ∈ slot `USER_INPUT` của `request_type` đang mở; `value` là mảng **khi và chỉ khi** `data_type` của slot là `LIST`, và khi đó mỗi phần tử phải xuất hiện nguyên văn trong `evidence_quote` *(đợt sửa 4 sau Phase 13, AUD-14 — trước đó slot `LIST` như `accompanying_persons` không trích được)*; `evidence_quote` phải là substring nguyên văn của `current_turn_text` tại `evidence_span` — không có thì loại, coi như thiếu (`EVIDENCE_MISMATCH` của `request_slots_write`, mục Chi tiết từng tool của `03-agents.md`). **Độ chặt hai phép (B6b):** `evidence_quote` ⊂ tin nhắn khớp chính xác sau NFC; `value` ⊂ `evidence_quote` khớp theo NFC + `casefold` + gộp khoảng trắng — nên prompt P2 dặn `value` chép đúng từng chữ từ đoạn trích để phép nới chỉ là lưới an toàn.
 
 ### 3.3 P3 `select_procedure_passages` — `SelectPassagesResult`
 
@@ -173,7 +173,7 @@ Một biến một lời gọi. Schema theo biến:
 * **Role:** Trích xuất viên.
 * **Task:** Đọc `current_turn_text`, đối chiếu `slot_specs`, trả mảng `slots` với `evidence_span`/`evidence_quote`.
 * **Context:** `current_turn_text` (RES) · `pending_question` (INT) · `slot_specs` (INT, tên/kiểu/mô tả).
-* **Guardrail:** Không được suy ra giá trị từ ngữ cảnh hay hồ sơ. Không được trả slot `HR_PROFILE`/`SYSTEM`. Không trả giá trị không có trong tin nhắn.
+* **Guardrail:** Không được suy ra giá trị từ ngữ cảnh hay hồ sơ. Không được trả slot `HR_PROFILE`/`SYSTEM`. Không trả giá trị không có trong tin nhắn. **`value` chép đúng từng chữ từ `evidence_quote`; không sửa chính tả, không viết hoa lại, không thêm bớt chữ** (thêm ở `extract_slots` 1.1, B6b).
 * **Failure:** `evidence_quote` không khớp nguyên văn → loại slot (`EVIDENCE_MISMATCH`). JSON hỏng → sửa 1 lần → vẫn hỏng thì coi như không hiểu, hỏi lại.
 * **Few-shot (dữ liệu giả):**
   > User (giả): "gửi tới Công ty ABC, mục đích bổ sung hồ sơ vay vốn" + slot_specs `recipient_org`, `purpose` → `{"slots":[{"slot_name":"recipient_org","value":"Công ty ABC","evidence_span":[8,19],"evidence_quote":"Công ty ABC"},{"slot_name":"purpose","value":"bổ sung hồ sơ vay vốn","evidence_span":[30,52],"evidence_quote":"bổ sung hồ sơ vay vốn"}]}`

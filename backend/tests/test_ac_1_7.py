@@ -32,6 +32,7 @@ from bo19.startup import runner
 from bo19.startup.model import Entry
 
 SECRET = "BI_MAT_PHIEN_KHONG_DUOC_LOT_RA_LOG"
+LLM_KEY = "KHOA_LLM_KHONG_DUOC_LOT_RA_LOG"
 
 
 @unittest.skipUnless(os.environ.get("BO19_TEST_PG_SUPERUSER_DSN"), "cần BO19_TEST_PG_SUPERUSER_DSN")
@@ -80,7 +81,7 @@ class AC17(unittest.TestCase):
         self.addCleanup(logging.getLogger().removeHandler, h)
 
     def start(self, user: str, entry: Entry = Entry.API, **over):
-        env = {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": self.dsn(user), "BO19_SESSION_SECRET": SECRET}
+        env = {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": self.dsn(user), "BO19_SESSION_SECRET": SECRET, "BO19_LLM_API_KEY": LLM_KEY}
         env = {**env, **over}
         env = {k: v for k, v in env.items() if v is not None}
         return runner.run(entry, load_settings(env), env, migrations_root=self.root / "m")
@@ -117,12 +118,20 @@ class AC17(unittest.TestCase):
         # cùng DB, cùng operating_mode, BO19_ENVIRONMENT = prod: điều kiện không kích hoạt — luôn qua
         self.assertTrue(self.start("bo19_app", BO19_ENVIRONMENT="prod").ok)
 
+    def test_e_thieu_khoa_llm_bi_chan_o_buoc_22_khong_lo_gia_tri(self):  # B6b: từ lát intake_graph, api và worker gọi LLM
+        for entry in (Entry.API, Entry.WORKER):
+            for missing in (None, "", "   "):
+                report = self.start("bo19_app", entry, BO19_LLM_API_KEY=missing)
+                self.assertEqual(report.failures, ("STARTUP_22_LLM_API_KEY_MISSING",), (entry, missing))
+        self.assertNotIn(LLM_KEY, self.out.getvalue())
+        self.assertTrue(self.start("bo19_app", Entry.CRON, BO19_LLM_API_KEY=None).ok)  # cron không gọi LLM — #22 không áp
+
     def test_d_bo19_app_voi_cau_hinh_dung_qua_du_cac_buoc_da_co_code(self):
         self.set_operating_mode(None)  # chưa có dòng nào — D-009
         report = self.start("bo19_app")
         self.assertTrue(report.ok, report.failures)
-        self.assertEqual(report.passed, ("1", "2", "5", "10", "11", "12", "13", "15", "16", "17", "19", "20", "21"))
-        self.assertEqual(report.pending, ("3", "4a", "4b", "4c", "8", "9", "14", "22"))  # chưa làm — không tính là đạt
+        self.assertEqual(report.passed, ("1", "2", "5", "10", "11", "12", "13", "15", "16", "17", "19", "20", "21", "22", "23"))
+        self.assertEqual(report.pending, ("3", "4a", "4b", "4c", "8", "9", "14"))  # chưa làm — không tính là đạt
         self.assertEqual(report.skipped, ())
         info = [json.loads(x) for x in self.out.getvalue().splitlines() if '"STARTUP_CHECK_INFO"' in x]
         self.assertEqual([(i["step"], i["mode"], i["source"]) for i in info], [("15", "NON_PRODUCTION", "DEFAULT_NO_ROW")])
@@ -132,7 +141,7 @@ class AC17(unittest.TestCase):
     def test_worker_va_cron_chay_dung_cot_cua_bang(self):
         self.set_operating_mode(None)
         worker = self.start("bo19_app", Entry.WORKER)
-        self.assertEqual(worker.passed, ("1", "2", "5", "10", "11", "13", "15", "16", "17", "19", "21"))  # không có #12, #20: chỉ cột api
+        self.assertEqual(worker.passed, ("1", "2", "5", "10", "11", "13", "15", "16", "17", "19", "21", "22"))  # không có #12, #20: chỉ cột api
         cron = self.start("bo19_app", Entry.CRON)
         self.assertEqual(cron.passed, ("1", "2", "10", "13", "16", "19"))  # cron không có #11, #15, #17
 
@@ -141,6 +150,7 @@ class AC17(unittest.TestCase):
         self.start("bo19_app", BO19_ENVIRONMENT=None)
         text = self.out.getvalue()
         self.assertNotIn(SECRET, text)
+        self.assertNotIn(LLM_KEY, text)
         self.assertNotIn(self.db, text)  # tên database nằm trong DSN
         self.assertNotIn("postgresql://", text)
 
