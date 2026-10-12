@@ -3382,3 +3382,15 @@ PO duyệt migration `0012` kèm hai chỉnh. Bước 0 đã có CI xanh ở `f3
 | `03-agents.md`, `05-api.md` | `chat_message_append` nhận `in_reply_to_message_id`, trả tin cũ (`created = false`) khi đã có tin agent; `TURN_IN_PROGRESS` và phát lại đọc bằng `NOT EXISTS` |
 
 **Migration 0012 — kết quả mã (2026-10-12):** `0012_chat_message_reply_link.sql`; `chat_message_append` nhận `in_reply_to_message_id` (kiểm tin được trả lời là `EMPLOYEE` của chính phiên; đã có câu trả lời thì trả tin cũ, `created = False`; `unique_violation` bắt trong savepoint làm lưới thứ hai). 17 test mới (`LienKetTraLoi`): tool; đồng thời — 6 bên ghi cùng lúc, mỗi bên một id, đúng một tin; DB tự từ chối khi bỏ qua tool (hai tin cùng trả lời một tin → `unique_violation`; trỏ sang phiên khác → `foreign_key_violation`, bằng `bo19_app`); đường xoá (xoá nội dung bằng `bo19_app` không bị chặn và liên kết còn nguyên; `bo19_app` không có `DELETE`; chủ bảng xoá cả phiên một câu lệnh chạy, xoá riêng tin đã được trả lời bị khoá ngoại chặn). Bộ test 837, `lint-imports` 8/8. **Đột biến 10 mẫu, cả 10 đỏ:** bỏ `UNIQUE` từng phần; khoá ngoại đơn thay cho khoá ghép; `ON DELETE CASCADE`; bỏ hai `CHECK`; bỏ lưới `unique_violation`; không kiểm `EMPLOYEE`; không giới hạn trong phiên; tin `EMPLOYEE` mang liên kết; trả `created = True`. **Nêu rõ:** thêm điều kiện `WHERE author = 'AGENT'` vào `UNIQUE` là thừa về hành vi (`ck_chat_message_reply_only_agent` đã bảo đảm chỉ tin agent mang liên kết) — giữ theo yêu cầu của PO, không đo bằng đột biến.
+
+### B6b — docs-first: phạm vi, tool đọc, hạn chót, ghi tin agent (2026-10-12)
+
+PO duyệt kế hoạch B6b (Q1–Q7, 2026-10-09). Sửa tài liệu trước mã:
+
+| Tệp | Đổi |
+|---|---|
+| `03-agents.md` | **Tool mới `chat_turn_context_read`** (Q2): chỉ tin `EMPLOYEE` của chính phiên, chủ phiên mới đọc, không `audit_event`, lỗi không mang văn bản. `IntakeState.rejection_codes` (Q3). Phạm vi Sprint 1 của `intake_graph`: `MULTIPLE`/`TYPE_CHANGED` rẽ `ask_clarification` (G2); nhánh ngoài phạm vi không gọi tool, `procedure_store = NOT_READY` hằng (Q4). **`render_reply` ghi tin agent trong node**, `id` xác định `uuid5`, văn bản không qua state |
+| `05-api.md` | `turn_guard_s`: kiểm `TURN_IN_PROGRESS` và ghi tin nhân viên cùng một giao dịch dưới khoá phiên; `RequestSummary` rút gọn trong `turn.reply`; hai giá trị `stage` ở Sprint 1 |
+| `06-structure.md`, `decisions/ADR-016` | **Graph sync trong thread + `asyncio.run` mỗi lời gọi gateway**; hạn chót tuyệt đối truyền xuống từng lời gọi (`min(WV-04/WV-06, thời gian còn lại của lượt)`); cờ huỷ hợp tác; biên node; checkpointer; #22 và #25; `api/turns`, `api/sse` |
+| `12-roadmap.md` | O1-13 thêm hai tỷ lệ mã con; **O1-15** `CHANGES_REQUESTED` ca `SLOT_DATA` gắn lát `document_graph`; **O1-16** slot `LIST` gắn lát `INTRODUCTION_LETTER` (PO ghi mở) |
+| Ngoài kế hoạch, ghi rõ | Hai hàm đọc cấu hình `load_catalog` và `slot_specs` đặt ở `tool_layer.checks` (không phải tool): P1 cần catalog, P2 cần slot_specs, mà thiết kế chưa nêu nơi lấy. Nếu PO muốn thành tool có tên thì đổi — mặc định giữ ở `checks` cùng khuôn `check_request` |
