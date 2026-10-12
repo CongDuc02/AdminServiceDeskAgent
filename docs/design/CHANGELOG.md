@@ -3429,3 +3429,17 @@ PO duyệt kế hoạch B6b (Q1–Q7, 2026-10-09). Sửa tài liệu trước m�
 | Code | `working_values.TURN_BODY_MAX_BYTES`; `BodyLimitMiddleware` nhận mẫu đường dẫn (`re.Pattern`, khớp toàn bộ); `TurnBody.text` chuẩn hoá NFC trong `field_validator(mode="before")` **trước** `max_length` |
 | Test | `test_turn_body_limit.py` (22 test): NFD 1.500 chữ có dấu (4.500 code point thô) được nhận và lưu NFC; đúng 2000 sau NFC nhận, 2001 từ chối kể cả khi nhập NFD; body mã hoá hết thành `\uXXXX` vẫn dưới trần; 413 trước xác thực, không ghi tin, không gọi LLM; khớp openapi / 05-api / working_values |
 | Đột biến | 12 mẫu: 11 đỏ (kiểm độ dài trước NFC, validator `after`, hệ số 12, bỏ 1024, mẫu chỉ uuid, mẫu quá rộng, `match` thay `fullmatch`, bỏ kiểm phương thức, không mẫu, lệch một byte, dùng trần đăng nhập). **Mẫu tương đương:** bỏ `min_length=1` trên `TurnBody.text` — `chat_message_append` trả `MessageInvalid` và router ra cùng `VALIDATION_FAILED` / `BLANK` |
+
+### B7 — bước 0 docs-first (2026-10-12)
+
+PO duyệt kế hoạch B7 ngày 2026-10-12, kèm: payload `render_document` chỉ mang id; hai `submit` đồng thời → một job, một `decision_record`; ghi mã slot bị loại trong kết quả turn-trial; giữ thứ tự risk-first B8a → B10; thêm R1-5 và CLI chat (chờ duyệt phạm vi).
+
+| File | Thay đổi |
+|---|---|
+| `12-roadmap.md` → 0.50 | O1-13: số đo Groq thật của B6b — chờ PO quyết đóng; `QUOTE_NOT_IN_MESSAGE` 1/13 theo dõi, chưa đổi so khớp. **O1-17 mới:** P1 treo 8 s một lần (S7), turn-trial ghi trường `LLM_PROVIDER_ERROR` từ B7, trần mỗi lần thử chỉ bàn khi lặp lại. **Mục 4.7 mới:** thứ tự lát B7 → B10 risk-first. **R1-5 mới:** chất lượng hội thoại |
+| `04-data.md` → 0.27 | Mục Vận hành: payload theo `job_type` — `render_document` = `{request_id, decision_record_id}`, `dedupe_key` = `request_id`, không giá trị nào |
+| `05-api.md` → 0.24 | Mục Request: đoạn "Triển khai ở B7" — phạm vi Sprint 1 (`scope=OWN`; `GET /requests/{id}` chỉ vế người tạo), thứ tự kiểm của `submit`, lý do không gắn slot, `SlotView.label`, `slot_names` một tên |
+| `contracts/openapi.yaml` | `SlotView`: thêm `label` (bắt buộc) từ `slot_definition.label_vi` — R4 của `proposals/reply-templates.md` đã báo trước việc này; `description` ghi rõ là văn bản cho LLM |
+| `proposals/chat-cli.md` | **Mới, chờ PO duyệt:** phạm vi `tools/chat-cli/`, chốt chặn cùng khuôn turn-trial, ba câu hỏi kèm mặc định |
+
+**Lệch kế hoạch đã duyệt, nói thẳng:** kế hoạch ghi `tool_layer.tools.request_slot_confirm` và `tool_layer.jobs.enqueue`; thực tế `request_slot_confirm` đã có từ B6a ở `tool_layer.employee_ops`, và hàm đưa job vào hàng đợi đã có từ B5 ở `tool_layer.kernel.enqueue` (kèm `dedupe_key`). B7 dùng lại cả hai; `request_submit` đặt ở `tool_layer.gate_ops` theo cây của `06-structure.md`. `tool_layer.jobs` vẫn là phần giành job của B8a.
