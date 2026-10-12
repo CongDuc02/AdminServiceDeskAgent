@@ -13,6 +13,7 @@ một bên và tool trả tin đã có — "đúng một tin agent mỗi lượt
 """
 from __future__ import annotations
 
+import math
 import re
 import unicodedata
 import uuid
@@ -22,6 +23,7 @@ import psycopg
 
 from bo19.config import working_values as wv
 from bo19.persistence.pool import Pool
+from bo19.persistence.read import read_only
 from bo19.persistence.write import unit_of_work
 from bo19.tool_layer.kernel.context import ToolContext
 from bo19.tool_layer.kernel.permission import require_any, require_system
@@ -44,6 +46,16 @@ class MessageInvalid(ToolError):
 
 class MessageIdConflict(ToolError):
     code = "MESSAGE_ID_CONFLICT"
+
+
+class TurnInProgress(ToolError):
+    """Lượt trước chưa có câu trả lời và còn trong hạn chót (mục SSE của 05-api.md). `retry_after_seconds` — số nguyên ≥ 1, làm tròn lên."""
+
+    code = "TURN_IN_PROGRESS"
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        super().__init__()
+        self.retry_after_seconds = retry_after_seconds
 
 
 @dataclass(frozen=True)
@@ -72,6 +84,25 @@ def chat_session_open(pool: Pool, ctx: ToolContext) -> SessionOpen:
         return SessionOpen(session_id, True)
 
 
+@dataclass(frozen=True)
+class TurnStatus:
+    reply_message_id: uuid.UUID | None  # tin agent đã trả lời tin nhân viên này, nếu có
+    age_seconds: float  # tuổi của tin nhân viên, đo bằng đồng hồ của DB
+
+
+def chat_turn_status(pool: Pool, ctx: ToolContext, *, chat_session_id: uuid.UUID, message_id: uuid.UUID) -> TurnStatus:
+    """Chỉ đọc: lượt của tin nhân viên này đã có câu trả lời chưa, và tin đã được bao lâu — cho phát lại và `TURN_NOT_FINISHED` (mục SSE của 05-api.md). Chủ phiên mới đọc."""
+    me = actor_id(ctx)
+    require_any(ctx, ("request.create", "request.create_on_behalf"))
+    with pool.acquire() as conn, read_only(conn):
+        row = conn.execute("SELECT s.employee_id, m.author, extract(epoch FROM now() - m.created_at), "
+                           "(SELECT a.id FROM chat_message a WHERE a.in_reply_to_message_id = m.id AND a.author = 'AGENT') "
+                           "FROM chat_session s JOIN chat_message m ON m.chat_session_id = s.id WHERE s.id = %s AND m.id = %s", (chat_session_id, message_id)).fetchone()
+    if row is None or row[0] != me or row[1] != "EMPLOYEE":
+        raise ChatSessionNotFound
+    return TurnStatus(row[3], float(row[2]))
+
+
 def _agent_reply(conn: psycopg.Connection, employee_message_id: uuid.UUID) -> tuple[uuid.UUID, int] | None:
     """(id, seq) của tin agent đã trả lời tin nhân viên này, nếu có."""
     row = conn.execute("SELECT id, seq FROM chat_message WHERE in_reply_to_message_id = %s AND author = 'AGENT'", (employee_message_id,)).fetchone()
@@ -79,7 +110,7 @@ def _agent_reply(conn: psycopg.Connection, employee_message_id: uuid.UUID) -> tu
 
 
 def chat_message_append(pool: Pool, ctx: ToolContext, *, chat_session_id: uuid.UUID, message_id: uuid.UUID, author: str, body: str, reply_template_id: str | None = None,
-                        request_id: uuid.UUID | None = None, in_reply_to_message_id: uuid.UUID | None = None) -> Appended:
+                        request_id: uuid.UUID | None = None, in_reply_to_message_id: uuid.UUID | None = None, turn_guard_s: float | None = None) -> Appended:
     if author == "EMPLOYEE":
         me = actor_id(ctx)
         require_any(ctx, ("request.create", "request.create_on_behalf"))
@@ -113,6 +144,11 @@ def chat_message_append(pool: Pool, ctx: ToolContext, *, chat_session_id: uuid.U
                 return Appended(answered[0], answered[1], False)  # đã có câu trả lời: không ghi thêm, trả tin cũ
         if session[1] != "OPEN":
             raise ChatSessionClosed
+        if turn_guard_s is not None and author == "EMPLOYEE":
+            pending = conn.execute("SELECT extract(epoch FROM now() - m.created_at) FROM chat_message m WHERE m.chat_session_id = %s AND m.author = 'EMPLOYEE' "
+                                   "AND NOT EXISTS (SELECT 1 FROM chat_message a WHERE a.in_reply_to_message_id = m.id AND a.author = 'AGENT') ORDER BY m.seq DESC LIMIT 1", (chat_session_id,)).fetchone()
+            if pending is not None and float(pending[0]) <= turn_guard_s:
+                raise TurnInProgress(max(1, math.ceil(turn_guard_s - float(pending[0]))))  # lượt trước còn trong hạn chót: không nhận lượt mới (kiểm và ghi cùng một giao dịch dưới khoá phiên)
         seq = conn.execute("SELECT coalesce(max(seq), 0) + 1 FROM chat_message WHERE chat_session_id = %s", (chat_session_id,)).fetchone()[0]
         try:
             with conn.transaction():  # savepoint: unique_violation không làm hỏng giao dịch ngoài

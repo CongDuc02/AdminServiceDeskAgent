@@ -394,5 +394,104 @@ class LienKetTraLoi(ToolBase):
             self.assertEqual(c.execute("select count(*) from chat_message where chat_session_id = %s", (self.sid,)).fetchone()[0], 0)
 
 
+class LuotDangChay(ToolBase):
+    """`turn_guard_s` (TURN_IN_PROGRESS) và `chat_turn_status` — B6b. Kiểm lượt trước và ghi tin mới chạy cùng một giao dịch dưới khoá phiên."""
+
+    GUARD = 30.0
+
+    def setUp(self):
+        super().setUp()
+        self.eid, self.ctx_ = self.employee()
+        self.sid = ch.chat_session_open(self.pool, self.ctx_).chat_session_id
+
+    def send(self, *, guard=GUARD, mid=None):
+        return ch.chat_message_append(self.pool, self.ctx_, chat_session_id=self.sid, message_id=mid or uuid.uuid4(), author="EMPLOYEE", body="xin giấy", turn_guard_s=guard)
+
+    def answer(self, to):
+        return ch.chat_message_append(self.pool, self.sys, chat_session_id=self.sid, message_id=uuid.uuid4(), author="AGENT", body="ok", reply_template_id="ASK_SLOT", in_reply_to_message_id=to)
+
+    def age(self, message_id, seconds):
+        with self.db.connect("bo19_migrator") as c:
+            c.execute("update chat_message set created_at = now() - make_interval(secs => %s) where id = %s", (seconds, message_id))
+
+    def test_tin_dau_vao_duoc_va_tin_ke_tiep_khi_chua_tra_loi_la_turn_in_progress(self):
+        first = self.send()
+        with self.assertRaises(ch.TurnInProgress) as cm:
+            self.send()
+        self.assertTrue(1 <= cm.exception.retry_after_seconds <= int(self.GUARD))
+        with self.db.connect("bo19_migrator") as c:
+            self.assertEqual(c.execute("select count(*) from chat_message where chat_session_id = %s", (self.sid,)).fetchone()[0], 1)  # tin bị từ chối không được ghi
+        self.answer(first.message_id)
+        self.assertTrue(self.send().created)  # đã có câu trả lời thì nhận lượt mới
+
+    def test_qua_han_chot_thi_nhan_luot_moi_ke_ca_khi_chua_co_cau_tra_loi(self):  # A-056: tiến trình chết giữa lượt
+        first = self.send()
+        self.age(first.message_id, self.GUARD + 5)
+        self.assertTrue(self.send().created)
+
+    def test_tin_bi_bo_quen_cu_khong_che_tin_dang_chay_gan_day(self):  # chỉ tin chưa trả lời MỚI NHẤT mới tính
+        old = self.send()
+        self.age(old.message_id, self.GUARD + 60)
+        self.send()  # tin mới, cũng chưa trả lời — tin cũ hơn không được che nó
+        with self.assertRaises(ch.TurnInProgress):
+            self.send()
+
+    def test_dung_bien_han_chot(self):
+        first = self.send()
+        self.age(first.message_id, self.GUARD - 5)
+        with self.assertRaises(ch.TurnInProgress):
+            self.send()
+
+    def test_khong_truyen_guard_thi_khong_kiem(self):
+        self.send(guard=None)
+        self.assertTrue(self.send(guard=None).created)
+
+    def test_gui_lai_cung_id_khong_bi_chan_boi_chinh_no(self):
+        mid = uuid.uuid4()
+        self.send(mid=mid)
+        again = self.send(mid=mid)  # idempotent: trả tin cũ trước khi kiểm lượt
+        self.assertFalse(again.created)
+
+    def test_dong_thoi_chi_mot_luot_duoc_nhan(self):
+        n, ok, busy, errors = 6, [], [], []
+        barrier = threading.Barrier(n)
+
+        def go():
+            barrier.wait()
+            try:
+                ok.append(self.send())
+            except ch.TurnInProgress:
+                busy.append(1)
+            except Exception as e:  # noqa: BLE001
+                errors.append(e)
+
+        threads = [threading.Thread(target=go) for _ in range(n)]
+        [t.start() for t in threads]
+        [t.join(30) for t in threads]
+        self.assertEqual((errors, len(ok), len(busy)), ([], 1, n - 1))
+
+    def test_turn_status(self):
+        first = self.send()
+        s = ch.chat_turn_status(self.pool, self.ctx_, chat_session_id=self.sid, message_id=first.message_id)
+        self.assertEqual(s.reply_message_id, None)
+        self.assertTrue(0 <= s.age_seconds < 5)
+        self.age(first.message_id, 100)
+        reply = self.answer(first.message_id)
+        s = ch.chat_turn_status(self.pool, self.ctx_, chat_session_id=self.sid, message_id=first.message_id)
+        self.assertEqual(s.reply_message_id, reply.message_id)
+        self.assertTrue(99 < s.age_seconds < 110)
+
+    def test_turn_status_chi_cho_chu_phien_va_tin_nhan_vien(self):
+        first = self.send()
+        reply = self.answer(first.message_id)
+        _, other = self.employee()
+        for who, mid in ((other, first.message_id), (self.ctx_, reply.message_id), (self.ctx_, uuid.uuid4())):
+            with self.assertRaises(ch.ChatSessionNotFound):
+                ch.chat_turn_status(self.pool, who, chat_session_id=self.sid, message_id=mid)
+        _, no_perm = self.employee(roles=())
+        with self.assertRaises(PermissionDenied):
+            ch.chat_turn_status(self.pool, no_perm, chat_session_id=self.sid, message_id=first.message_id)
+
+
 if __name__ == "__main__":
     unittest.main()

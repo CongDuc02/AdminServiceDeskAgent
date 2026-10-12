@@ -70,6 +70,7 @@ MATRIX: tuple[Step, ...] = (
     Step("20", "tham số argon2id không thấp hơn WV-16", _A_, B),
     Step("21", "hồ sơ model hợp schema", _AW, B),
     Step("22", "BO19_LLM_API_KEY có mặt (khi api bắt đầu gọi LLM)", _AW, B),
+    Step("23", "file khuôn trả lời hợp lệ", _A_, B),
 )
 
 

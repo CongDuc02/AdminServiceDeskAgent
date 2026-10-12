@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "templates": {
+    "CLARIFY_TYPE": {
+      "text": "Bạn muốn làm loại giấy tờ nào: {type_names}? Bạn nói rõ giúp mình nhé.",
+      "params": {"type_names": "TYPE_NAMES"}
+    },
+    "CLARIFY_TYPE_NO_CANDIDATE": {
+      "text": "Mình chưa hiểu rõ bạn cần giấy tờ nào. Hiện mình hỗ trợ: {type_names}. Bạn cho mình biết thêm nhé.",
+      "params": {"type_names": "TYPE_NAMES"}
+    },
+    "CLARIFY_LIMIT_REACHED": {
+      "text": "Mình chưa hiểu rõ yêu cầu của bạn sau vài lần hỏi. Bạn vui lòng liên hệ trực tiếp Phòng Hành chính để được hỗ trợ.",
+      "params": {}
+    },
+    "ASK_SLOT": {
+      "text": "Để làm {type_name}, mình cần thêm: {slot_labels}. Bạn cho mình biết nhé.",
+      "params": {"type_name": "TYPE_NAME", "slot_labels": "SLOT_LABELS"}
+    },
+    "ASK_SLOT_RETRY": {
+      "text": "Mình chưa ghi nhận được thông tin cho: {slot_labels}. Bạn nhập lại giúp mình, nêu cụ thể hơn nhé.",
+      "params": {"slot_labels": "SLOT_LABELS"}
+    },
+    "ASK_PURPOSE_RETRY": {
+      "text": "Mình chưa ghi nhận đủ rõ mục đích. Bạn viết cụ thể hơn một chút nhé, ví dụ: \"bổ sung hồ sơ vay vốn tại ngân hàng\".",
+      "params": {}
+    },
+    "CONFIRM_PROPOSALS": {
+      "text": "Mình đã điền sẵn từ hồ sơ của bạn: {slot_labels}. Bạn mở yêu cầu của mình để kiểm tra và xác nhận từng mục.",
+      "params": {"slot_labels": "SLOT_LABELS"}
+    },
+    "OFFER_SUBMIT": {
+      "text": "Hồ sơ cho {type_name} đã đủ thông tin. Bạn mở yêu cầu của mình để xem lại và bấm gửi.",
+      "params": {"type_name": "TYPE_NAME"}
+    },
+    "OUT_OF_SCOPE_KNOWN": {
+      "text": "Mình chưa hỗ trợ {unsupported_type_name}. Hiện mình hỗ trợ: {type_names}. Với {unsupported_type_name}, bạn vui lòng liên hệ trực tiếp Phòng Hành chính.",
+      "params": {"unsupported_type_name": "TYPE_NAME", "type_names": "TYPE_NAMES"}
+    },
+    "OUT_OF_SCOPE_GENERIC": {
+      "text": "Yêu cầu này nằm ngoài những gì mình hỗ trợ lúc này (hiện có: {type_names}). Bạn vui lòng liên hệ trực tiếp Phòng Hành chính.",
+      "params": {"type_names": "TYPE_NAMES"}
+    },
+    "RESUME_STATUS": {
+      "text": "Yêu cầu {type_name} của bạn hiện ở trạng thái: {status_label}. Nếu bạn cần làm yêu cầu khác, cứ cho mình biết.",
+      "params": {"type_name": "TYPE_NAME", "status_label": "STATUS_LABEL"}
+    },
+    "ERROR_BUSY": {
+      "text": "Hệ thống đang bận, bạn thử lại sau một lúc nhé. Tin nhắn của bạn đã được lưu.",
+      "params": {}
+    },
+    "BUDGET_LIMIT": {
+      "text": "Phiên trò chuyện này đã đạt giới hạn xử lý. Bạn vui lòng liên hệ trực tiếp Phòng Hành chính.",
+      "params": {}
+    }
+  }
+}

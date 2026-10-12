@@ -5,7 +5,7 @@
 trong thiết kế** (A-090) — vào bước này khi dựng `procedure_ingest`.
 
 #21 — hồ sơ model của mọi tier hợp schema (ADR-035, điều kiện 1) và `BO19_LLM_BASE_URL` hợp lệ. Mã lỗi mang tên tham số/tier, không mang giá trị.
-Khoá `BO19_LLM_API_KEY` không có bước kiểm ở B4: `api` chưa gọi LLM.
+#22 — khoá `BO19_LLM_API_KEY` có mặt và không rỗng (B6b: từ lát `intake_graph`, `api` và `worker` gọi LLM). Mã không mang giá trị khoá.
 """
 from __future__ import annotations
 
@@ -34,6 +34,10 @@ def step_05(ctx: Context) -> Result:
     if not _positive_int(wv.CHANGES_REQUESTED_MAX_ROUNDS):
         codes.append(code("5", "CEILING_MISSING:changes_requested_rounds"))
     return Result(tuple(codes))
+
+
+def step_22(ctx: Context) -> Result:
+    return Result(() if ctx.settings.llm_api_key else (code("22", "LLM_API_KEY_MISSING"),))
 
 
 def step_21(ctx: Context) -> Result:
