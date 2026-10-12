@@ -21,6 +21,9 @@ JOB_MAX_ATTEMPTS = {"render_document": 5, "resume_document_graph": 5, "finalize_
 
 # WV-15 — số ký tự tối đa của MỘT tin nhắn trong chat (A-031; roadmap O1-1: giữ 2.000). `chat_message_append` chặn lần cuối; `api` chặn ở `TurnBody`.
 CHAT_MESSAGE_MAX_CHARS = 2000
+# Trần body của `POST /chat-sessions/{id}/turns` (PO duyệt 2026-10-12, `proposals/turn-body-limit.md`). Tin hợp lệ lớn nhất là 2000 code point **sau NFC**; tiếng Việt viết ở dạng NFD thì một ký tự NFC
+# thành tới 3 code point (chữ gốc + hai dấu tổ hợp), mỗi code point mã hoá JSON dạng `\uXXXX` = 6 byte → 18 byte mỗi ký tự; 1024 byte dư cho khung `{"text":"…"}` và khoảng trắng. Chưa hiệu chỉnh; đi theo WV-15.
+TURN_BODY_MAX_BYTES = CHAT_MESSAGE_MAX_CHARS * 18 + 1024
 
 # WV-14 — `limit` phân trang: mặc định 20, trần 100 (mục Phân trang của 05-api.md; chưa hiệu chỉnh — kích thước hàng đợi thật là A-002).
 PAGE_LIMIT_DEFAULT = 20

@@ -5,6 +5,7 @@ chỉ có luật phía `/api` — đường lạ thuộc `/api` trả `ErrorEnve
 """
 from __future__ import annotations
 
+import re
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 
@@ -19,7 +20,10 @@ from bo19.api.trace import TraceMiddleware
 from bo19.config import working_values as wv
 
 API_PREFIX = "/api/v1"
-BODY_LIMITS = {("POST", f"{API_PREFIX}/auth/session"): wv.LOGIN_BODY_MAX_BYTES}  # O1-10: endpoint công khai duy nhất
+BODY_LIMITS = {
+    ("POST", f"{API_PREFIX}/auth/session"): wv.LOGIN_BODY_MAX_BYTES,  # O1-10: endpoint công khai duy nhất
+    ("POST", re.compile(re.escape(f"{API_PREFIX}/chat-sessions/") + r"[^/]+/turns")): wv.TURN_BODY_MAX_BYTES,  # B6b (PO 2026-10-12): `{id}` là một đoạn bất kỳ — id hỏng cũng bị chặn trước khi đọc body
+}
 
 
 def default_routers() -> list[APIRouter]:

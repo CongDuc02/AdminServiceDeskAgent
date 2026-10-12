@@ -1,6 +1,6 @@
 # Đề xuất sửa contract — trần body của `POST /chat-sessions/{chat_session_id}/turns` (nợ B6b, cùng khuôn O1-10)
 
-**Trạng thái:** ⏳ **chờ PO duyệt diff** — chưa sửa `openapi.yaml`, `05-api.md`, chưa viết code. · **Ngày:** 2026-10-12 · **Người đề xuất:** người triển khai · **Nợ từ:** B6b (báo cáo B6b, mục "Chưa làm / nói thẳng") · **Khuôn:** `proposals/login-body-limits.md` (O1-10)
+**Trạng thái:** ✅ **PO duyệt 2026-10-12, kèm hai chỉnh** (hệ số 12 → **18**, trần **37 024**; `maxLength: 2000` vào `openapi.yaml` ngay, đếm code point sau NFC, server chuẩn hoá NFC trước khi kiểm độ dài). Phần dưới giữ nguyên bản đề xuất; **các con số 12 và 25 024 bị thay bởi 18 và 37 024** — xem mục Điều chỉnh của PO. · **Ngày:** 2026-10-12 · **Người đề xuất:** người triển khai · **Nợ từ:** B6b (báo cáo B6b, mục "Chưa làm / nói thẳng") · **Khuôn:** `proposals/login-body-limits.md` (O1-10)
 
 ## 1. Vấn đề
 
@@ -53,7 +53,12 @@ Con số 12 là hệ quả của cách mã hoá JSON, không phải ước đoá
 4. Test: `Content-Length` lớn (không đọc byte nào); chunked vượt trần (dừng ngay); `Content-Length` nói dối (nhỏ hơn thực); đúng bằng trần thì qua; tin 2000 ký tự ngoài BMP mã hoá `\uXXXX` toàn bộ **vẫn qua** (< trần); 413 mang `trace_id`; 413 không tạo `chat_message`, không chạm DB; đối chiếu `openapi.yaml` (`413`, `maxLength`) và `05-api.md` với `working_values` như `test_login_limits.py`; các endpoint khác (`/messages`, `/chat-sessions`) **không** bị giới hạn bởi mẫu này.
 5. Đột biến: bỏ kiểm byte thực nhận (chỉ tin `Content-Length`), mẫu đường khớp quá rộng/quá hẹp, trần lệch một byte, `maxLength` openapi lệch WV-15 — đều phải đỏ.
 
+## Điều chỉnh của PO (2026-10-12) — thay thế mục 2.2 và diff ở trên
+
+1. **Hệ số 18, không phải 12.** Hệ số 12 giả định xấu nhất là ký tự ngoài BMP (cặp surrogate, 2 × `\uXXXX`). Với tiếng Việt, một ký tự NFC có thể thành **3 code point** ở dạng NFD (chữ gốc + hai dấu tổ hợp, ví dụ ệ = e + dấu mũ + dấu nặng), mỗi code point mã hoá `\uXXXX` = 6 byte → **18 byte mỗi ký tự**. `TURN_BODY_MAX_BYTES = CHAT_MESSAGE_MAX_CHARS × 18 + 1024` = **37 024**. Lý do ghi cả ở `working_values.py`.
+2. **`maxLength: 2000` vào `openapi.yaml` ngay**, mô tả "đếm code point sau chuẩn hoá NFC". Server chuẩn hoá NFC **trước** khi kiểm độ dài (validator `before` chạy trước `max_length`), không đếm trên chuỗi thô. Test: tin NFD ~1.500 chữ có dấu (> 2000 code point thô, ≤ 2000 sau NFC) được nhận; tin > 2000 sau NFC bị từ chối. Đột biến kiểm độ dài trước NFC phải đỏ.
+3. `05-api.md` ghi: client đếm cùng cách (`normalize('NFC')` rồi đếm code point, không dùng `.length` của UTF-16) — để lát client làm đúng.
+
 ## Open Questions
 
-- Công thức `× 12 + 1024` (= 25 024) — PO giữ hay muốn một con số tròn khác (ví dụ 32 768)? Công thức có lợi là đi theo WV-15.
-- `maxLength: 2000` trong `openapi.yaml` có cần chờ A-031 chốt không? Nếu PO coi 2000 vẫn là "giữ theo O1-1" thì thêm ngay như trên.
+- Không còn: PO đã chốt công thức (18) và `maxLength`.

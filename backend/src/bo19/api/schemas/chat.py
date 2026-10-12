@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import datetime as dt
+import unicodedata
 import uuid
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from bo19.api.queries.chat import MessageRow, SessionRow
 from bo19.config import working_values as wv
@@ -14,6 +15,12 @@ from bo19.config import working_values as wv
 class TurnBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
     text: str = Field(min_length=1, max_length=wv.CHAT_MESSAGE_MAX_CHARS)  # WV-15; `chat_message_append` chặn lần cuối
+
+    @field_validator("text", mode="before")
+    @classmethod
+    def _nfc_before_length(cls, value: Any) -> Any:
+        """Độ dài tính bằng code point **sau NFC** (PO, 2026-10-12): chuẩn hoá chạy trước `min_length`/`max_length`, không đếm trên chuỗi thô."""
+        return unicodedata.normalize("NFC", value) if isinstance(value, str) else value
 
 
 class ChatSessionOut(BaseModel):

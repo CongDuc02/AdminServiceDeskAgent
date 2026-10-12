@@ -3418,3 +3418,14 @@ PO duyệt kế hoạch B6b (Q1–Q7, 2026-10-09). Sửa tài liệu trước m�
 | `03-agents.md` → 0.25 | Một đoạn dưới bảng của mục `intake_agent`: P1/P2 lấy `request_type_catalog` và `slot_specs` qua `tool_layer.checks.config` — hàm đọc cấu hình, không phải tool (PO chấp nhận như hiện tại) |
 | `proposals/reply-templates.md` | R2: ghi nhận số bước kiểm là **#23, không phải #25** (PO) |
 | `proposals/turn-body-limit.md` | **Mới, chờ PO duyệt diff:** trần body `POST …/turns` = `CHAT_MESSAGE_MAX_CHARS × 12 + 1024` = 25 024 byte; `openapi.yaml` thiếu `413` cho endpoint này và `TurnBody.text` chưa có `maxLength` — chưa sửa, chưa viết code |
+
+### B6b — trần body và độ dài `POST …/turns` (PO duyệt 2026-10-12)
+
+| File | Thay đổi |
+|---|---|
+| `contracts/openapi.yaml` | `postChatTurn` thêm `413`; `PayloadTooLarge` nêu body `POST …/turns` > 37024 byte; `TurnBody.text`: `maxLength: 2000`, mô tả "độ dài tính bằng code point sau NFC" |
+| `05-api.md` → 0.23 | Mục Hội thoại: quy tắc độ dài 2000 code point **sau NFC**, **cách đếm của client** (`normalize('NFC')` rồi đếm code point, không dùng `.length` UTF-16); dòng `PAYLOAD_TOO_LARGE` thêm body `POST …/turns` |
+| `06-structure.md` → 0.42, `proposals/turn-body-limit.md` | Triển khai; đề xuất ghi **hệ số 18 thay 12** (PO: một ký tự NFC tiếng Việt có thể thành 3 code point NFD, mỗi code point `\uXXXX` = 6 byte) → `TURN_BODY_MAX_BYTES = 2000 × 18 + 1024 = 37 024` |
+| Code | `working_values.TURN_BODY_MAX_BYTES`; `BodyLimitMiddleware` nhận mẫu đường dẫn (`re.Pattern`, khớp toàn bộ); `TurnBody.text` chuẩn hoá NFC trong `field_validator(mode="before")` **trước** `max_length` |
+| Test | `test_turn_body_limit.py` (22 test): NFD 1.500 chữ có dấu (4.500 code point thô) được nhận và lưu NFC; đúng 2000 sau NFC nhận, 2001 từ chối kể cả khi nhập NFD; body mã hoá hết thành `\uXXXX` vẫn dưới trần; 413 trước xác thực, không ghi tin, không gọi LLM; khớp openapi / 05-api / working_values |
+| Đột biến | 12 mẫu: 11 đỏ (kiểm độ dài trước NFC, validator `after`, hệ số 12, bỏ 1024, mẫu chỉ uuid, mẫu quá rộng, `match` thay `fullmatch`, bỏ kiểm phương thức, không mẫu, lệch một byte, dùng trần đăng nhập). **Mẫu tương đương:** bỏ `min_length=1` trên `TurnBody.text` — `chat_message_append` trả `MessageInvalid` và router ra cùng `VALIDATION_FAILED` / `BLANK` |
