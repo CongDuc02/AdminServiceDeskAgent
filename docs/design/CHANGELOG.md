@@ -3443,3 +3443,25 @@ PO duyệt kế hoạch B7 ngày 2026-10-12, kèm: payload `render_document` ch�
 | `proposals/chat-cli.md` | **Mới, chờ PO duyệt:** phạm vi `tools/chat-cli/`, chốt chặn cùng khuôn turn-trial, ba câu hỏi kèm mặc định |
 
 **Lệch kế hoạch đã duyệt, nói thẳng:** kế hoạch ghi `tool_layer.tools.request_slot_confirm` và `tool_layer.jobs.enqueue`; thực tế `request_slot_confirm` đã có từ B6a ở `tool_layer.employee_ops`, và hàm đưa job vào hàng đợi đã có từ B5 ở `tool_layer.kernel.enqueue` (kèm `dedupe_key`). B7 dùng lại cả hai; `request_submit` đặt ở `tool_layer.gate_ops` theo cây của `06-structure.md`. `tool_layer.jobs` vẫn là phần giành job của B8a.
+
+### B7 — kết quả mã (2026-10-12)
+
+| Hạng mục | Kết quả |
+|---|---|
+| `tool_layer` | `gate_ops.request_submit` — kiểm lại F1 trong giao dịch, `DRAFT → SUBMITTED` (`submitted_at`), `decision_record` `SUBMITTED` (id = khoá), `audit_event`, job `render_document` chỉ mang id; khoá hàng `request` trước mọi phép đọc. `checks.eligibility.RequestCheck` tách ba danh sách. `request_slot_confirm` (B6a) giữ nguyên, nay có endpoint |
+| `api` | `GET /requests?scope=OWN` (keyset, cursor gắn bộ lọc), `GET /requests/{id}` (`RequestDetail`, `SlotView.label`), `POST …/confirm-slots`, `POST …/submit` (`Idempotency-Key`, `Idempotent-Replayed`); năm mã lỗi mới; `deps/idempotency.py` dùng chung; `queries.chat.request_summary` dùng chung truy vấn với nhóm Request |
+| `tools/turn-trial/` | Trường `LLM_PROVIDER_ERROR` (sáu trường, chỉ mã và số), tên slot bị loại, `--label` (mặc định `b7`, không ghi đè `turn-trial-b6b.md`); test với server giả 503 (`attempts = 2`) và treo (`DEADLINE`) |
+| AC-1.4 | **Đạt** — ở tầng thao tác và HTTP, với từng slot `HR_PROFILE` bắt buộc (mục Acceptance Criteria của Sprint 1 trong `12-roadmap.md`) |
+| Kiểm | **1030 test OK**; `lint-imports` 8/8; CI xanh trên `build/b7-request-submit` |
+| Đột biến | **30 mẫu, cả 30 đỏ. Lần đầu 28/30: hai mẫu sống — bỏ kiểm trạng thái trước hàm F1 (`CHANGES_REQUESTED` có slot chưa xác nhận ra `REQUEST_NOT_READY` thay vì `STATE_CONFLICT`), và turn-trial không trả lại handler log của tiến trình gọi (test cũ so danh sách handler rỗng với rỗng) — thêm hai test, chạy lại cả hai đỏ. Nhóm mẫu: bỏ kiểm lại F1 · F1 chỉ xét slot thiếu · `SubmitBody` bỏ qua trường lạ · `SubmitBody` nhận `submit_ready` · bỏ kiểm `row_version` (hai biến thể) · bỏ khoá chống trùng của job · payload thêm khoá · bỏ khoá hàng `request` · lặp lại không kiểm tác nhân và `request` · `NEEDS_INFO` đạt thì đi tiếp · bỏ `submitted_at` · bỏ `audit_event` · sai loại `decision_record` · chi tiết và danh sách không lọc người tạo · cursor không gắn bộ lọc · `submit_ready` hằng đúng · bỏ kiểm `request.read_own` · thiếu `Idempotent-Replayed` · `details` thiếu tên slot hay thiếu danh sách · chưa xác nhận đếm vào `failed_rules` · bộ lọc log giữ mọi trường · không ghi tên slot bị loại · nhãn lần đo không kiểm, nhãn mặc định ghi đè `b6b` · người khác thành 403** |
+| **Chưa làm / nói thẳng** | Worker chưa có: job `render_document` đứng `QUEUED` tới B8a. Ca `CHANGES_REQUESTED`/`SLOT_DATA` của `submit` (O1-15). `scope=ALL`/`ASSIGNED` và vế `read_all`/`read_assigned` của `GET /requests/{id}` (Sprint 3). Chưa có lần chạy turn-trial thật nào với bộ ghi lỗi mới — O1-17 chờ lần chạy của PO |
+
+### B7 — đề xuất cổng 1.6, docs-only (2026-10-12)
+
+| File | Thay đổi |
+|---|---|
+| `proposals/cong-1-6-font.md` | **Mới, chờ PO quyết:** thiết kế không giả định font cụ thể; ba phương án (Times New Roman bản gốc — giấy phép `[CẦN XÁC MINH]`; Liberation Serif 2.1.5; Tinos 1.340), quyền phân phối theo nguyên văn OFL 1.1, rủi ro khi dùng font thay thế, ba câu hỏi kèm mặc định |
+| `docs/reference/font-liberation-serif-license.md`, `font-tinos-license.md` | Giấy phép gốc chép nguyên văn, URL, ngày lấy, sha256 của từng file. Ghi rõ mâu thuẫn trong nguồn Tinos (mô tả cũ ghi Apache 2.0; font và giấy phép hiện hành là OFL 1.1) |
+| `docs/reference/font-do-phu-tieng-viet-b7.md` | Số đo đọc từ file font thật: 186/186 chữ cái tiếng Việt, 8/8 dấu tổ hợp, 37/37 dấu câu ở cả tám file; **0 lệch độ rộng** với Times New Roman 7.12 (bản Windows của máy người triển khai, chỉ đọc) trên 223 ký tự × 4 kiểu chữ; số đo chiều dọc trùng từng số. Chưa đo kerning và render `soffice` |
+| `12-roadmap.md` → 0.51, `ASSUMPTIONS.md` → 0.68 | Cổng 1.6 và A-058 trỏ đề xuất; AC-1.4 đạt |
+| `06-structure.md` → 0.43 | Mục Triển khai ở B7 |
