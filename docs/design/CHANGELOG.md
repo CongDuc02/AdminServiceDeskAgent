@@ -3394,3 +3394,19 @@ PO duyệt kế hoạch B6b (Q1–Q7, 2026-10-09). Sửa tài liệu trước m�
 | `06-structure.md`, `decisions/ADR-016` | **Graph sync trong thread + `asyncio.run` mỗi lời gọi gateway**; hạn chót tuyệt đối truyền xuống từng lời gọi (`min(WV-04/WV-06, thời gian còn lại của lượt)`); cờ huỷ hợp tác; biên node; checkpointer; #22 và #25; `api/turns`, `api/sse`; **bước kiểm #23** (đề xuất ghi #25 — đổi số vì #23 là số trống kế tiếp) |
 | `12-roadmap.md` | O1-13 thêm hai tỷ lệ mã con; **O1-15** `CHANGES_REQUESTED` ca `SLOT_DATA` gắn lát `document_graph`; **O1-16** slot `LIST` gắn lát `INTRODUCTION_LETTER` (PO ghi mở) |
 | Ngoài kế hoạch, ghi rõ | Hai hàm đọc cấu hình `load_catalog` và `slot_specs` đặt ở `tool_layer.checks` (không phải tool): P1 cần catalog, P2 cần slot_specs, mà thiết kế chưa nêu nơi lấy. Nếu PO muốn thành tool có tên thì đổi — mặc định giữ ở `checks` cùng khuôn `check_request` |
+
+### B6b — kết quả mã (2026-10-12)
+
+| Hạng mục | Kết quả |
+|---|---|
+| Bước 0 | `request_slots_write`: `quote` ⊂ tin nhắn khớp chính xác; `value` ⊂ `quote` khớp nới (NFC + `casefold` + gộp khoảng trắng); mã con `QUOTE_NOT_IN_MESSAGE` / `VALUE_NOT_IN_QUOTE`; P2 `extract_slots` 1.1. 8 mẫu đột biến, cả 8 đỏ |
+| Migration `0012` | `chat_message.in_reply_to_message_id`, khoá ngoại ghép cùng phiên, `UNIQUE` từng phần, `ON DELETE NO ACTION` (lý do ở `04-data.md`); 10 mẫu đột biến, cả 10 đỏ |
+| Khởi động | #22 có code (`api`, `worker`); **#23** file khuôn trả lời (đề xuất ghi #25 — đổi số vì #23 là số trống kế tiếp) |
+| `orchestrator` | `state` (`IntakeState` v1, `rejection_codes`); `runtime` (`node_boundary`, `builder`, `checkpointer` không `setup()`, `threads`); `intake_graph` (12 node, ánh xạ tám dòng, khuôn trả lời, `render_reply` ghi tin agent với `id` xác định); `runner.IntakeRunner` |
+| `tool_layer` | `chat_turn_context_read`; `chat_turn_status`; `turn_guard_s` của `chat_message_append`; `chat_session_open(session_id=…)`; `checks.config` (catalog, `slot_specs`, nhãn, tên loại) |
+| `api` | bốn endpoint hội thoại; `turns` (bộ giám sát lượt: hạn chót phụ, đóng êm); `sse`; mã lỗi `PERMISSION_DENIED`, `NOT_ACCEPTABLE`, `IDEMPOTENCY_KEY_*`, `CHAT_SESSION_CLOSED`, `TURN_IN_PROGRESS`, `TURN_NOT_FINISHED` (có biến thể thông điệp cố định) |
+| Công cụ | `tools/turn-trial/` (O1-13): 11 kịch bản, ≤ 24 lời gọi, chỉ số và mã; test chạy trọn với server giả ở CI |
+| Kiểm | **956 test OK**, `lint-imports` 8/8 |
+| Đột biến lát graph + api | **39 mẫu, cả 39 đỏ:** bộ đếm làm rõ (không đặt lại, đặt lại sai, trần lệch, không tăng); `resume_context` (mỗi lượt, cả khi đang thu thập); `MULTIPLE` đi mở request; luôn mở request mới; `procedure_store`; khuôn thử lại (slot bị loại, `purpose`); `NEEDS_INFO ↔ DRAFT`; mã con; tên slot bịa; không đặt lại trường theo lượt; cờ huỷ, hạn chót lượt, **không truyền hạn chót xuống gateway**; `id` tin agent ngẫu nhiên; `BUDGET_LIMIT`; schema và trạng thái thread; **node không qua biên, biên chép thông điệp**; hạn chót phụ, cờ ở hạn chót phụ, đóng êm không huỷ; guard lượt trước; `abandoned`; `Accept`; phát lại; thứ tự và cursor của tin nhắn; quyền chủ phiên; mã HTTP lặp lại |
+| **Mẫu tương đương, nêu rõ** | Thay `slice` thành `str.format` trong `reply_templates.render` (T1 của lô khuôn) không đỏ: `str.format` cũng không diễn giải lại giá trị đã thế — giữ thay chuỗi vì khuôn không có cú pháp thuộc tính; và `WHERE author = 'AGENT'` của `UNIQUE` từng phần là thừa về hành vi (đã nêu ở mục `0012`) |
+| **Chưa làm / nói thẳng** | **Chưa có số đo Groq thật** (O1-13) — chờ PO chạy `tools/turn-trial/`. `GET /requests/{id}`, `confirm-slots`, `submit` (PO Q5). Không có trần body cho `POST …/turns` ngoài `max_length` của `TurnBody` (nợ nhỏ: body quá lớn vẫn bị đọc hết trước khi pydantic từ chối). `SIGTERM`: cửa sổ drain trên gói free ≈ 5 s (S4) ngắn hơn hạn chót lượt — lượt đang chạy có thể mất câu trả lời, client dựng lại bằng `GET …/messages` (A-056, rủi ro đã chấp nhận) |

@@ -24,6 +24,11 @@ PURPOSE_MSG = "mục đích là bổ sung hồ sơ vay vốn tại ngân hàng"
 
 
 class LuongDayDu(GraphBase):
+    def transitions(self, request_id) -> list[str]:
+        with self.db.connect("bo19_migrator") as c:
+            rows = c.execute("select payload->>'to' from audit_event where request_id = %s and action = 'request.transition' order by occurred_at, id", (request_id,)).fetchall()
+        return [r[0] for r in rows]
+
     def test_tu_tin_nhan_dau_toi_offer_submit_chi_sau_khi_xac_nhan_de_xuat(self):
         self.llm.will("classify_intent", p1()).will("extract_slots", {"slots": [slot("recipient_org", "Ngân hàng ABC")]})
         self.assertEqual(self.turn(MSG).reply_template_id, "ASK_SLOT")  # thiếu purpose
@@ -36,6 +41,7 @@ class LuongDayDu(GraphBase):
         self.assertEqual({req["id"]}, {r["id"] for r in self.requests_of_session()})  # vẫn một request, không mở thêm
         self.assertEqual(self.requests_of_session()[0]["status"], "NEEDS_INFO")
         self.assertEqual(self.slots_of(req["id"])["purpose"][0], "PROVIDED")
+        self.assertEqual(self.transitions(req["id"]), ["NEEDS_INFO", "DRAFT", "NEEDS_INFO"])  # nhân viên bổ sung → về DRAFT qua `request_transition`, rồi còn đề xuất chờ xác nhận → NEEDS_INFO
 
         with self.db.connect("bo19_migrator") as c:  # nhân viên xác nhận từng đề xuất trên màn hình yêu cầu
             versions = dict(c.execute("select slot_name, row_version from request_slot where request_id = %s and value_status = 'PROPOSED'", (req["id"],)).fetchall())
@@ -69,6 +75,14 @@ class LuongDayDu(GraphBase):
 
 
 class SongQuaLuotVaKhoiDongLai(GraphBase):
+    def test_ma_loai_cua_luot_truoc_khong_ro_ri_sang_luot_sau(self):
+        self.llm.will("classify_intent", p1()).will("extract_slots", {"slots": [slot("purpose", "xin visa")]})
+        self.assertEqual(self.turn("xin giấy xác nhận, mục đích xin visa").rejection_codes, ("RULE_FAILED:RULE_MIN_TOKENS",))
+        self.llm.set("extract_slots", {"slots": []})
+        out = self.turn("à thôi để mình nghĩ lại")
+        self.assertEqual((out.rejected_slots, out.rejection_codes), ((), ()))  # đặt lại ở đầu lượt
+        self.assertEqual(self.graph_state()["rejection_codes"], [])
+
     def test_state_song_qua_mot_runner_moi(self):
         self.llm.will("classify_intent", p1("NEED_CLARIFICATION", confidence="low"))
         self.turn("ừm cái đó")

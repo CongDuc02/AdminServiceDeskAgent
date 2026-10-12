@@ -95,6 +95,7 @@ class ThreadTreo(ChatApiBase):
         self.addCleanup(self.release.set)
 
         def hang(**kw):  # thread KHÔNG kiểm cờ, KHÔNG tự dừng — mô phỏng một câu SQL treo
+            self.cancel_seen = kw["cancel"]
             self.release.wait(6)
             return TurnOutcome(None, None, "NODE_UNEXPECTED")
 
@@ -113,6 +114,7 @@ class ThreadTreo(ChatApiBase):
         reply = events[-1][1]
         self.assertEqual((reply["message"]["reply_template_id"], reply["message"]["author"]), ("ERROR_BUSY", "AGENT"))
         self.assertEqual([x[1] for x in self.agent_rows(sid)], ["ERROR_BUSY"])  # đúng một tin
+        self.assertTrue(self.cancel_seen.is_set())  # bộ giám sát đã đặt cờ huỷ: thread treo, khi tỉnh, không ghi thêm gì
         self.release.set()  # thread treo được thả: nó không ghi thêm gì (run_turn đã bị patch trả TurnOutcome rỗng)
         time.sleep(0.3)
         self.assertEqual(len(self.agent_rows(sid)), 1)
