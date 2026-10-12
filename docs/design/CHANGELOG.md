@@ -3410,3 +3410,11 @@ PO duyệt kế hoạch B6b (Q1–Q7, 2026-10-09). Sửa tài liệu trước m�
 | Đột biến lát graph + api | **39 mẫu, cả 39 đỏ:** bộ đếm làm rõ (không đặt lại, đặt lại sai, trần lệch, không tăng); `resume_context` (mỗi lượt, cả khi đang thu thập); `MULTIPLE` đi mở request; luôn mở request mới; `procedure_store`; khuôn thử lại (slot bị loại, `purpose`); `NEEDS_INFO ↔ DRAFT`; mã con; tên slot bịa; không đặt lại trường theo lượt; cờ huỷ, hạn chót lượt, **không truyền hạn chót xuống gateway**; `id` tin agent ngẫu nhiên; `BUDGET_LIMIT`; schema và trạng thái thread; **node không qua biên, biên chép thông điệp**; hạn chót phụ, cờ ở hạn chót phụ, đóng êm không huỷ; guard lượt trước; `abandoned`; `Accept`; phát lại; thứ tự và cursor của tin nhắn; quyền chủ phiên; mã HTTP lặp lại |
 | **Mẫu tương đương, nêu rõ** | Đổi phép thay chuỗi `{tên}` thành `str.format` trong `reply_templates.render` (mẫu T1 của lô khuôn) không làm test nào đỏ: `str.format` cũng không diễn giải lại giá trị đã thế — giữ thay chuỗi vì khuôn không có cú pháp thuộc tính; và `WHERE author = 'AGENT'` của `UNIQUE` từng phần là thừa về hành vi (đã nêu ở mục `0012`) |
 | **Chưa làm / nói thẳng** | **Chưa có số đo Groq thật** (O1-13) — chờ PO chạy `tools/turn-trial/`. `GET /requests/{id}`, `confirm-slots`, `submit` (PO Q5). Không có trần body cho `POST …/turns` ngoài `max_length` của `TurnBody` (nợ nhỏ: body quá lớn vẫn bị đọc hết trước khi pydantic từ chối). `SIGTERM`: cửa sổ drain trên gói free ≈ 5 s (S4) ngắn hơn hạn chót lượt — lượt đang chạy có thể mất câu trả lời, client dựng lại bằng `GET …/messages` (A-056, rủi ro đã chấp nhận) |
+
+### B6b — sau duyệt PO 2026-10-12: ghi nhận và đề xuất trần body (2026-10-12)
+
+| File | Thay đổi |
+|---|---|
+| `03-agents.md` → 0.25 | Một đoạn dưới bảng của mục `intake_agent`: P1/P2 lấy `request_type_catalog` và `slot_specs` qua `tool_layer.checks.config` — hàm đọc cấu hình, không phải tool (PO chấp nhận như hiện tại) |
+| `proposals/reply-templates.md` | R2: ghi nhận số bước kiểm là **#23, không phải #25** (PO) |
+| `proposals/turn-body-limit.md` | **Mới, chờ PO duyệt diff:** trần body `POST …/turns` = `CHAT_MESSAGE_MAX_CHARS × 12 + 1024` = 25 024 byte; `openapi.yaml` thiếu `413` cho endpoint này và `TurnBody.text` chưa có `maxLength` — chưa sửa, chưa viết code |
