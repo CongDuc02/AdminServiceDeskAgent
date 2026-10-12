@@ -46,6 +46,11 @@ class FakeLlm:
         self.script.setdefault(name, []).extend(outputs)
         return self
 
+    def set(self, name: str, *outputs: Any) -> "FakeLlm":
+        """Thay kịch bản của một lời gọi (khác `will`: nối thêm). Phần tử cuối được lặp lại khi hết."""
+        self.script[name] = list(outputs)
+        return self
+
     def calls(self, name: str) -> list[dict[str, Any]]:
         return [body for n, _, body in self.requests if n == name]
 
