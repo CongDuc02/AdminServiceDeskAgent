@@ -6,6 +6,10 @@ Cả hai thuộc danh sách **miễn `audit_event`** (A-055, loại "hội tho�
 `chat_session_open`: trả phiên `OPEN` của nhân viên nếu có, không thì tạo; khoá hàng `employee` để hai lời gọi đồng thời không tạo hai phiên.
 `chat_message_append`: `id` do người gọi cấp (= `Idempotency-Key` của lượt) nên gọi lại là không làm gì; `seq` cấp dưới khoá hàng `chat_session`; `body` lưu dạng **NFC**. Tin của nhân viên do chủ phiên
 ghi; tin của agent do tác nhân hệ thống ghi, **bắt buộc** mang mã khuôn (`reply_template_id`) và tin của nhân viên **không được** mang — khớp `ck_chat_message_template_only_agent`.
+
+**Một tin agent cho mỗi tin nhân viên (B6b, migration 0012):** tin agent có thể mang `in_reply_to_message_id` — tin `EMPLOYEE` của chính phiên (tool kiểm dưới khoá phiên; DB giữ "cùng phiên" bằng khoá
+ngoại ghép). Đã có tin agent cho tin đó thì không ghi thêm: trả tin cũ (`created = False`). Nếu hai bên vẫn cùng chạm tới `INSERT` (chỉ khi có đường ghi vòng khoá phiên), `UNIQUE` từng phần của DB từ chối
+một bên và tool trả tin đã có — "đúng một tin agent mỗi lượt" do DB giữ, không dựa vào thời điểm của cờ huỷ hay của bộ giám sát.
 """
 from __future__ import annotations
 
@@ -13,6 +17,8 @@ import re
 import unicodedata
 import uuid
 from dataclasses import dataclass
+
+import psycopg
 
 from bo19.config import working_values as wv
 from bo19.persistence.pool import Pool
@@ -66,13 +72,19 @@ def chat_session_open(pool: Pool, ctx: ToolContext) -> SessionOpen:
         return SessionOpen(session_id, True)
 
 
+def _agent_reply(conn: psycopg.Connection, employee_message_id: uuid.UUID) -> tuple[uuid.UUID, int] | None:
+    """(id, seq) của tin agent đã trả lời tin nhân viên này, nếu có."""
+    row = conn.execute("SELECT id, seq FROM chat_message WHERE in_reply_to_message_id = %s AND author = 'AGENT'", (employee_message_id,)).fetchone()
+    return None if row is None else (row[0], row[1])
+
+
 def chat_message_append(pool: Pool, ctx: ToolContext, *, chat_session_id: uuid.UUID, message_id: uuid.UUID, author: str, body: str, reply_template_id: str | None = None,
-                        request_id: uuid.UUID | None = None) -> Appended:
+                        request_id: uuid.UUID | None = None, in_reply_to_message_id: uuid.UUID | None = None) -> Appended:
     if author == "EMPLOYEE":
         me = actor_id(ctx)
         require_any(ctx, ("request.create", "request.create_on_behalf"))
-        if reply_template_id is not None:
-            raise MessageInvalid("template")
+        if reply_template_id is not None or in_reply_to_message_id is not None:
+            raise MessageInvalid("template" if reply_template_id is not None else "reply_to")
     elif author == "AGENT":
         require_system(ctx)
         if reply_template_id is None or not _TEMPLATE_ID.match(reply_template_id):
@@ -92,10 +104,24 @@ def chat_message_append(pool: Pool, ctx: ToolContext, *, chat_session_id: uuid.U
             if existing[0] != chat_session_id or existing[1] != author:
                 raise MessageIdConflict
             return Appended(message_id, existing[2], False)
+        if in_reply_to_message_id is not None:
+            target = conn.execute("SELECT author FROM chat_message WHERE id = %s AND chat_session_id = %s", (in_reply_to_message_id, chat_session_id)).fetchone()
+            if target is None or target[0] != "EMPLOYEE":
+                raise MessageInvalid("reply_to")  # chỉ trả lời tin của nhân viên, trong chính phiên này
+            answered = _agent_reply(conn, in_reply_to_message_id)
+            if answered is not None:
+                return Appended(answered[0], answered[1], False)  # đã có câu trả lời: không ghi thêm, trả tin cũ
         if session[1] != "OPEN":
             raise ChatSessionClosed
         seq = conn.execute("SELECT coalesce(max(seq), 0) + 1 FROM chat_message WHERE chat_session_id = %s", (chat_session_id,)).fetchone()[0]
-        conn.execute("INSERT INTO chat_message (id, chat_session_id, seq, author, request_id, body, reply_template_id) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                     (message_id, chat_session_id, seq, author, request_id, text, reply_template_id))
+        try:
+            with conn.transaction():  # savepoint: unique_violation không làm hỏng giao dịch ngoài
+                conn.execute("INSERT INTO chat_message (id, chat_session_id, seq, author, request_id, body, reply_template_id, in_reply_to_message_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                             (message_id, chat_session_id, seq, author, request_id, text, reply_template_id, in_reply_to_message_id))
+        except psycopg.errors.UniqueViolation:
+            answered = _agent_reply(conn, in_reply_to_message_id) if in_reply_to_message_id is not None else None
+            if answered is None:
+                raise  # trùng khoá khác (id, seq) — không phải ca "đã có câu trả lời"
+            return Appended(answered[0], answered[1], False)
         conn.execute("UPDATE chat_session SET last_message_at = now(), updated_at = now(), row_version = row_version + 1 WHERE id = %s", (chat_session_id,))
         return Appended(message_id, seq, True)
