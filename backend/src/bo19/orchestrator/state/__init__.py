@@ -56,12 +56,12 @@ class IntakeState(TypedDict):
 
 
 # Trường được đặt lại ở ĐẦU mỗi lượt (`load_turn`) — chúng mô tả lượt hiện tại, không phải cuộc hội thoại. Phần còn lại (đếm làm rõ, request đang mở, `pending_intents`, mốc trạng thái đã thấy)
-# sống qua các lượt nhờ checkpoint của thread `intake:{chat_session_id}`.
+# sống qua các lượt nhờ checkpoint của thread `intake:{chat_session_id}`. **`pending_question` cũng sống qua lượt**: nó là câu agent vừa hỏi, và là input của P1/P2 ở lượt sau;
+# lượt sau đặt lại nó ở node cuối của nhánh (câu hỏi mới hoặc `None`).
 PER_TURN_FIELDS: dict[str, object] = {
     "intent_result": None,
     "unsupported_type": None,
     "procedure_store": None,
-    "pending_question": None,
     "missing_slots": [],
     "rejected_slots": [],
     "rejection_codes": [],
