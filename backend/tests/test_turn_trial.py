@@ -148,8 +148,12 @@ class ChayVoiServerGia(unittest.TestCase):
         self.assertEqual(set(errors[0]), set(tt.PROVIDER_ERROR_FIELDS))
 
     def test_lan_chay_khong_loi_thi_khong_co_loi_provider_va_tra_lai_handler_log(self):
-        before = list(logging.getLogger().handlers)
+        root, sentinel = logging.getLogger(), logging.NullHandler()  # handler của tiến trình gọi — phải còn sau khi đo
+        root.addHandler(sentinel)
+        self.addCleanup(root.removeHandler, sentinel)
+        before = list(root.handlers)
         summary, turns, *_ = self.execute("S6")
+        self.assertIn(sentinel, root.handlers)
         self.assertEqual((turns[0]["provider_errors"], summary["provider_errors"], summary["provider_errors_by_kind"]), ([], 0, {}))
         self.assertEqual(logging.getLogger().handlers, before)
 

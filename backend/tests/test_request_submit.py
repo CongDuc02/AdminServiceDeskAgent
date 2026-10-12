@@ -266,6 +266,16 @@ class QuyenVaTrangThai(SubmitBase):
                 self.assertEqual(self.decisions(rid), [])
                 self.assertEqual(self.jobs(rid), [])
 
+    def test_trang_thai_kiem_truoc_ham_kiem(self):
+        """`CHANGES_REQUESTED` ca `SLOT_DATA` bỏ xác nhận slot `HR_PROFILE` — tới O1-15 nó phải là `STATE_CONFLICT`, không phải `REQUEST_NOT_READY` (bảo nhân viên bổ sung vào yêu cầu không sửa được)."""
+        for status in ("CHANGES_REQUESTED", "SUBMITTED"):
+            with self.subTest(status=status):
+                eid, ctx, rid = self.ready(leave_unconfirmed=("full_name",))
+                self.set_status(rid, status)
+                with self.assertRaises(StateConflict) as cm:
+                    self.submit(ctx, rid)
+                self.assertEqual(cm.exception.current_status, status)
+
     def test_needs_info_chua_du_thi_not_ready_du_roi_van_state_conflict(self):
         eid, ctx, rid = self.ready(leave_unconfirmed=("job_title",))
         self.set_status(rid, "NEEDS_INFO")
