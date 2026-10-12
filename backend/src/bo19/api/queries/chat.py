@@ -14,7 +14,7 @@ from typing import Any
 
 import psycopg
 
-from bo19.domain.status_labels import request_status_label
+from bo19.api.queries import requests
 from bo19.persistence.read import read_only
 
 
@@ -88,16 +88,6 @@ def list_messages(conn: psycopg.Connection, session_id: uuid.UUID, employee_id: 
 
 
 def request_summary(conn: psycopg.Connection, request_id: uuid.UUID) -> dict[str, Any] | None:
-    """`RequestSummary` rút gọn của Sprint 1 (mục Triển khai ở B6b của 05-api.md): `artifacts` luôn `[]` vì chưa có `document`; `expires_at` và `submitted_at` theo cột của `request`.
+    """`RequestSummary` rút gọn của Sprint 1 cho `turn.reply` (mục Triển khai ở B6b của 05-api.md) — cùng một truy vấn với nhóm Request (`queries.requests`).
     Chỉ gọi cho `request` mà lượt chat của chính người này đã mở/đụng tới — không phải đường đọc request tuỳ ý."""
-    with read_only(conn):
-        row = conn.execute(
-            "SELECT r.id, r.request_type_code, t.name_vi, r.status, r.status_changed_at, r.created_at, r.created_by_employee_id, r.chat_session_id, r.row_version, "
-            "b.id, b.employee_code, b.full_name, r.submitted_at, r.expires_at "
-            "FROM request r JOIN request_type t ON t.code = r.request_type_code JOIN employee b ON b.id = r.beneficiary_employee_id WHERE r.id = %s", (request_id,)).fetchone()
-    if row is None:
-        return None
-    (rid, type_code, type_name, status, changed, created, creator, session, version, b_id, b_code, b_name, submitted, expires) = row
-    return {"id": str(rid), "request_type_code": type_code, "request_type_name": type_name, "status": status, "status_label": request_status_label(status),
-            "status_changed_at": changed, "created_at": created, "created_by_employee_id": str(creator), "beneficiary": {"id": str(b_id), "employee_code": b_code, "full_name": b_name},
-            "chat_session_id": str(session) if session else None, "submitted_at": submitted, "expires_at": expires, "row_version": version, "artifacts": []}
+    return requests.request_summary(conn, request_id)

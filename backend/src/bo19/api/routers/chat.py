@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from bo19.api import sse
+from bo19.api.deps.idempotency import idempotency_key
 from bo19.api.deps.session import current_employee
 from bo19.api.deps.state import AppState, get_state
 from bo19.api.errors import ApiError
@@ -27,15 +28,6 @@ from bo19.tool_layer.endpoint_ops import chat as ops
 from bo19.tool_layer.kernel.permission import PermissionDenied, employee_context
 
 router = APIRouter(tags=["chat"])
-
-
-def idempotency_key(value: str | None) -> uuid.UUID:
-    if value is None or not value.strip():
-        raise ApiError("IDEMPOTENCY_KEY_REQUIRED")
-    try:
-        return uuid.UUID(value.strip())
-    except ValueError:
-        raise ApiError("VALIDATION_FAILED", {"fields": [{"field": "Idempotency-Key", "code": "INVALID_FORMAT"}]}) from None
 
 
 def _ctx(state: AppState, employee: SessionEmployee):
