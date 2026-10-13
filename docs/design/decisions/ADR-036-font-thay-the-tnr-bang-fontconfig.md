@@ -53,6 +53,12 @@
 - Tổ chức xác định chịu Nghị định 30/2020 và PDF phải mang đúng Times New Roman → có giấy phép phân phối Times New Roman cho image (phương án C), hoặc đổi tiêu chí chấp nhận PDF. Quyết định của PO.
 - `fc-match` trong image thật không ra Liberation Serif dù đã có quy tắc → xét lại cách cấu hình, hoặc phương án A.
 
+## Kết quả thực hiện ở B8b (2026-10-13)
+
+- **Quy tắc fontconfig** `fonts/50-bo19-times-new-roman.conf` (`<match target="pattern">` + `<edit mode="assign" binding="same">`, cú pháp theo `docs/reference/fontconfig-debian-trixie.md`), COPY vào `/etc/fonts/conf.d/`. **Phát hiện:** image Debian 13 có sẵn `30-metric-aliases.conf` cũng ánh xạ "Times New Roman" → Liberation Serif, nên `fc-match` trong image ra Liberation Serif **dù không có quy tắc của dự án**; quy tắc của dự án vì thế là sự tường minh (không phụ thuộc quy tắc có sẵn), không phải thứ duy nhất làm nó chạy. `tests/test_fonts.py` chứng minh riêng file của dự án bằng cấu hình fontconfig cô lập (không có `30-metric-aliases`): có file thì ra Liberation Serif, đổi họ đích hay bỏ file thì không.
+- **PDF nhúng Liberation Serif** khi `.docx` khai "Times New Roman" (`pdffonts`: bốn kiểu `LiberationSerif*`, không DejaVu).
+- **Đo còn nợ — ngắt dòng và ngắt trang** (`tools/font-probe/compare_linebreaks.py`, sha256 `5dd2157550dd1600ba470fcfb5f60127098801ac6a486e7560dac0f65a84d927`): cùng một `.docx` khai "Times New Roman" dựng hai lần bằng `soffice` trong image — (A) với Times New Roman 7.12 thật (bản cài của Windows trên máy người triển khai, gắn chỉ đọc, không vào repo hay image), (B) với Liberation Serif và quy tắc của dự án. Bốn cấu hình (12 pt và 13 pt, canh đều và canh trái), mỗi cấu hình bốn kiểu chữ × tám đoạn tiếng Việt đủ dấu: **829 dòng, 26 trang: 0 dòng khác nhau, số trang và số dòng mỗi trang bằng nhau.** Phạm vi của phép đo: Writer của LibreOffice 25.2.3, văn bản giả này; **không** đo Word, không đo font khác, và không nói gì về hình chữ (A-018).
+
 ## Rejected alternatives
 
 **A — Đổi tên font trong mẫu.** Loại theo quyết định của PO: file `.docx` giao người nhận sẽ khai Liberation Serif — font phần lớn máy Windows không có.

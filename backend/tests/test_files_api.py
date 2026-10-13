@@ -60,7 +60,7 @@ class FilesBase(AuthBase):
     def put(self, key: str, data: bytes, purpose: str) -> None:
         st.put_once(self.pool, self.storage, object_key=key, purpose=purpose, content_type="application/octet-stream", data=data, lease_s=120)
 
-    def make_render(self, *, kind: str = "FINAL", doc_status: str = "ISSUED", pinned: bool = True, creator: uuid.UUID | None = None) -> tuple[uuid.UUID, uuid.UUID]:
+    def make_render(self, *, kind: str = "FINAL", doc_status: str = "ISSUED", pinned: bool = True, force_pin: bool = False, creator: uuid.UUID | None = None) -> tuple[uuid.UUID, uuid.UUID]:
         """(document_id, render_id) với object THẬT trong bucket. `doc_status` ISSUED kéo theo mọi cột mà ràng buộc đòi — id giả dưới `replica`."""
         did, rid, req, ver, tid = (uuid.uuid4() for _ in range(5))
         docx_key, pdf_key = f"renders/{did}/h.docx", f"renders/{did}/h.pdf"
@@ -78,7 +78,7 @@ class FilesBase(AuthBase):
                       "signer_employee_id, final_render_id, issued_register_entry_id, issued_date, issued_at) values (%s, %s, %s, %s, 'NON_PRODUCTION', false, %s, %s, %s, %s, %s, %s, %s, %s)",
                       (did, req, ver, doc_status, b"\x00" * 32 if doc_status not in ("DRAFT", "PENDING_APPROVAL") else None, uuid.uuid4() if doc_status not in ("DRAFT", "PENDING_APPROVAL") else None,
                        uuid.uuid4() if doc_status not in ("DRAFT", "PENDING_APPROVAL") else None, self.signer if doc_status not in ("DRAFT", "PENDING_APPROVAL") else None,
-                       rid if issued and pinned else (uuid.uuid4() if issued else None), uuid.uuid4() if issued else None, now.date() if issued else None, now if issued else None))
+                       rid if (issued and pinned) or force_pin else (uuid.uuid4() if issued else None), uuid.uuid4() if issued else None, now.date() if issued else None, now if issued else None))
             c.execute("insert into document_render (id, document_id, operating_mode, render_kind, input_hash, template_version_id, revision_round, docx_object_key, pdf_object_key) "
                       "values (%s, %s, 'NON_PRODUCTION', %s, %s, %s, 0, %s, %s)", (rid, did, kind, uuid.uuid4().bytes * 2, ver, docx_key, pdf_key))
         self.version_of = {did: (tid, ver)}
@@ -106,7 +106,7 @@ class Quyen(FilesBase):
 
     def test_nguoi_tao_khong_tai_duoc_docx_ban_nhap_hay_ban_chua_phat_hanh(self):
         for label, kw, fmt in (("docx của bản FINAL", {}, "docx"), ("bản nháp", {"kind": "DRAFT"}, "pdf"), ("bản nháp docx", {"kind": "DRAFT"}, "docx"),
-                               ("văn bản chưa phát hành", {"doc_status": "PENDING_APPROVAL"}, "pdf"), ("FINAL rơi rớt không được ghim", {"pinned": False}, "pdf")):
+                               ("văn bản chưa phát hành", {"doc_status": "PENDING_APPROVAL"}, "pdf"), ("FINAL đã ghim nhưng văn bản chưa phát hành", {"doc_status": "PENDING_APPROVAL", "force_pin": True}, "pdf"), ("FINAL rơi rớt không được ghim", {"pinned": False}, "pdf")):
             did, rid = self.make_render(**kw)
             r = self.get(did, rid, fmt, self.creator)
             self.assert_envelope(r, "PERMISSION_DENIED", 403)

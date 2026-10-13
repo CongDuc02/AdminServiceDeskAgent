@@ -20,7 +20,7 @@ from collections.abc import Collection, Mapping
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt, RGBColor
-from docxtpl import DocxTemplate, Listing
+from docxtpl import DocxTemplate
 
 from bo19.tool_layer.tools._common import ToolError
 
@@ -75,7 +75,7 @@ def fill_docx(template: bytes, values: Mapping[str, str], *, declared: Collectio
     unknown = set(values) - set(declared)
     if unknown:
         raise UnknownVariable(unknown)
-    context = {k: (Listing(v) if "\n" in v else v) for k, v in values.items()}
+    context = dict(values)  # docxtpl 0.20.1 tự đổi xuống dòng trong giá trị thành ngắt dòng của Word (đo ở B8b; docs/reference/docxtpl-0.20.1.md)
     try:
         doc = DocxTemplate(io.BytesIO(template))
         doc.render(context, autoescape=True)

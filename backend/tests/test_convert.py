@@ -115,7 +115,7 @@ class HetHanVaLoi(unittest.TestCase):
         with self.assertRaises(convert.ConversionTimeout) as cm:
             convert.convert_to_pdf(render(), timeout_s=0.3, tmp_root=self.tmp.name)  # soffice khởi động mất hơn nhiều so với 0,3 s
         self.assertEqual(cm.exception.code, "TIMEOUT")
-        self.assertLess(time.monotonic() - started, 30)
+        self.assertLess(time.monotonic() - started, 5)  # SIGKILL cả nhóm tiến trình trả về ngay; không giết được thì `wait(10)` của bộ dọn làm quá 10 s
         self.assertEqual(soffice_pids("bo19-convert-"), [])  # không còn soffice hay soffice.bin của lần đó
         self.assertEqual(list(Path(self.tmp.name).iterdir()), [])
 
