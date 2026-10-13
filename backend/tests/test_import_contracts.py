@@ -42,7 +42,7 @@ class Contracts(unittest.TestCase):
         """Tên các contract bị phá — dòng kết thúc bằng BROKEN (tên dài có thể xuống dòng; ghép lại)."""
         flat = " ".join(out.split())
         return [n for n in ("Tầng — chỉ import xuống", "ai_gateway và tool_layer độc lập", "api chỉ vào orchestrator", "Lối ghi DB", "Chỉ bước kiểm khởi động dùng lối thử quyền",
-                            "Chỉ tool_layer.storage chạm object_storage", "Đường tới provider đi qua gateway", "LangGraph chỉ ở orchestrator.runtime") if f"{n}" in flat and flat.count("BROKEN") and self._is_broken(flat, n)]
+                            "Chỉ tool_layer.storage chạm object_storage", "Đường tới provider đi qua gateway", "LangGraph chỉ ở orchestrator.runtime", "boto3 và botocore chỉ ở bo19.object_storage") if f"{n}" in flat and flat.count("BROKEN") and self._is_broken(flat, n)]
 
     @staticmethod
     def _is_broken(flat: str, name: str) -> bool:
@@ -54,7 +54,7 @@ class Contracts(unittest.TestCase):
     def test_sach_dat(self):
         rc, out = self.lint({})
         self.assertEqual(rc, 0, out)
-        self.assertIn("8 kept, 0 broken", out)
+        self.assertIn("9 kept, 0 broken", out)
 
     def test_import_gian_tiep_hop_le_van_dat(self):
         # api → orchestrator.runner → ai_gateway: chuỗi hợp lệ, không được tính là api chạm ai_gateway (allow_indirect_imports)
@@ -85,6 +85,15 @@ class Contracts(unittest.TestCase):
         rc, out = self.lint({"tool_layer/jobs/s.py": "import bo19.object_storage\n"})
         self.assertEqual(rc, 1, out)
         self.assertIn("Chỉ tool_layer.storage chạm object_storage", self.broken(out))
+
+    def test_boto3_chi_trong_object_storage(self):
+        for rel, text in (("tool_layer/storage/s.py", "import boto3\n"), ("tool_layer/storage/s.py", "from botocore.config import Config\n"), ("api/routers/s.py", "import boto3\n"),
+                          ("queue_worker/s.py", "import botocore\n")):
+            rc, out = self.lint({rel: text})
+            self.assertEqual(rc, 1, (rel, text, out))
+            self.assertIn("boto3 và botocore chỉ ở bo19.object_storage", self.broken(out))
+        rc, out = self.lint({"object_storage/ok.py": "import boto3\nimport botocore\n"})  # nơi duy nhất được import
+        self.assertEqual(rc, 0, out)
 
     def test_httpx_ngoai_gateway(self):
         rc, out = self.lint({"tool_layer/kernel/h.py": "import httpx\n"})
