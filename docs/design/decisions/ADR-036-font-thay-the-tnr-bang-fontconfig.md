@@ -8,7 +8,7 @@
 
 - ADR-015 dựng ba chốt để thiếu font thành lỗi có tiếng, với nguyên tắc "có mặt" = **khớp chính xác tên họ font** và "không để bộ chuyển đổi tự thay font".
 - Times New Roman là font thương mại; **không có giấy phép nào trong `docs/reference/` cho phép phân phối nó trong image**, nên coi là không được phân phối (A-058).
-- Phụ lục I của Nghị định 30/2020/NĐ-CP quy định đích danh phông "Times New Roman" cho văn bản hành chính theo Nghị định đó; Nghị định áp dụng cho cơ quan, tổ chức nhà nước và doanh nghiệp nhà nước (Điều 2), **không nêu doanh nghiệp tư nhân** — xem file tham chiếu. Tổ chức của dự án thuộc nhóm nào: `[CẦN XÁC MINH]`, PO sẽ được báo trước mốc M1.1.
+- Phụ lục I của Nghị định 30/2020/NĐ-CP quy định đích danh phông "Times New Roman" cho văn bản hành chính theo Nghị định đó; Nghị định áp dụng cho cơ quan, tổ chức nhà nước và doanh nghiệp nhà nước (Điều 2), **không nêu doanh nghiệp tư nhân** — xem file tham chiếu. Tổ chức của dự án thuộc nhóm nào: **PO xác nhận 2026-10-13: doanh nghiệp tư nhân** (xác nhận của PO, không phải kết luận pháp lý của người triển khai).
 - Mẫu `.docx` thật (mốc M1.1) sẽ do PO soạn bằng Word với Times New Roman. Bản `.docx` giao cho người nhận được mở trên Windows, nơi font có sẵn.
 - Liberation Serif 2.1.5 (SIL OFL 1.1): đủ 186/186 chữ cái tiếng Việt; 0 lệch độ rộng so với Times New Roman 7.12 trên 223 ký tự × 4 kiểu chữ; số đo chiều dọc trùng (`font-do-phu-tieng-viet-b7.md`). Chưa đo kerning và render thật.
 
@@ -46,7 +46,7 @@
 - Chưa đo: kerning (`GPOS`/`kern`) và render thật — đo ở B8b trên image thật, trước khi kết luận "ngắt dòng giữ được".
 - **Lệch phiên bản:** bước kiểm so họ font, không so phiên bản. Ghim bằng sha256 khi COPY vào image — một test ở B8b.
 
-**Điều kiện trước production (PO, 2026-10-13):** Nghị định 30/2020 gọi đích danh Times New Roman. Tổ chức thuộc phạm vi Điều 2 (**PO xác nhận riêng**) thì phải có **giấy phép Times New Roman cho server** hoặc **một cách render khác** trước khi tháo chế độ phi sản xuất. Trước M1.1: kiểm Nghị định có bị sửa đổi hay thay thế sau 2020 không, từ nguồn chính thức.
+**Điều kiện trước production (PO, 2026-10-13):** Nghị định 30/2020 gọi đích danh Times New Roman. Tổ chức thuộc phạm vi Điều 2 (**PO xác nhận riêng** — 2026-10-13: doanh nghiệp tư nhân, nên điều kiện này hiện **không kích hoạt**; mở lại nếu tình trạng tổ chức đổi hoặc văn bản phải theo Nghị định vì lý do khác) thì phải có **giấy phép Times New Roman cho server** hoặc **một cách render khác** trước khi tháo chế độ phi sản xuất. Trước M1.1: kiểm Nghị định có bị sửa đổi hay thay thế sau 2020 không, từ nguồn chính thức.
 
 **Điều kiện đảo ngược**
 
