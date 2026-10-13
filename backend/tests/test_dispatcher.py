@@ -188,10 +188,10 @@ class Heartbeat(DispatcherBase):
         samples = []
 
         def handler(job, ctx):
-            time.sleep(1.6)  # lâu hơn lease 0,8 s gấp đôi
+            time.sleep(3.2)  # lâu hơn lease 1,5 s hơn gấp đôi; lease rộng so với nhịp heartbeat để runner chậm không làm test chập chờn
             samples.append(ctx.cancelled)
 
-        d = self.dispatcher({"render_document": handler}, lease_s=0.8, heartbeat_s=0.15)
+        d = self.dispatcher({"render_document": handler}, lease_s=1.5, heartbeat_s=0.2)
         self.assertTrue(d.run_once())
         self.assertEqual(samples, [False])
         self.assertEqual(self.row(jid)["status"], "SUCCEEDED")  # lease được gia hạn liên tục: không ai thu hồi giữa chừng

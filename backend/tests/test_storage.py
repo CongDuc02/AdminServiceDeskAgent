@@ -22,6 +22,7 @@ import pathlib
 import threading
 import unittest
 import uuid
+from unittest import mock
 
 import psycopg
 
@@ -195,8 +196,15 @@ class Claim(StorageBase):
         self.assertEqual(self.put(b"sau-doi-soat").reused, False)  # claim mới từ đầu
 
     def test_lease_het_truoc_luc_ghi_thi_khong_put(self):
-        with self.assertRaises(st.LeaseExpired):
-            self.put(lease_s=0.001)
+        real = st._claim
+
+        def claim_then_expire(*a, **k):
+            token = real(*a, **k)
+            self.expire()  # xác định: lease hết NGAY SAU khi giành, trước lúc kiểm — không dựa vào đồng hồ chạy nhanh hay chậm
+            return token
+
+        with mock.patch.object(st, "_claim", claim_then_expire), self.assertRaises(st.LeaseExpired):
+            self.put()
         self.assertEqual(self.spy.puts, [])
         self.assertEqual(self.counts(), (1, 0))  # claim còn đó cho đối soát dọn
 
