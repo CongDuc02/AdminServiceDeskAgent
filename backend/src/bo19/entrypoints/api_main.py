@@ -30,6 +30,7 @@ from bo19.orchestrator.runner import IntakeRunner
 from bo19.persistence.pool import Pool
 from bo19.startup.model import Entry
 from bo19.startup.runner import run
+from bo19.tool_layer.storage import from_settings as storage_from_settings
 
 
 class _Server(uvicorn.Server):
@@ -54,7 +55,8 @@ def serve(shutdown: ShutdownLog) -> int:
     try:
         supervisor = TurnSupervisor(runner, pool, deadline_s=settings.turn_deadline_s)
         app = create_app(AppState(pool=pool, session_secret=settings.session_secret, verifier=PasswordVerifier.from_settings(settings), supervisor=supervisor,
-                                  turn_deadline_s=settings.turn_deadline_s, turn_margin_s=settings.turn_margin_s, drain_s=float(settings.shutdown_delay_s)))
+                                  turn_deadline_s=settings.turn_deadline_s, turn_margin_s=settings.turn_margin_s, drain_s=float(settings.shutdown_delay_s),
+                                  storage=storage_from_settings(settings)))
         # `proxy_headers=False`: uvicorn không được tự đọc X-Forwarded-For. IP của rate limit đọc ở đúng một hàm, `bo19.api.auth.client_ip` (A-062, cổng 2.7).
         # Bộ xử lý GỐC của SIGTERM/SIGINT: sau khi tắt xong, uvicorn khôi phục bộ xử lý gốc rồi BẮN LẠI tín hiệu đã bắt (`capture_signals`). Để mặc định thì tiến trình chết `-15` trước khi kịp ghi `PROCESS_EXIT`
         # (chỉ PID 1 trong container thoát mã 0 — S4). Bộ xử lý này không làm gì thêm, trừ khi tín hiệu tới TRƯỚC khi uvicorn cài bộ xử lý của nó (lúc khởi động) — khi đó chỉ ghi log.

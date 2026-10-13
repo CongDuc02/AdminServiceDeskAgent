@@ -125,22 +125,22 @@ def _families(output: str) -> set[str]:
     return names
 
 
-def match_families(family: str, run: Runner = _run) -> set[str]:
-    return _families(run(["fc-match", "-f", "%{family}\n", family]))
+def match_families(family: str, run: Runner | None = None) -> set[str]:
+    return _families((run or _run)(["fc-match", "-f", "%{family}\n", family]))
 
 
-def installed_families(run: Runner = _run) -> set[str]:
-    return _families(run(["fc-list", ":", "family"]))
+def installed_families(run: Runner | None = None) -> set[str]:
+    return _families((run or _run)(["fc-list", ":", "family"]))
 
 
-def is_present(family: str, *, run: Runner = _run, installed: set[str] | None = None) -> bool:
+def is_present(family: str, *, run: Runner | None = None, installed: set[str] | None = None) -> bool:
     target = FONT_ALIASES.get(family)
     if target is not None:
         return target in match_families(family, run)
     return family in (installed if installed is not None else installed_families(run))
 
 
-def missing(required: Iterable[str], *, run: Runner = _run) -> list[str]:
+def missing(required: Iterable[str], *, run: Runner | None = None) -> list[str]:
     """Các họ trong `required` chưa có mặt, theo thứ tự chữ cái. Gọi `fc-list` một lần."""
     installed = installed_families(run)
     return sorted(f for f in set(required) if not is_present(f, run=run, installed=installed))

@@ -56,6 +56,7 @@ CATALOG: dict[str, ErrorSpec] = {
     "VALIDATION_FAILED": ErrorSpec(422, "Dữ liệu gửi lên chưa đúng. Hãy sửa các trường được nêu rồi gửi lại."),
     "REQUEST_NOT_READY": ErrorSpec(422, "Yêu cầu chưa đủ thông tin để gửi. Hãy bổ sung hoặc xác nhận các mục được nêu."),
     "RATE_LIMITED": ErrorSpec(429, "Đã thử đăng nhập quá nhiều lần. Hãy chờ một lúc rồi thử lại."),
+    "FILE_UNAVAILABLE": ErrorSpec(503, "Chưa tải được tệp lúc này. Hãy liên hệ Phòng Hành chính."),
     "INTERNAL_ERROR": ErrorSpec(500, "Hệ thống gặp lỗi không lường trước. Hãy thử lại sau; nếu lặp lại, hãy báo mã trace_id."),
 }
 

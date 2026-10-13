@@ -16,7 +16,7 @@ import uuid
 from dataclasses import dataclass
 
 from bo19.config import working_values as wv
-from bo19.object_storage import ObjectStorage
+from bo19.tool_layer.storage import ObjectStorage  # tên được tool_layer.storage mang ra: tool chỉ chạm object_storage qua module lưu trữ (contract object-storage)
 from bo19.persistence.pool import Pool
 from bo19.persistence.read import read_only
 from bo19.persistence.write import unit_of_work
