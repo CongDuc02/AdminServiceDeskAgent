@@ -103,6 +103,7 @@ class FetchVerified(FilesBase):
 
     def test_khong_ro_tep_tam_o_moi_loi_thoat(self):
         base = deleted_tmp_fds()
+        names_before = set(os.listdir(tempfile.gettempdir()))
         good = self.put_bytes(b"abc" * 1000)
         f, _ = self.fetch(good)
         self.assertEqual(deleted_tmp_fds(), base + 1)  # đang mở: đúng một tệp
@@ -127,6 +128,7 @@ class FetchVerified(FilesBase):
             with self.assertRaises(st.FileUnavailable, msg=name):
                 call()
             self.assertEqual(deleted_tmp_fds(), base, name)
+        self.assertEqual(set(os.listdir(tempfile.gettempdir())) - names_before, set())  # tệp tạm VÔ DANH: không có tên nào xuất hiện trên đĩa, dù chỉ thoáng qua rồi bị xoá sót
 
     def test_ly_do_tung_loai_chi_de_log(self):
         key = self.put_bytes(b"q" * 4000)
@@ -363,6 +365,38 @@ class Stream(FilesBase, unittest.IsolatedAsyncioTestCase):
         self.assertLessEqual(peak, 3)
         self.assertGreaterEqual(peak, 2)  # có đồng thời thật, không phải chạy tuần tự
         self.assertEqual(self.gate.in_flight, 0)
+
+    async def test_ghi_audit_loi_thi_dong_tep_khong_giao_file(self):
+        """`audit_event` là điều kiện để giao file: không ghi được dấu vết thì tệp đã tải bị đóng, không ai nhận, chỗ được nhả."""
+        self.rebuild(self.storage, self.limits(concurrent=1))
+        did, rid, data = self.big(50)
+        base = deleted_tmp_fds()
+        with mock.patch("bo19.tool_layer.endpoint_ops.files._audit", side_effect=RuntimeError("audit hỏng")):
+            r = await self.call(did, rid, self.officer)
+        self.assertEqual(r["status"], 500)
+        self.assertNotIn(b"%PDF", r["body"])
+        self.assertEqual((self.gate.in_flight, deleted_tmp_fds()), (0, base))
+        self.assertEqual((await self.call(did, rid, self.officer))["body"], data)
+
+    async def test_tai_xong_dung_luc_het_han_khong_bat_dau_response_bi_cat(self):
+        """Pha tải kết thúc sau hạn chót (ở đây: bộ tải bỏ qua `deadline`) thì router trả 503 trước khi gửi byte nào, đóng tệp đã tải và nhả chỗ."""
+        self.rebuild(self.storage, self.limits(concurrent=1, deadline_s=0.3))
+        did, rid, data = self.big(50)
+        real = st.fetch_verified
+
+        def slow(*a, **kw):
+            kw["deadline"] = None  # không tự kiểm hạn chót
+            out = real(*a, **kw)
+            time.sleep(0.5)
+            return out
+
+        base = deleted_tmp_fds()
+        with mock.patch("bo19.tool_layer.endpoint_ops.files.store.fetch_verified", slow):
+            r = await self.call(did, rid, self.officer)
+        self.assertEqual(r["status"], 503)
+        self.assertNotIn("retry-after", r["headers"])
+        self.assertNotIn(b"%PDF", r["body"])
+        self.assertEqual((self.gate.in_flight, deleted_tmp_fds()), (0, base))
 
     async def test_mac_dinh_la_wv_26_den_30(self):
         d = FileFetchLimits()
