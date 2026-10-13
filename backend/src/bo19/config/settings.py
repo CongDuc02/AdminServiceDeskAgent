@@ -42,6 +42,11 @@ ENV_NAMES: Mapping[str, str] = {
     "argon2_parallelism": "BO19_ARGON2_PARALLELISM",
     "llm_base_url": "BO19_LLM_BASE_URL",
     "llm_api_key": "BO19_LLM_API_KEY",
+    "object_storage_endpoint_url": "BO19_OBJECT_STORAGE_ENDPOINT_URL",
+    "object_storage_bucket": "BO19_OBJECT_STORAGE_BUCKET",
+    "object_storage_region": "BO19_OBJECT_STORAGE_REGION",
+    "object_storage_access_key_id": "BO19_OBJECT_STORAGE_ACCESS_KEY_ID",
+    "object_storage_secret_access_key": "BO19_OBJECT_STORAGE_SECRET_ACCESS_KEY",
 }
 
 DEFAULT_LLM_BASE_URL = "https://api.groq.com/openai/v1"  # ADR-032 mốc 1, ADR-035; đổi sang provider khác là đổi biến này, khoá và hồ sơ model — không đổi mã
@@ -70,15 +75,21 @@ class Settings:
     argon2_parallelism: int | None
     llm_base_url: str | None
     llm_api_key: str | None = field(repr=False)  # secret — không bao giờ vào repr, log hay lỗi (ADR-035, mục Cập nhật B4)
+    # B8a — object storage (ADR-003, ADR-037). Cả nhóm vắng thì không có `object_storage` (bước kiểm #14 cảnh báo); có một phần thì phần thiếu là `problems`. Hai khoá là secret.
+    object_storage_endpoint_url: str | None = None
+    object_storage_bucket: str | None = None
+    object_storage_region: str = "us-east-1"
+    object_storage_access_key_id: str | None = field(default=None, repr=False)
+    object_storage_secret_access_key: str | None = field(default=None, repr=False)
     problems: tuple[tuple[str, str], ...] = ()  # (trường, mã) — mã dạng CONFIG_<TÊN>_MISSING | _INVALID
 
     def problem(self, name: str) -> str | None:
         return dict(self.problems).get(name)
 
     def __repr__(self) -> str:
-        hidden = ("database_url", "session_secret", "llm_api_key")
+        hidden = ("database_url", "session_secret", "llm_api_key", "object_storage_access_key_id", "object_storage_secret_access_key")
         shown = ", ".join(f"{f}={getattr(self, f)!r}" for f in ENV_NAMES if f not in hidden)
-        return f"Settings({shown}, database_url=<ẩn>, session_secret=<ẩn>, llm_api_key=<ẩn>, problems={[p for p, _ in self.problems]})"
+        return f"Settings({shown}, database_url=<ẩn>, session_secret=<ẩn>, llm_api_key=<ẩn>, object_storage_access_key_id=<ẩn>, object_storage_secret_access_key=<ẩn>, problems={[p for p, _ in self.problems]})"
 
 
 def _code(name: str, kind: str) -> str:
@@ -93,6 +104,11 @@ def _get(env: Mapping[str, str], name: str) -> str | None:
 def _https_url(raw: str) -> bool:
     parts = urlsplit(raw)
     return parts.scheme == "https" and bool(parts.hostname) and not any(c.isspace() for c in raw)
+
+
+def _http_url(raw: str, *, https_only: bool) -> bool:
+    parts = urlsplit(raw)
+    return parts.scheme in (("https",) if https_only else ("http", "https")) and bool(parts.hostname) and not any(c.isspace() for c in raw)
 
 
 def _positive_int(raw: str) -> int | None:
@@ -149,5 +165,18 @@ def load_settings(env: Mapping[str, str] = os.environ) -> Settings:
     if values["llm_base_url"] is None:
         problems.append(("llm_base_url", _code("llm_base_url", "INVALID")))
     values["llm_api_key"] = _get(env, "llm_api_key")  # không có ở `problems`: bước kiểm #22 (B6b) là nơi chặn khi thiếu khoá — `Settings` vẫn dựng được để các bước khác báo cùng lúc
+
+    # Object storage: cả nhóm vắng là hợp lệ (chưa dùng); có một phần thì mọi phần còn lại bắt buộc. `https://` bắt buộc ngoài `dev` (local trỏ SeaweedFS, mục Biến môi trường của 11-ops.md).
+    group = ("object_storage_endpoint_url", "object_storage_bucket", "object_storage_access_key_id", "object_storage_secret_access_key")
+    present = {name: _get(env, name) for name in group}
+    for name in group:
+        values[name] = present[name]
+        if any(present.values()) and present[name] is None:
+            problems.append((name, _code(name, "MISSING")))
+    endpoint = present["object_storage_endpoint_url"]
+    if endpoint is not None and not _http_url(endpoint, https_only=values.get("environment") is not Environment.DEV):
+        values["object_storage_endpoint_url"] = None
+        problems.append(("object_storage_endpoint_url", _code("object_storage_endpoint_url", "INVALID")))
+    values["object_storage_region"] = _get(env, "object_storage_region") or "us-east-1"
 
     return Settings(problems=tuple(problems), **values)  # type: ignore[arg-type]

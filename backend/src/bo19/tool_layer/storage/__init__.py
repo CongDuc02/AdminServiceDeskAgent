@@ -24,7 +24,8 @@ from dataclasses import dataclass
 
 import psycopg
 
-from bo19.object_storage import AlreadyExists, ObjectStorage
+from bo19.config.settings import Settings
+from bo19.object_storage import AlreadyExists, ObjectStorage, ObjectStorageConfig
 from bo19.persistence.pool import Pool
 from bo19.persistence.write import unit_of_work
 from bo19.tool_layer.tools._common import ToolError
@@ -50,6 +51,15 @@ class ClaimLost(ToolError):
 
 class StorageWriteConflict(ToolError):
     code = "STORAGE_WRITE_CONFLICT"  # 412 và byte trên storage khác byte mình gửi (A-084)
+
+
+def from_settings(settings: Settings) -> ObjectStorage | None:
+    """Adapter dựng từ cấu hình; `None` khi nhóm biến object storage vắng (chưa dùng — bước kiểm #14 cảnh báo). Cấu hình có lỗi thì `Settings.problems` đã chặn từ trước."""
+    s = settings
+    if not (s.object_storage_endpoint_url and s.object_storage_bucket and s.object_storage_access_key_id and s.object_storage_secret_access_key):
+        return None
+    return ObjectStorage(ObjectStorageConfig(endpoint_url=s.object_storage_endpoint_url, bucket=s.object_storage_bucket, access_key_id=s.object_storage_access_key_id,
+                                             secret_access_key=s.object_storage_secret_access_key, region=s.object_storage_region, timeout_s=s.object_storage_timeout_s or 30))
 
 
 @dataclass(frozen=True)
