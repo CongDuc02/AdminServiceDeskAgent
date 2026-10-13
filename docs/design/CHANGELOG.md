@@ -3538,3 +3538,10 @@ PO duyệt kế hoạch B8a (`proposals/b8a-ke-hoach.md`) và quyết thêm về
 | Số đo (`proposals/b8b-ke-hoach.md` mục 9) | Một lần chuyển đổi ≈ 212 MiB cgroup, OOM-kill ở 192 MiB; 0,1 CPU: 32–88 s; ngắt dòng so Times New Roman thật: 0/829 dòng lệch; image đã nén ×2,08, chưa nén ×1,87 |
 | **Dừng chờ PO** | **O1-18** — trần tải file × số tải đồng thời không vừa 512 MB (số tải đồng thời hiện không bị chặn); O1-19 — thời lượng ở 0,1 CPU và bước kiểm #6 |
 | Lệch kế hoạch, nói rõ | `docx_render` nhận bảng giá trị làm tham số (B9a dựng nó); target `test` mount mã thay vì COPY; watermark là dòng chữ ở tiêu đề; bốn diễn giải ở mục 9.5 |
+
+### B8c — kế hoạch và quyết định của PO sau B8b (2026-10-13)
+
+- **Merge B8b** vào `main` (PO cho phép, `--no-ff`, `ec60902`); nhánh đã xoá.
+- **O1-18:** PO chọn ghi tạm ra đĩa (tệp tạm theo khối, băm khi tải, stream từ tệp, xoá ở mọi lối thoát) và semaphore số lượt tải đồng thời mặc định 4 (WV-27, chưa hiệu chỉnh). **O1-19:** PO chọn #6 kiểm nhẹ (`soffice --version`), chuyển đổi thật chỉ ở CI, log phiên bản LibreOffice ở khởi động. **A-094:** hoãn tới trước `PRODUCTION`. Bốn diễn giải của B8b: chấp nhận `read_assigned` (rà lại ở B9b), `TEMPLATE_NOT_ACTIVE`, bảng biến làm tham số; **watermark dòng chữ ở tiêu đề: PO không đồng ý** (dễ cắt khi in hay chụp).
+- **Kiểm thiết kế về watermark:** chỉ có bốn quy định (nguyên văn; trong bản render; không có tham số tắt; kiểm được sau UAT) — không quy định hình thức, nên không cản watermark chéo. Ghi ở `proposals/b8c-ke-hoach.md` mục 1, kèm giới hạn đã có từ trước của "không gỡ được".
+- **Kế hoạch B8c** `proposals/b8c-ke-hoach.md` — **chờ PO duyệt**: watermark chéo (spike LibreOffice + ảnh trang PDF làm bằng chứng, có cổng dừng), tải file qua tệp tạm vô danh + semaphore, #6 nhẹ + log phiên bản. Việc đo `combined_main` ghi ở O1-6 và A-095. Chưa có mã.
