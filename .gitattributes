@@ -16,3 +16,7 @@ frontend/src/api/generated/** text eol=lf
 *.otf binary
 # Script chạy trong container (ADR-033): shebang và lệnh hỏng nếu có CR.
 *.sh text eol=lf
+Dockerfile text eol=lf
+fonts/*.conf text eol=lf
+fonts/LICENSE text eol=lf
+tools/image-checks/*.sh text eol=lf

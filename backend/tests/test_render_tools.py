@@ -103,6 +103,29 @@ class RenderBase(unittest.TestCase):
         return self.raw.get_object(Bucket=self.bucket, Key=key)["Body"].read()
 
 
+class InputHash(unittest.TestCase):
+    """Khoá theo INPUT (mục 5.6 của 03-agents.md): phụ thuộc đúng ba thứ — phiên bản template, bảng giá trị, chế độ — và không thứ nào khác."""
+
+    V = uuid.UUID("11111111-1111-4111-8111-111111111111")
+
+    def test_phu_thuoc_tung_trong_ba_thanh_phan(self):
+        base = dr.input_hash(self.V, {"a": "1"}, "NON_PRODUCTION")
+        self.assertNotEqual(base, dr.input_hash(uuid.uuid4(), {"a": "1"}, "NON_PRODUCTION"))
+        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "2"}, "NON_PRODUCTION"))
+        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "1", "b": ""}, "NON_PRODUCTION"))
+        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "1"}, "PRODUCTION"))
+
+    def test_tat_dinh_va_khong_phu_thuoc_thu_tu(self):
+        self.assertEqual(dr.input_hash(self.V, {"a": "1", "b": "2"}, "PRODUCTION"), dr.input_hash(self.V, {"b": "2", "a": "1"}, "PRODUCTION"))
+        self.assertEqual(len(dr.input_hash(self.V, {}, "PRODUCTION")), 32)
+
+    def test_tieng_viet_khong_bi_escape_va_khoa_la_hex_64(self):
+        h = dr.input_hash(self.V, {"a": "Đặng"}, "PRODUCTION")
+        key = dr.render_key(uuid.UUID(int=5), h, "pdf")
+        self.assertEqual(key, f"renders/{uuid.UUID(int=5)}/{h.hex()}.pdf")
+        self.assertRegex(key, r"^renders/[0-9a-f-]{36}/[0-9a-f]{64}\.pdf$")
+
+
 class DocxRender(RenderBase):
     def test_ghi_docx_theo_khoa_input_va_dien_dung_bien(self):
         did = self.make_document(self.make_template())
