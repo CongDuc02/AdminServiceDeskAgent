@@ -3545,3 +3545,14 @@ PO duyệt kế hoạch B8a (`proposals/b8a-ke-hoach.md`) và quyết thêm về
 - **O1-18:** PO chọn ghi tạm ra đĩa (tệp tạm theo khối, băm khi tải, stream từ tệp, xoá ở mọi lối thoát) và semaphore số lượt tải đồng thời mặc định 4 (WV-27, chưa hiệu chỉnh). **O1-19:** PO chọn #6 kiểm nhẹ (`soffice --version`), chuyển đổi thật chỉ ở CI, log phiên bản LibreOffice ở khởi động. **A-094:** hoãn tới trước `PRODUCTION`. Bốn diễn giải của B8b: chấp nhận `read_assigned` (rà lại ở B9b), `TEMPLATE_NOT_ACTIVE`, bảng biến làm tham số; **watermark dòng chữ ở tiêu đề: PO không đồng ý** (dễ cắt khi in hay chụp).
 - **Kiểm thiết kế về watermark:** chỉ có bốn quy định (nguyên văn; trong bản render; không có tham số tắt; kiểm được sau UAT) — không quy định hình thức, nên không cản watermark chéo. Ghi ở `proposals/b8c-ke-hoach.md` mục 1, kèm giới hạn đã có từ trước của "không gỡ được".
 - **Kế hoạch B8c** `proposals/b8c-ke-hoach.md` — **chờ PO duyệt**: watermark chéo (spike LibreOffice + ảnh trang PDF làm bằng chứng, có cổng dừng), tải file qua tệp tạm vô danh + semaphore, #6 nhẹ + log phiên bản. Việc đo `combined_main` ghi ở O1-6 và A-095. Chưa có mã.
+
+### B8c — kết quả mã (2026-10-13)
+
+| Hạng mục | Kết quả |
+|---|---|
+| Tải file qua tệp tạm (O1-18, **đóng**) | Tệp tạm vô danh, băm khi tải, stream sau khi kiểm; `FileGate` (4 lượt, chờ 15 s rồi 503 kèm `Retry-After`), hạn chót tổng 60 s bao cả stream; endpoint `async`. **Tải 64 MiB tăng RSS 0,04 MiB; qua trong `--memory=96m` và `128m --cpus=0.1`; cùng lệnh dùng đường cũ bị OOM-kill (137)** |
+| #6 nhẹ (O1-19, **đóng**) | `soffice --headless --version` (20 s); log phiên bản LibreOffice mỗi lần `worker` khởi động; chuyển đổi thật chỉ ở CI |
+| Watermark chéo | VML WordArt neo trong tiêu đề (spike: DrawingML bị LibreOffice bỏ góc xoay); kiểm bằng pixel trên ảnh trang PDF và bằng XML; ảnh mẫu `proposals/b8c-watermark-mau.png` — **màu, độ mờ chờ PO chỉnh** |
+| Kiểm | CI xanh ba job; `lint-imports` 9/9; **1368 test OK**; `check_grants` Lệch 0 |
+| Đột biến | **38 mẫu: 36 đỏ ngay, 2 sống do test yếu (`G03`, `K04`) đã sửa rồi đỏ → 38/38**; không mẫu tương đương |
+| Chưa làm | `combined_main` (đo chat dưới 0,1 CPU lúc `soffice` chạy — O1-6, A-095); `/tmp` của Render (A-095); trần số dòng `FREE_CONTENT`; kiểm watermark ở PDF bằng máy (thuộc tính PDF) — chờ PO |

@@ -72,7 +72,7 @@ Dựng hai biến thể trong tiêu đề, cho `soffice` (LibreOffice 25.2.3, tr
 | Hạng mục | Kết quả |
 |---|---|
 | Watermark chéo | `rendering/watermark.py`; shape ở mọi tiêu đề (mặc định, trang đầu, trang chẵn, kế thừa phần); không thêm đoạn nào vào tiêu đề; 9 test pixel (đường chéo đi lên, trải hai chiều, trọng tâm giữa trang, hai góc đối có / hai góc kia trống, chữ thân vẫn đọc được, `pdftotext` y hệt, mọi trang, tiêu đề riêng trang đầu, mẫu không có tiêu đề, nhiều phần, `PRODUCTION` giống hệt từng pixel và không còn dòng chữ ở đầu trang) + 6 test XML |
-| Tải file qua tệp tạm (O1-18) | `fetch_verified`, `get_chunks`, `FileGate`, `DeadlineStreamingResponse`; endpoint `async`; 19 + 5 test mới (RSS không theo kích thước, tệp ở mọi lối thoát, hạn chót cắt client chậm, bốn client chậm không chặn lượt thứ năm quá WV-28, `Retry-After` chỉ ở "bận", chỗ không rò sau 20 lượt lỗi, `file.closed` ở mọi lối thoát của response) |
+| Tải file qua tệp tạm (O1-18) | `fetch_verified`, `get_chunks`, `FileGate`, `DeadlineStreamingResponse`; endpoint `async`; 24 test mới ở `test_files_stream.py` (RSS không theo kích thước, tệp ở mọi lối thoát, hạn chót cắt client chậm, bốn client chậm không chặn lượt thứ năm quá WV-28, `Retry-After` chỉ ở "bận", chỗ không rò sau 20 lượt lỗi, `file.closed` ở mọi lối thoát của response) |
 | #6 nhẹ (O1-19) | `convert.soffice_version`; `STARTUP_06_VERSION_*`; log `libreoffice`; 9 test; WV-25 = 20 s |
 | Tài liệu | `05-api.md`, `openapi.yaml` (header `Retry-After` của 503), `06-structure.md`, `03-agents.md`, ADR-014/015, WV-26..30, A-095, roadmap |
 
@@ -94,7 +94,7 @@ Dựng hai biến thể trong tiêu đề, cho `soffice` (LibreOffice 25.2.3, tr
 
 ### 8.5 Bằng chứng CI
 
-*(điền sau khi CI xanh)*
+CI xanh cả ba job (commit `52b5bde`): `backend` 3 phút 53 giây — image runtime không `--target` + bước kiểm, `lint-imports` **9/9**, **1368 test OK** (154 s) trong image target `test`; `contracts` Lệch 0; `lock` đạt. Cục bộ cũng 1368 test OK. Số test mới của B8c so với B8b (1324): +44.
 
 ### 8.6 Ghi nhận / chưa làm
 
