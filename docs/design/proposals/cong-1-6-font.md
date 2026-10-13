@@ -1,12 +1,12 @@
 # Đề xuất cổng 1.6 — bộ font trong image và quyền phân phối (A-058)
 
-**Trạng thái:** chờ PO quyết · **Ngày:** 2026-10-12 · **Người đề xuất:** người triển khai · **Nguồn yêu cầu:** PO, duyệt kế hoạch B7 (2026-10-12) — docs-only, song song B7 · **Cần trước:** B8b (`soffice` và font vào image), S5 của Spike 1 · **Tài liệu gốc:** `docs/reference/font-liberation-serif-license.md`, `docs/reference/font-tinos-license.md`, `docs/reference/font-do-phu-tieng-viet-b7.md`
+**Trạng thái:** ✅ **PO quyết 2026-10-13** — Q1 Liberation Serif; Q2 **khác mặc định**: giữ "Times New Roman" trong `.docx`, ánh xạ bằng fontconfig tường minh trong image, bước kiểm khởi động xác nhận bằng `fc-match` (lý do: mẫu thật soạn bằng Word với Times New Roman; `.docx` giao người nhận mở trên Windows vẫn đúng font) — **ADR-036**; Q3 lấy Nghị định 30/2020 — **đã lấy**, `docs/reference/nghi-dinh-30-2020-phong-chu-va-pham-vi.md`. Phần dưới giữ nguyên bản đề xuất; mục 4 điểm 3 đường (b) và mục 5 dòng "Mẫu … khai `required_fonts = [\"Liberation Serif\"]`" **bị thay** bởi ADR-036 · **Ngày:** 2026-10-12 · **Người đề xuất:** người triển khai · **Nguồn yêu cầu:** PO, duyệt kế hoạch B7 (2026-10-12) — docs-only, song song B7 · **Cần trước:** B8b (`soffice` và font vào image), S5 của Spike 1 · **Tài liệu gốc:** `docs/reference/font-liberation-serif-license.md`, `docs/reference/font-tinos-license.md`, `docs/reference/font-do-phu-tieng-viet-b7.md`
 
 ## 1. Thiết kế đang giả định font gì
 
 - **Không giả định font cụ thể nào.** Thiết kế chỉ có cơ chế: `template_version.required_fonts` là manifest tên họ font của từng phiên bản template; ba chốt của ADR-015 — tải lên, kích hoạt, bước kiểm khởi động #7 — đòi mọi font trong manifest có mặt trong image và mọi font file `.docx` khai dùng nằm trong manifest. `fonts/README.md` chỉ ghi luật "mỗi font kèm file giấy phép, COPY vào `/usr/local/share/fonts/bo19/`" — thư mục chưa có font nào.
 - **Chưa có mẫu `.docx` nào:** mẫu thật là mốc M1.1; mẫu giữ chỗ người triển khai dựng ở B8b. Khuôn trả lời của chat là văn bản thuần, không dính font.
-- **Nghị định 30/2020/NĐ-CP** có quy định về phông chữ trong thể thức văn bản hành chính, nhưng tên phông, cỡ chữ và điều khoản là **`[CẦN XÁC MINH]` — văn bản gốc chưa có trong `docs/reference/`**. Đề xuất này không khẳng định Nghị định đòi Times New Roman hay phông nào; xem Q3.
+- **Nghị định 30/2020/NĐ-CP** — *cập nhật 2026-10-13:* văn bản gốc đã vào `docs/reference/nghi-dinh-30-2020-phong-chu-va-pham-vi.md`. Phụ lục I, Phần I, mục I.4 quy định đích danh "Phông chữ tiếng Việt Times New Roman"; Điều 2 áp dụng cho cơ quan, tổ chức nhà nước và doanh nghiệp nhà nước và **không nêu doanh nghiệp tư nhân**. Tổ chức của dự án có thuộc phạm vi hay không: `[CẦN XÁC MINH]`, báo PO trước M1.1. (Đoạn gốc của đề xuất, ghi trước khi lấy văn bản: tên phông và điều khoản `[CẦN XÁC MINH]`.)
 
 ## 2. Các phương án
 

@@ -1,6 +1,6 @@
 # Đề xuất phạm vi — CLI chat tối giản ở local (`tools/chat-cli/`), sau B7
 
-**Trạng thái:** chờ PO duyệt · **Ngày:** 2026-10-12 · **Người đề xuất:** người triển khai · **Nguồn:** PO, duyệt kế hoạch B7 (2026-10-12) — rủi ro R1-5 của `12-roadmap.md` · **Khuôn chốt chặn:** `tools/turn-trial/` (B6b)
+**Trạng thái:** ✅ **PO duyệt 2026-10-13** — phạm vi như dưới (Q1 = 40 lời gọi, Q2 = `/slots` chỉ màn hình, Q3 = có `/confirm`, `/submit`), **kèm hai điều kiện thêm:** (1) lúc khởi động in đúng dòng nhắc "Mọi nội dung bạn gõ được gửi tới Groq ở nước ngoài (A-080). Chỉ gõ thông tin bịa." và bắt nhập `dong y` mới chạy; (2) không ghi nội dung hội thoại ra file, log hay history của CLI. Làm ngay sau merge B7, trước B8a — nhánh `build/b7b-chat-cli` · **Ngày:** 2026-10-12 · **Người đề xuất:** người triển khai · **Nguồn:** PO, duyệt kế hoạch B7 (2026-10-12) — rủi ro R1-5 của `12-roadmap.md` · **Khuôn chốt chặn:** `tools/turn-trial/` (B6b)
 
 ## 1. Vấn đề
 
@@ -28,7 +28,8 @@ Chất lượng hội thoại — P1 hiểu sai ý, câu hỏi lại gượng, `
 |---|---|
 | Gọi mạng thật chỉ khi có `--confirm-real` | Thiếu cờ thì in kế hoạch, thoát mã `3` |
 | Khoá API chỉ từ biến môi trường `BO19_LLM_API_KEY` | Người chạy nhập bằng `read -rs`; tool không đọc `.env`, không nhận khoá trên dòng lệnh, không in, không ghi |
-| Không ghi nội dung ra file | Không file kết quả nào: tin nhắn, câu trả lời, giá trị slot chỉ hiện trên màn hình. Log kỹ thuật bỏ đi; chỉ giữ trường của `LLM_PROVIDER_ERROR` — chỉ mã và số — để in ở tổng cuối |
+| Không ghi nội dung ra file, log hay history | Không file kết quả nào: tin nhắn, câu trả lời, giá trị slot chỉ hiện trên màn hình. Log kỹ thuật bỏ đi; chỉ giữ trường của `LLM_PROVIDER_ERROR` — chỉ mã và số — để in ở tổng cuối. **History:** CLI đọc stdin thô, **không** nạp `readline`, không có file lịch sử. **Database tạm** chứa tin nhắn trong lúc chạy và bị xoá khi thoát; **không có `--keep-db`** (bỏ so với turn-trial: giữ database là giữ nội dung hội thoại) |
+| Đồng ý trước khi chạy (PO, 2026-10-13) | Sau `--confirm-real` và kiểm khoá, CLI in dòng nhắc A-080 và đọc một dòng từ stdin; chỉ `dong y` (không phân biệt hoa thường, bỏ khoảng trắng hai đầu) mới tiếp tục — mọi câu khác thoát mã `4` trước khi tạo database hay gọi mạng |
 | Chỉ dữ liệu giả (A-080, ADR-032 mốc 2) | Không ép được bằng mã: PO tự gõ. Tool in nhắc ở đầu mỗi lần chạy; `employee` giả mang nhãn `(GIẢ)` |
 | Hạn mức Groq gói Free | Trần lời gọi mỗi lần chạy — câu hỏi Q1; giãn nhịp dưới 6.500 token/phút như turn-trial; hết hạn mức thì dừng nhận tin, in tổng |
 | Test | `backend/tests/test_chat_cli.py` chạy tool với server giả ở CI, stdin là kịch bản: không mạng, không khoá thật; đòi không file nào được ghi, khoá không lọt ra stdout, database tạm bị xoá |
