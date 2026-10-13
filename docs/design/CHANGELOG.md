@@ -3465,3 +3465,23 @@ PO duyệt kế hoạch B7 ngày 2026-10-12, kèm: payload `render_document` ch�
 | `docs/reference/font-do-phu-tieng-viet-b7.md` | Số đo đọc từ file font thật: 186/186 chữ cái tiếng Việt, 8/8 dấu tổ hợp, 37/37 dấu câu ở cả tám file; **0 lệch độ rộng** với Times New Roman 7.12 (bản Windows của máy người triển khai, chỉ đọc) trên 223 ký tự × 4 kiểu chữ; số đo chiều dọc trùng từng số. Chưa đo kerning và render `soffice` |
 | `12-roadmap.md` → 0.51, `ASSUMPTIONS.md` → 0.68 | Cổng 1.6 và A-058 trỏ đề xuất; AC-1.4 đạt |
 | `06-structure.md` → 0.43 | Mục Triển khai ở B7 |
+
+### B7b — quyết định của PO sau B7, cổng 1.6 và CLI chat (2026-10-13)
+
+PO cho merge `build/b7-request-submit` (`--no-ff`, `1af28c5`); đóng O1-13 với nhãn "n nhỏ (11 lượt)", giữ O1-17 mở; duyệt phạm vi CLI chat kèm hai điều kiện; quyết cổng 1.6; đồng ý `SlotView.label` và `STATE_CONFLICT` cho `NEEDS_INFO` đủ điều kiện.
+
+| File | Thay đổi |
+|---|---|
+| `decisions/ADR-036-font-thay-the-tnr-bang-fontconfig.md` | **Mới, Accepted:** Liberation Serif 2.1.5 vào image; `.docx` **giữ** "Times New Roman"; quy tắc fontconfig tường minh ánh xạ "Times New Roman" → Liberation Serif; bước kiểm khởi động xác nhận bằng `fc-match`. Ghi rõ cái giá: PDF nhúng Liberation Serif; rủi ro nếu Nghị định 30/2020 áp dụng cho tổ chức; chưa đo kerning và render thật. **Khác mặc định của đề xuất B7** (đổi font trong mẫu) |
+| `decisions/ADR-015-...md` | Bổ sung: họ font có ánh xạ fontconfig tường minh thì "có mặt" nghĩa là `fc-match` ra đúng họ đích |
+| `06-structure.md` → 0.44 | Bước kiểm #7: ngoại lệ có tên cho họ có ánh xạ; chạy cùng #6. Chưa có code (B8b) |
+| `docs/reference/nghi-dinh-30-2020-phong-chu-va-pham-vi.md` | **Mới.** Nghị định 30/2020/NĐ-CP lấy bằng `curl` 2026-10-13 từ `vanban.chinhphu.vn` và Công báo (URL, sha256 của ba file). **PDF ký là bản quét, không có lớp chữ** — trích từ PDF Công báo (có lớp chữ). Phụ lục I, Phần I, mục I.4: "Phông chữ tiếng Việt Times New Roman". Điều 2: áp dụng cho cơ quan, tổ chức nhà nước và doanh nghiệp nhà nước, **không nêu doanh nghiệp tư nhân**; khoản 2 áp dụng "cho phù hợp" với tổ chức chính trị, xã hội. Bản này là bản gốc 2020 — có sửa đổi hay thay thế sau đó không: `[CẦN XÁC MINH]` |
+| `12-roadmap.md` → 0.53 | Cổng 1.6 **Đạt**; O1-13 đóng; B7b |
+| `ASSUMPTIONS.md` → 0.69 | A-058 theo quyết định; mục còn mở là phạm vi Nghị định |
+| `proposals/cong-1-6-font.md`, `proposals/chat-cli.md` | Ghi quyết định và điều kiện thêm |
+
+| Mã | Kết quả |
+|---|---|
+| `tools/chat-cli/` | `chat_cli.py` dùng lại `tools/turn-trial/` (database tạm, `IntakeRunner` thật, nhịp Groq Free). Dòng nhắc A-080 và `dong y` trước khi tạo database hay gọi mạng (mã thoát 4); không `readline`, không `--keep-db`, không file nào mở để ghi; `/slots` in cả `RES` chỉ trên màn hình; `/confirm` đích danh; `/submit` qua `request_submit`; trần 40 lời gọi |
+| Kiểm | `backend/tests/test_chat_cli.py` 15 test với server giả; đột biến **12/12 đỏ** (đồng ý luôn đúng, đồng ý lỏng, hạn mức, không xoá database, không trả handler log, đổi dòng nhắc, nạp `readline`, ghi lịch sử ra file, `/confirm` không tên thành "tất cả", không in lỗi provider, `/slots` ẩn giá trị, bỏ kiểm `--max-calls`) |
+| Chưa làm / nói thẳng | Chưa chạy CLI với Groq thật (cần khoá của PO). File font chưa vào `fonts/` và image, chưa có quy tắc fontconfig (B8b). Chưa kiểm Nghị định 30/2020 có áp dụng cho tổ chức của dự án — PO nhận báo cáo trước M1.1 |
