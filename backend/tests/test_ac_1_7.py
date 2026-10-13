@@ -145,6 +145,21 @@ class AC17(unittest.TestCase):
         cron = self.start("bo19_app", Entry.CRON)
         self.assertEqual(cron.passed, ("1", "2", "10", "13", "16", "19"))  # cron không có #11, #15, #17
 
+    def test_worker_ghi_phien_ban_libreoffice_that_o_khoi_dong(self):
+        """B8c (O1-19, A-094): #6 nhẹ log phiên bản LibreOffice của image ở MỖI lần `worker` khởi động."""
+        self.set_operating_mode(None)
+        for _ in range(2):
+            self.start("bo19_app", Entry.WORKER)
+        info = [json.loads(x) for x in self.out.getvalue().splitlines() if '"STARTUP_CHECK_INFO"' in x]
+        versions = [i["libreoffice"] for i in info if i["step"] == "6"]
+        self.assertEqual(len(versions), 2)
+        self.assertTrue(all(v.startswith("LibreOffice ") for v in versions), versions)
+
+    def test_api_khong_chay_soffice_khong_log_phien_ban(self):
+        self.set_operating_mode(None)
+        self.start("bo19_app", Entry.API)
+        self.assertNotIn('"libreoffice"', self.out.getvalue())
+
     def test_khong_lo_dsn_hay_secret_ra_log(self):
         self.start("bo19_migrator")
         self.start("bo19_app", BO19_ENVIRONMENT=None)

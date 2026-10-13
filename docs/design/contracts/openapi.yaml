@@ -1765,7 +1765,14 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorEnvelope" }
     FileUnavailable:
-      description: FILE_UNAVAILABLE — mất object hoặc lệch checksum (ADR-014)
+      description: |
+        FILE_UNAVAILABLE — mất object, lệch checksum, quá trần kích thước hoặc hết hạn chót tải (ADR-014): KHÔNG có Retry-After.
+        Có header Retry-After (giây) khi và chỉ khi lượt tải hết chờ chỗ (đủ số lượt đồng thời, B8c) — "bận, thử lại".
+      headers:
+        Retry-After:
+          description: Chỉ có khi 503 là "bận" (hết chờ chỗ tải); không có khi file hỏng hay mất.
+          required: false
+          schema: { type: integer, minimum: 1 }
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorEnvelope" }

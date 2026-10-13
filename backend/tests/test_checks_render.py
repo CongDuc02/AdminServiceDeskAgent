@@ -1,7 +1,7 @@
 """Bước kiểm khởi động #6 (`soffice` headless) và #7 (font của template) — B8b; mục Bước kiểm khởi động của 06-structure.md, ADR-015 chốt 3, ADR-036.
 
 Điều được chứng minh, nói bằng hành vi:
-- **#6:** trong image thật `soffice` chuyển được một `.docx` tối thiểu trong hạn; không có `soffice` / chuyển đổi hỏng / quá hạn / thiếu `fc-match` thì mỗi trường hợp một mã riêng (`STARTUP_06_*`) và **Chặn**;
+- **#6 (nhẹ, B8c):** `soffice --headless --version` chạy được trong hạn và trả phiên bản (được log); KHÔNG chuyển đổi tài liệu; không có `soffice` / version hỏng / quá hạn / thiếu `fc-match` thì mỗi trường hợp một mã riêng (`STARTUP_06_*`) và **Chặn**;
 - **#7:** tập font cần = `required_fonts` của mọi phiên bản `ACTIVE` HỢP mọi phiên bản mà một `document` chưa tới trạng thái kết thúc đang dùng (phiên bản `RETIRED` vẫn được tính nếu còn văn bản chờ `finalize_issue`); phiên bản
   `UPLOADED` không dùng và phiên bản `RETIRED` chỉ còn văn bản đã kết thúc không được tính; font thiếu → `STARTUP_07_FONT_MISSING` kèm tên họ ở log; ánh xạ "Times New Roman" hỏng (`fc-match` không ra Liberation Serif) cũng là thiếu;
   không có phiên bản nào là tập rỗng — đạt;
@@ -14,11 +14,14 @@ from __future__ import annotations
 
 from tests import _guard  # noqa: F401 — chốt chặn mạng và khoá API của bộ test (tests/_guard.py)
 
+import os
+import time
 import unittest
 import uuid
 from pathlib import Path
 from unittest import mock
 
+from bo19.config import working_values as wv
 from bo19.startup import checks_render as cr
 from bo19.startup.model import MATRIX, Context, Entry, Level
 from bo19.startup.registry import REGISTRY
@@ -32,35 +35,88 @@ def ctx(conn=None) -> Context:
 
 
 class Buoc6(unittest.TestCase):
-    def test_soffice_that_chuyen_duoc_docx_toi_thieu(self):
+    """#6 kiểm NHẸ (B8c, O1-19): `soffice --headless --version`; không chuyển đổi tài liệu; log phiên bản."""
+
+    def test_soffice_that_tra_phien_ban_va_khong_chuyen_doi(self):
         require_tool(self, "soffice")
-        self.assertEqual(cr.step_06(ctx()).codes, ())
+        with mock.patch.object(convert, "convert_to_pdf", side_effect=AssertionError("#6 không được chuyển đổi tài liệu")):
+            r = cr.step_06(ctx())
+        self.assertEqual(r.codes, ())
+        self.assertRegex(r.info["libreoffice"], r"^LibreOffice \d+\.\d+")  # phiên bản thật, để ghi log (A-094)
+
+    def test_soffice_version_that_nhanh(self):
+        require_tool(self, "soffice")
+        t = time.monotonic()
+        self.assertTrue(convert.soffice_version(timeout_s=wv.SOFFICE_STARTUP_CHECK_TIMEOUT_S).startswith("LibreOffice"))
+        self.assertLess(time.monotonic() - t, 15)  # "vài giây" — cận trên rộng cho máy chậm; CI kiểm số thật ở log
 
     def test_khong_co_soffice(self):
         with mock.patch.object(convert, "available", return_value=False):
             self.assertEqual(cr.step_06(ctx()).codes, ("STARTUP_06_SOFFICE_MISSING",))
 
-    def test_chuyen_doi_hong(self):
-        with mock.patch.object(convert, "available", return_value=True), mock.patch.object(fonts, "_run", return_value="Liberation Serif\n"), \
-                mock.patch.object(convert, "convert_to_pdf", side_effect=convert.ConversionFailed):
-            self.assertEqual(cr.step_06(ctx()).codes, ("STARTUP_06_CONVERT_FAILED",))
+    def test_version_hong(self):
+        with mock.patch.object(convert, "available", return_value=True), mock.patch.object(fonts, "_run", return_value="Liberation Serif\n"),                 mock.patch.object(convert, "soffice_version", side_effect=convert.VersionFailed):
+            r = cr.step_06(ctx())
+        self.assertEqual((r.codes, dict(r.info)), (("STARTUP_06_VERSION_FAILED",), {}))
 
-    def test_chuyen_doi_qua_han(self):
-        with mock.patch.object(convert, "available", return_value=True), mock.patch.object(fonts, "_run", return_value="Liberation Serif\n"), \
-                mock.patch.object(convert, "convert_to_pdf", side_effect=convert.ConversionTimeout):
-            self.assertEqual(cr.step_06(ctx()).codes, ("STARTUP_06_CONVERT_TIMEOUT",))
+    def test_version_qua_han(self):
+        with mock.patch.object(convert, "available", return_value=True), mock.patch.object(fonts, "_run", return_value="Liberation Serif\n"),                 mock.patch.object(convert, "soffice_version", side_effect=convert.ConversionTimeout):
+            self.assertEqual(cr.step_06(ctx()).codes, ("STARTUP_06_VERSION_TIMEOUT",))
 
     def test_thieu_cong_cu_font(self):
-        with mock.patch.object(convert, "available", return_value=True), mock.patch.object(fonts, "_run", side_effect=fonts.FontToolMissing), \
-                mock.patch.object(convert, "convert_to_pdf", side_effect=AssertionError("không được chuyển đổi khi thiếu fc-match")):
+        with mock.patch.object(convert, "available", return_value=True), mock.patch.object(fonts, "_run", side_effect=fonts.FontToolMissing),                 mock.patch.object(convert, "soffice_version", side_effect=AssertionError("không được chạy soffice khi thiếu fc-match")):
             self.assertEqual(cr.step_06(ctx()).codes, ("STARTUP_06_FONT_TOOL_MISSING",))
 
     def test_han_la_wv_25_va_duoc_truyen_vao(self):
         seen = {}
-        with mock.patch.object(convert, "available", return_value=True), mock.patch.object(fonts, "_run", return_value="x\n"), \
-                mock.patch.object(convert, "convert_to_pdf", side_effect=lambda data, **kw: seen.update(kw) or b"%PDF-"):
+        with mock.patch.object(convert, "available", return_value=True), mock.patch.object(fonts, "_run", return_value="x\n"),                 mock.patch.object(convert, "soffice_version", side_effect=lambda **kw: seen.update(kw) or "LibreOffice 1.0"):
             cr.step_06(ctx())
         self.assertEqual(seen["timeout_s"], cr.wv.SOFFICE_STARTUP_CHECK_TIMEOUT_S)
+        self.assertEqual(cr.wv.SOFFICE_STARTUP_CHECK_TIMEOUT_S, 20)
+
+    def test_soffice_version_giet_tien_trinh_khi_qua_han(self):
+        """`soffice` giả ghi PID rồi ngủ lâu: quá hạn thì `ConversionTimeout` VÀ tiến trình đó đã chết (không phải chỉ "hàm trả về sớm")."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            fake, pidfile = Path(d) / "soffice-gia", Path(d) / "pid"
+            fake.write_text("#!/bin/sh" + chr(10) + f"echo $$ > {pidfile}" + chr(10) + "exec sleep 60" + chr(10))
+            fake.chmod(0o755)
+            old = convert.SOFFICE
+            convert.SOFFICE = str(fake)
+            try:
+                t = time.monotonic()
+                with self.assertRaises(convert.ConversionTimeout):
+                    convert.soffice_version(timeout_s=1.0)
+                self.assertLess(time.monotonic() - t, 5)
+            finally:
+                convert.SOFFICE = old
+            pid = int(pidfile.read_text())
+            for _ in range(40):  # tiến trình bị SIGKILL biến mất ngay; cho một chút thời gian để hệ điều hành thu dọn
+                try:
+                    os.kill(pid, 0)
+                except ProcessLookupError:
+                    break
+                time.sleep(0.05)
+            else:
+                self.fail("soffice giả vẫn còn sống sau khi quá hạn")
+
+    def test_dau_ra_khong_co_dong_phien_ban_la_that_bai_va_khong_mang_noi_dung(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            fake = Path(d) / "soffice-gia"
+            fake.write_text("#!/bin/sh\necho 'CHUOI-LA-BI-MAT'\n")
+            fake.chmod(0o755)
+            old = convert.SOFFICE
+            convert.SOFFICE = str(fake)
+            try:
+                with self.assertRaises(convert.VersionFailed) as cm:
+                    convert.soffice_version(timeout_s=5)
+                self.assertNotIn("BI-MAT", f"{cm.exception!r}")
+                fake.write_text("#!/bin/sh\necho 'LibreOffice 9.9'\nexit 3\n")
+                with self.assertRaises(convert.VersionFailed):
+                    convert.soffice_version(timeout_s=5)  # mã thoát khác 0 là hỏng dù có dòng phiên bản
+            finally:
+                convert.SOFFICE = old
 
 
 @unittest.skipUnless(pg_support.SUPERUSER_DSN, "cần BO19_TEST_PG_SUPERUSER_DSN")

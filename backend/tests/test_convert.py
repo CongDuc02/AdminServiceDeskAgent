@@ -1,7 +1,7 @@
 """`bo19.tool_layer.rendering.convert` (B8b; ADR-015) — chuyển `.docx` sang PDF bằng `soffice` THẬT trong image target `test`.
 
 Điều được chứng minh, nói bằng hành vi:
-- **PDF thật:** ra từ `.docx` điền biến; chữ tiếng Việt đủ dấu đọc lại được từ PDF; watermark có trong PDF ở `NON_PRODUCTION`; không có ở `PRODUCTION`;
+- **PDF thật:** ra từ `.docx` điền biến; chữ tiếng Việt đủ dấu đọc lại được từ PDF; watermark (shape chéo) kiểm bằng pixel ở `tests/test_watermark_render.py`;
 - **font (ADR-036):** `.docx` khai "Times New Roman", image không có font đó, và **PDF nhúng Liberation Serif** — không DejaVu, không font nào khác;
 - **hết hạn:** quá `timeout_s` thì giết CẢ nhóm tiến trình (`soffice` sinh `soffice.bin`), không còn tiến trình nào của lần đó, thư mục tạm bị xoá, mã `TIMEOUT`;
 - **lỗi chỉ mang mã:** file hỏng là `CONVERSION_FAILED`, thông điệp không mang văn bản của file;
@@ -66,10 +66,10 @@ class ChuyenDoi(unittest.TestCase):
             self.assertIn(piece, text)
         self.assertIn("đã công tác tại Phòng Hành chính", text)
 
-    def test_watermark_co_trong_pdf_o_non_production_va_khong_co_o_production(self):
-        self.assertIn(docx_fill.WATERMARK_TEXT, " ".join(pdf_text(self.pdf).split()))
-        prod = convert.convert_to_pdf(render(mode="PRODUCTION"), timeout_s=TIMEOUT, tmp_root=self.tmp.name)
-        self.assertNotIn("THỬ NGHIỆM", pdf_text(prod))
+    def test_watermark_chu_la_duong_ve_khong_phai_van_ban_trong_pdf(self):
+        """Watermark chéo (B8c) là shape WordArt: LibreOffice xuất thành đường viền vẽ, không phải chữ — `pdftotext` không đọc ra, và cũng không làm loãng chữ thân văn bản. Kiểm bằng pixel: `tests/test_watermark_render.py`."""
+        self.assertNotIn("THỬ NGHIỆM", pdf_text(self.pdf))
+        self.assertIn("GIẤY XÁC NHẬN GIẢ", " ".join(pdf_text(self.pdf).split()))
 
     def test_pdf_nhung_liberation_serif_khi_docx_khai_times_new_roman(self):
         embedded = pdf_fonts(self.pdf)

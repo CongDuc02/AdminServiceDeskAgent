@@ -68,6 +68,14 @@ def docx_text(docx: bytes) -> str:
     return "\n".join(out)
 
 
+def watermark_count(docx: bytes) -> int:
+    """Số shape watermark (`v:shape` kiểu WordArt mang đúng chữ AC-1.3) ở mọi phần tiêu đề của file — kiểm "có watermark trong file" ở mức `.docx` (M5)."""
+    import zipfile
+    from bo19.tool_layer.rendering.watermark import WATERMARK_TEXT
+    zf = zipfile.ZipFile(io.BytesIO(docx))
+    return sum(zf.read(n).decode("utf-8").count(f'string="{WATERMARK_TEXT}"') for n in zf.namelist() if n.startswith("word/header"))
+
+
 def have(tool: str) -> bool:
     return shutil.which(tool) is not None
 

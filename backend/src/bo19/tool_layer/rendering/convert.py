@@ -32,8 +32,35 @@ class ConversionTimeout(ToolError):
     code = "TIMEOUT"
 
 
+class VersionFailed(ToolError):
+    code = "SOFFICE_VERSION_FAILED"  # `soffice --headless --version` không chạy được, thoát mã khác 0, hoặc không in dòng phiên bản
+
+
 def available() -> bool:
     return shutil.which(SOFFICE) is not None
+
+
+def soffice_version(*, timeout_s: float) -> str:
+    """Chạy `soffice --headless --version` (B8c, O1-19): kiểm nhẹ rằng LibreOffice chạy được, trả dòng phiên bản (vd. `LibreOffice 25.2.3.2 520(Build:2)`) để log lúc khởi động (A-094). Không mở tài liệu, không chuyển đổi.
+    Quá hạn thì giết cả nhóm tiến trình và `ConversionTimeout`. Đầu ra của `soffice` ngoài dòng phiên bản bị bỏ — không vào thông điệp lỗi."""
+    try:
+        proc = subprocess.Popen([SOFFICE, "--headless", "--version"], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, start_new_session=True)
+    except OSError:
+        raise VersionFailed from None
+    try:
+        out, _ = proc.communicate(timeout=timeout_s)
+    except subprocess.TimeoutExpired:
+        _kill_group(proc)
+        proc.stdout.close()
+        raise ConversionTimeout from None
+    except BaseException:
+        _kill_group(proc)
+        proc.stdout.close()
+        raise
+    line = next((l.strip() for l in out.splitlines() if l.strip().startswith("LibreOffice")), None)
+    if proc.returncode != 0 or line is None:
+        raise VersionFailed
+    return line[:100]
 
 
 def soffice_command(workdir: Path, source: Path) -> list[str]:

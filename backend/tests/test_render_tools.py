@@ -31,7 +31,7 @@ from bo19.tool_layer.rendering import convert
 from bo19.tool_layer.tools import docx_render as dr
 from bo19.tool_layer.tools import pdf_export as pe
 from tests import pg_support
-from tests.render_support import DECLARED, VALUES, build_template, docx_text, pdf_text, require_tool
+from tests.render_support import DECLARED, VALUES, build_template, docx_text, pdf_text, require_tool, watermark_count
 from tests.s3_support import ENDPOINT, REQUIRED, admin_client, drop_bucket, new_bucket, storage_for
 
 SRC_PURPOSE = "TEMPLATE_SOURCE"
@@ -142,10 +142,10 @@ class DocxRender(RenderBase):
     def test_watermark_theo_che_do_da_ghim_trong_document(self):
         version = self.make_template()
         np_doc, prod_doc = self.make_document(version, mode="NON_PRODUCTION"), self.make_document(version, mode="PRODUCTION")
-        self.assertIn("THỬ NGHIỆM", docx_text(self.s3_bytes(self.render_docx(np_doc).docx_key)))
+        self.assertEqual(watermark_count(self.s3_bytes(self.render_docx(np_doc).docx_key)), 1)
         prod = self.render_docx(prod_doc)
         self.assertEqual(prod.operating_mode, "PRODUCTION")
-        self.assertNotIn("THỬ NGHIỆM", docx_text(self.s3_bytes(prod.docx_key)))
+        self.assertEqual(watermark_count(self.s3_bytes(prod.docx_key)), 0)
 
     def test_khong_co_tham_so_che_do_trong_chu_ky_tool(self):
         import inspect

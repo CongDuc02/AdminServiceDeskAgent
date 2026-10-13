@@ -118,6 +118,59 @@ class BienThieuVaThua(unittest.TestCase):
 
 
 class Watermark(unittest.TestCase):
+    NS = {"v": "urn:schemas-microsoft-com:vml", "w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+
+    def shapes(self, docx: bytes) -> list:
+        """Mọi shape watermark của mọi phần tiêu đề của file."""
+        import zipfile
+        from lxml import etree
+        zf = zipfile.ZipFile(io.BytesIO(docx))
+        out = []
+        for n in zf.namelist():
+            if n.startswith("word/header"):
+                out.extend(etree.fromstring(zf.read(n)).xpath("//v:shape", namespaces=self.NS))
+        return out
+
+    def test_hinh_thuc_cheo_giua_trang_sau_chu(self):
+        (shape,) = self.shapes(fill(mode=NP))
+        style = dict(item.split(":", 1) for item in shape.get("style").split(";") if item)
+        self.assertEqual(style["rotation"], "315")  # chéo −45°, không phải dòng ngang
+        self.assertEqual((style["mso-position-horizontal"], style["mso-position-vertical"]), ("center", "center"))
+        self.assertEqual((style["mso-position-horizontal-relative"], style["mso-position-vertical-relative"]), ("margin", "margin"))  # giữa THÂN trang, không phải giữa tiêu đề
+        self.assertLess(int(style["z-index"]), 0)  # sau chữ
+        self.assertEqual(style["position"], "absolute")
+        self.assertEqual(shape.get("stroked"), "f")
+
+    def test_chu_dung_nguyen_van_ac_1_3_trong_textpath(self):
+        (shape,) = self.shapes(fill(mode=NP))
+        textpath = shape.xpath("v:textpath", namespaces=self.NS)[0]
+        self.assertEqual(textpath.get("string"), "BẢN THỬ NGHIỆM — KHÔNG CÓ GIÁ TRỊ PHÁP LÝ")
+
+    def test_moi_phan_tieu_de_dung_mot_shape_id_khong_trung(self):
+        template = Document(io.BytesIO(build_template(two_sections=True)))
+        template.sections[1].header.is_linked_to_previous = False
+        template.sections[1].header.paragraphs[0].text = "Đầu phần hai"
+        buf = io.BytesIO()
+        template.save(buf)
+        shapes = self.shapes(fill(template=buf.getvalue(), mode=NP))
+        self.assertEqual(len(shapes), 2)
+        self.assertEqual(len({s.get("id") for s in shapes}), 2)
+        self.assertEqual(len({s.get("{urn:schemas-microsoft-com:office:office}spid") for s in shapes}), 2)
+
+    def test_khong_gap_doi_khi_dung_hai_lan(self):
+        once = fill(mode=NP)
+        self.assertEqual(len(self.shapes(once)), 1)
+
+    def test_file_van_mo_duoc_va_than_van_ban_khong_doi(self):
+        np_doc, prod_doc = fill(mode=NP), fill(mode=PROD)
+        self.assertEqual([p.text for p in Document(io.BytesIO(np_doc)).paragraphs], [p.text for p in Document(io.BytesIO(prod_doc)).paragraphs])
+
+    def test_khong_con_dong_chu_o_tieu_de_nhu_b8b(self):
+        """B8b chèn một đoạn chữ ở tiêu đề — dễ cắt khi in hay chụp (PO, 2026-10-13). Nay không còn đoạn nào mang chữ watermark."""
+        np_doc = fill(mode=NP)
+        for header in (s.header for s in Document(io.BytesIO(np_doc)).sections):
+            self.assertNotIn("THỬ NGHIỆM", " ".join(p.text for p in header.paragraphs))
+
     def count(self, docx: bytes) -> int:
         """Số lần chữ watermark xuất hiện trong các PHẦN tiêu đề của file (không đếm hai lần một tiêu đề được hai phần cùng kế thừa)."""
         import zipfile
@@ -135,7 +188,8 @@ class Watermark(unittest.TestCase):
 
     def test_watermark_o_dau_tieu_de_va_giu_nguyen_noi_dung_tieu_de(self):
         header = Document(io.BytesIO(fill(mode=NP))).sections[0].header
-        self.assertEqual([p.text for p in header.paragraphs], [df.WATERMARK_TEXT, "CÔNG TY GIẢ"])
+        self.assertEqual([p.text for p in header.paragraphs], ["CÔNG TY GIẢ"])  # shape neo trong đoạn đầu — KHÔNG thêm đoạn nào, nội dung tiêu đề nguyên vẹn
+        self.assertEqual(len(header.paragraphs), 1)
 
     def test_template_khong_co_tieu_de_van_duoc_watermark(self):
         out = fill(template=build_template(header_text=None, footer_text=None), values={k: v for k, v in VALUES.items() if k in ("tieu_de", "ho_ten", "noi_dung")},
@@ -155,7 +209,8 @@ class Watermark(unittest.TestCase):
         document = Document(io.BytesIO(out))
         s = document.sections[0]
         for header in (s.header, s.first_page_header, s.even_page_header):
-            self.assertEqual(header.paragraphs[0].text, df.WATERMARK_TEXT)
+            self.assertEqual(len(header._element.xpath(".//v:shape[@type='#_x0000_t136']")), 1)
+        self.assertEqual(self.count(out), 3)
 
     def test_phan_sau_ke_thua_tieu_de_phan_dau_va_khong_bi_nhan_doi(self):
         out = fill(template=build_template(two_sections=True), mode=NP)

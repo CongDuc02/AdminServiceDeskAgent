@@ -3538,3 +3538,28 @@ PO duyệt kế hoạch B8a (`proposals/b8a-ke-hoach.md`) và quyết thêm về
 | Số đo (`proposals/b8b-ke-hoach.md` mục 9) | Một lần chuyển đổi ≈ 212 MiB cgroup, OOM-kill ở 192 MiB; 0,1 CPU: 32–88 s; ngắt dòng so Times New Roman thật: 0/829 dòng lệch; image đã nén ×2,08, chưa nén ×1,87 |
 | **Dừng chờ PO** | **O1-18** — trần tải file × số tải đồng thời không vừa 512 MB (số tải đồng thời hiện không bị chặn); O1-19 — thời lượng ở 0,1 CPU và bước kiểm #6 |
 | Lệch kế hoạch, nói rõ | `docx_render` nhận bảng giá trị làm tham số (B9a dựng nó); target `test` mount mã thay vì COPY; watermark là dòng chữ ở tiêu đề; bốn diễn giải ở mục 9.5 |
+
+### B8c — kế hoạch và quyết định của PO sau B8b (2026-10-13)
+
+- **Merge B8b** vào `main` (PO cho phép, `--no-ff`, `ec60902`); nhánh đã xoá.
+- **O1-18:** PO chọn ghi tạm ra đĩa (tệp tạm theo khối, băm khi tải, stream từ tệp, xoá ở mọi lối thoát) và semaphore số lượt tải đồng thời mặc định 4 (WV-27, chưa hiệu chỉnh). **O1-19:** PO chọn #6 kiểm nhẹ (`soffice --version`), chuyển đổi thật chỉ ở CI, log phiên bản LibreOffice ở khởi động. **A-094:** hoãn tới trước `PRODUCTION`. Bốn diễn giải của B8b: chấp nhận `read_assigned` (rà lại ở B9b), `TEMPLATE_NOT_ACTIVE`, bảng biến làm tham số; **watermark dòng chữ ở tiêu đề: PO không đồng ý** (dễ cắt khi in hay chụp).
+- **Kiểm thiết kế về watermark:** chỉ có bốn quy định (nguyên văn; trong bản render; không có tham số tắt; kiểm được sau UAT) — không quy định hình thức, nên không cản watermark chéo. Ghi ở `proposals/b8c-ke-hoach.md` mục 1, kèm giới hạn đã có từ trước của "không gỡ được".
+- **Kế hoạch B8c** `proposals/b8c-ke-hoach.md` — **chờ PO duyệt**: watermark chéo (spike LibreOffice + ảnh trang PDF làm bằng chứng, có cổng dừng), tải file qua tệp tạm vô danh + semaphore, #6 nhẹ + log phiên bản. Việc đo `combined_main` ghi ở O1-6 và A-095. Chưa có mã.
+
+### B8c — kết quả mã (2026-10-13)
+
+| Hạng mục | Kết quả |
+|---|---|
+| Tải file qua tệp tạm (O1-18, **đóng**) | Tệp tạm vô danh, băm khi tải, stream sau khi kiểm; `FileGate` (4 lượt, chờ 15 s rồi 503 kèm `Retry-After`), hạn chót tổng 60 s bao cả stream; endpoint `async`. **Tải 64 MiB tăng RSS 0,04 MiB; qua trong `--memory=96m` và `128m --cpus=0.1`; cùng lệnh dùng đường cũ bị OOM-kill (137)** |
+| #6 nhẹ (O1-19, **đóng**) | `soffice --headless --version` (20 s); log phiên bản LibreOffice mỗi lần `worker` khởi động; chuyển đổi thật chỉ ở CI |
+| Watermark chéo | VML WordArt neo trong tiêu đề (spike: DrawingML bị LibreOffice bỏ góc xoay); kiểm bằng pixel trên ảnh trang PDF và bằng XML; ảnh mẫu `proposals/b8c-watermark-mau.png` — **màu, độ mờ chờ PO chỉnh** |
+| Kiểm | CI xanh ba job; `lint-imports` 9/9; **1368 test OK**; `check_grants` Lệch 0 |
+| Đột biến | **38 mẫu: 36 đỏ ngay, 2 sống do test yếu (`G03`, `K04`) đã sửa rồi đỏ → 38/38**; không mẫu tương đương |
+| Chưa làm | `combined_main` (đo chat dưới 0,1 CPU lúc `soffice` chạy — O1-6, A-095); `/tmp` của Render (A-095); trần số dòng `FREE_CONTENT`; kiểm watermark ở PDF bằng máy (thuộc tính PDF) — chờ PO |
+
+### B8c — PO duyệt watermark, cho phép merge, quyết định M5 (2026-10-13)
+
+- **PO duyệt ảnh mẫu watermark B8c** (`proposals/b8c-watermark-mau.png`): giữ `#808080` / `.5`. Nhãn đổi từ "mặc định tạm, chờ PO chỉnh" sang **"PO duyệt, chưa thử in/photo"** ở `watermark.py`, `proposals/b8c-ke-hoach.md` và `06-structure.md`. Dòng "màu, độ mờ chờ PO chỉnh" trong bảng B8c phía trên là lịch sử, thay bằng mục này.
+- **Điểm "123/QĐ-GIẢ.Nguyễn" thiếu khoảng trắng trong ảnh mẫu: dữ liệu ghép của script dựng ảnh** (`VIETNAMESE * 2` ở `tools/watermark-sample/render_sample.py`), không phải `docx_fill`. Kiểm bằng chạy `docx_fill` trên mẫu trước và sau khi điền (cụm có sẵn ở mẫu; đoạn không biến giữ nguyên; giá trị biến giữ khoảng trắng đầu/cuối). Không đổi mã.
+- **PO cho phép merge** `build/b8c-tai-file-kiem-nhe-watermark` vào `main` (`--no-ff`, push, xoá nhánh) sau khi xác nhận điểm trên.
+- **M5 — có, kiểm watermark ở PDF bằng máy, làm ở đầu B9a** (không lát riêng): chuỗi watermark nguyên văn vào metadata PDF lúc `pdf_export`; DB ghi bản render mang watermark (cột chỉ thêm sau khi PO duyệt đề xuất); thủ tục kiểm sau UAT = đọc metadata + truy vấn DB + so checksum đã lưu, ghi ở `11-ops.md`. Kế hoạch: `proposals/b9a-ke-hoach.md` — chờ PO duyệt.

@@ -1,6 +1,7 @@
 """`stored_file_fetch` — tải bản render và bản gốc template qua API (mục Tải file của 05-api.md; ADR-014; mục Tool Registry của 03-agents.md, nơi nó là thao tác **đọc duy nhất** sinh `audit_event`).
 
-Hai thao tác do endpoint gọi, cùng một đường: kiểm quyền → `storage.fetch` (**so checksum trước khi trả byte đầu tiên**, trần kích thước WV-24) → ghi `audit_event` của lần tải → trả byte.
+Hai thao tác do endpoint gọi, cùng một đường: kiểm quyền → `storage.fetch_verified` (**tải theo khối vào tệp tạm vô danh, băm khi tải, so checksum — chỉ khi khớp mới trả tệp**; trần kích thước WV-24; B8c, O1-18) → ghi `audit_event` của lần tải → trả tệp đã tua về đầu.
+Người nhận `FetchedStream` **phải đóng `file`** ở mọi lối thoát (router giao việc đó cho `DeadlineStreamingResponse`); bộ nhớ không theo kích thước file.
 
 **Quyền xem `document_render` đi theo quyền xem `document` của nó** (mục Bảo vệ dữ liệu của 09-security.md — không có permission riêng, không có ngoại lệ "bản nháp thì lỏng hơn"):
 - `request.read_all`: mọi bản, cả hai định dạng;
@@ -16,6 +17,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from typing import IO
 
 from bo19.config import working_values as wv
 from bo19.tool_layer.storage import ObjectStorage  # tên được tool_layer.storage mang ra: tool chỉ chạm object_storage qua module lưu trữ (contract object-storage)
@@ -46,8 +48,9 @@ class TemplateVersionNotFound(ToolError):
 
 
 @dataclass(frozen=True)
-class FetchedFile:
-    data: bytes
+class FetchedStream:
+    file: IO[bytes]  # đã kiểm checksum, đã tua về đầu; người nhận đóng
+    size: int
     content_type: str
     filename: str  # chỉ mã và id — không tên người, không giá trị slot
 
@@ -69,18 +72,23 @@ def _audit(pool: Pool, ctx: ToolContext, *, entity_type: str, entity_id: uuid.UU
                      document_id=document_id, payload=payload, severity=severity)
 
 
-def _fetch_audited(pool: Pool, storage: ObjectStorage, ctx: ToolContext, key: str, *, entity_type: str, entity_id: uuid.UUID, document_id: uuid.UUID | None, payload: dict) -> bytes:
+def _fetch_audited(pool: Pool, storage: ObjectStorage, ctx: ToolContext, key: str, *, entity_type: str, entity_id: uuid.UUID, document_id: uuid.UUID | None, payload: dict,
+                   deadline: float | None) -> tuple[IO[bytes], int]:
     try:
-        data = store.fetch(pool, storage, key, max_bytes=wv.FILE_FETCH_MAX_BYTES)
+        spool, size = store.fetch_verified(pool, storage, key, max_bytes=wv.FILE_FETCH_MAX_BYTES, chunk_bytes=wv.FILE_FETCH_CHUNK_BYTES, deadline=deadline)
     except store.FileUnavailable as e:
         log.warning("FILE_FETCH_FAILED", entity_type=entity_type, entity_id=str(entity_id), reason=e.reason)  # lý do chỉ ở log
         _audit(pool, ctx, entity_type=entity_type, entity_id=entity_id, document_id=document_id, payload={**payload, "outcome": "FILE_UNAVAILABLE"}, severity="WARNING")
         raise
-    _audit(pool, ctx, entity_type=entity_type, entity_id=entity_id, document_id=document_id, payload={**payload, "outcome": "OK", "size_bytes": len(data)})
-    return data
+    try:
+        _audit(pool, ctx, entity_type=entity_type, entity_id=entity_id, document_id=document_id, payload={**payload, "outcome": "OK", "size_bytes": size})
+    except BaseException:
+        spool.close()  # không ghi được dấu vết thì không giao file — và không để lại tệp
+        raise
+    return spool, size
 
 
-def render_file_fetch(pool: Pool, storage: ObjectStorage, ctx: ToolContext, *, document_id: uuid.UUID, render_id: uuid.UUID, fmt: str) -> FetchedFile:
+def render_file_open(pool: Pool, storage: ObjectStorage, ctx: ToolContext, *, document_id: uuid.UUID, render_id: uuid.UUID, fmt: str, deadline: float | None = None) -> FetchedStream:
     if fmt not in FORMATS:
         raise ValueError("format")
     me = _employee(ctx)
@@ -98,12 +106,12 @@ def render_file_fetch(pool: Pool, storage: ObjectStorage, ctx: ToolContext, *, d
             raise PermissionDenied
     else:
         raise RenderNotFound
-    data = _fetch_audited(pool, storage, ctx, pdf_key if fmt == "pdf" else docx_key, entity_type="document_render", entity_id=render_id, document_id=document_id,
-                          payload={"format": fmt, "render_kind": kind})
-    return FetchedFile(data, CONTENT_TYPES[fmt], f"{document_id}-{kind.lower()}.{fmt}")
+    spool, size = _fetch_audited(pool, storage, ctx, pdf_key if fmt == "pdf" else docx_key, entity_type="document_render", entity_id=render_id, document_id=document_id,
+                                 payload={"format": fmt, "render_kind": kind}, deadline=deadline)
+    return FetchedStream(spool, size, CONTENT_TYPES[fmt], f"{document_id}-{kind.lower()}.{fmt}")
 
 
-def template_source_fetch(pool: Pool, storage: ObjectStorage, ctx: ToolContext, *, template_id: uuid.UUID, template_version_id: uuid.UUID) -> FetchedFile:
+def template_source_open(pool: Pool, storage: ObjectStorage, ctx: ToolContext, *, template_id: uuid.UUID, template_version_id: uuid.UUID, deadline: float | None = None) -> FetchedStream:
     _employee(ctx)
     require(ctx, TEMPLATE_MANAGE)
     with pool.acquire() as conn, read_only(conn):
@@ -111,6 +119,6 @@ def template_source_fetch(pool: Pool, storage: ObjectStorage, ctx: ToolContext, 
     if row is None:
         raise TemplateVersionNotFound
     key, version_no = row
-    data = _fetch_audited(pool, storage, ctx, key, entity_type="template_version", entity_id=template_version_id, document_id=None,
-                          payload={"template_id": template_id, "version_no": version_no})
-    return FetchedFile(data, CONTENT_TYPES["docx"], f"{template_id}-v{version_no}.docx")
+    spool, size = _fetch_audited(pool, storage, ctx, key, entity_type="template_version", entity_id=template_version_id, document_id=None,
+                                 payload={"template_id": template_id, "version_no": version_no}, deadline=deadline)
+    return FetchedStream(spool, size, CONTENT_TYPES["docx"], f"{template_id}-v{version_no}.docx")

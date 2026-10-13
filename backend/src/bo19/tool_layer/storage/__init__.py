@@ -19,11 +19,15 @@ cơ chế ở tầng lưu trữ của A-024 (ở đây: ghi có điều kiện, 
 from __future__ import annotations
 
 import hashlib
+import tempfile
+import time
 import uuid
 from dataclasses import dataclass
+from typing import IO
 
 import psycopg
 
+from bo19.config import working_values as wv
 from bo19.config.settings import Settings
 from bo19.object_storage import AlreadyExists, ObjectMissing, ObjectStorage, ObjectStorageConfig, StorageError
 from bo19.persistence.pool import Pool
@@ -174,3 +178,44 @@ def committed(pool: Pool, object_key: str) -> StoredObject | None:
     with pool.acquire() as conn, unit_of_work(conn):
         done = _committed(conn, object_key)
     return StoredObject(object_key, done[0], done[1], reused=True) if done else None
+
+
+def fetch_verified(pool: Pool, storage: ObjectStorage, object_key: str, *, max_bytes: int, chunk_bytes: int = wv.FILE_FETCH_CHUNK_BYTES, deadline: float | None = None) -> tuple[IO[bytes], int]:
+    """Như `fetch`, nhưng **không giữ object trong bộ nhớ** (B8c, O1-18; ADR-014): tải theo khối `chunk_bytes` vào một **tệp tạm vô danh**, băm SHA-256 khi tải, rồi so với `stored_object_commit`.
+
+    Trả `(tệp đã tua về đầu, kích thước)` **chỉ khi** độ dài và checksum khớp — người gọi mới được gửi byte đầu tiên. Lệch, mất, quá trần (kiểm cả giữa chừng: storage trả nhiều hơn đã commit), `deadline` (đồng hồ `time.monotonic()`)
+    đã qua, storage không với tới: `FileUnavailable`, và **tệp đã đóng** — người gọi không nhận gì để dọn. Tệp tạm là `tempfile.TemporaryFile()`: không có tên trên đĩa, hệ điều hành thu hồi khi đóng, kể cả khi tiến trình bị `SIGKILL`.
+    Người gọi nhận tệp phải đóng nó ở mọi lối thoát. Bộ nhớ ≈ 2 × `chunk_bytes`, không theo kích thước object.
+    """
+    with pool.acquire() as conn, unit_of_work(conn):
+        done = _committed(conn, object_key)
+    if done is None:
+        raise FileUnavailable("NOT_COMMITTED")
+    checksum, size = done
+    if size > max_bytes:
+        raise FileUnavailable("TOO_LARGE")
+    spool = tempfile.TemporaryFile()
+    try:
+        digest, received = hashlib.sha256(), 0
+        try:
+            for chunk in storage.get_chunks(object_key, chunk_bytes):
+                received += len(chunk)
+                if received > size:
+                    raise FileUnavailable("CHECKSUM_MISMATCH")  # nhiều byte hơn đã commit — dừng ngay, không đọc nốt
+                digest.update(chunk)
+                spool.write(chunk)
+                if deadline is not None and time.monotonic() >= deadline:
+                    raise FileUnavailable("DEADLINE")
+        except ObjectMissing:
+            raise FileUnavailable("MISSING") from None
+        except StorageError:
+            raise FileUnavailable("STORAGE_UNAVAILABLE") from None
+        except OSError:
+            raise FileUnavailable("STORAGE_UNAVAILABLE") from None  # tệp tạm đầy hay không ghi được: cùng một mã cho client
+        if received != size or digest.digest() != checksum:
+            raise FileUnavailable("CHECKSUM_MISMATCH")
+        spool.seek(0)
+        return spool, size
+    except BaseException:
+        spool.close()
+        raise
