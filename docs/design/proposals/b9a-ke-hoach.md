@@ -1,6 +1,6 @@
 # Kế hoạch B9a — kiểm watermark bằng máy (M5), rồi `document_graph` tới `PENDING_APPROVAL`
 
-**Trạng thái:** ⏳ **Chờ PO duyệt** · **Ngày:** 2026-10-13 · **Người đề xuất:** người triển khai · **Nhánh:** `build/b9a-document-graph-den-pending-approval` (tách từ `main` sau merge B8c `1c7354d`; chỉ có tài liệu cho tới khi duyệt) · **Vị trí:** lát B9a của mục 4.7 của `12-roadmap.md` · **Nguồn quyết định:** PO 2026-10-13 — watermark giữ `#808080` / `.5`; M5 làm ở **đầu B9a**, không lát riêng
+**Trạng thái:** ✅ **PO duyệt 2026-10-13, kèm sáu điều chỉnh — các mục A.2, A.4 và câu hỏi Q1–Q6 dưới đây được thay bởi `decisions/ADR-038-watermark-trong-metadata-pdf.md` và mục ngày 2026-10-13 (B9a) của `CHANGELOG.md`: không bộ đọc PDF trong runtime (không `WATERMARK_METADATA_MISSING`), chuỗi watermark vào khoá object, ghi đè `author`/`lastModifiedBy`, `combined_main` sang B9a2, thêm điểm dừng resume sau khởi động lại** · **Ngày:** 2026-10-13 · **Người đề xuất:** người triển khai · **Nhánh:** `build/b9a-document-graph-den-pending-approval` (tách từ `main` sau merge B8c `1c7354d`; chỉ có tài liệu cho tới khi duyệt) · **Vị trí:** lát B9a của mục 4.7 của `12-roadmap.md` · **Nguồn quyết định:** PO 2026-10-13 — watermark giữ `#808080` / `.5`; M5 làm ở **đầu B9a**, không lát riêng
 
 Kế hoạch có hai phần: **phần A** (M5, đã đủ chi tiết để làm — có spike) và **phần B** (phần còn lại của B9a theo dòng B9a của `12-roadmap.md` — ở mức hạng mục và điểm dừng, vì chi tiết từng tool đã nằm ở mục Tool Registry của `03-agents.md` và không đổi).
 
