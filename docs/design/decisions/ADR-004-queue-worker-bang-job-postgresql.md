@@ -45,6 +45,10 @@ Ràng buộc quan trọng nhất tới từ D-010: `document` phải được **
 - Cần độ trễ dispatch cận-thời-gian-thực (job phải chạy gần như ngay khi enqueue, không chấp nhận được độ trễ bằng một chu kỳ poll) cho một loại job nào đó chưa xuất hiện ở Sprint đầu.
 - Thông lượng job đủ lớn để vòng lặp `poll + SKIP LOCKED` tự nó trở thành một tải IO đáng kể cạnh tranh với tải giao dịch chính — cùng loại tín hiệu như ở ADR-002, khác chỗ nó là tải job thay vì tải truy vấn vector.
 
+## Bổ sung 2026-10-13 (B8b, PO) — token hàng rào của lease
+
+Lease của job cần một **token hàng rào** để worker đã mất lease không ghi đè được kết quả của lượt sau. B8a dùng `locked_at`; PO chỉ ra điểm mong manh: đồng hồ lùi khi NTP chỉnh, và hai lần giành có thể cùng mốc thời gian. **Quyết định:** cột `job.lease_id uuid`, DB sinh ngẫu nhiên mỗi lần giành; `heartbeat`, `succeed`, `fail`, `release` kiểm `lease_id`, không kiểm `locked_at`; mọi lối thoát khỏi `RUNNING` đặt `NULL`. Không đổi quyết định chính của ADR này (bảng job trong PostgreSQL, `SKIP LOCKED`, lease). **Loại:** `attempts` làm token (`release` trả `attempts` về giá trị cũ nên token cũ sống lại); `locked_at` (trên); token do tiến trình sinh (hai tiến trình không phối hợp thì không đảm bảo duy nhất bằng DB).
+
 ## Rejected alternatives
 
 **Option A — Redis + Celery/RQ.** Bị loại vì một lý do cụ thể hơn "thêm một hệ thống phải vận hành": nó **phá vỡ tính nguyên tử của D-010**. Ghi vào Postgres (transition) và publish vào Redis (enqueue) là hai hệ thống khác nhau — không có giao dịch chung giữa chúng. Muốn giữ đúng ngữ nghĩa "cùng lúc" thì phải tự dựng thêm một outbox pattern (ghi ý định enqueue vào Postgres trước, một tiến trình khác đọc outbox rồi mới publish sang Redis) — tức là thêm hẳn một tầng phức tạp mới chỉ để tái tạo lại đúng thứ mà bảng job trong Postgres đã có sẵn miễn phí. Chi phí vận hành Redis chỉ là lý do phụ; lý do chính là nó giải quyết sai bài toán.

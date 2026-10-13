@@ -551,11 +551,12 @@ Cột: `actor_employee_id` (—, luôn là người thật), `delegation_id` ✔
 | `subject_document_id` | uuid | ✔ | Bắt buộc với `resume_document_graph` và `finalize_issue`. `render_document` không có vì `document` chưa tồn tại lúc enqueue |
 | `dedupe_key` | text | ✔ | Chặn job trùng đang chờ |
 | `status` | text | — | `QUEUED` · `RUNNING` · `SUCCEEDED` · `FAILED`. `RUNNING` khi và chỉ khi có `locked_at` và `lease_expires_at` |
+| `lease_id` | uuid | ✔ | **Token hàng rào chủ lease** (migration `0013`, B8b): DB sinh `gen_random_uuid()` mỗi lần giành; có mặt khi và chỉ khi `RUNNING` (`ck_job_lease_id_iff_running`). Mọi lệnh ghi của worker sau lúc giành kiểm `lease_id`, không kiểm `locked_at` |
 | `attempts`, `max_attempts` | integer | — | `max_attempts` theo A-031 |
 | `run_after`, `enqueued_at`, `started_at`, `finished_at` | timestamptz | | `enqueued_at` và `started_at` cho metric độ trễ dispatch của ADR-004 |
 | `last_error_code` | text | ✔ | Chỉ mã |
 
-**Lượt thử của `job` (B8a):** `attempts` tăng lúc giành; `release` khi drain trả lại một lượt; lease hết hạn tính một lượt; chủ lease so ở mọi lệnh ghi — chi tiết ở mục Retry, backoff và job lỗi vĩnh viễn của `11-ops.md`.
+**Lượt thử của `job` (B8a):** `attempts` tăng lúc giành; `release` khi drain trả lại một lượt; lease hết hạn tính một lượt; chủ lease so ở mọi lệnh ghi bằng `lease_id` — chi tiết ở mục Retry, backoff và job lỗi vĩnh viễn của `11-ops.md`.
 
 **Payload theo `job_type` — chỉ id** (B7, PO 2026-10-12). `render_document`: `payload = {"request_id", "decision_record_id"}` — id của `request` vừa `SUBMITTED` và của `decision_record` loại `SUBMITTED` sinh ra nó (ADR-010: job mang id của quyết định); `dedupe_key` = `request_id` dạng chuỗi; `subject_document_id` rỗng vì `document` chưa có. **Không** mang giá trị slot, giá trị `RES`, tên người hay văn bản: worker đọc lại mọi thứ từ DB theo id (ADR-008). Hai lớp giữ luật này: `tool_layer.kernel.enqueue` chỉ nhận chuỗi ngắn không khoảng trắng — cùng luật với `audit_event.payload`; và test của `request_submit` đòi payload đúng hai khoá ấy, giá trị là uuid. Payload của các `job_type` khác chốt ở lát dựng caller của chúng.
 
