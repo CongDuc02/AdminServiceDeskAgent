@@ -15,6 +15,7 @@ from bo19.api.body_limit import BodyLimitMiddleware
 from bo19.api.deps.csrf import require_csrf_header
 from bo19.api.deps.state import AppState
 from bo19.api.errors import install_exception_handlers
+from bo19.api.files_gate import FileGate
 from bo19.api.routers import auth, chat, files, requests
 from bo19.api.trace import TraceMiddleware
 from bo19.config import working_values as wv
@@ -39,6 +40,7 @@ def create_app(state: AppState, *, routers: Sequence[APIRouter] | None = None) -
 
     app = FastAPI(title="bo19", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.state.bo19 = state
+    app.state.file_gate = FileGate(state.file_fetch)  # một cho cả tiến trình: trần số lượt tải file đồng thời (WV-27)
     app.add_middleware(BodyLimitMiddleware, limits=BODY_LIMITS)  # thêm trước Trace: Trace là lớp ngoài, nên 413 cũng mang trace_id
     app.add_middleware(TraceMiddleware)
     install_exception_handlers(app)

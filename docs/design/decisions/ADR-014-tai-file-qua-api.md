@@ -51,6 +51,10 @@ Chạy **đồng bộ trong luồng request, có chạm `object_storage`**.
 - *Tín hiệu vận hành, đo ở `observability`:* phân phối thời lượng một lần tải — nhìn phần đuôi, không nhìn trung bình — đặt cạnh kích thước file và giới hạn thời gian request (A-025). Khi phần đuôi tiến sát giới hạn: xét phương án B cho đúng loại file đó. Chỗ quan sát: dòng ADR-014 ở bảng chỗ quan sát của Phase 11 trong `_PLAN.md`.
 - *Tín hiệu kiến trúc:* việc kiểm quyền làm được ở chỗ khác — ví dụ `object_storage` tự xác thực được danh tính người tải. Khi đó lý do 1 mất; phương án B cần một ADR thay thế, ghi rõ audit chuyển về lúc cấp đường dẫn và phép so checksum trước khi gửi bị mất.
 
+## Bổ sung 2026-10-13 (B8c, PO) — cách "so checksum trước byte đầu tiên" được hiện thực
+
+B8b đọc cả object vào bộ nhớ rồi so; ở gói Free 512 MB không đứng được khi tải đồng thời (O1-18). B8c: tải theo khối vào **tệp tạm vô danh**, băm khi tải, khớp rồi mới stream từ tệp; semaphore số lượt đồng thời; hạn chót tổng mỗi lượt. Quyết định chính của ADR này (tải qua API, so checksum trước byte đầu tiên, không URL ký sẵn) không đổi. Chi tiết: `05-api.md` mục Tải file, `proposals/b8c-ke-hoach.md`.
+
 ## Rejected alternatives
 
 **B — URL ký sẵn có hạn.** Bị loại vì bốn lý do:

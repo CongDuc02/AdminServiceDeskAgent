@@ -24,6 +24,7 @@ from fastapi.testclient import TestClient
 
 from bo19.api.app import create_app
 from bo19.api.deps.state import AppState
+from bo19.api.files_gate import FileFetchLimits
 from bo19.tool_layer import storage as st
 from tests.auth_support import SECRET, AuthBase
 from tests.s3_support import ENDPOINT, REQUIRED, admin_client, drop_bucket, new_bucket, storage_for
@@ -53,19 +54,19 @@ class FilesBase(AuthBase):
         self.signer, _ = self.employee(roles=("SIGNER",))
         self.other, _ = self.employee(roles=("EMPLOYEE",))
 
-    def rebuild(self, storage):
-        self.app = create_app(AppState(pool=self.pool, session_secret=SECRET, verifier=self.verifier, storage=storage))
+    def rebuild(self, storage, file_fetch: FileFetchLimits | None = None):
+        self.app = create_app(AppState(pool=self.pool, session_secret=SECRET, verifier=self.verifier, storage=storage, file_fetch=file_fetch or FileFetchLimits()))
         self.client = TestClient(self.app, raise_server_exceptions=False, base_url="https://testserver", client=(self.ip, 50000))
 
     def put(self, key: str, data: bytes, purpose: str) -> None:
         st.put_once(self.pool, self.storage, object_key=key, purpose=purpose, content_type="application/octet-stream", data=data, lease_s=120)
 
-    def make_render(self, *, kind: str = "FINAL", doc_status: str = "ISSUED", pinned: bool = True, force_pin: bool = False, creator: uuid.UUID | None = None) -> tuple[uuid.UUID, uuid.UUID]:
+    def make_render(self, *, kind: str = "FINAL", doc_status: str = "ISSUED", pinned: bool = True, force_pin: bool = False, creator: uuid.UUID | None = None, pdf: bytes = PDF) -> tuple[uuid.UUID, uuid.UUID]:
         """(document_id, render_id) với object THẬT trong bucket. `doc_status` ISSUED kéo theo mọi cột mà ràng buộc đòi — id giả dưới `replica`."""
         did, rid, req, ver, tid = (uuid.uuid4() for _ in range(5))
         docx_key, pdf_key = f"renders/{did}/h.docx", f"renders/{did}/h.pdf"
         self.put(docx_key, DOCX, "RENDER_DOCX")
-        self.put(pdf_key, PDF, "RENDER_PDF")
+        self.put(pdf_key, pdf, "RENDER_PDF")
         now = dt.datetime.now(dt.timezone.utc)
         issued = doc_status in ("ISSUED", "REVOKED", "SUPERSEDED")
         with self.db.connect(autocommit=True) as c:
@@ -202,7 +203,7 @@ class Response(FilesBase):
     def test_byte_dau_tien_chi_ra_sau_khi_kiem_checksum(self):
         """`fetch` đọc cả object và kiểm trước khi trả: nếu kiểm hỏng thì `Response` không bao giờ được dựng."""
         did, rid = self.make_render()
-        with mock.patch("bo19.api.routers.files._response", side_effect=AssertionError("đã dựng response trước khi kiểm")):
+        with mock.patch("bo19.api.routers.files.DeadlineStreamingResponse", side_effect=AssertionError("đã dựng response trước khi kiểm")):
             self.raw.put_object(Bucket=self.bucket, Key=f"renders/{did}/h.pdf", Body=b"sai")
             self.assert_envelope(self.get(did, rid, "pdf", self.officer), "FILE_UNAVAILABLE", 503)
 

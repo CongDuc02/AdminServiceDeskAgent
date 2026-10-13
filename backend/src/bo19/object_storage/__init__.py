@@ -85,6 +85,21 @@ class ObjectStorage:
         except BotoCoreError:
             raise StorageError(UNAVAILABLE) from None
 
+    def get_chunks(self, key: str, chunk_size: int) -> Iterator[bytes]:
+        """Đọc object theo khối `chunk_size` (B8c, O1-18): bộ nhớ cố định theo khối, không theo kích thước object. Lỗi (kể cả đứt giữa chừng) chỉ mang mã; body luôn được đóng."""
+        try:
+            body = self._client.get_object(Bucket=self.bucket, Key=key)["Body"]
+        except ClientError as e:
+            raise self._translate(e) from None
+        except BotoCoreError:
+            raise StorageError(UNAVAILABLE) from None
+        try:
+            yield from body.iter_chunks(chunk_size)
+        except (BotoCoreError, OSError):
+            raise StorageError(UNAVAILABLE) from None
+        finally:
+            body.close()
+
     def head(self, key: str) -> ObjectInfo | None:
         try:
             r = self._client.head_object(Bucket=self.bucket, Key=key)

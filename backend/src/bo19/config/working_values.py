@@ -78,3 +78,10 @@ RENDER_CONVERT_TIMEOUT_S = 120
 FILE_FETCH_MAX_BYTES = 8 * 1024 * 1024
 # WV-25 (B8b; "chưa hiệu chỉnh") — hạn của bước kiểm khởi động #6 (`soffice --headless` khởi động được, lần đầu có thể nạp cache): giây.
 SOFFICE_STARTUP_CHECK_TIMEOUT_S = 90
+
+# WV-26 đến WV-30 (B8c; PO 2026-10-13, O1-18; "chưa hiệu chỉnh") — tải file qua tệp tạm (`storage.fetch_verified`, endpoint tải file). WV-27, WV-28, WV-29 do PO chỉ định/duyệt; WV-26, WV-30 do người triển khai chọn.
+FILE_FETCH_CHUNK_BYTES = 256 * 1024  # WV-26 — một khối khi tải object về tệp tạm và khi stream ra client
+FILE_FETCH_MAX_CONCURRENT = 4  # WV-27 — số lượt tải đồng thời tối đa trong một tiến trình `api`; giữ suốt lượt (tải + stream)
+FILE_FETCH_WAIT_S = 15  # WV-28 — chờ chỗ khi đủ WV-27 lượt; hết hạn thì 503 FILE_UNAVAILABLE kèm Retry-After
+FILE_FETCH_DEADLINE_S = 60  # WV-29 — hạn chót tổng một lượt tải, tính từ lúc có chỗ, bao cả pha stream
+FILE_FETCH_RETRY_AFTER_S = 5  # WV-30 — giá trị header Retry-After của 503 "bận"
