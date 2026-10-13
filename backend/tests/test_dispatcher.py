@@ -307,6 +307,36 @@ class TatEm(DispatcherBase):
         self.assertEqual((self.row(jid)["status"], self.row(jid)["attempts"], calls), ("SUCCEEDED", 1, [1]))
 
 
+class VongPollBen(DispatcherBase):
+    def test_loi_db_tam_thoi_khong_lam_vong_poll_sap(self):
+        import psycopg
+        from unittest import mock
+        jid = self.add()
+        calls = []
+        real_claim = __import__("bo19.tool_layer.jobs", fromlist=["claim"]).claim
+        state = {"n": 0}
+
+        def flaky(*a, **k):
+            state["n"] += 1
+            if state["n"] <= 2:
+                raise psycopg.OperationalError(f"giá trị slot {RES} trong thông điệp lỗi")
+            return real_claim(*a, **k)
+
+        d = self.dispatcher({"render_document": lambda job, ctx: calls.append(job.id)})
+        with mock.patch("bo19.queue_worker.dispatcher.jobs.claim", side_effect=flaky):
+            t = threading.Thread(target=d.run_forever)
+            t.start()
+            deadline = time.monotonic() + 20
+            while not calls and time.monotonic() < deadline:
+                time.sleep(0.05)
+            d.stop()
+            t.join(10)
+        self.assertEqual(calls, [jid])  # sau hai lỗi, vòng poll vẫn sống và xử lý job
+        self.assertGreaterEqual(self.log_text().count("WORKER_LOOP_ERROR"), 2)
+        self.assertIn("OperationalError", self.log_text())
+        self.assertNotIn(RES, self.log_text())  # chỉ kiểu lỗi
+
+
 class ThuHoi(DispatcherBase):
     def test_worker_chet_lease_het_han_duoc_thu_hoi_o_vong_ke_tiep(self):
         jid = self.add()

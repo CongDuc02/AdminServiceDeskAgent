@@ -103,6 +103,35 @@ class Giành(JobsBase):
         self.assertEqual([self.claim().id, self.claim().id], [older, newer])
         self.assertIsNone(self.claim())
 
+    def test_thu_tu_den_han_roi_vao_hang_doi_xac_dinh_khong_ngau_nhien(self):
+        """Sáu job đến hạn ở sáu thời điểm khác nhau, thêm vào theo thứ tự xáo trộn; và bốn job CÙNG `run_after` nhưng vào hàng đợi lúc khác nhau."""
+        order = [3, 0, 5, 1, 4, 2]
+        added = {i: self.add(offset_s=-(100 - 10 * i)) for i in order}  # i càng nhỏ càng đến hạn sớm
+        self.assertEqual([self.claim().id for _ in range(6)], [added[i] for i in range(6)])
+        with self.db.connect("bo19_migrator", autocommit=True) as c:
+            c.execute("delete from job")
+            same = {}
+            due = c.execute("select now() - interval '1 hour'").fetchone()[0]  # MỘT giá trị cho cả bốn (mỗi câu tự động commit có `now()` riêng)
+            for age in (5, 400, 40, 4000):  # `enqueued_at` cũ nhất trước
+                jid = uuid.uuid4()
+                same[age] = jid
+                c.execute("insert into job (id, job_type, payload, max_attempts, run_after, enqueued_at) values (%s, 'render_document', '{}'::jsonb, 5, %s, now() - make_interval(secs => %s))", (jid, due, age))
+        self.assertEqual([self.claim().id for _ in range(4)], [same[a] for a in (4000, 400, 40, 5)])
+
+    def test_hang_dang_bi_giao_dich_khac_khoa_thi_bo_qua_khong_cho(self):
+        """`SKIP LOCKED` theo nghĩa đen: một giao dịch khác đang giữ khoá dòng của job cũ nhất — `claim` lấy job kế tiếp NGAY, không chờ giao dịch kia."""
+        locked, free = self.add(offset_s=-100), self.add(offset_s=-10)
+        result: list = []
+        with self.db.connect("bo19_migrator") as holder:  # giao dịch mở, giữ khoá dòng
+            holder.execute("select id from job where id = %s for update", (locked,))
+            t = threading.Thread(target=lambda: result.append(self.claim()))
+            t.start()
+            t.join(5)
+            self.assertFalse(t.is_alive(), "claim bị chặn bởi khoá dòng — thiếu SKIP LOCKED")
+            self.assertEqual(result[0].id, free)
+            holder.rollback()
+        self.assertEqual(self.claim().id, locked)  # khoá đã nhả: job cũ nhất giành được
+
     def test_run_after_tuong_lai_va_loai_khac_khong_bi_gianh(self):
         future = self.add(offset_s=3600)
         other = self.add("notification_send")
@@ -137,6 +166,22 @@ class Giành(JobsBase):
         self.assertEqual(set(got), ids)  # mỗi job một lần, không sót, không trùng
         with self.db.connect("bo19_migrator") as c:
             self.assertEqual(c.execute("select count(*) from job where status = 'RUNNING' and attempts = 1").fetchone()[0], 30)
+
+    def test_moi_luong_giành_dung_mot_job_khong_luong_nao_nhan_none_gia(self):
+        """Mười job, mười luồng, mỗi luồng giành MỘT lần: đủ mười job khác nhau. Không `SKIP LOCKED` thì luồng đến sau chờ khoá rồi thấy hàng đã đổi trạng thái và nhận `None` dù hàng đợi còn job."""
+        ids = {self.add(offset_s=-i) for i in range(10)}
+        got, barrier, lock = [], threading.Barrier(10), threading.Lock()
+
+        def go(i: int):
+            barrier.wait()
+            job = jobs.claim(self.pool, worker_id=f"w-{i}", job_types=TYPES)
+            with lock:
+                got.append(job.id if job else None)
+
+        threads = [threading.Thread(target=go, args=(i,)) for i in range(10)]
+        [t.start() for t in threads]
+        [t.join(60) for t in threads]
+        self.assertEqual((len(got), None in got, set(got)), (10, False, ids))
 
     def test_job_do_enqueue_cua_b7_chi_mang_id(self):
         rid, did = uuid.uuid4(), uuid.uuid4()
@@ -225,6 +270,18 @@ class KetThuc(JobsBase):
             with self.db.connect("bo19_migrator", autocommit=True) as c:
                 c.execute("delete from job where id = %s", (jid,))
 
+    def test_nguoi_la_khong_fail_duoc_o_nhanh_cuoi_ke_ca_khi_bo_cuoc_vi_429(self):
+        jid = self.add(attempts=4, max_attempts=5)
+        job = self.claim()  # lượt cuối 5/5: `fail` đi nhánh FAILED
+        stranger = jobs.ClaimedJob(**{**job.__dict__, "locked_by": "w-la"})
+        stale = jobs.ClaimedJob(**{**job.__dict__, "locked_at": job.locked_at - dt.timedelta(seconds=1)})
+        for token in (stranger, stale):
+            self.assertIsNone(jobs.fail(self.pool, token, "LOI"))  # nhánh hết lượt
+            self.assertIsNone(jobs.fail(self.pool, token, "LOI", retry_after_s=wv.LLM_RETRY_AFTER_CEILING_SECONDS + 1))  # nhánh bỏ cuộc vì 429
+        r = self.row(jid)
+        self.assertEqual((r["status"], r["locked_by"], r["last_error_code"]), ("RUNNING", self.worker, None))
+        self.assertEqual(jobs.fail(self.pool, job, "LOI").status, "FAILED")  # chính chủ vẫn kết thúc được
+
     def test_fail_het_luot_la_failed_vinh_vien_khong_chay_lai(self):
         jid = self.add(max_attempts=2)
         for attempt in (1, 2):
@@ -309,6 +366,23 @@ class ThuHoiLease(JobsBase):
         jobs.succeed(self.pool, self.claim())
         self.assertEqual(jobs.reclaim_expired(self.pool), [])
         self.assertEqual((self.row(running)["status"], self.row(queued)["status"], self.row(done)["status"]), ("RUNNING", "QUEUED", "SUCCEEDED"))
+
+    def test_reclaim_bo_qua_hang_dang_bi_khoa_khong_cho(self):
+        locked, free = self.add(), self.add(offset_s=-1)
+        self.claim()
+        self.claim()
+        self.expire(locked)
+        self.expire(free)
+        result: list = []
+        with self.db.connect("bo19_migrator") as holder:
+            holder.execute("select id from job where id = %s for update", (locked,))
+            t = threading.Thread(target=lambda: result.append(jobs.reclaim_expired(self.pool)))
+            t.start()
+            t.join(5)
+            self.assertFalse(t.is_alive(), "reclaim_expired bị chặn bởi khoá dòng — thiếu SKIP LOCKED")
+            self.assertEqual([r.id for r in result[0]], [free])
+            holder.rollback()
+        self.assertEqual([r.id for r in jobs.reclaim_expired(self.pool)], [locked])  # khoá nhả rồi: thu hồi nốt
 
     def test_nhieu_worker_cung_thu_hoi_moi_job_mot_lan(self):
         ids = [self.add(age_s=i) for i in range(5)]

@@ -80,7 +80,12 @@ class Dispatcher:
     def run_forever(self) -> None:
         log.info("WORKER_LOOP_START", worker_id=self.worker_id, job_types=",".join(sorted(self.handlers)) or None)
         while not self.stopping:
-            if not self.run_once():
+            try:
+                handled = self.run_once()
+            except Exception as e:  # noqa: BLE001 — DB chớp tắt không được làm worker sập rồi khởi động lại liên tục: ghi kiểu lỗi (không thông điệp), thử lại ở chu kỳ sau
+                log.error("WORKER_LOOP_ERROR", exc=e)
+                handled = False
+            if not handled:
                 self._stop.wait(self.poll_s)
         log.info("WORKER_LOOP_STOP", worker_id=self.worker_id)
 
