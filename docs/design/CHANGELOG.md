@@ -3525,3 +3525,16 @@ PO duyệt kế hoạch B8a (`proposals/b8a-ke-hoach.md`) và quyết thêm về
 - **Merge B8a** vào `main` (PO cho phép, `--no-ff`); nhánh đã xoá. Container SeaweedFS `bo19-s3` giữ cho B8b.
 - **PO xác nhận: công ty là doanh nghiệp tư nhân.** Ghi vào cổng 1.6 của `12-roadmap.md` và `decisions/ADR-036-font-thay-the-tnr-bang-fontconfig.md`: điều kiện "giấy phép Times New Roman cho server hoặc cách render khác" **không bị kích hoạt bởi phạm vi Điều 2**; mở lại nếu tình trạng tổ chức đổi hoặc văn bản phải theo Nghị định vì lý do khác. Kiểm Nghị định 30/2020 có bị sửa đổi hay thay thế sau 2020 vẫn giữ trước M1.1.
 - **Kế hoạch B8b** `proposals/b8b-ke-hoach.md` — chờ PO duyệt: `job.lease_id` ở đầu (thay `locked_at` làm hàng rào, PO 2026-10-13), rồi `rendering`, `stored_file_fetch` và endpoint tải file, image có `soffice` và font, bước kiểm #6 và #7. Chưa có mã.
+
+### B8b — kết quả mã (2026-10-13)
+
+| Hạng mục | Kết quả |
+|---|---|
+| `job.lease_id` | Migration `0013`; token hàng rào ngẫu nhiên do DB sinh, bốn lệnh kiểm `lease_id`, mọi lối thoát đặt `NULL`; ADR-004 mục Bổ sung. **14/14 đột biến đỏ** |
+| `rendering` | `docx_fill` (thiếu/thừa biến chỉ mang tên, watermark ở đầu mọi tiêu đề, không tham số tắt), `fonts`, `convert` (một `soffice` mỗi lần, giết cả nhóm khi quá hạn, kiểm gói OOXML trước vì `soffice` dựng PDF từ byte bất kỳ). Tool `docx_render`, `pdf_export` theo thứ tự ADR-015; `storage.fetch`; hai endpoint tải file |
+| Image | `Dockerfile` ba stage `base`/`test`/`runtime`, **`runtime` luôn cuối** (PO); LibreOffice Writer, fontconfig, Liberation Serif 2.1.5, quy tắc fontconfig; `tools/image-checks/check_runtime_image.sh`; CI dựng không `--target` rồi kiểm. Bước kiểm #6, #7 có code |
+| Kiểm | CI xanh ba job: `backend` 3 phút 23 giây, `lint-imports` 9/9, **1324 test OK**, `check_grants` Lệch 0 |
+| Đột biến | 80 mẫu code (14 + 66): 62/66 đỏ ngay; 2 sống do test yếu (`C04`, `E03`) đã sửa rồi đỏ; 2 tương đương (`F07`, `T05`). 5 mẫu image đỏ |
+| Số đo (`proposals/b8b-ke-hoach.md` mục 9) | Một lần chuyển đổi ≈ 212 MiB cgroup, OOM-kill ở 192 MiB; 0,1 CPU: 32–88 s; ngắt dòng so Times New Roman thật: 0/829 dòng lệch; image đã nén ×2,08, chưa nén ×1,87 |
+| **Dừng chờ PO** | **O1-18** — trần tải file × số tải đồng thời không vừa 512 MB (số tải đồng thời hiện không bị chặn); O1-19 — thời lượng ở 0,1 CPU và bước kiểm #6 |
+| Lệch kế hoạch, nói rõ | `docx_render` nhận bảng giá trị làm tham số (B9a dựng nó); target `test` mount mã thay vì COPY; watermark là dòng chữ ở tiêu đề; bốn diễn giải ở mục 9.5 |
