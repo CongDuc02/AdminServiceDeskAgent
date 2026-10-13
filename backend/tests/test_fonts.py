@@ -120,8 +120,9 @@ class HoDaKhai(unittest.TestCase):
             got = fonts.declared_families(with_part(build_template(), "word/xxe.xml", xxe))
         except fonts.DocxUnreadable:
             got = frozenset()  # thực thể không được phân giải: lxml từ chối — cũng là một cách không đọc file ngoài
-        hostname = open("/etc/hostname").read().strip() if os.path.exists("/etc/hostname") else None
-        self.assertNotIn(hostname, got)
+        if os.path.exists("/etc/hostname"):
+            with open("/etc/hostname") as f:
+                self.assertNotIn(f.read().strip(), got)
         old = fonts.MAX_PART_BYTES
         fonts.MAX_PART_BYTES = 10
         try:

@@ -113,7 +113,8 @@ class HetHanVaLoi(unittest.TestCase):
     def test_qua_han_giet_ca_nhom_tien_trinh_va_xoa_thu_muc_tam(self):
         started = time.monotonic()
         with self.assertRaises(convert.ConversionTimeout) as cm:
-            convert.convert_to_pdf(render(), timeout_s=0.3, tmp_root=self.tmp.name)  # soffice khởi động mất hơn nhiều so với 0,3 s
+            # Văn bản NẶNG (một giá trị nhiều nghìn dòng: `soffice` dựng mất hàng chục giây — superlinear, đo ở B8b: 800 dòng ≈ 30 s) để việc giết tiến trình là thứ duy nhất đưa hàm về sớm
+            convert.convert_to_pdf(render({**VALUES, "noi_dung": "\n".join([VIETNAMESE * 6] * 800)}), timeout_s=0.3, tmp_root=self.tmp.name)
         self.assertEqual(cm.exception.code, "TIMEOUT")
         self.assertLess(time.monotonic() - started, 5)  # SIGKILL cả nhóm tiến trình trả về ngay; không giết được thì `wait(10)` của bộ dọn làm quá 10 s
         self.assertEqual(soffice_pids("bo19-convert-"), [])  # không còn soffice hay soffice.bin của lần đó
