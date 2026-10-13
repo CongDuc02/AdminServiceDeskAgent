@@ -25,13 +25,26 @@ def admin_client():
                         config=Config(signature_version="s3v4", s3={"addressing_style": "path"}, retries={"max_attempts": 1}))
 
 
-def new_bucket(versioning: bool = True) -> str:
+def new_bucket(versioning: bool = False) -> str:
+    """Một bucket mới. Mặc định KHÔNG versioning (chỉ test T10 cần); bucket phải được xoá sau test (`drop_bucket`) — mỗi bucket giữ volume của SeaweedFS, và `-volume.max=200` cạn sau vài chục bucket (ADR-031)."""
     name = f"t{uuid.uuid4().hex[:20]}"
     client = admin_client()
     client.create_bucket(Bucket=name)
     if versioning:
         client.put_bucket_versioning(Bucket=name, VersioningConfiguration={"Status": "Enabled"})
     return name
+
+
+def drop_bucket(name: str) -> None:
+    """Xoá mọi version, delete marker và object rồi xoá bucket. Lỗi dọn dẹp không được làm hỏng test."""
+    client = admin_client()
+    try:
+        for page in client.get_paginator("list_object_versions").paginate(Bucket=name):
+            for item in [*page.get("Versions", []), *page.get("DeleteMarkers", [])]:
+                client.delete_object(Bucket=name, Key=item["Key"], VersionId=item["VersionId"])
+        client.delete_bucket(Bucket=name)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def storage_for(bucket: str, timeout_s: int = 30) -> ObjectStorage:
@@ -49,6 +62,7 @@ class S3Base(unittest.TestCase):
 
     def setUp(self):
         self.bucket = new_bucket()
+        self.addCleanup(drop_bucket, self.bucket)
         self.storage = storage_for(self.bucket)
         self.raw = admin_client()
 

@@ -21,7 +21,7 @@ import uuid
 
 from bo19 import object_storage as os_mod
 from bo19.object_storage import AlreadyExists, ObjectMissing, ObjectStorage, ObjectStorageConfig, StorageError
-from tests.s3_support import ENDPOINT, S3Base, admin_client, new_bucket, storage_for
+from tests.s3_support import ENDPOINT, S3Base, admin_client, drop_bucket, new_bucket, storage_for
 
 KEY = "renders/" + hashlib.sha256(b"khoa-thu").hexdigest()
 
@@ -93,14 +93,17 @@ class GhiMotLan(S3Base):
         self.assertEqual(self.raw_get(KEY), f"nguoi-{winners[0]}".encode())
 
     def test_xoa_roi_ghi_lai_tren_bucket_versioning_va_lenh_ghi_tre_bi_tu_choi(self):  # T10
-        self.storage.put_if_absent(KEY, b"claim-1", content_type="application/pdf")
-        self.storage.delete(KEY)
+        bucket = new_bucket(versioning=True)  # ADR-031: bucket local bật versioning
+        self.addCleanup(drop_bucket, bucket)
+        storage = storage_for(bucket)
+        storage.put_if_absent(KEY, b"claim-1", content_type="application/pdf")
+        storage.delete(KEY)
         with self.assertRaises(ObjectMissing):
-            self.storage.get(KEY)
-        self.storage.put_if_absent(KEY, b"claim-2", content_type="application/pdf")  # ghi lại sau delete marker: được
+            storage.get(KEY)
+        storage.put_if_absent(KEY, b"claim-2", content_type="application/pdf")  # ghi lại sau delete marker: được
         with self.assertRaises(AlreadyExists):
-            self.storage.put_if_absent(KEY, b"claim-1-ghi-tre", content_type="application/pdf")  # lệnh ghi trễ của claim cũ
-        self.assertEqual(self.storage.get(KEY), b"claim-2")
+            storage.put_if_absent(KEY, b"claim-1-ghi-tre", content_type="application/pdf")  # lệnh ghi trễ của claim cũ
+        self.assertEqual(storage.get(KEY), b"claim-2")
 
     def test_khoa_khac_nhau_khong_anh_huong_nhau(self):
         self.storage.put_if_absent("a/1", b"1", content_type="text/plain")
