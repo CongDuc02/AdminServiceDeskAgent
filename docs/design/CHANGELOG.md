@@ -3556,3 +3556,10 @@ PO duyệt kế hoạch B8a (`proposals/b8a-ke-hoach.md`) và quyết thêm về
 | Kiểm | CI xanh ba job; `lint-imports` 9/9; **1368 test OK**; `check_grants` Lệch 0 |
 | Đột biến | **38 mẫu: 36 đỏ ngay, 2 sống do test yếu (`G03`, `K04`) đã sửa rồi đỏ → 38/38**; không mẫu tương đương |
 | Chưa làm | `combined_main` (đo chat dưới 0,1 CPU lúc `soffice` chạy — O1-6, A-095); `/tmp` của Render (A-095); trần số dòng `FREE_CONTENT`; kiểm watermark ở PDF bằng máy (thuộc tính PDF) — chờ PO |
+
+### B8c — PO duyệt watermark, cho phép merge, quyết định M5 (2026-10-13)
+
+- **PO duyệt ảnh mẫu watermark B8c** (`proposals/b8c-watermark-mau.png`): giữ `#808080` / `.5`. Nhãn đổi từ "mặc định tạm, chờ PO chỉnh" sang **"PO duyệt, chưa thử in/photo"** ở `watermark.py`, `proposals/b8c-ke-hoach.md` và `06-structure.md`. Dòng "màu, độ mờ chờ PO chỉnh" trong bảng B8c phía trên là lịch sử, thay bằng mục này.
+- **Điểm "123/QĐ-GIẢ.Nguyễn" thiếu khoảng trắng trong ảnh mẫu: dữ liệu ghép của script dựng ảnh** (`VIETNAMESE * 2` ở `tools/watermark-sample/render_sample.py`), không phải `docx_fill`. Kiểm bằng chạy `docx_fill` trên mẫu trước và sau khi điền (cụm có sẵn ở mẫu; đoạn không biến giữ nguyên; giá trị biến giữ khoảng trắng đầu/cuối). Không đổi mã.
+- **PO cho phép merge** `build/b8c-tai-file-kiem-nhe-watermark` vào `main` (`--no-ff`, push, xoá nhánh) sau khi xác nhận điểm trên.
+- **M5 — có, kiểm watermark ở PDF bằng máy, làm ở đầu B9a** (không lát riêng): chuỗi watermark nguyên văn vào metadata PDF lúc `pdf_export`; DB ghi bản render mang watermark (cột chỉ thêm sau khi PO duyệt đề xuất); thủ tục kiểm sau UAT = đọc metadata + truy vấn DB + so checksum đã lưu, ghi ở `11-ops.md`. Kế hoạch: `proposals/b9a-ke-hoach.md` — chờ PO duyệt.

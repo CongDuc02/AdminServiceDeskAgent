@@ -61,11 +61,13 @@ Thứ tự làm: tài liệu → (1) spike watermark, ảnh mẫu → (2) O1-18 
 
 ## 8. Kết quả (2026-10-13)
 
-**Trạng thái:** xong trên `build/b8c-tai-file-kiem-nhe-watermark`; chờ PO xem ảnh mẫu watermark (màu, độ mờ) và duyệt merge.
+**Trạng thái:** xong trên `build/b8c-tai-file-kiem-nhe-watermark`. **PO duyệt ảnh mẫu watermark (2026-10-13): giữ `#808080` / `.5` — PO duyệt, chưa thử in/photo**; merge được phép sau khi xác nhận điểm "GIẢ.Nguyễn" của ảnh mẫu (xem dưới).
 
 ### 8.1 Spike watermark (cổng dừng — **không phải dừng**)
 
-Dựng hai biến thể trong tiêu đề, cho `soffice` (LibreOffice 25.2.3, trong image) dựng PDF rồi xem ảnh trang: **(A) VML WordArt như Word — render đúng** (chéo −45°, giữa thân trang, sau chữ, xám nhạt, mọi trang); **(B) DrawingML `wps:txbx` xoay — LibreOffice bỏ qua góc xoay**, chữ nằm ngang. Chọn A. Hai điều ghi nhận: trong PDF chữ watermark là **đường vẽ** (`pdftotext` không đọc ra — nên kiểm bằng pixel); lúc đầu nét chữ trông "rỗng" ở độ phân giải thấp chỉ vì nét mảnh nhạt — phóng 500 dpi thấy chữ đặc. Ảnh mẫu `b8c-watermark-mau.png` (trang 1, 70 dpi; sha256 `cacdc97d9677272b6d559cc0d5ba4c7e992f6b65d6d40fc7a73939f19f2d2bb5`, dựng bằng `tools/watermark-sample/render_sample.py`). Màu `#808080`, độ mờ `.5` là mặc định tạm — PO chỉnh `FILL_COLOR`, `FILL_OPACITY`.
+Dựng hai biến thể trong tiêu đề, cho `soffice` (LibreOffice 25.2.3, trong image) dựng PDF rồi xem ảnh trang: **(A) VML WordArt như Word — render đúng** (chéo −45°, giữa thân trang, sau chữ, xám nhạt, mọi trang); **(B) DrawingML `wps:txbx` xoay — LibreOffice bỏ qua góc xoay**, chữ nằm ngang. Chọn A. Hai điều ghi nhận: trong PDF chữ watermark là **đường vẽ** (`pdftotext` không đọc ra — nên kiểm bằng pixel); lúc đầu nét chữ trông "rỗng" ở độ phân giải thấp chỉ vì nét mảnh nhạt — phóng 500 dpi thấy chữ đặc. Ảnh mẫu `b8c-watermark-mau.png` (trang 1, 70 dpi; sha256 `cacdc97d9677272b6d559cc0d5ba4c7e992f6b65d6d40fc7a73939f19f2d2bb5`, dựng bằng `tools/watermark-sample/render_sample.py`). Màu `#808080`, độ mờ `.5`: **PO duyệt ảnh mẫu (2026-10-13) — PO duyệt, chưa thử in/photo** (trước đó là mặc định tạm). Chỉnh qua `FILL_COLOR`, `FILL_OPACITY`.
+
+**Điểm "123/QĐ-GIẢ.Nguyễn" thiếu khoảng trắng trong ảnh mẫu (PO hỏi, 2026-10-13): là dữ liệu ghép, không phải lỗi `docx_fill`.** `tools/watermark-sample/render_sample.py` dựng đoạn thân bằng `VIETNAMESE * 2` — hai câu nối liền, nên ghép đã nằm sẵn trong mẫu **trước khi điền**. Kiểm trực tiếp: cụm `GIẢ.Nguyễn` có 2 lần ở mẫu trước điền và 2 lần sau điền; đoạn không có biến giữ nguyên từng ký tự; giá trị biến có khoảng trắng đầu và cuối vẫn nguyên. Không sửa mã.
 
 ### 8.2 Đã làm
 
@@ -99,5 +101,5 @@ CI xanh cả ba job (commit `52b5bde`): `backend` 3 phút 53 giây — image run
 ### 8.6 Ghi nhận / chưa làm
 
 - **Giới hạn đã nêu ở mục 1 giữ nguyên:** người nhận `.docx` xoá được shape watermark trong Word.
-- Watermark trong PDF không đọc được bằng máy dưới dạng chữ (đường vẽ). Nếu M5 cần kiểm PDF bằng máy, đặt thêm vào thuộc tính tài liệu (tiêu đề/chủ đề PDF) là một việc nhỏ — **chưa làm, chờ PO nói có cần không**.
+- Watermark trong PDF không đọc được bằng máy dưới dạng chữ (đường vẽ). **PO trả lời (2026-10-13): có, kiểm bằng máy — làm ở đầu B9a, không lát riêng** (ghi chuỗi vào metadata PDF lúc `pdf_export`, DB ghi bản render mang watermark, thủ tục kiểm sau UAT ở `11-ops.md`; xem `proposals/b9a-ke-hoach.md`).
 - Chưa đo hành vi khi `/tmp` của Render là tmpfs; chưa đo đồng thời tải file + chuyển đổi trong một tiến trình thật (`combined_main`, O1-6).

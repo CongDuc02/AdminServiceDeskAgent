@@ -8,7 +8,7 @@ tiêu đề "liên kết với phần trước" kế thừa bản đã có của
 không dùng. Trong PDF chữ watermark là **đường viền vẽ** (`pdftotext` không đọc ra chữ): kiểm "có watermark" ở PDF bằng pixel (`tests/test_watermark_render.py`), ở `.docx` bằng XML (`textpath string` đúng nguyên văn, đúng một shape mỗi tiêu đề).
 
 **Không gỡ được** (00-domain.md, D-009) theo nghĩa của thiết kế: không có tham số nào tắt nó (xem `docx_fill`). Người nhận `.docx` vẫn xoá được shape trong Word — giới hạn có từ trước, không đổi ở B8c.
-Màu, độ mờ, kích thước: hằng số bên dưới (PO chỉnh sau khi xem ảnh mẫu).
+Màu, độ mờ, kích thước: hằng số bên dưới. **PO duyệt ảnh mẫu B8c (2026-10-13): giữ `#808080` / `.5`** — PO duyệt, chưa thử in/photo.
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from docx import Document
 from docx.oxml import parse_xml
 
 WATERMARK_TEXT = "BẢN THỬ NGHIỆM — KHÔNG CÓ GIÁ TRỊ PHÁP LÝ"  # đúng nguyên văn AC-1.3 của 12-roadmap.md
-FILL_COLOR = "#808080"
+FILL_COLOR = "#808080"  # PO duyệt ảnh mẫu B8c (2026-10-13); chưa thử in/photo
 FILL_OPACITY = ".5"
 WIDTH_PT = 640  # ≈ chiều chéo của thân trang A4 chiếu lên một trục, để chữ trải từ góc này sang góc kia của lề
 HEIGHT_PT = 40
