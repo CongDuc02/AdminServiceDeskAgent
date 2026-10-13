@@ -3485,3 +3485,18 @@ PO cho merge `build/b7-request-submit` (`--no-ff`, `1af28c5`); đóng O1-13 vớ
 | `tools/chat-cli/` | `chat_cli.py` dùng lại `tools/turn-trial/` (database tạm, `IntakeRunner` thật, nhịp Groq Free). Dòng nhắc A-080 và `dong y` trước khi tạo database hay gọi mạng (mã thoát 4); không `readline`, không `--keep-db`, không file nào mở để ghi; `/slots` in cả `RES` chỉ trên màn hình; `/confirm` đích danh; `/submit` qua `request_submit`; trần 40 lời gọi |
 | Kiểm | `backend/tests/test_chat_cli.py` 15 test với server giả; đột biến **12/12 đỏ** (đồng ý luôn đúng, đồng ý lỏng, hạn mức, không xoá database, không trả handler log, đổi dòng nhắc, nạp `readline`, ghi lịch sử ra file, `/confirm` không tên thành "tất cả", không in lỗi provider, `/slots` ẩn giá trị, bỏ kiểm `--max-calls`) |
 | Chưa làm / nói thẳng | Chưa chạy CLI với Groq thật (cần khoá của PO). File font chưa vào `fonts/` và image, chưa có quy tắc fontconfig (B8b). Chưa kiểm Nghị định 30/2020 có áp dụng cho tổ chức của dự án — PO nhận báo cáo trước M1.1 |
+
+### B8a — bước 0 docs-first (2026-10-13)
+
+PO duyệt kế hoạch B8a (`proposals/b8a-ke-hoach.md`) và quyết thêm về cổng 1.6.
+
+| File | Thay đổi |
+|---|---|
+| `12-roadmap.md` → 0.54 | Cổng 1.6: **"Đạt cho giai đoạn thử nghiệm (watermark)"**; điều kiện trước production (Nghị định 30/2020 gọi đích danh Times New Roman; thuộc Điều 2 thì cần giấy phép Times New Roman cho server hoặc cách render khác; phạm vi PO xác nhận riêng); trước M1.1 kiểm Nghị định có bị sửa đổi hay thay thế sau 2020 từ nguồn chính thức. B8a duyệt. **R2-5** thêm hệ quả cho job (Q5): drain ≈ 5 s không kịp `release`, lease hết hạn mất một lượt thử, deploy nhiều lần có thể đốt hết `max_attempts`; kỷ luật: không deploy khi còn job `RUNNING` |
+| `decisions/ADR-036-...md`, `proposals/cong-1-6-font.md` | Trạng thái và điều kiện trước production |
+| `decisions/ADR-037-client-s3-boto3.md` | **Mới, Accepted:** `boto3` 1.37.3 (đã khoá), mọi `PUT` `IfNoneMatch="*"`, `boto3`/`botocore` chỉ ở `bo19.object_storage`; phương án loại: `httpx` + tự ký SigV4, `aioboto3`, SDK riêng của nhà cung cấp. **Điều kiện duyệt (PO):** CI chứng minh SeaweedFS 4.47 trả `412` thật; bỏ qua header thì dừng và báo; script contract tương lai phải có phép thử `412` |
+| `11-ops.md` | Năm biến môi trường object storage (`ENDPOINT_URL`, `BUCKET`, `REGION`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY` — hai biến sau là secret); vòng đời lượt thử của `job` (`attempts` tăng lúc giành; `release` không tiêu lượt; lease hết hạn tính một lượt; chủ lease so ở mọi lệnh ghi) |
+| `04-data.md` → 0.28 | Lượt thử của `job`; **không có dòng `document_register_format` giả trong data migration** (PO, Q6) |
+| `proposals/sprint1-working-values-a031-a048.md`, `ASSUMPTIONS.md` → 0.70 | **WV-20** lease job 120 s, `heartbeat` 40 s · **WV-21** poll 2 s · **WV-22** một job một lúc — "chưa hiệu chỉnh"; A-056 mở rộng sang job; A-058 theo quyết định lần hai |
+| `06-structure.md` → 0.45 | Mục Triển khai ở B8a (kế hoạch); contract `object-storage` cấm `boto3`/`botocore` |
+| `proposals/b8a-ke-hoach.md` | Ghi quyết định của PO cho Q1–Q8 |

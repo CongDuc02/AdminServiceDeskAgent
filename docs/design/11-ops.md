@@ -61,6 +61,10 @@ Bảng secret đã chốt ở mục Secret management trên Render của `09-sec
 | `BO19_TURN_DEADLINE_MARGIN_SECONDS` | Không | `10` | WV-03 | #11 |
 | `BO19_OBJECT_STORAGE_TIMEOUT_SECONDS` | Không | `30` | WV-08 | #11 |
 | `BO19_STORED_OBJECT_LEASE_SECONDS` | Không | `120` | WV-10 | #11 |
+| `BO19_OBJECT_STORAGE_ENDPOINT_URL` *(thêm B8a)* | Có, ở `api`/`worker` khi dùng `object_storage` | — | ADR-003, ADR-031 — local trỏ SeaweedFS `127.0.0.1`; bắt buộc `https://` ở `staging`/`prod` | #14 |
+| `BO19_OBJECT_STORAGE_BUCKET` *(thêm B8a)* | Có | — | ADR-003 | #14 |
+| `BO19_OBJECT_STORAGE_REGION` *(thêm B8a)* | Không | `us-east-1` | Client S3 đòi một vùng; giá trị với từng nhà cung cấp `[CẦN XÁC MINH]` (A-024) | #14 |
+| `BO19_OBJECT_STORAGE_ACCESS_KEY_ID`, `BO19_OBJECT_STORAGE_SECRET_ACCESS_KEY` *(thêm B8a)* | Có — **secret**, không bao giờ vào log, lỗi hay `repr` | — | ADR-031 (credential bắt buộc ở mọi môi trường); mục Secret management trên Render của `09-security.md` | #14 |
 | `BO19_ARGON2_TIME_COST` | Không | `2` | WV-16 | #20 |
 | `BO19_ARGON2_MEMORY_COST_KIB` | Không | `19456` | WV-16 | #20 |
 | `BO19_ARGON2_PARALLELISM` | Không | `1` | WV-16 | #20 |
@@ -88,6 +92,8 @@ Cột bảng `job`, sáu `job_type`, cơ chế lease, bảng index — đã ch�
 ### 3.2 Retry, backoff và job lỗi vĩnh viễn
 
 **Backoff — đề xuất, nhãn "chưa hiệu chỉnh":** exponential, `run_after = now() + base × 2^attempts`.
+
+**Vòng đời một lượt thử — chốt ở B8a (PO, 2026-10-13):** `attempts` tăng **lúc giành job**. (1) `succeed` → `SUCCEEDED`. (2) `fail` → còn lượt thì về `QUEUED` với `run_after` như trên, hết lượt thì `FAILED`. (3) **`release` khi drain không tiêu lượt thử** (`attempts − 1`): job bị ngắt, không lỗi. (4) **Lease hết hạn thì tính một lượt thử** — `reclaim_expired` coi như một lần thất bại; hết lượt thì `FAILED`. Nhờ vậy worker chết lặp lại không tạo vòng vô hạn, với cái giá ở R2-5 của `12-roadmap.md`: drain ≈ 5 s trên gói free có thể không kịp (3). (5) **Chủ lease** (`locked_by`) được so ở mọi thao tác ghi: worker đã mất lease không `succeed` hay `fail` đè được. (6) Worker chỉ giành loại job mà tiến trình đó có handler.
 
 | `job_type` | `max_attempts` | `base` | Lý do |
 |---|---|---|---|

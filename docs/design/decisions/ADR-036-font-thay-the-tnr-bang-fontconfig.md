@@ -1,6 +1,6 @@
 # ADR-036 — Font trong image: Liberation Serif, và `.docx` giữ nguyên "Times New Roman" qua quy tắc fontconfig tường minh
 
-**Trạng thái:** Accepted · **Duyệt:** PO, 2026-10-13 · **Ngày:** 2026-10-13 · **Quyết định tại:** BUILD MODE, cổng 1.6 (B7) · **Liên quan:** A-058, A-018, D-009, ADR-001, ADR-015 (bổ sung bên dưới đổi cách hiểu "có mặt" của chốt 3), `proposals/cong-1-6-font.md` · **Nguồn:** `docs/reference/font-liberation-serif-license.md`, `docs/reference/font-do-phu-tieng-viet-b7.md`, `docs/reference/nghi-dinh-30-2020-phong-chu-va-pham-vi.md`
+**Trạng thái:** Accepted **cho giai đoạn thử nghiệm (watermark)**; điều kiện trước production ở mục Consequences · **Duyệt:** PO, 2026-10-13 · **Ngày:** 2026-10-13 · **Quyết định tại:** BUILD MODE, cổng 1.6 (B7) · **Liên quan:** A-058, A-018, D-009, ADR-001, ADR-015 (bổ sung bên dưới đổi cách hiểu "có mặt" của chốt 3), `proposals/cong-1-6-font.md` · **Nguồn:** `docs/reference/font-liberation-serif-license.md`, `docs/reference/font-do-phu-tieng-viet-b7.md`, `docs/reference/nghi-dinh-30-2020-phong-chu-va-pham-vi.md`
 
 ---
 
@@ -45,6 +45,8 @@
 - Bản `.docx` mở trên máy không có Times New Roman (Linux, một số máy Mac cấu hình tối giản) sẽ do máy đó tự thay font — ngoài tầm kiểm soát của hệ thống.
 - Chưa đo: kerning (`GPOS`/`kern`) và render thật — đo ở B8b trên image thật, trước khi kết luận "ngắt dòng giữ được".
 - **Lệch phiên bản:** bước kiểm so họ font, không so phiên bản. Ghim bằng sha256 khi COPY vào image — một test ở B8b.
+
+**Điều kiện trước production (PO, 2026-10-13):** Nghị định 30/2020 gọi đích danh Times New Roman. Tổ chức thuộc phạm vi Điều 2 (**PO xác nhận riêng**) thì phải có **giấy phép Times New Roman cho server** hoặc **một cách render khác** trước khi tháo chế độ phi sản xuất. Trước M1.1: kiểm Nghị định có bị sửa đổi hay thay thế sau 2020 không, từ nguồn chính thức.
 
 **Điều kiện đảo ngược**
 
