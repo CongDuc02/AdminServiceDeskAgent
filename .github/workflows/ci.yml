@@ -1,6 +1,6 @@
 # CI của BO-19 — B1 của track build. Chạy trên push MỌI nhánh và pull_request. KHÔNG dùng secret nào (PO, 2026-10-05).
 # Ba job độc lập, mỗi job chạy trong container Linux cùng image nền với Dockerfile để khớp nền tảng của image runtime:
-#   backend    — import-linter (AC-1.12) + toàn bộ test, gồm các ca cần PostgreSQL (container pgvector ghim digest, ADR-033)
+#   backend    — dựng image runtime (không --target) và kiểm nó; dựng target test; import-linter (AC-1.12) + toàn bộ test TRONG image target test (có soffice, font), gồm các ca cần PostgreSQL (container pgvector ghim digest, ADR-033) và SeaweedFS
 #   contracts  — check_grants.py --local-migrated (AC-1.6: Lệch 0) + test của bộ kiểm
 #   lock       — so lock bằng cách sinh lại (ADR-030): lệch một byte là fail; cài lock vào venv sạch bằng --require-hashes
 # ESLint chưa có: client chưa có khung (frontend/package.json rỗng). Phần ESLint của AC-1.12 hoãn tới khi dựng khung client.
@@ -26,9 +26,9 @@ env:
 
 jobs:
   backend:
-    name: backend — import-linter và test
+    name: backend — image runtime, import-linter và test
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
@@ -41,14 +41,17 @@ jobs:
           docker exec pg pg_isready -U postgres
       - name: SeaweedFS 4.47 cho test object storage (ADR-031, ADR-037)
         run: bash tools/object-storage-local/start.sh "$RUNNER_TEMP/s3.env"
-      - name: lint-imports và test
+      - name: Dựng image KHÔNG --target (như Render) và kiểm nó là image runtime (B8b, PO 2026-10-13)
         run: |
-          docker run --rm --network ci --env-file "$RUNNER_TEMP/s3.env" -v "$PWD":/repo -w /repo/backend \
-            -e PYTHONPATH=src -e PYTHONDONTWRITEBYTECODE=1 -e BO19_REQUIRE_S3=1 \
-            -e BO19_TEST_PG_SUPERUSER_DSN=postgresql://postgres@pg:5432/postgres \
-            "$PY_IMAGE" bash -c '
+          docker build -t bo19-runtime .
+          bash tools/image-checks/check_runtime_image.sh bo19-runtime
+          docker image inspect bo19-runtime --format 'image runtime: {{.Size}} byte'
+      - name: Dựng target test (cùng lớp base, thêm poppler và lock dev) — không bao giờ triển khai
+        run: docker build --target test -t bo19-test .
+      - name: lint-imports và test — trong image target test, có soffice và font thật
+        run: |
+          docker run --rm --network ci --env-file "$RUNNER_TEMP/s3.env" -v "$PWD":/repo -w /repo/backend             -e PYTHONPATH=src -e PYTHONDONTWRITEBYTECODE=1 -e BO19_REQUIRE_S3=1 -e BO19_REQUIRE_SOFFICE=1             -e BO19_TEST_PG_SUPERUSER_DSN=postgresql://postgres@pg:5432/postgres             --entrypoint bash bo19-test -c '
               set -euo pipefail
-              pip install -q --disable-pip-version-check --require-hashes --no-deps -r requirements-dev-linux.lock
               lint-imports --no-cache --no-logo
               python -m unittest discover -s tests -v'
 

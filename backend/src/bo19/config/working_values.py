@@ -71,3 +71,10 @@ POOL_ACQUIRE_TIMEOUT_SECONDS = 5
 # A-057 còn mở — kích thước pool phía `api` chưa có căn cứ: giá trị TẠM để chạy được, không phải số đã xác minh.
 POOL_MIN_SIZE = 1
 POOL_MAX_SIZE = 5
+
+# WV-23 (B8b; "chưa hiệu chỉnh") — hạn chuyển đổi `.docx` → `.pdf` của MỘT lần `soffice` (timeout của lớp tool chuyển đổi file, ADR-015, A-031). Đo thật trên image với `--cpus` của gói Free: báo cáo B8b.
+RENDER_CONVERT_TIMEOUT_S = 120
+# WV-24 (B8b; "chưa hiệu chỉnh") — trần kích thước MỘT object đọc vào bộ nhớ để kiểm checksum trước byte đầu tiên (`storage.fetch`, `stored_file_fetch`). Phép tính theo RAM của gói Free: báo cáo B8b.
+FILE_FETCH_MAX_BYTES = 8 * 1024 * 1024
+# WV-25 (B8b; "chưa hiệu chỉnh") — hạn của bước kiểm khởi động #6 (`soffice --headless` khởi động được, lần đầu có thể nạp cache): giây.
+SOFFICE_STARTUP_CHECK_TIMEOUT_S = 90

@@ -54,7 +54,7 @@ MATRIX: tuple[Step, ...] = (
     Step("4c", "không có collection ACTIVE", _AW, W),
     Step("5", "trần budget", _AW, B),
     Step("6", "soffice headless", _W_, B),
-    Step("7", "font của template", _W_, B),
+    Step("7", "font của template", _W_, B, needs_db=True),
     Step("8", "bản build client", _A_, B),
     Step("9", "graph_thread khớp state_schema_version", _AW, B),
     Step("10", "root logger chỉ có handler mask", _AWC, B),

@@ -2,7 +2,7 @@
 
 Điều được chứng minh, nói bằng hành vi:
 - **giành:** `FOR UPDATE SKIP LOCKED` — nhiều worker giành đồng thời, mỗi job đúng MỘT người; cũ nhất trước; job chưa tới `run_after` và loại không có handler không bị giành; `attempts` tăng lúc giành;
-- **hàng rào chủ lease:** worker đã mất lease (bị `reclaim_expired`, kể cả đã được giành lại bởi chính `worker_id` đó) không `heartbeat`, `succeed`, `fail`, `release` được;
+- **hàng rào chủ lease (`lease_id`, B8b):** worker đã mất lease (bị `reclaim_expired` hay đã `release`, kể cả đã được giành lại bởi chính `worker_id` đó, kể cả cùng `locked_at`) không `heartbeat`, `succeed`, `fail`, `release` được;
 - **retry:** backoff `base × 2^attempts` theo loại; `max(backoff, retry_after)`; `retry_after` vượt WV-19 thì `FAILED` `PROVIDER_RATE_LIMITED`; hết lượt thì `FAILED`;
 - **`release` không tiêu lượt thử; lease hết hạn tính một lượt** (PO, 2026-10-13);
 - không `audit_event`; không giá trị nào ngoài mã trong `last_error_code`; payload từ `request_submit` chỉ mang id.
@@ -61,13 +61,13 @@ class JobsBase(unittest.TestCase):
 
     def row(self, jid: uuid.UUID) -> dict:
         with self.db.connect("bo19_migrator") as c:
-            cur = c.execute("select status, attempts, max_attempts, locked_by, locked_at, lease_expires_at, started_at, finished_at, last_error_code, "
+            cur = c.execute("select status, attempts, max_attempts, locked_by, locked_at, lease_id, lease_expires_at, started_at, finished_at, last_error_code, "
                             "extract(epoch from run_after - now()) as run_in_s, extract(epoch from lease_expires_at - now()) as lease_in_s from job where id = %s", (jid,))
             return dict(zip([d.name for d in cur.description], cur.fetchone()))
 
     def claim_row(self, jid: uuid.UUID) -> dict:
         with self.db.connect("bo19_migrator") as c:
-            cur = c.execute("select id, job_type, payload, subject_document_id, dedupe_key, attempts, max_attempts, locked_by, locked_at from job where id = %s", (jid,))
+            cur = c.execute("select id, job_type, payload, subject_document_id, dedupe_key, attempts, max_attempts, locked_by, locked_at, lease_id from job where id = %s", (jid,))
             return dict(zip([d.name for d in cur.description], cur.fetchone()))
 
     def expire(self, jid: uuid.UUID) -> None:
@@ -199,7 +199,7 @@ class Lease(JobsBase):
         self.assertAlmostEqual(self.row(jid)["lease_in_s"], 30, delta=3)
         self.assertTrue(jobs.heartbeat(self.pool, job, lease_s=500))
         self.assertAlmostEqual(self.row(jid)["lease_in_s"], 500, delta=3)
-        stranger = jobs.ClaimedJob(**{**job.__dict__, "locked_by": "w-la"})
+        stranger = jobs.ClaimedJob(**{**job.__dict__, "lease_id": uuid.uuid4()})
         self.assertFalse(jobs.heartbeat(self.pool, stranger, lease_s=9999))
         self.assertAlmostEqual(self.row(jid)["lease_in_s"], 500, delta=3)
 
@@ -217,7 +217,7 @@ class Lease(JobsBase):
         self.make_ready(jid)
         new = self.claim()  # CÙNG worker_id
         self.assertEqual((new.id, new.locked_by, new.attempts), (jid, old.locked_by, 2))
-        self.assertNotEqual(new.locked_at, old.locked_at)
+        self.assertNotEqual(new.lease_id, old.lease_id)
         for stale in (lambda: jobs.heartbeat(self.pool, old), lambda: jobs.succeed(self.pool, old), lambda: jobs.release(self.pool, old), lambda: jobs.fail(self.pool, old, "LOI_CU")):
             self.assertIn(stale(), (False, None))
         r = self.row(jid)
@@ -235,6 +235,111 @@ class Lease(JobsBase):
         self.assertEqual(self.row(jid)["status"], "RUNNING")
 
 
+    BON_LENH = (
+        ("heartbeat", lambda pool, job: jobs.heartbeat(pool, job)),
+        ("succeed", lambda pool, job: jobs.succeed(pool, job)),
+        ("fail", lambda pool, job: jobs.fail(pool, job, "LOI_CU")),
+        ("fail_het_luot", lambda pool, job: jobs.fail(pool, jobs.ClaimedJob(**{**job.__dict__, "attempts": job.max_attempts}), "LOI_CU")),
+        ("fail_429_bo_cuoc", lambda pool, job: jobs.fail(pool, job, "LOI_CU", retry_after_s=wv.LLM_RETRY_AFTER_CEILING_SECONDS + 1)),
+        ("release", lambda pool, job: jobs.release(pool, job)),
+    )
+
+    def assert_old_token_refused_everywhere(self, jid, old, new):
+        before = self.row(jid)
+        for name, cmd in self.BON_LENH:
+            self.assertIn(cmd(self.pool, old), (False, None), name)
+        after = self.row(jid)
+        self.assertEqual(before, {**after, "run_in_s": before["run_in_s"], "lease_in_s": before["lease_in_s"]})  # không cột nào đổi
+        self.assertEqual((after["status"], after["lease_id"]), ("RUNNING", new.lease_id))
+
+    def test_release_roi_giành_lai_token_cu_bi_tu_choi_o_ca_bon_lenh(self):
+        """PO 2026-10-13: ở CẢ bốn lệnh (`fail` thử cả ba nhánh)."""
+        jid = self.add()
+        old = self.claim()
+        self.assertTrue(jobs.release(self.pool, old))
+        self.assertIsNone(self.row(jid)["lease_id"])
+        new = self.claim(worker=old.locked_by)
+        self.assertNotEqual(new.lease_id, old.lease_id)
+        self.assert_old_token_refused_everywhere(jid, old, new)
+        self.assertTrue(jobs.succeed(self.pool, new))
+
+    def test_reclaim_roi_giành_lai_token_cu_bi_tu_choi_o_ca_bon_lenh(self):
+        jid = self.add()
+        old = self.claim()
+        self.expire(jid)
+        self.assertEqual([r.id for r in jobs.reclaim_expired(self.pool)], [jid])
+        self.assertIsNone(self.row(jid)["lease_id"])
+        self.make_ready(jid)
+        new = self.claim(worker=old.locked_by)
+        self.assert_old_token_refused_everywhere(jid, old, new)
+
+    def test_cung_locked_at_hoac_locked_at_lui_van_khong_de_token_cu_song_lai(self):
+        """Hai kịch bản làm `locked_at` hỏng vai token: hai lần giành cùng một mốc thời gian, và đồng hồ lùi (NTP chỉnh) làm lần sau có mốc NHỎ hơn lần trước."""
+        for shift in ("same", "backwards"):
+            jid = self.add()
+            old = self.claim()
+            self.assertTrue(jobs.release(self.pool, old))
+            new = self.claim(worker=old.locked_by)
+            delta = "0 seconds" if shift == "same" else "-1 hour"
+            with self.db.connect("bo19_migrator", autocommit=True) as c:
+                c.execute("update job set locked_at = %s::timestamptz + %s::interval where id = %s", (old.locked_at, delta, jid))
+            self.assertLessEqual(self.row(jid)["locked_at"], old.locked_at, shift)
+            self.assert_old_token_refused_everywhere(jid, old, new)
+            self.assertTrue(jobs.succeed(self.pool, new), shift)
+
+    def test_moi_lan_giành_mot_lease_id_moi_va_roi_thi_ve_null(self):
+        seen = set()
+        for _ in range(3):
+            jid = self.add()
+            job = self.claim()
+            seen.add(job.lease_id)
+            self.assertEqual(self.row(jid)["lease_id"], job.lease_id)
+            self.assertTrue(jobs.release(self.pool, job))
+            job = self.claim()
+            seen.add(job.lease_id)
+        self.assertEqual(len(seen), 6)  # sáu lần giành, sáu token khác nhau
+        for terminal in ("succeed", "fail_het_luot", "fail_con_luot", "reclaim"):
+            jid = self.add(attempts=4 if terminal == "fail_het_luot" else 0, max_attempts=5)
+            job = self.claim()
+            self.assertIsNotNone(self.row(jid)["lease_id"])
+            if terminal == "succeed":
+                jobs.succeed(self.pool, job)
+            elif terminal == "reclaim":
+                self.expire(jid)
+                jobs.reclaim_expired(self.pool)
+            else:
+                jobs.fail(self.pool, job, "LOI")
+            self.assertIsNone(self.row(jid)["lease_id"], terminal)
+
+    def test_muoi_sau_worker_giành_dong_thoi_lease_id_doi_mot_khac_nhau(self):
+        for _ in range(16):
+            self.add()
+        got, barrier, lock = [], threading.Barrier(16), threading.Lock()
+
+        def go(i: int):
+            barrier.wait()
+            job = jobs.claim(self.pool, worker_id=f"w-{i}", job_types=TYPES)
+            with lock:
+                got.append(job.lease_id)
+
+        threads = [threading.Thread(target=go, args=(i,)) for i in range(16)]
+        [t.start() for t in threads]
+        [t.join(60) for t in threads]
+        self.assertEqual(len(set(got)), 16)
+
+    def test_db_giu_lease_id_khi_va_chi_khi_running(self):
+        """`ck_job_lease_id_iff_running` — nếu một hàm bỏ sót cột, DB từ chối chứ không lưu hàng sai."""
+        import psycopg
+        jid = self.add()
+        with self.db.connect("bo19_migrator") as c:
+            with self.assertRaises(psycopg.errors.CheckViolation):
+                c.execute("update job set lease_id = gen_random_uuid() where id = %s", (jid,))  # QUEUED mà có token
+            c.rollback()
+            with self.assertRaises(psycopg.errors.CheckViolation):
+                c.execute("update job set status = 'RUNNING', locked_at = now(), lease_expires_at = now() + interval '1 min' where id = %s", (jid,))  # RUNNING mà thiếu token
+            c.rollback()
+
+
 class KetThuc(JobsBase):
     def test_succeed(self):
         jid = self.add()
@@ -248,7 +353,7 @@ class KetThuc(JobsBase):
     def test_nguoi_la_khong_succeed_fail_release_duoc(self):
         jid = self.add()
         job = self.claim()
-        stranger = jobs.ClaimedJob(**{**job.__dict__, "locked_by": "w-la"})
+        stranger = jobs.ClaimedJob(**{**job.__dict__, "lease_id": uuid.uuid4()})
         self.assertFalse(jobs.succeed(self.pool, stranger))
         self.assertIsNone(jobs.fail(self.pool, stranger, "LOI"))
         self.assertFalse(jobs.release(self.pool, stranger))
@@ -273,8 +378,8 @@ class KetThuc(JobsBase):
     def test_nguoi_la_khong_fail_duoc_o_nhanh_cuoi_ke_ca_khi_bo_cuoc_vi_429(self):
         jid = self.add(attempts=4, max_attempts=5)
         job = self.claim()  # lượt cuối 5/5: `fail` đi nhánh FAILED
-        stranger = jobs.ClaimedJob(**{**job.__dict__, "locked_by": "w-la"})
-        stale = jobs.ClaimedJob(**{**job.__dict__, "locked_at": job.locked_at - dt.timedelta(seconds=1)})
+        stranger = jobs.ClaimedJob(**{**job.__dict__, "lease_id": uuid.uuid4()})
+        stale = jobs.ClaimedJob(**{**job.__dict__, "lease_id": uuid.uuid4(), "locked_by": job.locked_by, "locked_at": job.locked_at})  # cùng chủ, cùng mốc — chỉ token khác
         for token in (stranger, stale):
             self.assertIsNone(jobs.fail(self.pool, token, "LOI"))  # nhánh hết lượt
             self.assertIsNone(jobs.fail(self.pool, token, "LOI", retry_after_s=wv.LLM_RETRY_AFTER_CEILING_SECONDS + 1))  # nhánh bỏ cuộc vì 429

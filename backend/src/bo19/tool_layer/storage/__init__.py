@@ -14,7 +14,7 @@
 **Rủi ro còn lại, nói thẳng** (mục 5.4 của 04-data.md): DB chặn mọi lệnh ghi MỚI nhưng không thu hồi được lệnh ghi ĐÃ gửi đi; lease dài hơn hẳn timeout của tool (WV-10 > WV-08) và `render_integrity_check` ngay trước người đầu tiên dựa vào byte thu hẹp nó;
 cơ chế ở tầng lưu trữ của A-024 (ở đây: ghi có điều kiện, ADR-037) đóng nó.
 
-Lỗi chỉ mang mã. Không `audit_event`: đây là tầng kỹ thuật; thao tác gọi nó (`docx_render`, `pdf_export`, tải template) ghi `audit_event` của chính nó.
+`fetch` (B8b) đọc ngược: kiểm checksum rồi mới trả byte. Lỗi chỉ mang mã. Không `audit_event`: đây là tầng kỹ thuật; thao tác gọi nó (`docx_render`, `pdf_export`, `stored_file_fetch`) ghi `audit_event` của chính nó.
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from dataclasses import dataclass
 import psycopg
 
 from bo19.config.settings import Settings
-from bo19.object_storage import AlreadyExists, ObjectStorage, ObjectStorageConfig
+from bo19.object_storage import AlreadyExists, ObjectMissing, ObjectStorage, ObjectStorageConfig, StorageError
 from bo19.persistence.pool import Pool
 from bo19.persistence.write import unit_of_work
 from bo19.tool_layer.tools._common import ToolError
@@ -134,3 +134,43 @@ def put_once(pool: Pool, storage: ObjectStorage, *, object_key: str, purpose: st
             raise StorageWriteConflict from None
     _commit(pool, object_key, token, checksum, size)
     return StoredObject(object_key, checksum, size, reused=False)
+
+
+class FileUnavailable(ToolError):
+    code = "FILE_UNAVAILABLE"  # mất object, lệch checksum, quá trần kích thước, storage không với tới — GỘP một mã (05-api.md); chi tiết chỉ ở log (`reason`)
+
+    def __init__(self, reason: str) -> None:
+        super().__init__()
+        self.reason = reason  # MISSING | CHECKSUM_MISMATCH | TOO_LARGE | NOT_COMMITTED | STORAGE_UNAVAILABLE — chỉ cho log, không bao giờ cho client
+
+
+def fetch(pool: Pool, storage: ObjectStorage, object_key: str, *, max_bytes: int) -> bytes:
+    """Đọc một object đã commit và **kiểm checksum trước khi trả byte đầu tiên** (ADR-014; `stored_file_fetch` ở mục Tool Registry của 03-agents.md).
+
+    Đọc cả object vào bộ nhớ (trần `max_bytes`, WV-24): checksum chỉ kiểm được khi đã có đủ byte, mà byte đầu tiên không được ra trước khi kiểm. Trần được so với `size_bytes` đã commit **trước khi** đọc;
+    byte đọc về còn bị so độ dài lần nữa (storage có thể trả nhiều hơn đã commit). Thiếu dòng commit (claim chưa commit, khoá lạ), object mất, lệch checksum, quá trần, storage không với tới:
+    đều `FileUnavailable` — người gọi không phân biệt được (không lộ đã mất hay đã bị sửa); `reason` chỉ để log.
+    """
+    with pool.acquire() as conn, unit_of_work(conn):
+        done = _committed(conn, object_key)
+    if done is None:
+        raise FileUnavailable("NOT_COMMITTED")
+    checksum, size = done
+    if size > max_bytes:
+        raise FileUnavailable("TOO_LARGE")
+    try:
+        data = storage.get(object_key)
+    except ObjectMissing:
+        raise FileUnavailable("MISSING") from None
+    except StorageError:
+        raise FileUnavailable("STORAGE_UNAVAILABLE") from None
+    if len(data) != size or hashlib.sha256(data).digest() != checksum:
+        raise FileUnavailable("CHECKSUM_MISMATCH")
+    return data
+
+
+def committed(pool: Pool, object_key: str) -> StoredObject | None:
+    """Object đã commit cho khoá này (`reused=True`), hoặc `None`. Cho tool kiểm "đã có chưa" trước khi làm việc nặng (điền biến, chuyển đổi) — ADR-015."""
+    with pool.acquire() as conn, unit_of_work(conn):
+        done = _committed(conn, object_key)
+    return StoredObject(object_key, done[0], done[1], reused=True) if done else None

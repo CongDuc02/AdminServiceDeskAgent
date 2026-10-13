@@ -283,8 +283,8 @@ class Enqueue(KernelDb):
         with self.pool.acquire() as conn, unit_of_work(conn):
             first = enq.enqueue(conn, job_type="render_document", dedupe_key=key)
         with self.db.connect("bo19_migrator") as c:
-            c.execute("update job set status = 'RUNNING', locked_at = now(), lease_expires_at = now() + interval '1 min' where id = %s", (first.job_id,))
-            c.execute("update job set status = 'SUCCEEDED', finished_at = now(), locked_at = NULL, lease_expires_at = NULL where id = %s", (first.job_id,))
+            c.execute("update job set status = 'RUNNING', locked_at = now(), lease_id = gen_random_uuid(), lease_expires_at = now() + interval '1 min' where id = %s", (first.job_id,))
+            c.execute("update job set status = 'SUCCEEDED', finished_at = now(), locked_at = NULL, lease_id = NULL, lease_expires_at = NULL where id = %s", (first.job_id,))
         with self.pool.acquire() as conn, unit_of_work(conn):
             second = enq.enqueue(conn, job_type="render_document", dedupe_key=key)
         self.assertTrue(second.created)
