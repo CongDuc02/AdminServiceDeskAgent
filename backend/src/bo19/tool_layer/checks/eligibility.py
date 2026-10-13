@@ -32,6 +32,20 @@ class RequestCheck:
     def eligible(self) -> bool:
         return not self.reasons
 
+    # Ba danh sách của `REQUEST_NOT_READY` và `RequestDetail` (mục Request của 05-api.md) — CHỈ tên slot và mã. Lý do không gắn slot (`BENEFICIARY_UNKNOWN`, `ON_BEHALF_FORBIDDEN`)
+    # không vào danh sách nào: `FailedRule` đòi `slot_name` (đoạn Triển khai ở B7 của 05-api.md) — `eligible` vẫn là `False`.
+    @property
+    def missing_slots(self) -> tuple[str, ...]:
+        return tuple(r.slot_name for r in self.reasons if r.code == el.SLOT_MISSING)
+
+    @property
+    def unconfirmed_slots(self) -> tuple[str, ...]:
+        return tuple(r.slot_name for r in self.reasons if r.code == el.SLOT_UNCONFIRMED)
+
+    @property
+    def failed_rules(self) -> tuple[tuple[str, str], ...]:
+        return tuple((r.slot_name, r.code) for r in self.reasons if r.slot_name is not None and r.code not in (el.SLOT_MISSING, el.SLOT_UNCONFIRMED))
+
 
 def load_definitions(conn: psycopg.Connection, request_type_code: str) -> list[SlotDef]:
     rows = conn.execute("SELECT slot_name, data_type, source, is_required, validation_rules FROM slot_definition WHERE request_type_code = %s ORDER BY display_order, slot_name",

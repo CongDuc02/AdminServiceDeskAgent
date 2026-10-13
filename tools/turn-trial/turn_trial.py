@@ -7,16 +7,20 @@ và **hai tỷ lệ riêng** của `request_slots_write`: `QUOTE_NOT_IN_MESSAGE`
 Luật (PO): CHỈ văn bản bịa có nhãn "(giả)" (A-080); tool CHỈ ghi số và mã — không ghi nội dung tin nhắn, không ghi nội dung trả lời, không ghi giá trị slot; khoá API CHỈ từ biến môi trường `BO19_LLM_API_KEY`
 (không trên dòng lệnh, không in, không ghi; tool không đọc `.env`); tối đa 24 lời gọi, dưới 60.000 token mỗi model; giãn nhịp dưới 6.500 token/phút (gói Free: 8K TPM mỗi model).
 Gọi mạng thật CHỈ khi có `--confirm-real` (không có thì in kế hoạch và thoát mã 3). Cách chạy: tools/turn-trial/README.md.
+
+**Từ B7 (O1-17, PO 2026-10-12):** mỗi lượt ghi thêm (1) **tên slot** bị loại — tên cấu hình, không phải giá trị; (2) các trường của mỗi sự kiện `LLM_PROVIDER_ERROR` trong log kỹ thuật —
+CHỈ `call_name`, `kind`, `subcode`, `http_status`, `attempts`, `retry_after_seconds` (mã và số); mọi trường khác của dòng log bị bỏ, kể cả khi log đã mask.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
-import io
 import json
+import logging
 import os
 import statistics
 import sys
+from collections import Counter
 import time
 import unicodedata
 import uuid
@@ -47,7 +51,8 @@ TPM_SOFT = 6_500
 TURN_TOKENS_EXPECTED = 3_500  # P1 ~1.7K vào + P2 ~1K vào + đầu ra — chừa chỗ cho suy luận
 HEADROOM_CALLS = 4  # một lượt dùng tối đa hai lời gọi, cộng hai lần sửa parse
 OUT = Path(__file__).resolve().parent / "out"
-REFERENCE = REPO / "docs" / "reference" / "turn-trial-b6b.md"
+RUN_LABEL = "b7"  # tên file kết quả: docs/reference/turn-trial-<nhãn>.md — mỗi lát một file, lần chạy sau không ghi đè số đo cũ
+PROVIDER_ERROR_FIELDS = ("call_name", "kind", "subcode", "http_status", "attempts", "retry_after_seconds")  # chỉ mã và số (O1-17)
 WV04_MS, WV02_MS = wv.LLM_CALL_DEADLINE_CHEAP_SECONDS * 1000, 20_000
 
 # Kịch bản. Mỗi mục: (mã kịch bản, mã nhóm phiên, văn bản). Cùng nhóm = cùng một phiên và cùng một nhân viên. Mọi văn bản mang nhãn "(giả)".
@@ -68,6 +73,31 @@ SCENARIOS: list[tuple[str, str, str]] = [
 
 class Budget_(Exception):
     pass
+
+
+class ProviderErrorLog:
+    """Đích của handler log duy nhất (`configure_logging`) trong lúc đo: đọc từng dòng JSON, giữ ĐÚNG các trường của `PROVIDER_ERROR_FIELDS` ở dòng `LLM_PROVIDER_ERROR`,
+    bỏ mọi dòng và mọi trường khác. Các lượt chạy nối tiếp nên `drain()` sau mỗi lượt trả đúng lỗi của lượt đó."""
+
+    def __init__(self) -> None:
+        self.entries: list[dict] = []
+
+    def write(self, text: str) -> int:
+        for line in text.splitlines():
+            try:
+                record = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(record, dict) and record.get("message") == "LLM_PROVIDER_ERROR":
+                self.entries.append({k: record.get(k) for k in PROVIDER_ERROR_FIELDS})
+        return len(text)
+
+    def flush(self) -> None:
+        pass
+
+    def drain(self) -> list[dict]:
+        out, self.entries = self.entries, []
+        return out
 
 
 def pct(values: list[float], p: float) -> float:
@@ -126,8 +156,9 @@ class TrialDb:
 
 
 class Trial:
-    def __init__(self, db: TrialDb, runner: IntakeRunner, pool: Pool, turn_deadline_s: float, *, pace: bool = True) -> None:
+    def __init__(self, db: TrialDb, runner: IntakeRunner, pool: Pool, turn_deadline_s: float, *, pace: bool = True, errors: ProviderErrorLog | None = None) -> None:
         self.db, self.runner, self.pool, self.deadline_s, self._pace = db, runner, pool, turn_deadline_s, pace
+        self.errors = errors or ProviderErrorLog()
         self.turns: list[dict] = []
         self.window: list[tuple[float, int]] = []
         self.calls_used = 0
@@ -160,6 +191,7 @@ class Trial:
         sid, eid, ctx = self.session_for(group)
         mid, trace = uuid.uuid4(), str(uuid.uuid4())
         chat_message_append(self.pool, ctx, chat_session_id=sid, message_id=mid, author="EMPLOYEE", body=text)
+        self.errors.drain()  # lỗi trước lượt (nếu có) không thuộc lượt này
         started = time.monotonic()
         outcome = self.runner.run_turn(chat_session_id=sid, message_id=mid, actor_employee_id=eid, trace_id=trace, deadline=started + self.deadline_s)
         elapsed_ms = round((time.monotonic() - started) * 1000)
@@ -173,7 +205,8 @@ class Trial:
         codes = list(outcome.rejection_codes)
         turn = {"scenario": scenario, "reply_template_id": outcome.reply_template_id, "intent_result": outcome.intent_result, "error_code": outcome.error_code, "elapsed_ms": elapsed_ms,
                 "calls": [{"call": r[0], "outcome": r[1], "duration_ms": r[2], "provider_completion_ms": r[3], "tokens": (r[4] or 0) + (r[5] or 0), "estimated": r[6]} for r in usage],
-                "slots_written": written, "rejection_codes": codes, "slots_produced": written + len(codes)}
+                "slots_written": written, "rejection_codes": codes, "rejected_slots": list(outcome.rejected_slots), "slots_produced": written + len(codes),
+                "provider_errors": self.errors.drain()}
         self.turns.append(turn)
         return turn
 
@@ -196,28 +229,39 @@ def summarise(turns: list[dict]) -> dict:
         "slots_produced": produced, "quote_not_in_message": quote, "value_not_in_quote": value,
         "rate_quote_not_in_message": round(quote / produced, 3) if produced else None, "rate_value_not_in_quote": round(value / produced, 3) if produced else None,
         "p2_turns": len(p2_turns), "p2_turns_with_evidence_mismatch": sum(1 for t in p2_turns if any(c.startswith("EVIDENCE_MISMATCH") for c in t["rejection_codes"])),
+        "provider_errors": sum(len(t["provider_errors"]) for t in turns),
+        "provider_errors_by_kind": dict(sorted(Counter(f"{e['subcode']}:{e['kind']}" for t in turns for e in t["provider_errors"]).items())),
     }
 
 
-def render(summary: dict, turns: list[dict], model_profile: dict) -> str:
-    lines = ["# Đo thời lượng một lượt `intake_graph` với Groq thật — B6b (O1-13)", "",
+def _provider_error(e: dict) -> str:
+    return f"{e['call_name']}: {e['subcode']}/{e['kind']} http={e['http_status']} lần thử={e['attempts']} retry-after={e['retry_after_seconds']}"
+
+
+def render(summary: dict, turns: list[dict], model_profile: dict, label: str = RUN_LABEL) -> str:
+    lines = [f"# Đo thời lượng một lượt `intake_graph` với Groq thật — {label} (O1-13, O1-17)", "",
              "- **Công cụ:** `tools/turn-trial/turn_trial.py`. **Chỉ số và mã** — không văn bản tin nhắn, không văn bản trả lời, không giá trị slot. Mọi tin nhắn thử mang nhãn \"(giả)\".",
              f"- **Hồ sơ model:** {json.dumps(model_profile, ensure_ascii=False)}. **n nhỏ** ({summary['turns']} lượt, {summary['calls']} lời gọi): phân phối dưới đây là số đo, không phải kết luận thống kê.", "",
              "## Thời lượng (ms)", "", "| Đại lượng | n | min | p50 | p90 | max | mean |", "|---|---|---|---|---|---|---|"]
-    for label, key in (("P1 `classify_intent` — mỗi lời gọi (WV-04 = 8.000)", "p1_ms"), ("P2 `extract_slots` — mỗi lời gọi (WV-04 = 8.000)", "p2_ms"),
+    for title, key in (("P1 `classify_intent` — mỗi lời gọi (WV-04 = 8.000)", "p1_ms"), ("P2 `extract_slots` — mỗi lời gọi (WV-04 = 8.000)", "p2_ms"),
                        ("Cả lượt có P1 + P2 (WV-02 = 20.000)", "turn_ms_with_p1_and_p2"), ("Cả lượt, mọi lượt (WV-02 = 20.000)", "turn_ms_all")):
         d = summary[key]
-        lines.append(f"| {label} | {d.get('n', 0)} | " + " | ".join(str(d.get(k, "—")) for k in ("min", "p50", "p90", "max", "mean")) + " |")
+        lines.append(f"| {title} | {d.get('n', 0)} | " + " | ".join(str(d.get(k, "—")) for k in ("min", "p50", "p90", "max", "mean")) + " |")
     lines += ["", f"Lời gọi vượt WV-04: P1 **{summary['p1_over_wv04']}**, P2 **{summary['p2_over_wv04']}**. Lượt vượt WV-02: **{summary['turns_over_wv02']}**. Lời gọi không `OK`/`PARSE_REPAIRED`: **{summary['calls_not_ok']}**. Lượt đi nhánh lỗi: **{summary['turns_with_error']}**.", "",
               "## `EVIDENCE_MISMATCH` — hai tỷ lệ riêng (PO, 2026-10-09)", "",
               f"- Slot P2 trả về (đã ghi + bị loại): **{summary['slots_produced']}** trong {summary['p2_turns']} lượt gọi P2.",
               f"- `QUOTE_NOT_IN_MESSAGE`: **{summary['quote_not_in_message']}** — tỷ lệ **{summary['rate_quote_not_in_message']}**.",
               f"- `VALUE_NOT_IN_QUOTE`: **{summary['value_not_in_quote']}** — tỷ lệ **{summary['rate_value_not_in_quote']}**.",
               f"- Lượt có ít nhất một `EVIDENCE_MISMATCH`: **{summary['p2_turns_with_evidence_mismatch']}** / {summary['p2_turns']}.", "",
-              "## Từng lượt", "", "| Kịch bản | Khuôn trả lời | `intent_result` | Lỗi | Cả lượt (ms) | Lời gọi (tên: ms / ms phía provider) | Slot trả về | Mã loại |", "|---|---|---|---|---|---|---|---|"]
+              "## Lỗi provider — trường của `LLM_PROVIDER_ERROR` (O1-17)", "",
+              f"- Số sự kiện: **{summary['provider_errors']}**; theo `subcode:kind`: {json.dumps(summary['provider_errors_by_kind'], ensure_ascii=False)}.", "",
+              "## Từng lượt", "",
+              "| Kịch bản | Khuôn trả lời | `intent_result` | Lỗi | Cả lượt (ms) | Lời gọi (tên: ms / ms phía provider) | Slot trả về | Mã loại | Slot bị loại | Lỗi provider |",
+              "|---|---|---|---|---|---|---|---|---|---|"]
     for t in turns:
         calls = "; ".join(f"{c['call']}: {c['duration_ms']} / {c['provider_completion_ms']}{' (ước lượng)' if c['estimated'] else ''}{'' if c['outcome'] in ('OK', 'PARSE_REPAIRED') else ' [' + c['outcome'] + ']'}" for c in t["calls"])
-        lines.append(f"| {t['scenario']} | {t['reply_template_id']} | {t['intent_result']} | {t['error_code'] or ''} | {t['elapsed_ms']} | {calls} | {t['slots_produced']} | {', '.join(t['rejection_codes'])} |")
+        lines.append(f"| {t['scenario']} | {t['reply_template_id']} | {t['intent_result']} | {t['error_code'] or ''} | {t['elapsed_ms']} | {calls} | {t['slots_produced']} | "
+                     f"{', '.join(t['rejection_codes'])} | {', '.join(t['rejected_slots'])} | {'; '.join(_provider_error(e) for e in t['provider_errors'])} |")
     lines += ["", "Điều kiện O1-13 (`12-roadmap.md`): P1 + P2 nối tiếp phải vừa WV-04 cho từng lời gọi và WV-02 cho cả lượt — PO quyết trên số đo này nếu chưa vừa."]
     return "\n".join(lines) + "\n"
 
@@ -226,12 +270,15 @@ def execute(chosen: list[tuple[str, str, str]], *, admin_dsn: str, key: str, bas
             transport=None, pace: bool = True, echo=print) -> tuple[dict, list[dict], dict]:
     """Toàn bộ một lần đo. `transport` chỉ để test CI chạy tool với server giả — lần chạy thật không truyền."""
     profiles = load_profiles().profiles
+    errors = ProviderErrorLog()
     db = TrialDb(admin_dsn)
     pool = Pool(db.dsn("bo19_app"), application_name="bo19-turn-trial", min_size=1, max_size=4)
     pool.open()
     runner = IntakeRunner.open(pool=pool, gateway=Gateway(profiles=profiles, client=ProviderClient(base_url=base_url, api_key=key, transport=transport), budget=Budget(pool)), dsn=db.dsn("bo19_app"))
-    trial = Trial(db, runner, pool, turn_deadline_s, pace=pace)
+    trial = Trial(db, runner, pool, turn_deadline_s, pace=pace, errors=errors)
     trial.calls_used = prior_calls
+    previous = list(logging.getLogger().handlers)
+    handler = configure_logging(errors)  # log kỹ thuật chỉ đi vào bộ lọc: tool chỉ giữ trường lỗi provider, chỉ mã và số
     try:
         for scenario, group, text in chosen:
             try:
@@ -245,6 +292,9 @@ def execute(chosen: list[tuple[str, str, str]], *, admin_dsn: str, key: str, bas
         pool.close()
         if not keep_db:
             db.drop()
+        logging.getLogger().removeHandler(handler)
+        for h in previous:  # trả lại handler của tiến trình gọi (test, hay `main`)
+            logging.getLogger().addHandler(h)
     profile = {name: {"model": p.model, **p.params} for name in ("classify_intent", "extract_slots") for p in [profiles.profile_for(name, "CHEAP")]}
     return summarise(trial.turns), trial.turns, profile
 
@@ -257,7 +307,11 @@ def main() -> int:
     ap.add_argument("--keep-db", action="store_true")
     ap.add_argument("--no-publish", action="store_true", help="không ghi docs/reference/")
     ap.add_argument("--only", default="", help="danh sách mã kịch bản, phân cách bằng dấu phẩy")
+    ap.add_argument("--label", default=RUN_LABEL, help="nhãn lần đo: kết quả ghi docs/reference/turn-trial-<nhãn>.md")
     args = ap.parse_args()
+    if not args.label.replace("-", "").isalnum():
+        print("Nhãn chỉ gồm chữ, số và dấu gạch ngang. Thoát mã 2.")
+        return 2
     chosen = [s for s in SCENARIOS if not args.only or s[0] in args.only.split(",")]
     print(f"Kế hoạch: {len(chosen)} lượt ({', '.join(s[0] for s in chosen)}); hạn mức {MAX_CALLS - args.prior_calls} lời gọi, dưới {MAX_TOKENS_PER_MODEL} token mỗi model; WV-04 = {WV04_MS} ms, WV-02 = {args.turn_deadline * 1000:.0f} ms.")
     if not args.confirm_real:
@@ -270,16 +324,16 @@ def main() -> int:
     if not admin:
         print("Thiếu BO19_TRIAL_PG_ADMIN_DSN (DSN superuser của PostgreSQL local dùng tạm). Thoát mã 2.")
         return 2
-    configure_logging(io.StringIO())  # log kỹ thuật bỏ đi: tool chỉ in số và mã
     base_url = os.environ.get("BO19_LLM_BASE_URL", "").strip() or DEFAULT_LLM_BASE_URL
     summary, turns, profile = execute(chosen, admin_dsn=admin, key=key, base_url=base_url, turn_deadline_s=args.turn_deadline, prior_calls=args.prior_calls, keep_db=args.keep_db)
-    text_md = render(summary, turns, profile)
+    reference = REPO / "docs" / "reference" / f"turn-trial-{args.label}.md"
+    text_md = render(summary, turns, profile, args.label)
     OUT.mkdir(exist_ok=True)
     (OUT / "results.json").write_text(json.dumps({"summary": summary, "turns": turns}, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     if not args.no_publish:
-        REFERENCE.write_text(text_md, encoding="utf-8")
-        print(f"Đã ghi {REFERENCE.relative_to(REPO)} — sha256 {hashlib.sha256(text_md.encode('utf-8')).hexdigest()}")
+        reference.write_text(text_md, encoding="utf-8")
+        print(f"Đã ghi {reference.relative_to(REPO)} — sha256 {hashlib.sha256(text_md.encode('utf-8')).hexdigest()}")
     return 0
 
 

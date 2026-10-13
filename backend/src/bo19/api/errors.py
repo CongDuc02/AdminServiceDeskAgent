@@ -45,17 +45,22 @@ CATALOG: dict[str, ErrorSpec] = {
     "IDEMPOTENCY_KEY_REQUIRED": ErrorSpec(400, "Yêu cầu thiếu mã chống gửi trùng (Idempotency-Key). Hãy tải lại trang rồi thử lại."),
     "IDEMPOTENCY_KEY_CONFLICT": ErrorSpec(409, "Mã chống gửi trùng này đã được dùng cho một thao tác khác. Hãy thử lại thao tác."),
     "CHAT_SESSION_CLOSED": ErrorSpec(409, "Cuộc trò chuyện này đã đóng. Hãy mở cuộc trò chuyện mới."),
+    "STATE_CONFLICT": ErrorSpec(409, "Dữ liệu đã thay đổi kể từ lúc bạn mở. Hãy tải lại để xem trạng thái mới."),
+    "REQUEST_NOT_EDITABLE": ErrorSpec(409, "Yêu cầu không còn ở trạng thái bổ sung được. Hãy tải lại yêu cầu."),
+    "SLOT_NOT_PROPOSED": ErrorSpec(409, "Mục này không có giá trị nào đang chờ bạn xác nhận. Hãy tải lại yêu cầu."),
+    "SLOT_VALUE_STALE": ErrorSpec(409, "Giá trị đề xuất đã thay đổi kể từ lúc hiển thị. Hãy xem lại giá trị mới rồi xác nhận."),
     "TURN_IN_PROGRESS": ErrorSpec(409, "Hệ thống đang trả lời tin nhắn trước của bạn. Hãy chờ một chút rồi gửi tiếp."),
     "TURN_NOT_FINISHED": ErrorSpec(409, "Tin nhắn của bạn đã được lưu. Hệ thống chưa trả lời xong — vui lòng chờ một chút rồi tải lại.",
                                    {"abandoned": "Tin nhắn của bạn đã được lưu nhưng hệ thống không trả lời được. Vui lòng gửi lại nội dung trong một tin nhắn mới."}),
     "PAYLOAD_TOO_LARGE": ErrorSpec(413, "Dữ liệu gửi lên vượt giới hạn cho phép. Hãy gửi lại nội dung nhỏ hơn."),
     "VALIDATION_FAILED": ErrorSpec(422, "Dữ liệu gửi lên chưa đúng. Hãy sửa các trường được nêu rồi gửi lại."),
+    "REQUEST_NOT_READY": ErrorSpec(422, "Yêu cầu chưa đủ thông tin để gửi. Hãy bổ sung hoặc xác nhận các mục được nêu."),
     "RATE_LIMITED": ErrorSpec(429, "Đã thử đăng nhập quá nhiều lần. Hãy chờ một lúc rồi thử lại."),
     "INTERNAL_ERROR": ErrorSpec(500, "Hệ thống gặp lỗi không lường trước. Hãy thử lại sau; nếu lặp lại, hãy báo mã trace_id."),
 }
 
 # Mã lỗi nội bộ → error_code lộ ra client. Mã không có trong bảng → INTERNAL_ERROR.
-INTERNAL_TO_API: dict[str, str] = {"PERMISSION_DENIED": "PERMISSION_DENIED"}  # tool từ chối vì thiếu permission → 403; mã còn lại do router chat dịch rõ ràng (cần `details`)
+INTERNAL_TO_API: dict[str, str] = {"PERMISSION_DENIED": "PERMISSION_DENIED"}  # tool từ chối vì thiếu permission → 403; mã còn lại do router dịch rõ ràng (cần `details`)
 
 
 class ApiError(Exception):

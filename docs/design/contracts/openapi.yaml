@@ -2358,6 +2358,7 @@ components:
       required:
         [
           slot_name,
+          label,
           description,
           data_type,
           source,
@@ -2373,7 +2374,12 @@ components:
         ]
       properties:
         slot_name: { $ref: "#/components/schemas/SlotName" }
-        description: { type: string }
+        label:
+          description: Nhãn tiếng Việt cho người dùng — slot_definition.label_vi (B7; R4 của proposals/reply-templates.md)
+          type: string
+        description:
+          description: Mô tả viết cho LLM (đầu vào slot_specs của P2) — không phải nhãn hiển thị
+          type: string
         data_type: { $ref: "#/components/schemas/SlotDataType" }
         source: { $ref: "#/components/schemas/SlotSource" }
         sensitivity: { $ref: "#/components/schemas/SlotSensitivity" }

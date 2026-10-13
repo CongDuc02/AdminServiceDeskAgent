@@ -3,6 +3,8 @@
 Không phải mã ứng dụng, không vào image. Đóng **O1-13** (P1 + P2 nối tiếp có vừa WV-04 = 8 s mỗi lời gọi và WV-02 = 20 s mỗi lượt không) và báo **hai tỷ lệ riêng** của `request_slots_write`:
 `QUOTE_NOT_IN_MESSAGE` và `VALUE_NOT_IN_QUOTE` (PO, 2026-10-09).
 
+**Từ B7 (O1-17, PO 2026-10-12)** mỗi lượt ghi thêm: **tên slot** bị loại (tên cấu hình, không phải giá trị), và các trường của mỗi sự kiện `LLM_PROVIDER_ERROR` — chỉ `call_name`, `kind`, `subcode`, `http_status`, `attempts`, `retry_after_seconds`. Log kỹ thuật đi qua một bộ lọc giữ đúng sáu trường đó; mọi dòng và trường khác bị bỏ.
+
 ## Làm gì
 
 Chạy `IntakeRunner.run_turn` thật — graph, checkpointer, tool, gateway — trên một **database tạm** do tool tự tạo trên PostgreSQL local (áp `migrate_main`, dựng nhân viên giả, chạy các lượt, xoá database).
@@ -27,10 +29,10 @@ MSYS_NO_PATHCONV=1 docker run --rm --network ci -v "$PWD":/repo -w /repo \
 unset BO19_LLM_API_KEY
 ```
 
-Tuỳ chọn: `--only S1,S2,S2b` chạy một phần · `--prior-calls N` trừ số lời gọi đã tiêu ở lần trước khỏi hạn mức 24 · `--turn-deadline 20` · `--no-publish` không ghi `docs/reference/` · `--keep-db` giữ database tạm để soi.
+Tuỳ chọn: `--label b7` nhãn lần đo — kết quả ghi `docs/reference/turn-trial-<nhãn>.md`, mặc định `b7`, nên lần chạy mới không ghi đè `turn-trial-b6b.md` · `--only S1,S2,S2b` chạy một phần · `--prior-calls N` trừ số lời gọi đã tiêu ở lần trước khỏi hạn mức 24 · `--turn-deadline 20` · `--no-publish` không ghi `docs/reference/` · `--keep-db` giữ database tạm để soi.
 `-e BO19_LLM_API_KEY` (không có `=`) chuyển giá trị từ shell của bạn vào container mà không đưa nó lên dòng lệnh.
 
 Mã thoát: `0` xong · `2` thiếu khoá hoặc DSN · `3` chưa `--confirm-real`.
-Kết quả: in ra màn hình, `tools/turn-trial/out/results.json` (gitignored) và `docs/reference/turn-trial-b6b.md` (chỉ số và mã; tool in sha256 của file).
+Kết quả: in ra màn hình, `tools/turn-trial/out/results.json` (gitignored) và `docs/reference/turn-trial-<nhãn>.md` (chỉ số và mã; tool in sha256 của file). Nhãn hỏng — ngoài chữ, số, `-` — thoát mã `2`.
 
 `backend/tests/test_turn_trial.py` chạy toàn bộ tool với server giả ở mỗi lần CI (không mạng, không khoá thật).
