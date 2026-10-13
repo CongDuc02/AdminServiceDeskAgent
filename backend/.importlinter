@@ -136,3 +136,24 @@ source_modules =
     bo19.orchestrator.state
     bo19.orchestrator.runner
 forbidden_modules = langgraph
+
+[importlinter:contract:s3-sdk]
+name = boto3 và botocore chỉ ở bo19.object_storage (ADR-037)
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    bo19.api
+    bo19.queue_worker
+    bo19.startup
+    bo19.entrypoints
+    bo19.orchestrator
+    bo19.ai_gateway
+    bo19.tool_layer
+    bo19.persistence
+    bo19.observability
+    bo19.domain
+    bo19.config
+forbidden_modules =
+    boto3
+    botocore
+# `bo19.object_storage` không nằm trong source_modules: nó là nơi duy nhất được import hai thư viện này. `tool_layer.storage` chạm object_storage qua adapter, không qua SDK.

@@ -21,16 +21,31 @@ class NetworkBlocked(Exception):
     """Test cố nối mạng ra ngoài. Mang tên host? Không — chỉ mã: tên host có thể là một phần của URL chứa bí mật."""
 
 
-def _pg_hosts() -> set[str]:
-    dsn = os.environ.get("BO19_TEST_PG_SUPERUSER_DSN", "")
-    if not dsn:
+def _s3_hosts() -> set[str]:
+    """Host của object storage THỬ (`BO19_TEST_S3_ENDPOINT`, SeaweedFS trong container — B8a): cùng diện cho phép như host PostgreSQL thử, không hơn."""
+    endpoint = os.environ.get("BO19_TEST_S3_ENDPOINT", "")
+    if not endpoint:
         return set()
+    try:
+        from urllib.parse import urlparse
+        host = urlparse(endpoint).hostname or ""
+    except Exception:  # noqa: BLE001
+        return set()
+    return {host} if host else set()
+
+
+def _pg_hosts() -> set[str]:
+    """Host được phép ngoài loopback: PostgreSQL thử và object storage thử."""
+    dsn = os.environ.get("BO19_TEST_PG_SUPERUSER_DSN", "")
+    hosts = _s3_hosts()
+    if not dsn:
+        return hosts
     try:
         from psycopg.conninfo import conninfo_to_dict
         host = conninfo_to_dict(dsn).get("host") or ""
     except Exception:  # noqa: BLE001
-        return set()
-    return {h for h in host.split(",") if h}
+        return hosts
+    return hosts | {h for h in host.split(",") if h}
 
 
 def _is_loopback(host: str) -> bool:

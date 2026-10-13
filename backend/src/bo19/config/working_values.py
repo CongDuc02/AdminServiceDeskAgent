@@ -16,8 +16,15 @@ LOGIN_EMPLOYEE_CODE_MAX_LENGTH = 64
 LOGIN_PASSWORD_MAX_LENGTH = 128
 LOGIN_BODY_MAX_BYTES = 4096
 
-# `job.max_attempts` theo `job_type` — mục Retry, backoff và job lỗi vĩnh viễn của 11-ops.md, nhãn "chưa hiệu chỉnh" (A-031). Backoff (`base × 2^attempts`) thuộc `tool_layer.jobs`, chưa có.
+# `job.max_attempts` theo `job_type` — mục Retry, backoff và job lỗi vĩnh viễn của 11-ops.md, nhãn "chưa hiệu chỉnh" (A-031).
 JOB_MAX_ATTEMPTS = {"render_document": 5, "resume_document_graph": 5, "finalize_issue": 5, "checkpoint_purge": 5, "notification_send": 5, "procedure_ingest": 3}
+# Backoff `base × 2^attempts` (giây; `attempts` đã tăng lúc giành job) — cùng bảng mục Retry của 11-ops.md, "chưa hiệu chỉnh" (A-031). Thuộc `tool_layer.jobs`.
+JOB_BACKOFF_BASE_S = {"render_document": 10, "resume_document_graph": 10, "finalize_issue": 10, "checkpoint_purge": 10, "notification_send": 10, "procedure_ingest": 30}
+# WV-20 (PO duyệt 2026-10-13, B8a; "chưa hiệu chỉnh") — lease của job `RUNNING` và chu kỳ `heartbeat` (một phần ba lease). WV-21 — chu kỳ poll của `queue_worker`. WV-22 — số job một worker chạy cùng lúc.
+JOB_LEASE_S = 120
+JOB_HEARTBEAT_S = 40
+JOB_POLL_S = 2
+WORKER_CONCURRENCY = 1
 
 # WV-15 — số ký tự tối đa của MỘT tin nhắn trong chat (A-031; roadmap O1-1: giữ 2.000). `chat_message_append` chặn lần cuối; `api` chặn ở `TurnBody`.
 CHAT_MESSAGE_MAX_CHARS = 2000

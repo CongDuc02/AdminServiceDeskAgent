@@ -39,10 +39,12 @@ jobs:
           docker run -d --name pg --network ci -e POSTGRES_HOST_AUTH_METHOD=trust "$PG_IMAGE"
           for i in $(seq 1 30); do docker exec pg pg_isready -U postgres && break; sleep 2; done
           docker exec pg pg_isready -U postgres
+      - name: SeaweedFS 4.47 cho test object storage (ADR-031, ADR-037)
+        run: bash tools/object-storage-local/start.sh "$RUNNER_TEMP/s3.env"
       - name: lint-imports và test
         run: |
-          docker run --rm --network ci -v "$PWD":/repo -w /repo/backend \
-            -e PYTHONPATH=src -e PYTHONDONTWRITEBYTECODE=1 \
+          docker run --rm --network ci --env-file "$RUNNER_TEMP/s3.env" -v "$PWD":/repo -w /repo/backend \
+            -e PYTHONPATH=src -e PYTHONDONTWRITEBYTECODE=1 -e BO19_REQUIRE_S3=1 \
             -e BO19_TEST_PG_SUPERUSER_DSN=postgresql://postgres@pg:5432/postgres \
             "$PY_IMAGE" bash -c '
               set -euo pipefail
