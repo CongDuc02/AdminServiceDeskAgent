@@ -58,3 +58,46 @@ Ghi vào `12-roadmap.md` (O1-6) và A-095, **không làm ở B8c:** khi dựng `
 | Q4 | Màu và độ mờ watermark | Xám nhạt bán trong suốt (chữ thân văn bản đen vẫn đọc rõ); anh xem ảnh mẫu rồi chỉnh |
 
 Thứ tự làm: tài liệu → (1) spike watermark, ảnh mẫu → (2) O1-18 → (3) O1-19 → đột biến → CI → báo cáo. Gặp gì ngoài kế hoạch thì dừng và hỏi.
+
+## 8. Kết quả (2026-10-13)
+
+**Trạng thái:** xong trên `build/b8c-tai-file-kiem-nhe-watermark`; chờ PO xem ảnh mẫu watermark (màu, độ mờ) và duyệt merge.
+
+### 8.1 Spike watermark (cổng dừng — **không phải dừng**)
+
+Dựng hai biến thể trong tiêu đề, cho `soffice` (LibreOffice 25.2.3, trong image) dựng PDF rồi xem ảnh trang: **(A) VML WordArt như Word — render đúng** (chéo −45°, giữa thân trang, sau chữ, xám nhạt, mọi trang); **(B) DrawingML `wps:txbx` xoay — LibreOffice bỏ qua góc xoay**, chữ nằm ngang. Chọn A. Hai điều ghi nhận: trong PDF chữ watermark là **đường vẽ** (`pdftotext` không đọc ra — nên kiểm bằng pixel); lúc đầu nét chữ trông "rỗng" ở độ phân giải thấp chỉ vì nét mảnh nhạt — phóng 500 dpi thấy chữ đặc. Ảnh mẫu `b8c-watermark-mau.png` (trang 1, 70 dpi; sha256 `cacdc97d9677272b6d559cc0d5ba4c7e992f6b65d6d40fc7a73939f19f2d2bb5`, dựng bằng `tools/watermark-sample/render_sample.py`). Màu `#808080`, độ mờ `.5` là mặc định tạm — PO chỉnh `FILL_COLOR`, `FILL_OPACITY`.
+
+### 8.2 Đã làm
+
+| Hạng mục | Kết quả |
+|---|---|
+| Watermark chéo | `rendering/watermark.py`; shape ở mọi tiêu đề (mặc định, trang đầu, trang chẵn, kế thừa phần); không thêm đoạn nào vào tiêu đề; 9 test pixel (đường chéo đi lên, trải hai chiều, trọng tâm giữa trang, hai góc đối có / hai góc kia trống, chữ thân vẫn đọc được, `pdftotext` y hệt, mọi trang, tiêu đề riêng trang đầu, mẫu không có tiêu đề, nhiều phần, `PRODUCTION` giống hệt từng pixel và không còn dòng chữ ở đầu trang) + 6 test XML |
+| Tải file qua tệp tạm (O1-18) | `fetch_verified`, `get_chunks`, `FileGate`, `DeadlineStreamingResponse`; endpoint `async`; 19 + 5 test mới (RSS không theo kích thước, tệp ở mọi lối thoát, hạn chót cắt client chậm, bốn client chậm không chặn lượt thứ năm quá WV-28, `Retry-After` chỉ ở "bận", chỗ không rò sau 20 lượt lỗi, `file.closed` ở mọi lối thoát của response) |
+| #6 nhẹ (O1-19) | `convert.soffice_version`; `STARTUP_06_VERSION_*`; log `libreoffice`; 9 test; WV-25 = 20 s |
+| Tài liệu | `05-api.md`, `openapi.yaml` (header `Retry-After` của 503), `06-structure.md`, `03-agents.md`, ADR-014/015, WV-26..30, A-095, roadmap |
+
+### 8.3 Số đo O1-18 (container `--network ci`, SeaweedFS thật; công cụ `backend/tests/fetch_rss_probe.py`)
+
+| Phép đo | Kết quả |
+|---|---|
+| Tải 8 MiB và 64 MiB, mức tăng RSS đỉnh | **0,05 MiB** và **0,04 MiB** (bộ đệm cả file: ≥ 64 MiB) |
+| 64 MiB, `--memory=128m --cpus=0.1` | **qua** |
+| 64 MiB, `--memory=96m` | **qua** |
+| 64 MiB, cùng `--memory=128m`, đường cũ B8b (`storage.fetch`, cả object trong bộ nhớ) | **OOM-kill (mã thoát 137)** |
+
+**Phép tính mới (Q4):** mỗi lượt tải giữ ≈ 2 × khối 256 KiB ≈ 0,5 MiB bất kể kích thước file (đo thật thấp hơn: 0,04–0,05 MiB), bốn lượt đồng thời (WV-27) ≈ 2 MiB; so với phần còn lại **80–104 MiB** của ngân sách 512 MB (Python 111 + argon2 76 + `soffice` 221 = 408 MiB) ⇒ **vừa, còn dư ≥ 78 MiB**. Tệp tạm ≤ 4 × 8 MiB = 32 MiB trên đĩa (hoặc trong bộ nhớ nếu `/tmp` của Render là tmpfs — `[CẦN XÁC MINH]`, vẫn vừa dư; kiểm ở cổng 2.x đầu tiên có Render thật, PO đồng ý). Trần threadpool 40 luồng không còn là mối đe doạ bộ nhớ: chỉ 4 lượt vào pha nặng, các lượt khác chờ bằng `await` không giữ luồng.
+
+### 8.4 Kiểm
+
+- **Đột biến: 38 mẫu** (storage 9, response/gate 8, router và ops 6, #6 5, watermark 10): **36/38 đỏ ngay**; hai mẫu sống do test yếu — `G03` (response không đóng tệp: tệp được CPython đóng khi thu rác nên đếm file descriptor không thấy) và `K04` (`--version` quá hạn không giết tiến trình: test chỉ đo thời gian trả về) — đã thêm test kiểm `file.closed` trực tiếp ở mọi lối thoát của response và kiểm tiến trình giả **đã chết**; chạy lại **2/2 đỏ**. Không có mẫu tương đương.
+- Toàn bộ test và CI: xem báo cáo cuối (mục 8.5).
+
+### 8.5 Bằng chứng CI
+
+*(điền sau khi CI xanh)*
+
+### 8.6 Ghi nhận / chưa làm
+
+- **Giới hạn đã nêu ở mục 1 giữ nguyên:** người nhận `.docx` xoá được shape watermark trong Word.
+- Watermark trong PDF không đọc được bằng máy dưới dạng chữ (đường vẽ). Nếu M5 cần kiểm PDF bằng máy, đặt thêm vào thuộc tính tài liệu (tiêu đề/chủ đề PDF) là một việc nhỏ — **chưa làm, chờ PO nói có cần không**.
+- Chưa đo hành vi khi `/tmp` của Render là tmpfs; chưa đo đồng thời tải file + chuyển đổi trong một tiến trình thật (`combined_main`, O1-6).
