@@ -1,7 +1,6 @@
 """Bước kiểm khởi động #6 và #7 — `soffice` và font (mục Bước kiểm khởi động của 06-structure.md; ADR-015 chốt 3; ADR-036). Chỉ `worker`, **Chặn**: thiếu thì không khởi động — deploy đó hỏng, Render giữ bản trước.
 
-**#6** — `soffice` chạy được ở chế độ headless trong hạn (WV-25): chuyển đổi **một `.docx` tối thiểu** sang PDF bằng đúng đường mà `pdf_export` dùng (`rendering.convert`); cộng `fc-match` và `fc-list` chạy được (cùng cần công cụ trong image,
-ADR-036 điểm 4). Mã: `STARTUP_06_SOFFICE_MISSING`, `STARTUP_06_CONVERT_FAILED`, `STARTUP_06_CONVERT_TIMEOUT`, `STARTUP_06_FONT_TOOL_MISSING`.
+**#6 (B8c, PO 2026-10-13, O1-19: kiểm nhẹ)** — `soffice --headless --version` chạy được, thoát mã 0 và trả dòng phiên bản trong hạn WV-25 (20 s); cộng `fc-list` và `fc-match` chạy được (cùng cần công cụ trong image, ADR-036 điểm 4). **Không chuyển đổi tài liệu**: phép chuyển đổi thật mất ≈ 47 s ở 0,1 CPU mỗi lần thức dậy trên gói Free (B8b) — nó chỉ chạy ở CI, trong image (`tests/test_convert.py`, `tests/test_render_tools.py`). **Log phiên bản LibreOffice thật** (trường `libreoffice` của `STARTUP_CHECK_INFO`) mỗi lần khởi động, cho A-094. Mã: `STARTUP_06_SOFFICE_MISSING`, `STARTUP_06_VERSION_FAILED`, `STARTUP_06_VERSION_TIMEOUT`, `STARTUP_06_FONT_TOOL_MISSING`.
 
 **#7** — tập font cần = hợp của `required_fonts` trên **mọi phiên bản `ACTIVE`** và trên mọi phiên bản mà một `document` **chưa tới trạng thái kết thúc** đang dùng (`finalize_issue` render bản cuối bằng đúng phiên bản đã duyệt, có thể
 đã `RETIRED`). Mỗi họ phải "có mặt" theo `rendering.fonts.is_present`: họ có ánh xạ fontconfig tường minh ("Times New Roman" → Liberation Serif) thì `fc-match` phải ra đúng họ đích; họ khác thì khớp chính xác tên.
@@ -9,23 +8,11 @@ Mã: `STARTUP_07_FONT_MISSING` (tên các họ thiếu ở trường log `famili
 """
 from __future__ import annotations
 
-import io
-
-from docx import Document
-
 from bo19.config import working_values as wv
 from bo19.startup.model import Context, Result, code
 from bo19.tool_layer.rendering import convert, fonts
 
 TERMINAL_DOCUMENT_STATUSES = ("ISSUED", "REVOKED", "SUPERSEDED", "ARCHIVED", "REJECTED")  # không còn cần render
-
-
-def _minimal_docx() -> bytes:
-    document = Document()
-    document.add_paragraph("bo19 startup check")
-    buf = io.BytesIO()
-    document.save(buf)
-    return buf.getvalue()
 
 
 def step_06(ctx: Context) -> Result:
@@ -37,12 +24,12 @@ def step_06(ctx: Context) -> Result:
     except fonts.FontToolMissing:
         return Result((code("6", "FONT_TOOL_MISSING"),))
     try:
-        convert.convert_to_pdf(_minimal_docx(), timeout_s=wv.SOFFICE_STARTUP_CHECK_TIMEOUT_S)
+        version = convert.soffice_version(timeout_s=wv.SOFFICE_STARTUP_CHECK_TIMEOUT_S)
     except convert.ConversionTimeout:
-        return Result((code("6", "CONVERT_TIMEOUT"),))
-    except convert.ConversionFailed:
-        return Result((code("6", "CONVERT_FAILED"),))
-    return Result()
+        return Result((code("6", "VERSION_TIMEOUT"),))
+    except convert.VersionFailed:
+        return Result((code("6", "VERSION_FAILED"),))
+    return Result(info={"libreoffice": version})  # A-094: phiên bản LibreOffice thật của image, ghi mỗi lần `worker` khởi động
 
 
 _REQUIRED = (

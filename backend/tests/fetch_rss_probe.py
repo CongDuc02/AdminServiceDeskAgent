@@ -28,11 +28,15 @@ def main() -> None:
     storage.head(key)  # một lệnh nhỏ: nạp mô-đun, nối TLS, ký — mọi chi phí cố định của lần đầu
     warm = st.committed(pool, key)
     before = hwm_kib()
-    f, size = st.fetch_verified(pool, storage, key, max_bytes=256 * 1024 * 1024)
-    with f:
-        total = 0
-        while chunk := f.read(256 * 1024):
-            total += len(chunk)
+    if len(sys.argv) > 2 and sys.argv[2] == "buffered":  # đối chứng: đường cũ của B8b — cả object trong bộ nhớ
+        data = st.fetch(pool, storage, key, max_bytes=256 * 1024 * 1024)
+        size = total = len(data)
+    else:
+        f, size = st.fetch_verified(pool, storage, key, max_bytes=256 * 1024 * 1024)
+        with f:
+            total = 0
+            while chunk := f.read(256 * 1024):
+                total += len(chunk)
     pool.close()
     assert total == size == warm.size_bytes
     print(json.dumps({"size": size, "delta_mib": round((hwm_kib() - before) / 1024, 2)}))
