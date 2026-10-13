@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from tests import _guard  # noqa: F401 — chốt chặn mạng và khoá API của bộ test (tests/_guard.py)
 
+import os
 import time
 import unittest
 import uuid
@@ -74,21 +75,30 @@ class Buoc6(unittest.TestCase):
         self.assertEqual(cr.wv.SOFFICE_STARTUP_CHECK_TIMEOUT_S, 20)
 
     def test_soffice_version_giet_tien_trinh_khi_qua_han(self):
-        """`soffice` giả ngủ lâu: quá hạn thì `ConversionTimeout`, và không còn tiến trình con."""
+        """`soffice` giả ghi PID rồi ngủ lâu: quá hạn thì `ConversionTimeout` VÀ tiến trình đó đã chết (không phải chỉ "hàm trả về sớm")."""
         import tempfile
         with tempfile.TemporaryDirectory() as d:
-            fake = Path(d) / "soffice-gia"
-            fake.write_text("#!/bin/sh\nsleep 60\n")
+            fake, pidfile = Path(d) / "soffice-gia", Path(d) / "pid"
+            fake.write_text("#!/bin/sh" + chr(10) + f"echo $$ > {pidfile}" + chr(10) + "exec sleep 60" + chr(10))
             fake.chmod(0o755)
             old = convert.SOFFICE
             convert.SOFFICE = str(fake)
             try:
                 t = time.monotonic()
                 with self.assertRaises(convert.ConversionTimeout):
-                    convert.soffice_version(timeout_s=0.5)
+                    convert.soffice_version(timeout_s=1.0)
                 self.assertLess(time.monotonic() - t, 5)
             finally:
                 convert.SOFFICE = old
+            pid = int(pidfile.read_text())
+            for _ in range(40):  # tiến trình bị SIGKILL biến mất ngay; cho một chút thời gian để hệ điều hành thu dọn
+                try:
+                    os.kill(pid, 0)
+                except ProcessLookupError:
+                    break
+                time.sleep(0.05)
+            else:
+                self.fail("soffice giả vẫn còn sống sau khi quá hạn")
 
     def test_dau_ra_khong_co_dong_phien_ban_la_that_bai_va_khong_mang_noi_dung(self):
         import tempfile

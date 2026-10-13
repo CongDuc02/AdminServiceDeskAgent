@@ -404,5 +404,91 @@ class Stream(FilesBase, unittest.IsolatedAsyncioTestCase):
         self.assertEqual((wv.FILE_FETCH_MAX_CONCURRENT, wv.FILE_FETCH_WAIT_S, wv.FILE_FETCH_DEADLINE_S), (4, 15, 60))
 
 
+class ResponseDongTepO_MoiLoiThoat(unittest.IsolatedAsyncioTestCase):
+    """`DeadlineStreamingResponse` một mình, không cần DB hay S3: ở MỌI lối thoát `file.closed` là `True` và chỗ được nhả đúng một lần — kiểm trên chính đối tượng tệp, không chỉ đếm file descriptor."""
+
+    DATA = os.urandom(50_000)
+
+    def make(self, *, deadline_s=5.0, chunk=1000):
+        from bo19.api.files_gate import DeadlineStreamingResponse, FileGate
+        gate = FileGate(FileFetchLimits(concurrent=1, wait_s=1.0, deadline_s=deadline_s))
+        f = tempfile.TemporaryFile()
+        f.write(self.DATA)
+        f.seek(0)
+        return gate, f, gate
+
+    async def run_response(self, *, deadline_s=5.0, send_delay=0.0, disconnect_after=None, send_error_after=None):
+        from bo19.api.files_gate import DeadlineStreamingResponse
+        gate, f, _ = self.make(deadline_s=deadline_s)
+        deadline = await gate.acquire()
+        resp = DeadlineStreamingResponse(f, size=len(self.DATA), media_type="application/pdf", headers={}, deadline=time.monotonic() + deadline_s, chunk_bytes=1000, gate=gate)
+        gone, sent, first, got = asyncio.Event(), 0, True, {"ended": False, "bytes": 0}
+
+        async def receive():
+            nonlocal first
+            if first:
+                first = False
+                return {"type": "http.request", "body": b"", "more_body": False}
+            await gone.wait()
+            return {"type": "http.disconnect"}
+
+        async def send(m):
+            nonlocal sent
+            if m["type"] == "http.response.start":
+                return
+            if send_delay:
+                await asyncio.sleep(send_delay)
+            if send_error_after is not None and sent >= send_error_after:
+                raise ConnectionResetError
+            got["bytes"] += len(m.get("body", b""))
+            sent += 1
+            got["ended"] = not m.get("more_body", False)
+            if disconnect_after is not None and sent >= disconnect_after:
+                gone.set()
+
+        try:
+            await resp({"type": "http", "headers": []}, receive, send)
+        except BaseException:  # noqa: BLE001
+            got["error"] = True
+        return gate, f, got
+
+    async def test_xong(self):
+        gate, f, got = await self.run_response()
+        self.assertEqual((f.closed, gate.in_flight, got["ended"], got["bytes"]), (True, 0, True, len(self.DATA)))
+
+    async def test_het_han_giua_stream(self):
+        gate, f, got = await self.run_response(deadline_s=0.5, send_delay=0.1)
+        self.assertEqual((f.closed, gate.in_flight, got["ended"]), (True, 0, False))
+        self.assertLess(got["bytes"], len(self.DATA))
+
+    async def test_client_ngat(self):
+        gate, f, got = await self.run_response(disconnect_after=2)
+        self.assertEqual((f.closed, gate.in_flight, got["ended"]), (True, 0, False))
+
+    async def test_send_nem_loi(self):
+        gate, f, got = await self.run_response(send_error_after=1)
+        self.assertEqual((f.closed, gate.in_flight, got.get("error")), (True, 0, True))
+
+    async def test_bi_huy(self):
+        from bo19.api.files_gate import DeadlineStreamingResponse
+        gate, f, _ = self.make()
+        await gate.acquire()
+        resp = DeadlineStreamingResponse(f, size=len(self.DATA), media_type="application/pdf", headers={}, deadline=time.monotonic() + 30, chunk_bytes=1000, gate=gate)
+
+        async def receive():
+            await asyncio.sleep(3600)
+
+        async def send(m):
+            if m["type"] != "http.response.start":
+                await asyncio.sleep(0.2)
+
+        task = asyncio.create_task(resp({"type": "http", "headers": []}, receive, send))
+        await asyncio.sleep(0.3)
+        task.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await task
+        self.assertEqual((f.closed, gate.in_flight), (True, 0))
+
+
 if __name__ == "__main__":
     unittest.main()
