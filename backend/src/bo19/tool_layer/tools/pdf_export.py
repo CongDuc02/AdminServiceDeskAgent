@@ -8,6 +8,9 @@ vào thư mục tạm → **rồi mới** giành khoá → upload → commit. Nh
 chuyển đổi tự thay font (ADR-015 chốt 3; "có mặt" theo ADR-036). Lớp phòng thủ thêm chừng nào `api` và `queue_worker` dùng chung image; **bắt buộc** nếu tách image.
 
 Dòng `document_render` chỉ thêm khi cả `.docx` lẫn `.pdf` đã commit (khoá ngoại tới `stored_object_commit` giữ điều đó); `UNIQUE (document_id, render_kind, input_hash)` làm việc thêm idempotent — gọi lại trả chính dòng cũ.
+`watermark_text` của dòng `document_render` = chuỗi đã nằm trong input của lần render (đi theo `DocxRender`; ADR-038) — **lời khai của tool, không phải kết quả đọc lại PDF**: runtime không đọc lại PDF. Việc kiểm `/Subject` bằng `pdfinfo` ở CI và
+ở phép kiểm sau UAT (`tools/render-audit/`, mục 18 của 11-ops.md).
+
 `audit_event`: `document.pdf_export`, cùng giao dịch với dòng `document_render`.
 """
 from __future__ import annotations
@@ -65,9 +68,9 @@ def pdf_export(pool: Pool, storage: ObjectStorage, ctx: ToolContext, docx: DocxR
         pdf = convert.convert_to_pdf(source, timeout_s=timeout_s)  # chuyển đổi xong RỒI MỚI giành khoá
         stored = store.put_once(pool, storage, object_key=pdf_key, purpose="RENDER_PDF", content_type=PDF_CONTENT_TYPE, data=pdf, lease_s=lease_s)
     with pool.acquire() as conn, unit_of_work(conn):
-        row = conn.execute("INSERT INTO document_render (id, document_id, operating_mode, render_kind, input_hash, template_version_id, revision_round, docx_object_key, pdf_object_key) "
-                           "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (document_id, render_kind, input_hash) DO NOTHING RETURNING id",
-                           (uuid.uuid4(), docx.document_id, docx.operating_mode, docx.render_kind, docx.input_hash, docx.template_version_id, docx.revision_round, docx.docx_key, pdf_key)).fetchone()
+        row = conn.execute("INSERT INTO document_render (id, document_id, operating_mode, render_kind, input_hash, template_version_id, revision_round, docx_object_key, pdf_object_key, watermark_text) "
+                           "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (document_id, render_kind, input_hash) DO NOTHING RETURNING id",
+                           (uuid.uuid4(), docx.document_id, docx.operating_mode, docx.render_kind, docx.input_hash, docx.template_version_id, docx.revision_round, docx.docx_key, pdf_key, docx.watermark_text)).fetchone()
         created = row is not None
         if row is None:
             row = conn.execute("SELECT id FROM document_render WHERE document_id = %s AND render_kind = %s AND input_hash = %s", (docx.document_id, docx.render_kind, docx.input_hash)).fetchone()

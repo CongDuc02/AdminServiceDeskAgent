@@ -27,11 +27,12 @@ from bo19.persistence.pool import Pool
 from bo19.tool_layer import storage as st
 from bo19.tool_layer.kernel.context import Actor, ToolContext
 from bo19.tool_layer.kernel.permission import SystemActorRequired, system_context
-from bo19.tool_layer.rendering import convert
+from bo19.tool_layer.rendering import convert, watermark
+from bo19.tool_layer.rendering.doc_properties import SYSTEM_AUTHOR
 from bo19.tool_layer.tools import docx_render as dr
 from bo19.tool_layer.tools import pdf_export as pe
 from tests import pg_support
-from tests.render_support import DECLARED, VALUES, build_template, docx_text, pdf_text, require_tool, watermark_count
+from tests.render_support import DECLARED, VALUES, build_template, docx_props, docx_text, pdf_text, require_tool, watermark_count
 from tests.s3_support import ENDPOINT, REQUIRED, admin_client, drop_bucket, new_bucket, storage_for
 
 SRC_PURPOSE = "TEMPLATE_SOURCE"
@@ -104,23 +105,27 @@ class RenderBase(unittest.TestCase):
 
 
 class InputHash(unittest.TestCase):
-    """Khoá theo INPUT (mục 5.6 của 03-agents.md): phụ thuộc đúng ba thứ — phiên bản template, bảng giá trị, chế độ — và không thứ nào khác."""
+    """Khoá theo INPUT (mục 5.6 của 03-agents.md): phụ thuộc đúng bốn thứ — phiên bản template, bảng giá trị, chế độ, chuỗi watermark (ADR-038) — và không thứ nào khác."""
 
     V = uuid.UUID("11111111-1111-4111-8111-111111111111")
+    W = "BẢN THỬ NGHIỆM — KHÔNG CÓ GIÁ TRỊ PHÁP LÝ"
 
-    def test_phu_thuoc_tung_trong_ba_thanh_phan(self):
-        base = dr.input_hash(self.V, {"a": "1"}, "NON_PRODUCTION")
-        self.assertNotEqual(base, dr.input_hash(uuid.uuid4(), {"a": "1"}, "NON_PRODUCTION"))
-        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "2"}, "NON_PRODUCTION"))
-        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "1", "b": ""}, "NON_PRODUCTION"))
-        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "1"}, "PRODUCTION"))
+    def test_phu_thuoc_tung_trong_bon_thanh_phan(self):
+        base = dr.input_hash(self.V, {"a": "1"}, "NON_PRODUCTION", self.W)
+        self.assertNotEqual(base, dr.input_hash(uuid.uuid4(), {"a": "1"}, "NON_PRODUCTION", self.W))
+        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "2"}, "NON_PRODUCTION", self.W))
+        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "1", "b": ""}, "NON_PRODUCTION", self.W))
+        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "1"}, "PRODUCTION", self.W))
+        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "1"}, "NON_PRODUCTION", self.W + "."))  # đổi chuỗi → khoá khác
+        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "1"}, "NON_PRODUCTION", None))
+        self.assertNotEqual(dr.input_hash(self.V, {"a": "1"}, "PRODUCTION", None), dr.input_hash(self.V, {"a": "1"}, "PRODUCTION", ""))
 
     def test_tat_dinh_va_khong_phu_thuoc_thu_tu(self):
-        self.assertEqual(dr.input_hash(self.V, {"a": "1", "b": "2"}, "PRODUCTION"), dr.input_hash(self.V, {"b": "2", "a": "1"}, "PRODUCTION"))
-        self.assertEqual(len(dr.input_hash(self.V, {}, "PRODUCTION")), 32)
+        self.assertEqual(dr.input_hash(self.V, {"a": "1", "b": "2"}, "PRODUCTION", None), dr.input_hash(self.V, {"b": "2", "a": "1"}, "PRODUCTION", None))
+        self.assertEqual(len(dr.input_hash(self.V, {}, "PRODUCTION", None)), 32)
 
     def test_tieng_viet_khong_bi_escape_va_khoa_la_hex_64(self):
-        h = dr.input_hash(self.V, {"a": "Đặng"}, "PRODUCTION")
+        h = dr.input_hash(self.V, {"a": "Đặng"}, "PRODUCTION", None)
         key = dr.render_key(uuid.UUID(int=5), h, "pdf")
         self.assertEqual(key, f"renders/{uuid.UUID(int=5)}/{h.hex()}.pdf")
         self.assertRegex(key, r"^renders/[0-9a-f-]{36}/[0-9a-f]{64}\.pdf$")
@@ -146,6 +151,29 @@ class DocxRender(RenderBase):
         prod = self.render_docx(prod_doc)
         self.assertEqual(prod.operating_mode, "PRODUCTION")
         self.assertEqual(watermark_count(self.s3_bytes(prod.docx_key)), 0)
+
+    def test_doi_chuoi_watermark_thi_khoa_khac_ban_cu_con_nguyen_khong_reused_nham(self):
+        """ADR-038: chuỗi watermark nằm trong input. Đổi chuỗi → khoá khác, bản cũ còn nguyên và mang chuỗi cũ, lần render mới KHÔNG bị trả `reused` bản cũ."""
+        did = self.make_document(self.make_template())
+        old = self.render_docx(did)
+        with mock.patch.object(watermark, "WATERMARK_TEXT", "CHUỖI WATERMARK ĐỔI SAU NÀY"):
+            new = self.render_docx(did)
+        self.assertNotEqual(old.docx_key, new.docx_key)
+        self.assertEqual((old.reused, new.reused), (False, False))
+        self.assertEqual((old.watermark_text, new.watermark_text), (watermark.WATERMARK_TEXT, "CHUỖI WATERMARK ĐỔI SAU NÀY"))
+        self.assertEqual(docx_props(self.s3_bytes(old.docx_key)).subject, watermark.WATERMARK_TEXT)
+        self.assertEqual(docx_props(self.s3_bytes(new.docx_key)).subject, "CHUỖI WATERMARK ĐỔI SAU NÀY")
+        again = self.render_docx(did)  # chuỗi cũ trở lại → đúng khoá cũ, reused
+        self.assertEqual((again.docx_key, again.reused), (old.docx_key, True))
+
+    def test_docx_mang_subject_va_tac_gia_trung_tinh(self):
+        version = self.make_template(template=build_template(properties={"author": "Nguyễn Văn Soạn Mẫu", "last_modified_by": "Trần Thị Người Sửa"}))
+        np_doc, prod_doc = self.make_document(version, mode="NON_PRODUCTION"), self.make_document(version, mode="PRODUCTION")
+        np_r, prod_r = self.render_docx(np_doc), self.render_docx(prod_doc)
+        self.assertEqual((np_r.watermark_text, prod_r.watermark_text), (watermark.WATERMARK_TEXT, None))
+        for r, subject in ((np_r, watermark.WATERMARK_TEXT), (prod_r, "")):
+            props = docx_props(self.s3_bytes(r.docx_key))
+            self.assertEqual((props.subject, props.author, props.last_modified_by), (subject, SYSTEM_AUTHOR, SYSTEM_AUTHOR))
 
     def test_khong_co_tham_so_che_do_trong_chu_ky_tool(self):
         import inspect
@@ -230,6 +258,39 @@ class DocxRender(RenderBase):
 class PdfExport(RenderBase):
     def export(self, docx: dr.DocxRender, **kw) -> pe.PdfExport:
         return pe.pdf_export(self.pool, self.storage, self.sys, docx, **kw)
+
+    def test_dong_document_render_ghi_chuoi_watermark_cua_input(self):
+        version = self.make_template()
+        np_doc, prod_doc = self.make_document(version, mode="NON_PRODUCTION"), self.make_document(version, mode="PRODUCTION")
+        np_out, prod_out = self.export(self.render_docx(np_doc)), self.export(self.render_docx(prod_doc))
+        self.assertEqual(self.scalar("select watermark_text from document_render where id = %s", np_out.render_id), watermark.WATERMARK_TEXT)
+        self.assertIsNone(self.scalar("select watermark_text from document_render where id = %s", prod_out.render_id))
+
+    def test_doi_chuoi_thi_dong_moi_mang_chuoi_moi_dong_cu_dung_yen(self):
+        did = self.make_document(self.make_template())
+        old = self.export(self.render_docx(did))
+        with mock.patch.object(watermark, "WATERMARK_TEXT", "CHUỖI MỚI"):
+            new = self.export(self.render_docx(did))
+        self.assertNotEqual((old.render_id, old.pdf_key), (new.render_id, new.pdf_key))
+        self.assertEqual(self.scalar("select watermark_text from document_render where id = %s", old.render_id), watermark.WATERMARK_TEXT)
+        self.assertEqual(self.scalar("select watermark_text from document_render where id = %s", new.render_id), "CHUỖI MỚI")
+
+    def test_check_chan_non_production_thieu_hoac_rong_chuoi(self):
+        """`ck_document_render_watermark` ở DB: NON_PRODUCTION thì phải có chuỗi, không rỗng; PRODUCTION thì NULL được. (Siêu người dùng, bỏ khoá ngoại — chỉ CHECK được thử.)"""
+        import psycopg
+        did = self.make_document(self.make_template())
+
+        def insert(mode, text):
+            with self.db.connect(autocommit=True) as c:
+                c.execute("set session_replication_role = replica")
+                c.execute("insert into document_render (id, document_id, operating_mode, render_kind, input_hash, template_version_id, revision_round, docx_object_key, pdf_object_key, watermark_text) "
+                          "values (%s, %s, %s, 'DRAFT', %s, %s, 0, %s, %s, %s)", (uuid.uuid4(), did, mode, uuid.uuid4().bytes * 2, uuid.uuid4(), f"k/{uuid.uuid4()}.docx", f"k/{uuid.uuid4()}.pdf", text))
+        for text in (None, ""):
+            with self.assertRaises(psycopg.errors.CheckViolation, msg=repr(text)) as cm:
+                insert("NON_PRODUCTION", text)
+            self.assertEqual(cm.exception.diag.constraint_name, "ck_document_render_watermark")
+        insert("NON_PRODUCTION", "BẤT KỲ")
+        insert("PRODUCTION", None)
 
     def test_ghi_pdf_va_them_dong_document_render(self):
         did = self.make_document(self.make_template(), revision_round=2)

@@ -8,7 +8,9 @@
 Lỗi **chỉ mang tên biến** (`[a-z][a-z0-9_]*`), không bao giờ giá trị. Giá trị phải là `str` không có ký tự bị XML 1.0 cấm (`InvalidVariableValue`, chỉ tên biến); xuống dòng `\\n` thành ngắt dòng của Word.
 Giá trị được điền như DỮ LIỆU (một lần, `autoescape`): `{{`, `{%`, `<`, `&` trong giá trị không bị thông dịch lại.
 
-**Watermark (AC-1.3):** `operating_mode = NON_PRODUCTION` thì mọi tiêu đề trang của file mang một shape watermark **chéo trải thân trang** (`rendering.watermark`, B8c) — trong **file**, nên có cả ở `.docx` lẫn PDF. **Không có tham số tắt**: chế độ do chỗ gọi đọc từ `document` (đã ghim lúc tạo `DRAFT`, INV-01) và truyền vào; giá trị lạ là lỗi lập trình (`ValueError`), không phải "không watermark". `PRODUCTION` không thêm gì.
+**Watermark (AC-1.3):** `operating_mode = NON_PRODUCTION` thì mọi tiêu đề trang của file mang một shape watermark **chéo trải thân trang** (`rendering.watermark`, B8c) — trong **file**, nên có cả ở `.docx` lẫn PDF. **Không có tham số tắt**: chế độ do chỗ gọi đọc từ `document` (đã ghim lúc tạo `DRAFT`, INV-01) và truyền vào; giá trị lạ là lỗi lập trình (`ValueError`), không phải "không watermark". `PRODUCTION` không thêm shape.
+
+**Thuộc tính tài liệu (B9a, ADR-038):** `subject` = chuỗi watermark ở `NON_PRODUCTION` (xoá ở `PRODUCTION`), `author` và `lastModifiedBy` = tên hệ thống ở cả hai chế độ — `rendering.doc_properties`. LibreOffice chuyển chúng sang `/Subject`, `/Author` của PDF; `title` giữ nguyên (M1.1).
 """
 from __future__ import annotations
 
@@ -18,6 +20,7 @@ from collections.abc import Collection, Mapping
 
 from docxtpl import DocxTemplate
 
+from bo19.tool_layer.rendering import doc_properties, watermark
 from bo19.tool_layer.rendering.watermark import WATERMARK_TEXT, add_watermark  # noqa: F401 — tên cũ vẫn dùng được từ `docx_fill`
 from bo19.tool_layer.tools._common import ToolError
 
@@ -50,6 +53,13 @@ class TemplateUnreadable(ToolError):
     code = "TEMPLATE_UNREADABLE"
 
 
+def watermark_text_for(operating_mode: str) -> str | None:
+    """Chuỗi watermark mà một lần render ở chế độ này mang: `WATERMARK_TEXT` ở `NON_PRODUCTION`, `None` ở `PRODUCTION`. Là một phần INPUT của khoá object (`docx_render.input_hash`, ADR-038): đổi chuỗi thì khoá khác."""
+    if operating_mode not in MODES:
+        raise ValueError("operating_mode")
+    return watermark.WATERMARK_TEXT if operating_mode == "NON_PRODUCTION" else None
+
+
 def template_variables(template: bytes) -> frozenset[str]:
     """Các biến mà template dùng (thân văn bản, header, footer)."""
     try:
@@ -79,5 +89,5 @@ def fill_docx(template: bytes, values: Mapping[str, str], *, declared: Collectio
         doc.save(buf)
     except Exception:  # noqa: BLE001 — như trên: chỉ mã
         raise TemplateUnreadable from None
-    out = buf.getvalue()
+    out = doc_properties.apply_properties(buf.getvalue(), watermark_text_for(operating_mode))
     return add_watermark(out) if operating_mode == "NON_PRODUCTION" else out
