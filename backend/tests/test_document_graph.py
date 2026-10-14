@@ -122,6 +122,13 @@ class AC111(DocBase):
         self.assertEqual(self.llm_calls(), 2)
         self.assertEqual(self.document(rid)["status"], "PENDING_APPROVAL")
 
+    def test_noi_dung_co_nguyen_van_slot_da_khai_cua_chinh_bien_van_dat(self):
+        """Chỉ slot RES **ngoài** input đã khai của biến bị cấm: chính `purpose` (input của `purpose_statement`) xuất hiện nguyên văn trong nội dung vẫn đạt."""
+        self.llm.will("draft_free_content", draft_output(f"Nhân viên đề nghị cấp giấy xác nhận với mục đích: {PURPOSE}."))
+        rid = self.submitted_request(national_id=NATIONAL_ID)
+        self.assertEqual(self.run_render(rid).status, "WAITING")
+        self.assertEqual([(a, o) for _, _, a, o, _, _ in self.free_content(rid)], [(1, "PASSED")])
+
     def test_placeholder_khung_va_markup_truot(self):
         for bad in ("N/A", "Kính gửi Ngân hàng ABC xin nêu mục đích của hồ sơ này.", "Nội dung có thẻ <script>alert(1)</script> nhúng vào văn bản.", "Điền sau ... hồ sơ vay vốn tại ngân hàng"):
             self.llm.set("draft_free_content", draft_output(bad if len(bad) >= 10 else bad + " " * (10 - len(bad)) + "."))
@@ -129,6 +136,21 @@ class AC111(DocBase):
             with self.assertRaises(RenderFailed, msg=bad) as cm:
                 self.run_render(rid)
             self.assertEqual(cm.exception.reason_code, "FREE_CONTENT_INVALID", bad)
+
+
+class Readiness(DocBase):
+    def test_gia_tri_slot_la_placeholder_thi_review_not_ready_o_node_check(self):
+        """Render được (giá trị có mặt) nhưng không đủ điều kiện trình duyệt (F2): node `check_review_readiness` dừng, `document` ở lại `DRAFT`, không có `approval_step`."""
+        self.llm.will("draft_free_content", draft_output())
+        rid = self.submitted_request()
+        with self.db.connect(autocommit=True) as c:
+            c.execute("update request_slot set value = to_jsonb('N/A'::text) where request_id = %s and slot_name = 'department_name'", (rid,))
+        with self.assertRaises(RenderFailed) as cm:
+            self.run_render(rid)
+        self.assertEqual((cm.exception.reason_code, cm.exception.permanent, cm.exception.raw_code), ("REVIEW_NOT_READY", True, "REVIEW_NOT_READY"))
+        self.assertEqual(self.document(rid)["status"], "DRAFT")
+        self.assertEqual(self.scalar("select count(*) from approval_step where document_id = %s", document_id_for(rid)), 0)
+        self.assertEqual(self.scalar("select count(*) from document_render where document_id = %s", document_id_for(rid)), 1)  # đã render — kiểm đứng SAU render theo thiết kế
 
 
 class ThuLai(DocBase):

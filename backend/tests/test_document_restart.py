@@ -57,10 +57,14 @@ class Proc:
 
     def kill(self, sig: int = signal.SIGKILL) -> int:
         self.p.send_signal(sig)
-        return self.p.wait(30)
+        code = self.p.wait(30)
+        self.p.stdout.close()
+        return code
 
     def finish(self) -> int:
-        return self.p.wait(WAIT_S)
+        code = self.p.wait(WAIT_S)
+        self.p.stdout.close()
+        return code
 
 
 class KhoiDongLai(DocBase):
@@ -68,8 +72,16 @@ class KhoiDongLai(DocBase):
         """Tiến trình A chạy `run_render` tới điểm dừng rồi ngủ. Trả (request, tiến trình A, kết quả của nó)."""
         rid = self.submitted_request()
         a = Proc(self, "render", str(rid), llm="ok", sleep=True)
-        self.addCleanup(lambda: a.p.poll() is None and a.p.kill())
+        self.addCleanup(self.reap, a)
         return rid, a, a.result()
+
+    @staticmethod
+    def reap(proc: Proc) -> None:
+        if proc.p.poll() is None:
+            proc.p.kill()
+            proc.p.wait(30)
+        if not proc.p.stdout.closed:
+            proc.p.stdout.close()
 
     def assert_waiting_in_db(self, rid):
         self.assertEqual(self.document(rid)["status"], "PENDING_APPROVAL")
@@ -144,7 +156,7 @@ class KhoiDongLai(DocBase):
     def test_giet_giua_luc_chay_tien_trinh_moi_tiep_tu_checkpoint_khong_goi_llm_lai(self):
         rid = self.submitted_request()
         a = Proc(self, "hang", str(rid), llm="ok")
-        self.addCleanup(lambda: a.p.poll() is None and a.p.kill())
+        self.addCleanup(self.reap, a)
         a.wait_line("HANGING")  # đã sinh và lưu nội dung, đang kẹt ở `docx_render`
         self.assertEqual(a.kill(signal.SIGKILL), -signal.SIGKILL)
         self.assertEqual(self.document(rid)["status"], "DRAFT")

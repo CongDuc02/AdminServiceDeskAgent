@@ -16,7 +16,6 @@ from typing import Any
 from bo19.ai_gateway.budget import BudgetOwner
 from bo19.ai_gateway.gateway import ParseFailed
 from bo19.ai_gateway.prompt_modules import DRAFT_FREE_CONTENT, VariableSpec
-from bo19.ai_gateway.providers import ProviderError
 from bo19.domain import free_content
 from bo19.observability.log import get_logger
 from bo19.orchestrator.document_graph.runtime import DocumentDeps, RenderRuntime
@@ -90,8 +89,8 @@ def make_nodes(deps: DocumentDeps) -> dict[str, NodeFn]:  # noqa: C901 — một
                 result = run.call_llm(deps, DRAFT_FREE_CONTENT, inputs, BudgetOwner(request_id=request_id, document_id=document_id), variable)
             except ParseFailed:
                 raise NodeError("PARSE_FAILED") from None
-            except ProviderError as e:
-                run.note_retry_after(e.retry_after_seconds)
+            except Exception as e:  # noqa: BLE001 — chỉ lấy `retry-after` (số) của lỗi provider nếu có, rồi để biên node đổi thành mã; `orchestrator` không import `ai_gateway.providers` (contract `allowlist-gate`)
+                run.note_retry_after(getattr(e, "retry_after_seconds", None))
                 raise
             drafts[name] = {"body": result.output["body"], "attempt_no": attempt_no, "module_version": result.prompt_module_version,
                             "fingerprint": deps.fingerprinter.digest(name, {**slots, "variable_guidance": spec.variable_guidance, "request_type": state["request_type"]})}
