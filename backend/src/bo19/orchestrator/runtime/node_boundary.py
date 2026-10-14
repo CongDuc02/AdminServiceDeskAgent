@@ -12,6 +12,7 @@ from collections.abc import Callable
 from typing import Any, Optional
 
 from langchain_core.runnables import RunnableConfig
+from langgraph.errors import GraphBubbleUp
 
 from bo19.observability.log import get_logger
 
@@ -45,8 +46,8 @@ def guard(name: str, fn: Callable[..., dict[str, Any]]) -> Callable[..., dict[st
         failure: str | None = None
         try:
             return fn(state, config)
-        except NodeError:
-            raise
+        except (NodeError, GraphBubbleUp):
+            raise  # `GraphInterrupt` (B9a, `interrupt`) là điều khiển luồng của LangGraph, không phải lỗi: phải đi qua nguyên vẹn — nó không mang văn bản của người dùng
         except Exception as e:  # noqa: BLE001 — chính là mục đích của biên node
             failure = code_of(e)
             log.warning("NODE_FAILED", node=name, code=failure, exception_type=type(e).__name__)

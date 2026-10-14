@@ -7,7 +7,8 @@ Một câu `UPDATE` luôn ghi `status`, `row_version + 1`, `updated_at` và — 
 `approval_step`, `room_booking` ngoài file này làm `tests/test_kernel_transition.py` đỏ. **Chỗ hở còn lại:** SQL dựng động lách được phép quét — chỗ đó chỉ còn review. Không phải bất biến DB:
 một `CHECK` không so được giá trị cũ với giá trị mới và `schema.sql` không dùng trigger.
 
-**Phạm vi B5:** chỉ `request` có máy trạng thái đăng ký. `document`, `approval_step`, `room_booking` đăng ký khi vòng đời của chúng được dựng (`NoStateMachine` cho tới lúc đó) — không đoán cạnh.
+**Phạm vi:** `request` (B5) và `document` (B9a, ADR-039) có máy trạng thái đăng ký. `approval_step`, `room_booking` đăng ký khi vòng đời của chúng được dựng (`NoStateMachine` cho tới lúc đó) — không đoán cạnh.
+`document`: bảng cạnh đủ mười ba trạng thái, nhưng kernel chưa đặt cột đi kèm của các cạnh sau cổng 1 (`approved_*`, `signer_employee_id`, `issued_*`, `archived_*`) — `CHECK` của DB từ chối cạnh đó nếu lát dùng nó chưa mở rộng `TableSpec`.
 `status_changed_at` chỉ có ở `request` và `document` trong schema; 06-structure.md nói bốn bảng — chênh lệch đã ghi ở CHANGELOG.md (B5).
 """
 from __future__ import annotations
@@ -18,6 +19,7 @@ from dataclasses import dataclass, field
 
 import psycopg
 
+from bo19.domain.document_machine import DOCUMENT_TERMINAL, DOCUMENT_TRANSITIONS
 from bo19.domain.request_machine import REQUEST_TERMINAL, REQUEST_TRANSITIONS
 from bo19.tool_layer.kernel.context import KernelError, require_transaction
 
@@ -61,6 +63,7 @@ class TableSpec:
 
 SPECS: dict[str, TableSpec] = {
     "request": TableSpec(REQUEST_TRANSITIONS, True, REQUEST_TERMINAL, "closed_at", {"NEEDS_INFO": "needs_info_asked_at"}, frozenset({"submitted_at"})),
+    "document": TableSpec(DOCUMENT_TRANSITIONS, True, DOCUMENT_TERMINAL),
 }
 
 

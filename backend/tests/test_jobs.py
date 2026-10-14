@@ -399,6 +399,26 @@ class KetThuc(JobsBase):
         self.assertIsNotNone(r["finished_at"])
         self.assertIsNone(self.claim())  # FAILED không tự retry (mục Job lỗi vĩnh viễn của 11-ops.md)
 
+    def test_permanent_la_failed_ngay_o_luot_dau_voi_ma_giu_nguyen(self):
+        """B9a, ADR-039 (mục 3.2 của 11-ops.md): lỗi thử lại không đổi được kết quả thì không chờ hết `max_attempts`."""
+        jid = self.add()
+        job = self.claim()
+        self.assertEqual(jobs.fail(self.pool, job, "FREE_CONTENT_INVALID", permanent=True), jobs.FailOutcome("FAILED", "FREE_CONTENT_INVALID"))
+        r = self.row(jid)
+        self.assertEqual((r["status"], r["attempts"], r["last_error_code"]), ("FAILED", 1, "FREE_CONTENT_INVALID"))
+        self.assertIsNone(self.claim())
+        jid2 = self.add()
+        again = self.claim()
+        self.assertEqual(jobs.fail(self.pool, again, "TAM").status, "QUEUED")  # không `permanent` thì vẫn theo backoff
+        self.assertEqual(self.row(jid2)["status"], "QUEUED")
+
+    def test_nguoi_la_khong_fail_permanent_duoc(self):
+        jid = self.add()
+        job = self.claim()
+        stranger = jobs.ClaimedJob(**{**job.__dict__, "lease_id": uuid.uuid4()})
+        self.assertIsNone(jobs.fail(self.pool, stranger, "LOI", permanent=True))
+        self.assertEqual(self.row(jid)["status"], "RUNNING")
+
     def test_retry_after_lay_max_voi_backoff(self):
         jid = self.add()
         job = self.claim()
