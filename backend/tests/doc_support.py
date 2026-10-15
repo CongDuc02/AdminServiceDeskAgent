@@ -47,8 +47,8 @@ VARIABLES: tuple[tuple[str, str, str | None, bool, str | None, int | None, tuple
 )
 
 
-def template_docx() -> bytes:
-    """`.docx` giả: Times New Roman, có đủ biến của `VARIABLES`, kèm nhãn giả."""
+def template_docx(extra: tuple[str, ...] = ()) -> bytes:
+    """`.docx` giả: Times New Roman, có đủ biến của `VARIABLES`, kèm nhãn giả. `extra`: đoạn văn thêm (ví dụ một biến ngoài danh mục)."""
     doc = Document()
     for style in ("Normal", "Header", "Footer"):
         doc.styles[style].font.name = FONT
@@ -57,6 +57,8 @@ def template_docx() -> bytes:
     doc.add_paragraph("Kính gửi: {{ recipient_org }}")
     doc.add_paragraph("{{ purpose_statement }}")
     doc.add_paragraph("Số: {{ document_number }} ngày {{ issued_date }} — người ký {{ signer_user_id }}")
+    for text in extra:
+        doc.add_paragraph(text)
     buf = io.BytesIO()
     doc.save(buf)
     return buf.getvalue()

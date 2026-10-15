@@ -257,19 +257,19 @@ class ThuLai(DocBase):
 
 
 class LoiMangMa(DocBase):
-    def fail(self, rid):
+    def failed(self, rid):  # KHÔNG đặt tên `fail`: `assertEqual` trên tuple gọi `self.failed(msg)` — ghi đè nó làm mọi assert tuple của lớp này không bao giờ đỏ
         with self.assertRaises(RenderFailed) as cm:
             self.run_render(rid)
         return cm.exception
 
     def test_json_hong_sau_lan_sua_la_parse_failed_vinh_vien(self):
         self.llm.set("draft_free_content", "đây không phải JSON")
-        e = self.fail(self.submitted_request())
+        e = self.failed(self.submitted_request())
         self.assertEqual((e.reason_code, e.permanent), ("PARSE_FAILED", True))
 
     def test_provider_loi_la_loi_tam_kem_retry_after(self):
         self.llm.set("draft_free_content", httpx.Response(429, headers={"retry-after": "500"}, json={"error": {"message": "x", "type": "rate_limit"}}))
-        e = self.fail(self.submitted_request())
+        e = self.failed(self.submitted_request())
         self.assertEqual((e.reason_code, e.permanent), ("PROVIDER_UNAVAILABLE", False))
         self.assertEqual(e.retry_after_s, 500)  # vượt WV-19: provider không chờ, hàng đợi sẽ `FAILED` ngay (jobs.fail)
 
@@ -278,7 +278,7 @@ class LoiMangMa(DocBase):
         with self.db.connect(autocommit=True) as c:
             c.execute("insert into llm_usage (id, call_name, model_tier, prompt_module_version, request_id, input_tokens, output_tokens, outcome, trace_id) "
                       "values (%s, 'draft_free_content', 'STRONG', '1.0', %s, 100000000, 100000000, 'OK', %s)", (uuid.uuid4(), rid, str(uuid.uuid4())))
-        e = self.fail(rid)
+        e = self.failed(rid)
         self.assertEqual((e.reason_code, e.permanent), ("BUDGET_EXCEEDED", True))
         self.assertEqual(self.llm_calls(), 0)
 
@@ -288,22 +288,32 @@ class LoiMangMa(DocBase):
         make_template(self.db, self.pool, self.storage, fonts=("Times New Roman", "Font Khong Co Bo19"))
         self.llm.will("draft_free_content", draft_output())
         rid = self.submitted_request()
-        e = self.fail(rid)
+        e = self.failed(rid)
         self.assertEqual((e.reason_code, e.permanent), ("FONT_MISSING", True))
         self.assertEqual(self.document(rid)["status"], "DRAFT")
 
-    def test_bien_system_khong_co_co_dien_sau_duyet_la_render_input_invalid(self):
+    def test_bien_system_khong_co_co_dien_sau_duyet_ma_van_ban_dung_la_render_input_invalid(self):
+        from tests.doc_support import VARIABLES, make_template, retire_active_templates, template_docx
+        retire_active_templates(self.db)
+        make_template(self.db, self.pool, self.storage, variables=VARIABLES + (("so_ho_so", "SYSTEM", None, False, None, None, ()),), data=template_docx(("Số hồ sơ: {{ so_ho_so }}",)))
+        self.llm.will("draft_free_content", draft_output())
+        e = self.failed(self.submitted_request())
+        self.assertEqual((e.reason_code, e.permanent), ("RENDER_INPUT_INVALID", True))  # `docx_render`: MISSING_VARIABLE — mẫu dùng biến mà bảng giá trị không có
+
+    def test_bien_system_khong_co_co_dien_sau_duyet_ma_van_ban_khong_dung_la_review_not_ready(self):
         from tests.doc_support import VARIABLES, make_template, retire_active_templates
         retire_active_templates(self.db)
         make_template(self.db, self.pool, self.storage, variables=VARIABLES + (("so_ho_so", "SYSTEM", None, False, None, None, ()),), data=None)
         self.llm.will("draft_free_content", draft_output())
-        e = self.fail(self.submitted_request())
-        self.assertEqual((e.reason_code, e.permanent), ("RENDER_INPUT_INVALID", True))
+        rid = self.submitted_request()
+        e = self.failed(rid)
+        self.assertEqual((e.reason_code, e.permanent), ("REVIEW_NOT_READY", True))  # render qua (mẫu không dùng biến), `check_review_readiness` bắt VARIABLE_MISSING
+        self.assertEqual(self.document(rid)["status"], "DRAFT")
 
     def test_khong_co_template_dang_hieu_luc_la_template_not_active(self):
         from tests.doc_support import retire_active_templates
         retire_active_templates(self.db)
-        e = self.fail(self.submitted_request())
+        e = self.failed(self.submitted_request())
         self.assertEqual((e.reason_code, e.permanent), ("TEMPLATE_NOT_ACTIVE", True))
         self.assertEqual(self.llm_calls(), 0)
 
@@ -312,20 +322,20 @@ class LoiMangMa(DocBase):
         size = self.raw.get_object(Bucket=self.bucket, Key=key)["ContentLength"]
         self.raw.put_object(Bucket=self.bucket, Key=key, Body=b"x" * size)  # cùng độ dài, khác nội dung
         self.llm.will("draft_free_content", draft_output())
-        e = self.fail(self.submitted_request())
+        e = self.failed(self.submitted_request())
         self.assertEqual((e.reason_code, e.permanent), ("RENDER_CHECKSUM_MISMATCH", False))
 
     def test_template_mat_trong_storage_la_object_missing_tam(self):
         key = self.scalar("select source_object_key from template_version where id = %s", self.version_id)
         self.raw.delete_object(Bucket=self.bucket, Key=key)
         self.llm.will("draft_free_content", draft_output())
-        e = self.fail(self.submitted_request())
+        e = self.failed(self.submitted_request())
         self.assertEqual((e.reason_code, e.permanent), ("RENDER_OBJECT_MISSING", False))
 
     def test_request_chua_submitted_la_system_defect_va_khong_tao_document(self):
         from tests.request_support import build_request
         rid = build_request(self.pool, self.db, self.eid, self.ctx)  # DRAFT, chưa gửi
-        e = self.fail(rid)
+        e = self.failed(rid)
         self.assertEqual((e.reason_code, e.permanent), ("SYSTEM_DEFECT", True))
         self.assertEqual(self.scalar("select count(*) from document where request_id = %s", rid), 0)
 
@@ -341,7 +351,7 @@ class LoiMangMa(DocBase):
 
     def test_loi_khong_mang_gia_tri(self):
         self.llm.set("draft_free_content", "không phải JSON")
-        e = self.fail(self.submitted_request(national_id=NATIONAL_ID))
+        e = self.failed(self.submitted_request(national_id=NATIONAL_ID))
         for text in (repr(e), str(e), e.raw_code):
             self.assertNotIn(PURPOSE, text)
             self.assertNotIn(NATIONAL_ID, text)
