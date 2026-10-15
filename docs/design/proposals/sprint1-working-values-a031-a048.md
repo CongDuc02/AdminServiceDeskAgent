@@ -61,6 +61,7 @@ flowchart LR
 | WV-28 | Chờ chỗ khi đủ WV-27 lượt (`FILE_FETCH_WAIT_S`) | **15 s** | **PO, 2026-10-13 (B8c Q1)**; "chưa hiệu chỉnh" | O1-18 | Hết hạn: `FILE_UNAVAILABLE` 503 kèm `Retry-After` (WV-30) |
 | WV-29 | Hạn chót tổng của MỘT lượt tải, tính từ lúc có chỗ, **bao cả pha stream** (`FILE_FETCH_DEADLINE_S`) | **60 s** | **PO, 2026-10-13 (B8c Q2)**; "chưa hiệu chỉnh" | O1-18 | Hết hạn: cắt kết nối, nhả chỗ, đóng tệp tạm |
 | WV-30 | Giá trị `Retry-After` của 503 "bận" (`FILE_FETCH_RETRY_AFTER_S`) | **5 s** | Chọn — B8c, "chưa hiệu chỉnh" (PO chỉ định có header, không chỉ định số) | O1-18 | Chỉ ở 503 do hết chờ chỗ; 503 do file hỏng/mất **không** có header |
+| WV-31 | Độ dài tối thiểu (ký tự, sau khi chuẩn hoá khoảng trắng) của một giá trị slot `RES` để phép kiểm "không chứa nguyên văn slot `RES` khác" của `validate_free_content` có nghĩa (`domain.free_content.MIN_RES_LENGTH`) | **4** | Chọn — B9a, "chưa hiệu chỉnh". Chuỗi `RES` rất ngắn ("A", "đề") khớp ngẫu nhiên trong câu chữ thường và làm văn bản hợp lệ bị loại oan; số định danh, tên người, địa chỉ đều dài hơn | A-018 | Đo tỷ lệ loại oan ở bộ eval nhóm H của `10-eval.md` |
 
 **WV-04, WV-05 và WV-06 là tham số mới.** A-031 hiện ghi "số lần retry gọi model" nhưng không ghi timeout của một lời gọi model. Timeout ba lớp tool không phủ lời gọi model, vì lời gọi model đi qua `ai_gateway`, không qua `tool_layer`. Nếu PO duyệt, dòng A-031 thêm hai tham số này.
 

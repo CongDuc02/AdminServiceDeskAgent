@@ -255,6 +255,94 @@ class DocxRender(RenderBase):
         self.assertEqual(cm.exception.reason, "CHECKSUM_MISMATCH")
 
 
+MARK = "[Số văn bản — cấp khi phát hành]"
+
+
+class FinalKhongConDauGiuCho(RenderBase):
+    """A-098 (PO, 2026-10-15): bản NHÁP được mang dấu giữ chỗ của hệ thống và phải hiện rõ; bản `FINAL` THẤT BẠI nếu còn sót bất kỳ dấu giữ chỗ nào — ở giá trị hay ở chữ của file."""
+
+    def assert_nothing_written(self, did):
+        self.assertEqual(self.scalar("select count(*) from stored_object_commit where object_key like %s", f"renders/{did}/%"), 0)
+        self.assertEqual(self.scalar("select count(*) from audit_event where document_id = %s and action = 'document.docx_render'", did), 0)
+
+    def test_ban_nhap_mang_dau_va_dau_hien_trong_docx_va_pdf(self):
+        did = self.make_document(self.make_template())
+        values = {**VALUES, "tieu_de": MARK}
+        docx = self.render_docx(did, values, "DRAFT")
+        self.assertIn(MARK, docx_text(self.s3_bytes(docx.docx_key)))
+        pdf = pe.pdf_export(self.pool, self.storage, self.sys, docx)
+        self.assertIn(MARK, " ".join(pdf_text(self.s3_bytes(pdf.pdf_key)).split()))
+
+    def test_final_that_bai_khi_gia_tri_la_dau_giu_cho_cua_he_thong(self):
+        did = self.make_document(self.make_template())
+        with self.assertRaises(dr.PlaceholderRemains) as cm:
+            self.render_docx(did, {**VALUES, "tieu_de": MARK, "ho_ten": f"Ông {MARK}"}, "FINAL")
+        self.assertEqual((cm.exception.code, cm.exception.names), ("PLACEHOLDER_REMAINS", ("ho_ten", "tieu_de")))
+        self.assertNotIn("cấp khi phát hành", str(cm.exception))  # chỉ tên biến
+        self.assert_nothing_written(did)
+
+    def test_final_that_bai_khi_gia_tri_la_giu_cho_chung(self):
+        for bad in ("...", "[điền sau]", "N/A", "…", "TBD", "  "):
+            did = self.make_document(self.make_template())
+            with self.assertRaises(dr.PlaceholderRemains, msg=repr(bad)) as cm:
+                self.render_docx(did, {**VALUES, "noi_dung": bad}, "FINAL")
+            self.assertEqual(cm.exception.names, ("noi_dung",), repr(bad))
+            self.assert_nothing_written(did)
+
+    def test_dau_khong_phan_biet_dau_gach_hoa_thuong_va_dang_unicode(self):
+        did = self.make_document(self.make_template())
+        import unicodedata
+        for bad in ("[số văn bản - CẤP KHI PHÁT HÀNH]", "[Số văn bản – cấp khi phát hành]", unicodedata.normalize("NFD", MARK), "[Ngày — cấp khi phát hành ]"):
+            with self.assertRaises(dr.PlaceholderRemains, msg=repr(bad)):
+                self.render_docx(did, {**VALUES, "noi_nhan": bad}, "FINAL")
+        self.assert_nothing_written(did)
+
+    def test_final_dat_khi_khong_con_dau_nao(self):
+        did = self.make_document(self.make_template())
+        r = self.render_docx(did, {**VALUES, "tieu_de": "GIẤY XÁC NHẬN GIẢ số 123/QĐ-GIẢ"}, "FINAL")
+        self.assertEqual((r.render_kind, r.reused), ("FINAL", False))
+        self.assertFalse(provisional_in(docx_text(self.s3_bytes(r.docx_key))))
+
+    def test_giua_chung_cau_co_chu_cap_khi_phat_hanh_khong_co_ngoac_khong_bi_nham(self):
+        did = self.make_document(self.make_template())
+        r = self.render_docx(did, {**VALUES, "noi_dung": "Số văn bản được cấp khi phát hành theo quy định của cơ quan."}, "FINAL")
+        self.assertFalse(r.reused)
+
+    def test_final_that_bai_khi_dau_nam_san_trong_khung_cua_template(self):
+        tpl = build_template(extra_paragraphs=(MARK,))
+        did = self.make_document(self.make_template(template=tpl))
+        with self.assertRaises(dr.PlaceholderRemains) as cm:
+            self.render_docx(did, VALUES, "FINAL")
+        self.assertEqual(cm.exception.names, ("document_text",))
+        self.assert_nothing_written(did)
+
+    def test_dau_nam_san_trong_header_hay_footer_cung_bi_bat(self):
+        for kw in ({"header_text": f"{MARK} {{{{ co_quan }}}}"}, {"footer_text": f"Trang — {MARK} {{{{ noi_nhan }}}}"}):
+            did = self.make_document(self.make_template(template=build_template(**kw)))
+            with self.assertRaises(dr.PlaceholderRemains, msg=repr(kw)):
+                self.render_docx(did, VALUES, "FINAL")
+
+    def test_khoa_da_co_tu_ban_nhap_van_bi_kiem_khi_render_final(self):
+        """Bản NHÁP cùng input đã commit docx có dấu nằm sẵn ở khung; FINAL cùng khoá không được tái dùng nó."""
+        tpl = build_template(extra_paragraphs=(MARK,))
+        did = self.make_document(self.make_template(template=tpl))
+        draft = self.render_docx(did, VALUES, "DRAFT")
+        self.assertFalse(draft.reused)
+        with self.assertRaises(dr.PlaceholderRemains):
+            self.render_docx(did, VALUES, "FINAL")
+        self.assertEqual(self.scalar("select count(*) from stored_object_commit where object_key like %s", f"renders/{did}/%"), 1)  # chỉ bản nháp
+
+    def test_ban_nhap_khong_bi_kiem_du_co_dau_o_khung(self):
+        tpl = build_template(extra_paragraphs=(MARK,))
+        did = self.make_document(self.make_template(template=tpl))
+        self.assertFalse(self.render_docx(did, {**VALUES, "noi_dung": "..."}, "DRAFT").reused)
+
+
+def provisional_in(text: str) -> bool:
+    from bo19.domain import provisional
+    return provisional.contains_marker(text)
+
+
 class PdfExport(RenderBase):
     def export(self, docx: dr.DocxRender, **kw) -> pe.PdfExport:
         return pe.pdf_export(self.pool, self.storage, self.sys, docx, **kw)

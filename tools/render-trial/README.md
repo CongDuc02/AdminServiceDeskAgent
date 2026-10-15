@@ -27,7 +27,7 @@ MSYS_NO_PATHCONV=1 docker run --rm --network ci --env-file <file-env-s3-ngoài-r
 unset BO19_LLM_API_KEY
 ```
 
-Tuỳ chọn: `--runs N` · `--label b9a` (kết quả ghi `docs/reference/render-trial-<nhãn>.md`) · `--no-publish`.
+Tuỳ chọn: `--runs N` · `--label b9a` (kết quả ghi `docs/reference/render-trial-<nhãn>.md`) · `--no-publish` · `--export-pdf TỆP` (ghi bản PDF NHÁP của job đầu để PO đọc nội dung P4 — ghi vào `tools/render-trial/out/` rồi **quét host, khoá và định danh** trước khi đưa vào `docs/reference/`: `docker run --rm --env-file .env -v "$PWD":/repo -w /repo --entrypoint python bo19-test tools/render-trial/scan_pdf.py <pdf>` — so mọi giá trị biến môi trường với PDF và chỉ in TÊN biến khớp).
 Mã thoát: `0` xong · `2` thiếu biến môi trường (chỉ nêu tên) hay tham số sai · `3` chưa `--confirm-real`.
 
 `backend/tests/test_render_trial.py` chạy toàn bộ tool với provider giả ở mỗi lần CI (không mạng, không khoá thật), kể cả phép thử "không vượt 10 lời gọi khi mọi lời gọi hỏng".

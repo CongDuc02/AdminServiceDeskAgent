@@ -23,7 +23,7 @@ from bo19.ai_gateway.providers import ProviderClient
 from bo19.ai_gateway.routing.profiles import load_profiles
 from bo19.orchestrator.runner import DocumentRunner
 from bo19.persistence.pool import Pool
-from tests.doc_support import SESSION_SECRET, draft_output
+from tests.doc_support import FINGERPRINT_KEY, draft_output
 from tests.graph_support import KEY, FakeLlm
 from tests.s3_support import storage_for
 
@@ -41,7 +41,7 @@ def main(argv: list[str]) -> int:
     pool = Pool(dsn, application_name="bo19-test-proc", min_size=1, max_size=4)
     pool.open()
     gateway = Gateway(profiles=load_profiles().profiles, client=ProviderClient(base_url="https://llm.example.test/openai/v1", api_key=KEY, transport=llm.transport), budget=Budget(pool))
-    runner = DocumentRunner.open(pool=pool, gateway=gateway, storage=storage_for(bucket), dsn=dsn, session_secret=SESSION_SECRET)
+    runner = DocumentRunner.open(pool=pool, gateway=gateway, storage=storage_for(bucket), dsn=dsn, fingerprint_key=FINGERPRINT_KEY)
     try:
         if mode in ("render", "hang"):
             if mode == "hang":

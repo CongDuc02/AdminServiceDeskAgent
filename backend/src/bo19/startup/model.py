@@ -71,6 +71,7 @@ MATRIX: tuple[Step, ...] = (
     Step("21", "hồ sơ model hợp schema", _AW, B),
     Step("22", "BO19_LLM_API_KEY có mặt (khi api bắt đầu gọi LLM)", _AW, B),
     Step("23", "file khuôn trả lời hợp lệ", _A_, B),
+    Step("24", "BO19_RENDER_FINGERPRINT_KEY có mặt và đủ dài", _W_, B),
 )
 
 

@@ -106,7 +106,8 @@ backend/
     │   ├── jobs/             # giành, gia hạn lease, kết thúc job cho queue_worker — không sinh audit_event, thuộc danh sách miễn (A-055)
     │   ├── storage/          # giao thức ghi một lần (mục Lưu trữ file và bất biến bản render của 04-data.md); NƠI DUY NHẤT ghi stored_object, stored_object_commit; có cả object_claim_reconcile (B8a — nó xoá stored_object và chạm object_storage, nên ở đây, không ở ops/)
     │   ├── rendering/
-    │   │   ├── docx_fill.py  # điền bảng giá trị biến vào .docx; watermark theo operating_mode đã ghim
+    │   │   ├── docx_fill.py  # điền bảng giá trị biến vào .docx; watermark theo operating_mode đã ghim; ghi thuộc tính tài liệu (B9a)
+    │   │   ├── doc_properties.py # subject = chuỗi watermark, author và lastModifiedBy = tên hệ thống (ADR-038)
     │   │   ├── convert.py    # tiến trình soffice cho mỗi lần chuyển đổi (ADR-015)
     │   │   └── fonts.py      # liệt kê font file .docx khai dùng; kiểm font có mặt trong image — khớp chính xác tên họ
     │   ├── numbering/        # giao dịch cấp số ngắn (ADR-011)
@@ -152,7 +153,7 @@ backend/
     │   ├── errors.py         # mã lỗi nội bộ → error_code; mã không có ánh xạ thì INTERNAL_ERROR (mục Mã lỗi của 05-api.md)
     │   ├── turns/            # bộ giám sát lượt: task lượt tách khỏi request (ADR-016)
     │   └── sse/              # chuyển tiếp stream lượt; stream tín hiệu dùng try_acquire
-    ├── startup/              # bước kiểm khởi động — mục 7. B2: model.py (ma trận bước × entrypoint, ngữ cảnh), runner.py (bộ chạy), registry.py (bước đã có code), connect.py (nối DB, phân loại lỗi nối), checks.py (#1, #2), checks_logging.py (#10), checks_config.py (#11, #13), checks_security.py (#12, #19, #20), checks_environment.py (#15–#17), checks_gateway.py (#5, #21 — B4)
+    ├── startup/              # bước kiểm khởi động — mục 7. B2: model.py (ma trận bước × entrypoint, ngữ cảnh), runner.py (bộ chạy), registry.py (bước đã có code), connect.py (nối DB, phân loại lỗi nối), checks.py (#1, #2), checks_logging.py (#10), checks_config.py (#11, #13), checks_security.py (#12, #19, #20, #24), checks_environment.py (#15–#17), checks_gateway.py (#5, #21 — B4)
     └── entrypoints/          # api_main, worker_main, cron_main, migrate_main; combined_main, cron_scheduler_main (ADR-033) — composition root; không ai import entrypoints
 ```
 
@@ -491,6 +492,7 @@ Chạy trước khi tiến trình phục vụ request hay giành job đầu tiê
 | 21 | **Hồ sơ model của mọi tier hợp schema:** đủ trường bắt buộc — `base_url`, mã model, tier — và không có tham số nào ngoài danh sách được phép của chính mã model đó, giá trị trong miền cho phép. Ví dụ `reasoning_effort` chỉ hợp lệ với `openai/gpt-oss-20b`, `openai/gpt-oss-120b`, giá trị `low`, `medium`, `high` | ✔ | ✔ | — | **Chặn** | ADR-035; `docs/reference/llm-groq.md` |
 | 22 | **`BO19_LLM_API_KEY` có mặt và không rỗng** — áp khi `api` hoặc `worker` bắt đầu gọi LLM. Thiếu khoá thì không khởi động | ✔ | ✔ | — | **Chặn** | ADR-035; PO, 2026-10-05. **Có code ở B6b**, cùng lát `intake_graph` — từ đây `api` gọi LLM nên thiếu khoá chặn khởi động. Mã trượt `STARTUP_22_LLM_API_KEY_MISSING`; không bao giờ ghi giá trị khoá |
 | 23 | **File khuôn trả lời hợp lệ** (`orchestrator/intake_graph/reply_templates.json`): `schema_version` đúng; **đúng tập mã khuôn** mà mã dùng (thiếu một khuôn hay thừa một khuôn mồ côi đều trượt); mã khuôn đúng dạng; `{tên}` trong `text` khớp đúng tập `params`; kiểu tham số thuộc danh sách đóng; không `{`/`}` lạ; độ dài ≤ 600 ký tự. Cùng khuôn #21 | ✔ | — | — | **Chặn** | `proposals/reply-templates.md` (R2, PO 2026-10-09). **Số #23, không phải #25 như bản đề xuất ghi** — #23 là số trống kế tiếp; không có #23, #24 nào khác (B6b, 2026-10-12) |
+| 24 | **`BO19_RENDER_FINGERPRINT_KEY` có mặt và dài ít nhất 32 byte** sau mã hoá UTF-8 — khoá HMAC-SHA256 của dấu vân tay input render (`document_free_content.input_fingerprint`, ADR-009). Secret **riêng**, không dẫn xuất từ `BO19_SESSION_SECRET`: đổi secret phiên không được làm đổi dấu vân tay đã lưu, và lộ một secret không được là lộ cả hai mục đích. Như #12, độ dài là điều kiện cần, không phải đủ | — | ✔ | — | **Chặn** | ADR-009; ADR-039; A-097 (PO, 2026-10-15). Mã trượt `STARTUP_24_RENDER_FINGERPRINT_KEY_MISSING`, `STARTUP_24_RENDER_FINGERPRINT_KEY_TOO_SHORT`; không bao giờ ghi giá trị |
 
 **Mô hình chạy — nhắc lại cho rõ, không phải quy tắc mới:** câu mở đầu mục này đã nói *"ghi **danh sách** mã trượt vào log rồi thoát"* — số nhiều, tức mọi bước kiểm chạy tới hết rồi mới gom kết quả, **không** dừng ở bước trượt đầu tiên. Vì vậy #17 luôn chạy dù #16 đã trượt, và phải tự vệ theo đúng mô tả ở dòng #17.
 
@@ -503,6 +505,7 @@ Chạy trước khi tiến trình phục vụ request hay giành job đầu tiê
 - **#11 so giá trị cấu hình, không đo Render.** Shutdown delay thực trên gói free đo được ≈ 5 s (S4; A-031) trong khi cấu hình là 30 s; bước kiểm vẫn đạt — nó kiểm ràng buộc giữa các giá trị đã cấu hình (R2-5).
 - **#13: chỉ nhận `Asia/Ho_Chi_Minh`** (A-041 `Đã chốt`); biến `BO19_ORG_TIMEZONE` đặt giá trị khác là Chặn.
 - **#12: có mặt ở B2; từ B3 thêm độ dài ≥ 32 byte** — A-088 `Đã chốt` (ADR-028, mục Cập nhật B3). Mã trượt: `STARTUP_12_SESSION_SECRET_MISSING`, `STARTUP_12_SESSION_SECRET_TOO_SHORT`. Độ dài là điều kiện cần; entropy không kiểm được bằng độ dài.
+- **#24 (B9a, PO 2026-10-15):** chỉ `worker` (tiến trình duy nhất băm input render) và `combined_main`; chặn khi `BO19_RENDER_FINGERPRINT_KEY` thiếu, rỗng hoặc ngắn hơn 32 byte (đo sau `strip`, như #12). `open_document_runner` còn tự từ chối dựng runner khi khoá thiếu (log `RENDER_HANDLER_NOT_REGISTERED`, lý do `RENDER_FINGERPRINT_KEY_MISSING`) — lớp thứ hai, không thay #24. **Không đổi khoá khi chưa có kế hoạch tính lại** dấu vân tay (mục Khoá dấu vân tay input render của `11-ops.md`).
 - **#19: tên biến lấy từ nguồn gốc tải bằng `curl`** (`docs/reference/langsmith-tracing-env-nguon-goc.md`): bốn tên bật tracing và sáu tên `*_TRACING_*` không tự bật; mẫu chặn cả mười, và không chặn `LANGSMITH_OTEL_*` (không chứa `TRACING`).
 - **Chưa có ở B2:** #3, #4a–c, #5, #6, #7, #8, #9, #14, #18, #21 — vì phụ thuộc phần chưa dựng (checkpointer, collection và embedding, `soffice`, font, bản build client, hồ sơ model, `combined_main`). *(#5, #14, #21 có ở các lát sau; #6, #7 có ở B8b.)*
 

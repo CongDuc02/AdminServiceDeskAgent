@@ -161,10 +161,10 @@ class DocumentRunner:
         self._deps, self._graph, self._checkpointing = deps, graph, checkpointing
 
     @classmethod
-    def open(cls, *, pool: Pool, gateway: Gateway, storage: ObjectStorage, dsn: str, session_secret: str) -> "DocumentRunner":
+    def open(cls, *, pool: Pool, gateway: Gateway, storage: ObjectStorage, dsn: str, fingerprint_key: str) -> "DocumentRunner":
         """Composition root gọi một lần lúc khởi động `worker`: mở checkpointer (không `setup()`), dựng khoá dấu vân tay (A-097), biên dịch graph."""
         checkpointing = open_checkpointer(dsn)
-        deps = DocumentDeps(pool=pool, gateway=gateway, storage=storage, fingerprinter=InputFingerprinter(session_secret))
+        deps = DocumentDeps(pool=pool, gateway=gateway, storage=storage, fingerprinter=InputFingerprinter(fingerprint_key))
         return cls(deps, build_document_graph(deps, checkpointing.saver), checkpointing)
 
     def close(self) -> None:

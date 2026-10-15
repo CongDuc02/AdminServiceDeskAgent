@@ -1,7 +1,7 @@
 """Background Worker — vòng poll SKIP LOCKED (06-structure.md mục Tiến trình) — composition root, không ai import entrypoints.
 
 Cùng khuôn `api_main`: cài handler log mask trước, chạy bộ bước kiểm khởi động của cột `worker` (trượt bước Chặn thì thoát mã 1, không giành job nào), mở pool `bo19_app`, rồi chạy `queue_worker.dispatcher`.
-**Chỉ giành loại job có handler.** Từ B9a `render_document` có handler (`DocumentRunner`: `document_graph` tới `await_content_review`) — đăng ký **khi có object storage và khoá LLM**; thiếu một trong hai thì không
+**Chỉ giành loại job có handler.** Từ B9a `render_document` có handler (`DocumentRunner`: `document_graph` tới `await_content_review`) — đăng ký **khi có object storage, khoá LLM và khoá dấu vân tay render**; thiếu một trong ba thì không
 đăng ký (log `RENDER_HANDLER_NOT_REGISTERED`, chỉ lý do dạng mã) và job `render_document` do `request_submit` đưa vào hàng đợi vẫn `QUEUED`, như ở B8a — không bị giành rồi `FAILED` vì thiếu cấu hình.
 
 Tắt êm (mục Tắt tiến trình êm của 06-structure.md): `SIGTERM`/`SIGINT` → ghi log (O1-5: `SIGTERM_RECEIVED`/`SIGNAL_RECEIVED`, `PROCESS_EXIT` kèm thời gian từ `SIGTERM`), ngừng giành job mới, chờ job đang chạy tới
@@ -36,7 +36,10 @@ def open_document_runner(settings: Settings, pool: Pool) -> DocumentRunner | Non
     if not settings.llm_api_key:
         log.warning("RENDER_HANDLER_NOT_REGISTERED", reason="LLM_API_KEY_MISSING")
         return None
-    return DocumentRunner.open(pool=pool, gateway=build_gateway(settings, pool), storage=storage, dsn=settings.database_url, session_secret=settings.session_secret)
+    if not settings.render_fingerprint_key:  # bước kiểm #24 đã chặn trước khi tới đây; giữ lại để hàm không tự dựng runner với khoá rỗng
+        log.warning("RENDER_HANDLER_NOT_REGISTERED", reason="RENDER_FINGERPRINT_KEY_MISSING")
+        return None
+    return DocumentRunner.open(pool=pool, gateway=build_gateway(settings, pool), storage=storage, dsn=settings.database_url, fingerprint_key=settings.render_fingerprint_key)
 
 
 def serve(shutdown: ShutdownLog) -> int:

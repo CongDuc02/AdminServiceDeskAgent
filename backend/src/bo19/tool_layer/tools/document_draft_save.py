@@ -3,8 +3,9 @@
 Một dòng cho mỗi (`document`, biến, vòng, lần sinh); `attempt_no` ∈ {1, 2} — lần sinh chính và lần sinh lại duy nhất. **Ghi một lần**: gọi lại cùng khoá thì không ghi đè (trả `created = False`); văn bản của lần đầu đứng.
 **Chặn cứng khi `document` không ở `DRAFT`** (`NOT_DRAFT`) — lớp thứ hai của INV-01: sau cổng 1 không có đường nào ghi nội dung. `validation_outcome` (`PASSED`/`FAILED`) do `validate_free_content` quyết **trước** khi gọi tool này.
 
-**Dấu vân tay input (ADR-009):** hàm băm **có khoá** của input đã dùng (giá trị các slot đã khai cho biến, `variable_guidance`, `request_type`) — băm trần một chuỗi ngắn như `purpose` là đoán ngược được. Khoá: HKDF-SHA256 từ `BO19_SESSION_SECRET`
-(A-097 — mặc định chờ PO), `fingerprint_key_id = "session-hkdf-v1"`. Lưu ở bảng nghiệp vụ, không ở state.
+**Dấu vân tay input (ADR-009):** hàm băm **có khoá** của input đã dùng (giá trị các slot đã khai cho biến, `variable_guidance`, `request_type`) — băm trần một chuỗi ngắn như `purpose` là đoán ngược được. Khoá: HMAC-SHA256 với **secret riêng** `BO19_RENDER_FINGERPRINT_KEY`
+(A-097, PO 2026-10-15 — không dẫn xuất từ secret phiên: đổi secret phiên không được làm đổi dấu vân tay đã lưu, lộ một secret không được là lộ cả hai mục đích), `fingerprint_key_id = "render-fp-v1"`;
+bước kiểm khởi động #24 bảo đảm khoá có mặt và dài ≥ 32 byte. Lưu ở bảng nghiệp vụ, không ở state.
 
 `audit_event` `document.draft_save`: tên biến, vòng, lần sinh, kết quả, phiên bản prompt module — **không** văn bản.
 """
@@ -25,8 +26,7 @@ from bo19.tool_layer.kernel.context import ToolContext
 from bo19.tool_layer.kernel.permission import require_system
 from bo19.tool_layer.tools._common import ToolError
 
-KEY_ID = "session-hkdf-v1"
-_HKDF_INFO = b"bo19/input-fingerprint/v1"
+KEY_ID = "render-fp-v1"
 OUTCOMES = ("PASSED", "FAILED")
 
 
@@ -42,21 +42,13 @@ class DocumentNotFound(ToolError):
     code = "DOCUMENT_NOT_FOUND"
 
 
-def _hkdf_sha256(secret: bytes, info: bytes, length: int = 32) -> bytes:
-    """HKDF (RFC 5869) với SHA-256, không muối: PRK = HMAC(0…0, secret); T(1) = HMAC(PRK, info ‖ 0x01). Một khối là đủ cho 32 byte."""
-    if length > 32:
-        raise ValueError("length")
-    prk = hmac.new(b"\x00" * 32, secret, hashlib.sha256).digest()
-    return hmac.new(prk, info + b"\x01", hashlib.sha256).digest()[:length]
-
-
 class InputFingerprinter:
     """Băm có khoá của input một lần sinh. Không có khoá trong `repr`."""
 
-    def __init__(self, secret: str, *, key_id: str = KEY_ID) -> None:
-        if not secret:
-            raise ValueError("secret")
-        self._key = _hkdf_sha256(secret.encode("utf-8"), _HKDF_INFO)
+    def __init__(self, key: str, *, key_id: str = KEY_ID) -> None:
+        if not key:
+            raise ValueError("key")
+        self._key = key.encode("utf-8")
         self.key_id = key_id
 
     def __repr__(self) -> str:

@@ -30,6 +30,7 @@ from tests import pg_support
 BACKEND = Path(__file__).resolve().parents[1]
 LLM_KEY = "KHOA_LLM_GIA_CUA_TEST_ENTRYPOINT_55bb"
 SECRET = "b8a-entrypoint-secret-" + "s" * 30
+FP_KEY = "b9a-fingerprint-key-" + "f" * 30
 
 
 def free_port() -> int:
@@ -100,7 +101,7 @@ class EntrypointBase(unittest.TestCase):
         cls.db.drop()
 
     def env(self, **extra: str) -> dict[str, str]:
-        return {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": self.db.dsn("bo19_app"), "BO19_LLM_API_KEY": LLM_KEY, "BO19_SESSION_SECRET": SECRET, "BO19_SHUTDOWN_DELAY_SECONDS": "5", **extra}
+        return {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": self.db.dsn("bo19_app"), "BO19_LLM_API_KEY": LLM_KEY, "BO19_SESSION_SECRET": SECRET, "BO19_RENDER_FINGERPRINT_KEY": FP_KEY, "BO19_SHUTDOWN_DELAY_SECONDS": "5", **extra}
 
     def start(self, module: str, **extra: str) -> Proc:
         p = Proc(module, self.env(**extra))
@@ -109,7 +110,7 @@ class EntrypointBase(unittest.TestCase):
 
     def assert_no_secrets(self, p: Proc) -> None:
         text = p.text()
-        for secret in (LLM_KEY, SECRET, self.db.dsn("bo19_app")):
+        for secret in (LLM_KEY, SECRET, FP_KEY, self.db.dsn("bo19_app")):
             self.assertNotIn(secret, text)
 
 

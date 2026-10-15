@@ -252,9 +252,9 @@ class MaTranKhopTaiLieu(unittest.TestCase):
         for number in doc:
             self.assertEqual(code_rows[number], doc[number], f"bước #{number}")
 
-    def test_so_buoc_la_23_voi_buoc_4_chia_ba(self):
-        self.assertEqual(len(MATRIX), 25)
-        self.assertEqual({re.match(r"\d+", s.number).group() for s in MATRIX}, {str(i) for i in range(1, 24)})
+    def test_so_buoc_la_24_voi_buoc_4_chia_ba(self):
+        self.assertEqual(len(MATRIX), 26)
+        self.assertEqual({re.match(r"\d+", s.number).group() for s in MATRIX}, {str(i) for i in range(1, 25)})
 
     def test_combined_la_hop_cac_cot_cong_buoc_18(self):
         combined = {s.number for s in MATRIX if s.applies(Entry.COMBINED)}

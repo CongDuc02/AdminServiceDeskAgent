@@ -117,3 +117,9 @@ Tài liệu (A.5) → lấy tài liệu PDF vào `docs/reference/` → **phần 
 ## Open Questions
 
 Q1–Q6 ở trên. Mục mở mới nếu được duyệt: **A-096** (`[CẦN XÁC MINH]` — địa vị của từ điển `Info` ở PDF 2.0 và ánh xạ thuộc tính của LibreOffice; có bản gốc thì đóng).
+
+---
+
+## Kết quả (2026-10-14)
+
+Xong trên `build/b9a-document-graph-den-pending-approval`; **kết quả, bằng chứng và các lệch kế hoạch** ở mục Triển khai ở B9a của `06-structure.md` và mục B9a — kết quả mã của `CHANGELOG.md`. Các điều chỉnh của PO ở đầu file này đều đã làm: không bộ đọc PDF trong runtime (ADR-038); chuỗi watermark vào khoá object; `tools/render-audit/`; `author`/`lastModifiedBy` trung lập; 10 lời gọi Groq với `--confirm-real` (đã chạy 3 job, 3 yêu cầu); `combined_main` sang B9a2; điểm dừng resume bằng tiến trình thật.

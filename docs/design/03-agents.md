@@ -764,6 +764,9 @@ flowchart TD
 - **Văn bản LLM không vào state** (mục 6.2): nó nằm ở bộ nhớ của lần chạy giữa `draft_free_content` và `validate_free_content` (ADR-039 mục 4).
 - **Biến *điền sau duyệt*:** giá trị hiển thị ở bản nháp là dấu giữ chỗ cố định; không vào `approved_content_hash`; không qua kiểm "không placeholder".
 - **Lỗi → job `FAILED`:** tạm thì thử lại theo backoff của hàng đợi, vĩnh viễn thì `FAILED` ngay (`JobFailure(permanent=True)`) — danh sách ở ADR-039 mục 5. Sprint 2 thay bằng `halt_for_human` mà không đổi tên mã.
+- **`ReviewSignal.kind` ở B9a:** `await_content_review` chỉ lưu `decision_record_id` (payload resume chỉ mang id); `kind`, `change_scope`, `change_targets` do `route_review` điền sau khi **đọc DB** — nên `kind` là `None` giữa hai node. Hình dạng ở mục 6.2 không đổi về ý nghĩa; `schema_version` vẫn 1 (chưa thread nào chạy).
+- **`GraphInterrupt` đi qua biên node nguyên vẹn** (`runtime.node_boundary`): nó là điều khiển luồng của LangGraph chứ không phải lỗi, không mang văn bản của người dùng; mọi exception khác vẫn bị đổi thành `NodeError(mã)`.
+- **Mã con của `REVIEW_NOT_READY` ở Sprint 1** chỉ vào log kỹ thuật (mã và tên biến, không giá trị); `audit_event` của lần dừng là việc của `halt_for_human` (Sprint 2).
 - **Điểm dừng resume (PO, 2026-10-13):** tiến trình khởi động lại khi graph đang chờ ở `await_content_review` vẫn resume đúng — thread đọc lại từ checkpoint PostgreSQL, không gọi lại node nào đã xong, không gọi LLM lại. Chứng minh bằng test với tiến trình thật.
 
 ### 6.5 Checkpointer và PII

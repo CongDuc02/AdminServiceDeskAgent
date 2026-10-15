@@ -145,13 +145,15 @@ class DangKy(DocBase):
     def test_worker_main_khong_dung_runner_khi_thieu_storage_hoac_khoa_llm(self):
         base = dict(GOOD)
         with_storage = {**base, "BO19_OBJECT_STORAGE_ENDPOINT_URL": "http://s3.test:8333", "BO19_OBJECT_STORAGE_BUCKET": "b", "BO19_OBJECT_STORAGE_ACCESS_KEY_ID": "a", "BO19_OBJECT_STORAGE_SECRET_ACCESS_KEY": "s"}
-        for label, env in (("không storage, không khoá", base), ("không storage, có khoá", {**base, "BO19_LLM_API_KEY": "k"}), ("có storage, không khoá", with_storage)):
+        fp = {"BO19_RENDER_FINGERPRINT_KEY": "k" * 32}
+        for label, env in (("không storage, không khoá", {**base, **fp}), ("không storage, có khoá", {**base, **fp, "BO19_LLM_API_KEY": "k"}), ("có storage, không khoá", {**with_storage, **fp}),
+                           ("có storage, có khoá LLM, thiếu khoá dấu vân tay", {**with_storage, "BO19_LLM_API_KEY": "k"})):
             self.assertIsNone(worker_main.open_document_runner(load_settings(env), self.pool), label)
 
     def test_worker_main_dung_runner_khi_du_storage_va_khoa(self):
         from tests.s3_support import ENDPOINT
         import os
-        env = {**GOOD, "BO19_DATABASE_URL": self.db.dsn("bo19_app"), "BO19_ENVIRONMENT": "dev", "BO19_LLM_API_KEY": "k", "BO19_OBJECT_STORAGE_ENDPOINT_URL": ENDPOINT, "BO19_OBJECT_STORAGE_BUCKET": self.bucket,
+        env = {**GOOD, "BO19_DATABASE_URL": self.db.dsn("bo19_app"), "BO19_ENVIRONMENT": "dev", "BO19_LLM_API_KEY": "k", "BO19_RENDER_FINGERPRINT_KEY": "k" * 32, "BO19_OBJECT_STORAGE_ENDPOINT_URL": ENDPOINT, "BO19_OBJECT_STORAGE_BUCKET": self.bucket,
                "BO19_OBJECT_STORAGE_ACCESS_KEY_ID": os.environ["BO19_TEST_S3_ACCESS_KEY_ID"], "BO19_OBJECT_STORAGE_SECRET_ACCESS_KEY": os.environ["BO19_TEST_S3_SECRET_ACCESS_KEY"]}
         runner = worker_main.open_document_runner(load_settings(env), self.pool)
         try:

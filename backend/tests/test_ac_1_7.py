@@ -32,6 +32,7 @@ from bo19.startup import runner
 from bo19.startup.model import Entry
 
 SECRET = "BI_MAT_PHIEN_KHONG_DUOC_LOT_RA_LOG"
+FP_KEY = "KHOA_DAU_VAN_TAY_KHONG_DUOC_LOT_RA_LOG_DAI_DU_32"
 LLM_KEY = "KHOA_LLM_KHONG_DUOC_LOT_RA_LOG"
 
 
@@ -81,7 +82,7 @@ class AC17(unittest.TestCase):
         self.addCleanup(logging.getLogger().removeHandler, h)
 
     def start(self, user: str, entry: Entry = Entry.API, **over):
-        env = {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": self.dsn(user), "BO19_SESSION_SECRET": SECRET, "BO19_LLM_API_KEY": LLM_KEY}
+        env = {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": self.dsn(user), "BO19_SESSION_SECRET": SECRET, "BO19_LLM_API_KEY": LLM_KEY, "BO19_RENDER_FINGERPRINT_KEY": FP_KEY}
         env = {**env, **over}
         env = {k: v for k, v in env.items() if v is not None}
         return runner.run(entry, load_settings(env), env, migrations_root=self.root / "m")
@@ -126,6 +127,17 @@ class AC17(unittest.TestCase):
         self.assertNotIn(LLM_KEY, self.out.getvalue())
         self.assertTrue(self.start("bo19_app", Entry.CRON, BO19_LLM_API_KEY=None).ok)  # cron không gọi LLM — #22 không áp
 
+    def test_g_thieu_khoa_dau_van_tay_render_bi_chan_o_buoc_24_chi_o_worker_khong_lo_gia_tri(self):  # A-097 (PO, 2026-10-15)
+        for missing in (None, "", "   "):
+            report = self.start("bo19_app", Entry.WORKER, BO19_RENDER_FINGERPRINT_KEY=missing)
+            self.assertEqual(report.failures, ("STARTUP_24_RENDER_FINGERPRINT_KEY_MISSING",), missing)
+        report = self.start("bo19_app", Entry.WORKER, BO19_RENDER_FINGERPRINT_KEY="ngan")
+        self.assertEqual(report.failures, ("STARTUP_24_RENDER_FINGERPRINT_KEY_TOO_SHORT",))
+        self.assertNotIn(FP_KEY, self.out.getvalue())
+        for entry in (Entry.API, Entry.CRON):
+            self.assertTrue(self.start("bo19_app", entry, BO19_RENDER_FINGERPRINT_KEY=None).ok, entry)  # chỉ worker băm input render
+        self.assertEqual(self.start("bo19_app", Entry.WORKER).failures, ())
+
     def test_d_bo19_app_voi_cau_hinh_dung_qua_du_cac_buoc_da_co_code(self):
         self.set_operating_mode(None)  # chưa có dòng nào — D-009
         report = self.start("bo19_app")
@@ -141,7 +153,7 @@ class AC17(unittest.TestCase):
     def test_worker_va_cron_chay_dung_cot_cua_bang(self):
         self.set_operating_mode(None)
         worker = self.start("bo19_app", Entry.WORKER)
-        self.assertEqual(worker.passed, ("1", "2", "5", "6", "7", "10", "11", "13", "15", "16", "17", "19", "21", "22"))  # không có #12, #20: chỉ cột api
+        self.assertEqual(worker.passed, ("1", "2", "5", "6", "7", "10", "11", "13", "15", "16", "17", "19", "21", "22", "24"))  # không có #12, #20: chỉ cột api; #24 chỉ worker
         cron = self.start("bo19_app", Entry.CRON)
         self.assertEqual(cron.passed, ("1", "2", "10", "13", "16", "19"))  # cron không có #11, #15, #17
 

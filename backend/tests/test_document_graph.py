@@ -48,7 +48,7 @@ class DuongThang(DocBase):
         (name, rnd, attempt, outcome, version, body), = self.free_content(rid)
         self.assertEqual((name, rnd, attempt, outcome, version, body), ("purpose_statement", 0, 1, "PASSED", "1.0", BODY_OK))
         fp = self.rows("select input_fingerprint, fingerprint_key_id from document_free_content where document_id = %s", document_id_for(rid))[0]
-        self.assertEqual((len(bytes(fp[0])), fp[1]), (32, "session-hkdf-v1"))
+        self.assertEqual((len(bytes(fp[0])), fp[1]), (32, "render-fp-v1"))
         render = self.rows("select render_kind, revision_round, watermark_text, operating_mode from document_render where document_id = %s", document_id_for(rid))
         self.assertEqual([(r[0], r[1], r[2] is not None, r[3]) for r in render], [("DRAFT", 0, True, "NON_PRODUCTION")])
         doc = self.document(rid)
@@ -153,6 +153,59 @@ class Readiness(DocBase):
         self.assertEqual(self.scalar("select count(*) from document_render where document_id = %s", document_id_for(rid)), 1)  # đã render — kiểm đứng SAU render theo thiết kế
 
 
+class NodeTrucTiep(DocBase):
+    """`draft_free_content` gọi thẳng, không qua graph: chốt chặn của chính node (lần sinh nào đã có thì không sinh lại; tối đa hai lần) — các đường đi bình thường không chạm tới chúng vì checkpoint đã ở sau node."""
+
+    def setUp(self):
+        super().setUp()
+        from bo19.orchestrator.document_graph import nodes as nodes_module
+        from bo19.orchestrator.document_graph.runtime import DocumentDeps, RenderRuntime
+        from bo19.tool_layer.tools import document_draft_save as dds
+        from bo19.tool_layer.tools import document_transition as dt_
+        self.rid = self.submitted_request()
+        self.did = document_id_for(self.rid)
+        dt_.document_create_draft(self.pool, self.sys, document_id=self.did, request_id=self.rid, template_version_id=self.version_id)
+        self.dds = dds
+        deps = DocumentDeps(pool=self.pool, gateway=self.gateway, storage=self.storage, fingerprinter=dds.InputFingerprinter("x"))
+        self.node = nodes_module.make_nodes(deps)["draft_free_content"]
+        self.run = RenderRuntime(sys=self.sys)
+        self.state = {"document_id": str(self.did), "request_id": str(self.rid), "request_type": "WORK_CONFIRMATION", "pending_targets": ["purpose_statement"]}
+
+    def save(self, attempt: int, outcome: str) -> None:
+        self.dds.document_draft_save(self.pool, self.sys, document_id=self.did, variable_name="purpose_statement", revision_round=0, attempt_no=attempt, body=BODY_OK,
+                                     validation_outcome=outcome, prompt_module_version="1.0", input_fingerprint=b"" * 32)
+
+    def call(self):
+        return self.node(self.state, {"configurable": {"run": self.run}})
+
+    def test_bien_da_passed_thi_khong_goi_llm(self):
+        self.save(1, "PASSED")
+        self.assertEqual(self.call(), {})
+        self.assertEqual(self.llm_calls(), 0)
+        self.assertNotIn("purpose_statement", self.run.scratch.get("drafts", {}))
+
+    def test_da_co_lan_failed_thi_lan_sinh_lai_mang_attempt_no_hai(self):
+        self.llm.will("draft_free_content", draft_output())
+        self.save(1, "FAILED")
+        self.call()
+        self.assertEqual(self.llm_calls(), 1)
+        self.assertEqual(self.run.scratch["drafts"]["purpose_statement"]["attempt_no"], 2)
+
+    def test_chua_co_gi_thi_attempt_no_mot(self):
+        self.llm.will("draft_free_content", draft_output())
+        self.call()
+        self.assertEqual(self.run.scratch["drafts"]["purpose_statement"]["attempt_no"], 1)
+
+    def test_hai_lan_failed_roi_thi_khong_goi_llm_nua_va_la_free_content_invalid(self):
+        from bo19.orchestrator.runtime.node_boundary import NodeError
+        self.save(1, "FAILED")
+        self.save(2, "FAILED")
+        with self.assertRaises(NodeError) as cm:
+            self.call()
+        self.assertEqual(cm.exception.code, "FREE_CONTENT_INVALID")
+        self.assertEqual(self.llm_calls(), 0)
+
+
 class ThuLai(DocBase):
     def test_loi_tam_roi_chay_lai_tiep_tu_checkpoint_khong_goi_llm_lai(self):
         self.llm.will("draft_free_content", draft_output())
@@ -253,6 +306,21 @@ class LoiMangMa(DocBase):
         e = self.fail(self.submitted_request())
         self.assertEqual((e.reason_code, e.permanent), ("TEMPLATE_NOT_ACTIVE", True))
         self.assertEqual(self.llm_calls(), 0)
+
+    def test_template_bi_sua_trong_storage_la_checksum_mismatch_tam(self):
+        key = self.scalar("select source_object_key from template_version where id = %s", self.version_id)
+        size = self.raw.get_object(Bucket=self.bucket, Key=key)["ContentLength"]
+        self.raw.put_object(Bucket=self.bucket, Key=key, Body=b"x" * size)  # cùng độ dài, khác nội dung
+        self.llm.will("draft_free_content", draft_output())
+        e = self.fail(self.submitted_request())
+        self.assertEqual((e.reason_code, e.permanent), ("RENDER_CHECKSUM_MISMATCH", False))
+
+    def test_template_mat_trong_storage_la_object_missing_tam(self):
+        key = self.scalar("select source_object_key from template_version where id = %s", self.version_id)
+        self.raw.delete_object(Bucket=self.bucket, Key=key)
+        self.llm.will("draft_free_content", draft_output())
+        e = self.fail(self.submitted_request())
+        self.assertEqual((e.reason_code, e.permanent), ("RENDER_OBJECT_MISSING", False))
 
     def test_request_chua_submitted_la_system_defect_va_khong_tao_document(self):
         from tests.request_support import build_request

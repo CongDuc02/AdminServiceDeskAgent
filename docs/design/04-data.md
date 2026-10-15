@@ -448,7 +448,7 @@ Năm khoá ngoại ghép với chính `id` của `document` — tới bản nhá
 | `body` | text | — | `RES` — dẫn xuất từ slot `RES` |
 | `validation_outcome` | text | — | `PASSED` · `FAILED` |
 | `prompt_module_version` | text | — | — |
-| `input_fingerprint`, `fingerprint_key_id` | bytea, text | — | Hash **có khoá** của input đã dùng (ADR-009); khoá quản lý ở Phase 9 |
+| `input_fingerprint`, `fingerprint_key_id` | bytea, text | — | Hash **có khoá** của input đã dùng (ADR-009): HMAC-SHA256 với secret riêng `BO19_RENDER_FINGERPRINT_KEY`, `fingerprint_key_id` = `render-fp-v1` (A-097, ADR-039; bước kiểm khởi động #24) |
 
 Giá trị hiện hành của một biến là dòng `PASSED` có (`revision_round`, `attempt_no`) lớn nhất. Không có cờ "hiện hành" để phải sửa — bảng không cần quyền `UPDATE`.
 

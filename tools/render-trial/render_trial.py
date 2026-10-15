@@ -63,7 +63,7 @@ TPM_SOFT = 6_500
 JOB_TOKENS_EXPECTED = 3_000
 LABEL = "b9a"
 OUT = Path(__file__).resolve().parent / "out"
-SESSION_SECRET = "BI_MAT_PHIEN_CUA_RENDER_TRIAL_KHONG_PHAI_BI_MAT_THAT"
+FINGERPRINT_KEY = "KHOA_DAU_VAN_TAY_CUA_RENDER_TRIAL_KHONG_PHAI_BI_MAT_THAT"
 FONT = "Times New Roman"
 PURPOSES = (("(giả) bổ sung hồ sơ vay vốn tại ngân hàng", "(giả) Ngân hàng ABC"),
             ("(giả) làm thủ tục xin cấp thị thực đi công tác nước ngoài", "(giả) Sở Ngoại vụ"),
@@ -143,6 +143,18 @@ def submitted_request(db, pool, purpose: str, recipient: str) -> tuple[uuid.UUID
     return rid, eid
 
 
+def export_draft_pdf(storage, db, rid: uuid.UUID, target: Path) -> int:
+    """Ghi bản PDF NHÁP của job ra `target` (cho PO đọc chất lượng nội dung P4 — PO 2026-10-15). Trả số byte; 0 nếu chưa có bản render."""
+    with db.connect("bo19_migrator") as c:
+        row = c.execute("select pdf_object_key from document_render where document_id = %s and render_kind = 'DRAFT' order by created_at desc limit 1", (document_id_for(rid),)).fetchone()
+    if row is None:
+        return 0
+    data = storage.get(row[0])
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(data)
+    return len(data)
+
+
 def pdf_checks(storage, db, rid: uuid.UUID) -> dict:
     """Kiểm bằng máy M5 trên PDF vừa dựng — cờ đúng/sai, không văn bản."""
     from bo19.tool_layer.rendering.doc_properties import SYSTEM_AUTHOR
@@ -165,7 +177,7 @@ def pdf_checks(storage, db, rid: uuid.UUID) -> dict:
             "pdf_bytes": len(data), "pdfinfo_ran": out.returncode == 0}
 
 
-def execute(*, admin_dsn: str, key: str, base_url: str, s3: dict, runs: int, transport=None, pace: bool = True, echo=print) -> dict:
+def execute(*, admin_dsn: str, key: str, base_url: str, s3: dict, runs: int, transport=None, pace: bool = True, echo=print, export_pdf: Path | None = None) -> dict:
     profiles = load_profiles().profiles
     db = tt.TrialDb(admin_dsn)
     pool = Pool(db.dsn("bo19_app"), application_name="bo19-render-trial", min_size=1, max_size=4)
@@ -178,7 +190,7 @@ def execute(*, admin_dsn: str, key: str, base_url: str, s3: dict, runs: int, tra
     errors = tt.ProviderErrorLog()
     counter = CountingTransport(transport or httpx.AsyncHTTPTransport())
     runner = DocumentRunner.open(pool=pool, gateway=Gateway(profiles=profiles, client=ProviderClient(base_url=base_url, api_key=key, transport=counter), budget=Budget(pool)), storage=storage,
-                                 dsn=db.dsn("bo19_app"), session_secret=SESSION_SECRET)
+                                 dsn=db.dsn("bo19_app"), fingerprint_key=FINGERPRINT_KEY)
     previous = list(logging.getLogger().handlers)
     handler = configure_logging(errors)
     results: list[dict] = []
@@ -214,6 +226,8 @@ def execute(*, admin_dsn: str, key: str, base_url: str, s3: dict, runs: int, tra
                       "calls": [{"call": r[0], "outcome": r[1], "duration_ms": r[2], "provider_completion_ms": r[3], "tokens": (r[4] or 0) + (r[5] or 0), "estimated": r[6]} for r in usage],
                       "free_content": [{"attempt_no": r[0], "outcome": r[1], "prompt_module_version": r[2], "body_chars": r[3]} for r in free],  # chỉ độ dài — không văn bản
                       "pdf": pdf_checks(storage, db, rid), "provider_errors": errors.drain()}
+            if export_pdf is not None and n == 0:  # chỉ job đầu; ghi trước khi `db.drop()` và xoá bucket
+                result["exported_pdf_bytes"] = export_draft_pdf(storage, db, rid, export_pdf)
             results.append(result)
             echo(f"Lượt {n + 1}: job {job[0]} ({job[2] or 'ok'}) · document {result['document_status']} · {elapsed_ms} ms · " + ", ".join(f"{c['call']} {c['duration_ms']} ms/{c['tokens']} token" for c in result["calls"]))
     finally:
@@ -252,6 +266,7 @@ def main() -> int:
     ap.add_argument("--runs", type=int, default=3, help="số job thử (mỗi job một lời gọi P4 nếu nội dung đạt); tổng lời gọi không vượt 10")
     ap.add_argument("--no-publish", action="store_true", help="không ghi docs/reference/")
     ap.add_argument("--label", default=LABEL)
+    ap.add_argument("--export-pdf", metavar="TỆP", help="ghi bản PDF NHÁP của job đầu ra TỆP (để PO đọc nội dung P4); quét host, khoá, định danh trước khi commit nó")
     args = ap.parse_args()
     if not args.label.replace("-", "").isalnum() or not 1 <= args.runs <= 6:
         print("Nhãn chỉ gồm chữ, số, gạch ngang; --runs từ 1 tới 6. Thoát mã 2.")
@@ -269,7 +284,7 @@ def main() -> int:
         print("Thiếu biến môi trường: " + ", ".join(missing) + ". Thoát mã 2.")
         return 2
     base_url = os.environ.get("BO19_LLM_BASE_URL", "").strip() or DEFAULT_LLM_BASE_URL
-    summary = execute(admin_dsn=admin, key=key, base_url=base_url, s3=s3, runs=args.runs)
+    summary = execute(admin_dsn=admin, key=key, base_url=base_url, s3=s3, runs=args.runs, export_pdf=Path(args.export_pdf) if args.export_pdf else None)
     text = render_md(summary)
     OUT.mkdir(exist_ok=True)
     (OUT / "results.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")

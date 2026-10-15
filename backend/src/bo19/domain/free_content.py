@@ -27,7 +27,7 @@ _PLACEHOLDER_WORDS = frozenset({"n/a", "na", "n.a", "tbd", "todo", "tba", "none"
 _PLACEHOLDER_INSIDE = re.compile(r"\[\s*(điền|cập nhật|bổ sung|todo|tbd)[^\]]*\]|\.{3,}|…|\bn/a\b", re.IGNORECASE)
 _TEMPLATE_SYNTAX = re.compile(r"\{\{|\}\}|\{%|%\}|\{#|#\}")
 _MARKUP = re.compile(r"<\s*/?\s*[A-Za-z!?][^>]*>|&[A-Za-z#][A-Za-z0-9]{1,8};")
-MIN_RES_LENGTH = 4  # chuỗi `RES` ngắn hơn thế (ví dụ "ABC") khớp ngẫu nhiên trong câu chữ thường — kiểm trùng nguyên văn chỉ có nghĩa với giá trị đủ dài
+MIN_RES_LENGTH = 4  # WV-31 (chưa hiệu chỉnh): chuỗi `RES` ngắn hơn thế (ví dụ "ABC") khớp ngẫu nhiên trong câu chữ thường — kiểm trùng nguyên văn chỉ có nghĩa với giá trị đủ dài
 
 
 def normalize(text: str) -> str:

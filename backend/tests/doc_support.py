@@ -29,7 +29,7 @@ from tests.render_support import FONT, require_tool
 from tests.request_support import build_request
 from tests.s3_support import ENDPOINT, REQUIRED, admin_client, drop_bucket, new_bucket, storage_for
 
-SESSION_SECRET = "BI_MAT_PHIEN_GIA_CUA_TEST_B9A"
+FINGERPRINT_KEY = "KHOA_DAU_VAN_TAY_GIA_CUA_TEST_B9A_DAI_DU_32_BYTE"
 NATIONAL_ID = "012345678901"
 BODY_OK = "Nhân viên đề nghị cấp giấy xác nhận để bổ sung hồ sơ vay vốn theo yêu cầu của đơn vị tiếp nhận."
 SRC_PURPOSE = "TEMPLATE_SOURCE"
@@ -124,7 +124,7 @@ class DocBase(unittest.TestCase):
         self.llm.requests.clear()
         retire_active_templates(self.db)
         self.version_id = make_template(self.db, self.pool, self.storage)
-        self.runner = DocumentRunner.open(pool=self.pool, gateway=self.gateway, storage=self.storage, dsn=self.db.dsn("bo19_app"), session_secret=SESSION_SECRET)
+        self.runner = DocumentRunner.open(pool=self.pool, gateway=self.gateway, storage=self.storage, dsn=self.db.dsn("bo19_app"), fingerprint_key=FINGERPRINT_KEY)
         self.addCleanup(self.runner.close)
         self.eid, _ = self.db.make_employee(roles=("EMPLOYEE",))
         with self.pool.acquire() as conn:

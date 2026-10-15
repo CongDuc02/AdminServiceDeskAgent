@@ -8,7 +8,7 @@ Nguồn của từng loại biến:
   ("agent tự đặt giá trị cho biến chưa xác nhận" — F2), vắng hay `ERASED` là `VARIABLE_MISSING`. Định dạng theo kiểu slot: `STRING`/`TEXT` nguyên văn, `INT` số nguyên, `DATE` `dd/mm/yyyy` (A-098);
   kiểu khác (`ENUM`, `LIST`, `BOOL`, `FILE`) chưa hỗ trợ — biến vắng mặt, mã `VARIABLE_MISSING` (câu chữ theo loại hợp đồng là việc của đoạn điều kiện của template thật, M1.1).
 - `FREE_CONTENT` — dòng `document_free_content` `PASSED` hiện hành (vòng lớn nhất, rồi lần sinh lớn nhất); vắng là `VARIABLE_MISSING`.
-- `SYSTEM` — chỉ biến mang cờ *điền sau duyệt* (INV-01: `document_number`, `issued_date`, `signer_user_id`…): bản nháp hiện dấu giữ chỗ cố định `AFTER_APPROVAL_MARK`, **không** qua kiểm "không placeholder" và không vào
+- `SYSTEM` — chỉ biến mang cờ *điền sau duyệt* (INV-01: `document_number`, `issued_date`, `signer_user_id`…): bản nháp hiện dấu giữ chỗ nhìn ra ngay là chưa chính thức — `provisional.marker_for(tên)`, ví dụ `[Số văn bản — cấp khi phát hành]` (A-098, PO 2026-10-15) — **không** qua kiểm "không placeholder" và không vào
   `approved_content_hash`. `SYSTEM` không mang cờ thì chưa có nguồn ở B9a: vắng mặt, `VARIABLE_MISSING`.
 
 Điều kiện cấp văn bản: `SEAL_UNDETERMINED` (`requires_seal` chưa xác định, hoặc cần dấu mà thiếu `seal_type`); `TEMPLATE_NOT_ACTIVE_AT_RENDER` (phiên bản đã ghim không còn `ACTIVE`).
@@ -24,15 +24,13 @@ from typing import Any
 
 import psycopg
 
-from bo19.domain import free_content
+from bo19.domain import free_content, provisional
 from bo19.persistence.pool import Pool
 from bo19.persistence.read import read_only
 from bo19.tool_layer.kernel.context import ToolContext
 from bo19.tool_layer.kernel.permission import require_system
 from bo19.tool_layer.tools._common import ToolError
 from bo19.tool_layer.tools.template_fetch import read_version
-
-AFTER_APPROVAL_MARK = "[sẽ được cấp khi phát hành]"  # A-098
 
 VARIABLE_MISSING = "VARIABLE_MISSING"
 PLACEHOLDER_VALUE = "PLACEHOLDER_VALUE"
@@ -130,7 +128,7 @@ def build_values(conn: psycopg.Connection, document_id: uuid.UUID) -> BuiltValue
             values[v.name] = body
         elif v.kind == "SYSTEM":
             if v.fill_after_approval:
-                values[v.name] = AFTER_APPROVAL_MARK
+                values[v.name] = provisional.marker_for(v.name)
             else:
                 bad(VARIABLE_MISSING, v.name)
     if requires_seal is None or (requires_seal and not seal_type):

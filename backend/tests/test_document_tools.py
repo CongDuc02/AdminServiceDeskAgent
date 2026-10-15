@@ -16,6 +16,7 @@ from tests import _guard  # noqa: F401 — chốt chặn mạng và khoá API c�
 
 import uuid
 
+from bo19.domain import provisional
 from bo19.orchestrator.runner import document_id_for
 from bo19.tool_layer.kernel.context import Actor, ToolContext
 from bo19.tool_layer.kernel.permission import SystemActorRequired
@@ -27,7 +28,7 @@ from bo19.tool_layer.tools import review_readiness_check as rrc
 from bo19.tool_layer.tools import template_fetch as tf
 from bo19.tool_layer.tools.docx_render import docx_render
 from bo19.tool_layer.tools.pdf_export import pdf_export
-from tests.doc_support import BODY_OK, NATIONAL_ID, SESSION_SECRET, VARIABLES, DocBase, make_template, retire_active_templates
+from tests.doc_support import BODY_OK, FINGERPRINT_KEY, NATIONAL_ID, VARIABLES, DocBase, make_template, retire_active_templates
 from tests.request_support import PURPOSE, RECIPIENT
 
 
@@ -170,28 +171,34 @@ class DraftSave(DocBase):
 
 class Fingerprint(DocBase):
     def test_co_khoa_tat_dinh_va_khong_lo_khoa(self):
-        a, b = dds.InputFingerprinter(SESSION_SECRET), dds.InputFingerprinter(SESSION_SECRET + "x")
+        a, b = dds.InputFingerprinter(FINGERPRINT_KEY), dds.InputFingerprinter(FINGERPRINT_KEY + "x")
         inputs = {"purpose": PURPOSE, "variable_guidance": "g", "request_type": "WORK_CONFIRMATION"}
         self.assertEqual(a.digest("purpose_statement", inputs), a.digest("purpose_statement", dict(reversed(list(inputs.items())))))
         self.assertEqual(len(a.digest("purpose_statement", inputs)), 32)
         self.assertNotEqual(a.digest("purpose_statement", inputs), b.digest("purpose_statement", inputs))  # khác khoá, khác dấu vân tay
         self.assertNotEqual(a.digest("purpose_statement", inputs), a.digest("khac", inputs))
         self.assertNotEqual(a.digest("purpose_statement", inputs), a.digest("purpose_statement", {**inputs, "purpose": PURPOSE + "."}))
-        self.assertNotIn(SESSION_SECRET, repr(a))
-        self.assertEqual(a.key_id, "session-hkdf-v1")
+        self.assertNotIn(FINGERPRINT_KEY, repr(a))
+        self.assertEqual(a.key_id, "render-fp-v1")
 
     def test_khong_phai_bam_tran(self):
         import hashlib
         import json
-        a = dds.InputFingerprinter(SESSION_SECRET)
+        a = dds.InputFingerprinter(FINGERPRINT_KEY)
         inputs = {"purpose": PURPOSE}
         plain = hashlib.sha256(json.dumps({"variable_name": "purpose_statement", "inputs": inputs}, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).digest()
         self.assertNotEqual(a.digest("purpose_statement", inputs), plain)  # đoán ngược được nếu băm trần (ADR-009)
 
-    def test_hkdf_don_gian_khac_nhau_theo_info_va_bi_mat(self):
-        self.assertEqual(dds._hkdf_sha256(b"s", b"i"), dds._hkdf_sha256(b"s", b"i"))
-        self.assertNotEqual(dds._hkdf_sha256(b"s", b"i"), dds._hkdf_sha256(b"s", b"j"))
-        self.assertNotEqual(dds._hkdf_sha256(b"s", b"i"), dds._hkdf_sha256(b"t", b"i"))
+    def test_khoa_la_hmac_truc_tiep_khong_dan_xuat_tu_secret_phien(self):
+        """A-097 (PO, 2026-10-15): khoá riêng, đưa thẳng vào HMAC-SHA256 — đổi bất kỳ secret nào khác không làm đổi dấu vân tay."""
+        import hashlib
+        import hmac
+        import json
+        inputs = {"purpose": PURPOSE}
+        canonical = json.dumps({"variable_name": "purpose_statement", "inputs": inputs}, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        expected = hmac.new(FINGERPRINT_KEY.encode(), canonical.encode(), hashlib.sha256).digest()
+        self.assertEqual(dds.InputFingerprinter(FINGERPRINT_KEY).digest("purpose_statement", inputs), expected)
+        self.assertFalse(hasattr(dds, "_hkdf_sha256"))
         with self.assertRaises(ValueError):
             dds.InputFingerprinter("")
 
@@ -215,8 +222,12 @@ class Values(DocBase):
         self.assertEqual(set(built.values), {v[0] for v in VARIABLES})
         self.assertEqual(built.values["recipient_org"], RECIPIENT)
         self.assertEqual(built.values["purpose_statement"], BODY_OK)
+        self.assertEqual(built.values["document_number"], "[Số văn bản — cấp khi phát hành]")  # A-098 (PO, 2026-10-15): nhìn ra ngay là chưa chính thức
+        self.assertEqual(built.values["issued_date"], "[Ngày ban hành — cấp khi phát hành]")
+        self.assertEqual(built.values["signer_user_id"], "[Người ký — cấp khi phát hành]")
         for name in ("document_number", "issued_date", "signer_user_id"):
-            self.assertEqual(built.values[name], rv.AFTER_APPROVAL_MARK)
+            self.assertEqual(built.values[name], provisional.marker_for(name))
+            self.assertTrue(provisional.contains_marker(built.values[name]))
         self.assertTrue(rrc.review_readiness_check(self.pool, self.sys, document_id=did).ok)
 
     def test_thieu_noi_dung_tu_do(self):

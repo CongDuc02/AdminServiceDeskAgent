@@ -20,7 +20,7 @@ from pathlib import Path
 from bo19.config.settings import load_settings
 from bo19.observability.log import configure_logging
 from bo19.startup import runner
-from bo19.startup.checks_security import step_12, step_19, step_20, tracing_variable_names
+from bo19.startup.checks_security import step_12, step_19, step_20, step_24, tracing_variable_names
 from bo19.startup.model import Context, Entry
 
 REFERENCE = Path(__file__).resolve().parents[2] / "docs" / "reference" / "langsmith-tracing-env-nguon-goc.md"
@@ -159,6 +159,50 @@ class Buoc12(unittest.TestCase):
     def test_ma_truot_khong_lo_gia_tri_secret(self):
         for code_ in self.secret("BI_MAT_NGAN"):
             self.assertNotIn("BI_MAT_NGAN", code_)
+
+
+class Buoc24(unittest.TestCase):
+    """A-097 (PO, 2026-10-15): khoá dấu vân tay render là secret riêng, có mặt và ≥ 32 byte như #12; chỉ `worker`."""
+
+    def key(self, value):
+        env = dict(BASE) if value is None else {**BASE, "BO19_RENDER_FINGERPRINT_KEY": value}
+        return step_24(Context(Entry.WORKER, load_settings(env), {}, None, Path("."))).codes
+
+    def test_thieu_hoac_rong_la_chan(self):
+        for value in (None, "", "   "):
+            self.assertEqual(self.key(value), ("STARTUP_24_RENDER_FINGERPRINT_KEY_MISSING",), repr(value))
+
+    def test_ngan_hon_32_byte_la_chan(self):
+        for n in (1, 16, 31):
+            self.assertEqual(self.key("x" * n), ("STARTUP_24_RENDER_FINGERPRINT_KEY_TOO_SHORT",), n)
+
+    def test_tu_32_byte_tro_len_la_dat(self):
+        for n in (32, 33, 64, 200):
+            self.assertEqual(self.key("x" * n), (), n)
+
+    def test_do_dai_do_bang_byte_khong_phai_ky_tu(self):
+        self.assertEqual(self.key("é" * 16), ())
+        self.assertEqual(self.key("é" * 15), ("STARTUP_24_RENDER_FINGERPRINT_KEY_TOO_SHORT",))
+
+    def test_khoang_trang_hai_dau_khong_duoc_tinh(self):
+        self.assertEqual(self.key("  " + "x" * 31 + "  "), ("STARTUP_24_RENDER_FINGERPRINT_KEY_TOO_SHORT",))
+
+    def test_secret_phien_khong_thay_the_duoc_khoa(self):
+        """Khoá phải là biến riêng: có `BO19_SESSION_SECRET` dài đủ mà thiếu khoá dấu vân tay vẫn trượt."""
+        self.assertGreaterEqual(len(BASE["BO19_SESSION_SECRET"].encode()), 32)
+        self.assertEqual(self.key(None), ("STARTUP_24_RENDER_FINGERPRINT_KEY_MISSING",))
+
+    def test_ma_truot_va_repr_khong_lo_gia_tri(self):
+        for c in self.key("BI_MAT_NGAN"):
+            self.assertNotIn("BI_MAT_NGAN", c)
+        self.assertNotIn("BI_MAT_NGAN", repr(load_settings({**BASE, "BO19_RENDER_FINGERPRINT_KEY": "BI_MAT_NGAN"})))
+
+    def test_chi_worker_va_combined(self):
+        from bo19.startup.model import MATRIX
+        step = next(s for s in MATRIX if s.number == "24")
+        self.assertEqual(step.entries, frozenset({Entry.WORKER}))
+        self.assertTrue(step.applies(Entry.COMBINED))
+        self.assertFalse(step.applies(Entry.API))
 
 
 class Buoc20(unittest.TestCase):
