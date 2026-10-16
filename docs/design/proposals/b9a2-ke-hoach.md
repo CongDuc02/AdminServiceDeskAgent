@@ -36,3 +36,9 @@ Dựng entrypoint `python -m bo19.entrypoints.combined_main` — `api` và vòng
 ## Điều kiện xong
 
 Test mới đạt; CI xanh; mutation: bỏ #18, bỏ giới hạn một job, bỏ drain của vòng poll, đổi `combined_main` sang bỏ #24 — mỗi mẫu đỏ; báo cáo số đo kèm lệnh; O1-6 và A-095 cập nhật; PO duyệt trước khi chuyển Start Command.
+
+---
+
+## Kết quả (2026-10-16)
+
+PO duyệt 2026-10-16 (cron để sau; vi phạm hạn chót thì dừng; provider giả 2 s; thêm: `SIGTERM` giữa chuyển đổi giết `soffice`, release, thoát ≈ 5 s, không mồ côi/zombie). Làm xong: mục Triển khai ở B9a2 của `06-structure.md`; số đo `docs/reference/combined-main-b9a2.md`. **Không vi phạm hạn chót lượt và không vượt 5 s** nên không phải dừng. Hai phát hiện ngoài kế hoạch, đã xử lý trong cùng lát: Python PID 1 để lại zombie sau mỗi chuyển đổi (bộ dọn `observability.reaper`) và thoát mềm ở 0,1 CPU mất ≈ 10 s (thoát cứng).

@@ -3610,3 +3610,7 @@ PO duyệt kế hoạch B8a (`proposals/b8a-ke-hoach.md`) và quyết thêm về
 ### 2026-10-16 — P4 1.1: PO chấp nhận (n = 3), không thêm `REQUEST_VOICE`
 
 `07-prompts.md` v0.8, mục 4.4: giọng văn không có phép kiểm bằng code — bộ lọc cụm từ chặn nhầm ("xin cấp thị thực"), và chặn ở `document_graph` là `halt_for_human`; chốt chặn là người duyệt ở `CONTENT_REVIEW`. Theo dõi ở UAT: câu sinh chép sát input (nhãn "(giả)", "nơi nhân viên…" lệch ngôi) và tỷ lệ bản nháp phải sửa giọng.
+
+### 2026-10-16 — B9a2: `combined_main`, bộ dọn zombie PID 1, WV-32
+
+`06-structure.md` v0.44 (mục Triển khai ở B9a2; cây `observability/reaper.py`), `11-ops.md` v0.38 (mục 20 runbook chuyển Render), `12-roadmap.md` v0.61 (B9a2, O1-6), `ASSUMPTIONS.md` v0.71 (A-095 đã đo), `ADR-033` (mục Cập nhật 2026-10-16: drain khi `soffice` chạy, thoát cứng, PID 1, không `tini`), `proposals/sprint1-working-values-a031-a048.md` (WV-32). Số đo: `docs/reference/combined-main-b9a2.md`. Không migration, không biến môi trường mới.

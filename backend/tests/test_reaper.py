@@ -179,8 +179,9 @@ class HuyChuyenDoi(unittest.TestCase):
 
     def test_sau_abort_chuyen_doi_moi_bi_chan_khong_chay_soffice(self):
         convert.abort_all()
-        with self.assertRaises(convert.ConversionAborted):
-            convert.convert_to_pdf(docx_bytes(), timeout_s=5)
+        with mock.patch.object(convert.subprocess, "Popen", side_effect=AssertionError("không được sinh tiến trình sau abort")):
+            with self.assertRaises(convert.ConversionAborted):
+                convert.convert_to_pdf(docx_bytes(), timeout_s=5)
         self.assertFalse(self.marker.exists())  # không sinh tiến trình nào
 
     def test_abort_khi_khong_co_gi_chay_la_vo_hai_va_reset_mo_lai(self):

@@ -117,3 +117,13 @@ Lịch của từng thao tác cron là **cấu hình**, đọc từ một nguồ
 - Tên image SeaweedFS 4.47 nếu chạy trong container — `[CẦN XÁC MINH]`; chạy lại bộ phép thử của ADR-031 trên container.
 - S5 của Spike 1 đổi đích: đo trên Web Service free bằng `combined_main`, không deploy Background Worker. `.claude/commands/spike.md` là file lệnh của PO — người triển khai không tự sửa; diff đề xuất ở báo cáo của lần sửa này.
 - Các phần còn lại của cổng 1.15 — F3, F4, F5: một môi trường, chu kỳ dựng lại DB dưới 30 ngày, không backup — và F14: danh sách ngắn chỉ gồm gói free — vẫn chờ PO.
+
+## Cập nhật 2026-10-16 — B9a2: `combined_main` đã dựng và đo
+
+Không đổi quyết định A. Số đo ở `docs/reference/combined-main-b9a2.md`; điều kiện đảo ngược "S5 cho thấy `combined_main` không vừa 512 MB" **chưa kích hoạt**: đỉnh cgroup 304 MiB trên 512 MiB, `oom_kill 0`, một lượt chat trong lúc `soffice` chuyển đổi 11,2–12,1 s ≤ hạn chót 20 s (WV-02) — trong điều kiện đo (Docker Desktop, provider giả 2 s, n nhỏ). Những chỗ hiện thực đã chọn và mục "Decision" chưa nói:
+
+- **Tắt êm khi `soffice` đang chuyển đổi (PO, 2026-10-16):** `SIGTERM` làm uvicorn drain lượt chat và vòng poll ngừng giành job **cùng lúc**; job đang chạy được **WV-32 = 1 s** (`COMBINED_JOB_DRAIN_S`, chưa hiệu chỉnh) để xong, chưa xong thì `convert.abort_all` giết NGAY nhóm tiến trình `soffice`, job `release` (không tiêu lượt thử — lần chạy sau tiếp từ checkpoint, ADR-039), tiến trình thoát. Đo: `PROCESS_EXIT` +1,6 s, container dừng +2,3 s, hạn Render ≈ 5 s. Không có hạn drain nào dài hơn 5 s để chờ một chuyển đổi 32–88 s.
+- **Thoát cứng.** `combined_main` kết thúc bằng `os._exit` sau khi đóng tường minh và xả log: ở 0,1 CPU `sys.exit` để container sống tới +10,4 s dù log `PROCESS_EXIT` đã ghi lúc +1,3 s (hoàn tất interpreter).
+- **Python là PID 1 → zombie.** Mỗi chuyển đổi để lại 5 zombie (`gpgconf`, `gpg`, `gpgsm`, do LibreOffice sinh rồi cha của chúng chết) và thêm `soffice.bin` khi bị giết. `observability.reaper` dọn zombie con trực tiếp mà mã của ta không tự `wait` (hai lần quét liên tiếp; quét cuối khi thoát), chỉ khi `os.getpid() == 1`; log `PROCESS_TABLE_AT_EXIT` ghi số con, số zombie, tên tiến trình còn sống. Không thêm `tini`/`--init` vào image: Render không cho đặt cờ `--init`, và đổi PID 1 sẽ đổi hành vi `SIGTERM` đã đo ở S4.
+- **Bộ hẹn giờ cron chưa có** — chưa có thao tác cron nào để gọi (PO, 2026-10-16); đi cùng thao tác cron đầu tiên.
+- **Một pool kết nối** cho cả hai vai (`POOL_MAX_SIZE` + 3). Bước kiểm #18 và phần hợp các cột của `startup` có test tiến trình thật.
