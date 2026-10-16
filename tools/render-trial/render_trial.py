@@ -71,7 +71,7 @@ PURPOSES = (("(giả) bổ sung hồ sơ vay vốn tại ngân hàng", "(giả) 
 HR_REQUIRED = ("contract_type", "department_name", "employment_start_date", "full_name", "job_title")
 VARIABLES = (("full_name", "DIRECT_SLOT", "full_name", False, None, None, ()), ("department_name", "DIRECT_SLOT", "department_name", False, None, None, ()),
              ("job_title", "DIRECT_SLOT", "job_title", False, None, None, ()), ("recipient_org", "DIRECT_SLOT", "recipient_org", False, None, None, ()),
-             ("purpose_statement", "FREE_CONTENT", None, False, "Một hai câu hành chính ngắn, văn phong trang trọng, nêu mục đích nhân viên xin giấy xác nhận công tác.", 400, ("purpose",)),
+             ("purpose_statement", "FREE_CONTENT", None, False, "Một hai câu hành chính ngắn, văn phong trang trọng, giọng bên phát hành, nêu mục đích cấp giấy xác nhận công tác.", 400, ("purpose",)),
              ("document_number", "SYSTEM", None, True, None, None, ()), ("issued_date", "SYSTEM", None, True, None, None, ()), ("signer_user_id", "SYSTEM", None, True, None, None, ()))
 
 
@@ -141,6 +141,15 @@ def submitted_request(db, pool, purpose: str, recipient: str) -> tuple[uuid.UUID
         version = c.execute("select row_version from request where id = %s", (rid,)).fetchone()[0]
     request_submit(pool, ctx, request_id=rid, decision_id=uuid.uuid4(), expected_row_version=version)
     return rid, eid
+
+
+REQUEST_PHRASES = ("xin được", "kính xin", "đề nghị cấp", "tôi xin", "mong được")  # giọng đơn xin (PO, 2026-10-16) — chỉ để ĐO ở đây, không phải phép kiểm của runtime
+
+
+def voice_flags(body: str) -> dict:
+    """Hai cờ về giọng của bản sinh — không trả văn bản. `request_voice`: còn cụm đơn xin; `issuer_address`: có \"Ông/Bà\" (gọi người được cấp)."""
+    low = " ".join(body.split()).lower()
+    return {"request_voice": any(p in low for p in REQUEST_PHRASES), "issuer_address": "ông/bà" in low}
 
 
 def export_draft_pdf(storage, db, rid: uuid.UUID, target: Path) -> int:
@@ -219,15 +228,16 @@ def execute(*, admin_dsn: str, key: str, base_url: str, s3: dict, runs: int, tra
                 usage = c.execute("select call_name, outcome, duration_ms, provider_completion_ms, input_tokens, output_tokens, estimated from llm_usage where request_id = %s order by created_at, id", (rid,)).fetchall()
                 free = c.execute("select attempt_no, validation_outcome, prompt_module_version, char_length(body) from document_free_content where document_id = %s order by attempt_no", (document_id_for(rid),)).fetchall()
                 doc_status = c.execute("select status from document where id = %s", (document_id_for(rid),)).fetchone()
+                last = c.execute("select body from document_free_content where document_id = %s and validation_outcome = 'PASSED' order by attempt_no desc limit 1", (document_id_for(rid),)).fetchone()
             tokens = sum((r[4] or 0) + (r[5] or 0) for r in usage)
             tokens_used += tokens
             window.append((time.monotonic(), tokens))
             result = {"run": n + 1, "job_handled": handled, "job_status": job[0], "job_attempts": job[1], "job_error_code": job[2], "document_status": doc_status[0] if doc_status else None, "elapsed_ms": elapsed_ms,
                       "calls": [{"call": r[0], "outcome": r[1], "duration_ms": r[2], "provider_completion_ms": r[3], "tokens": (r[4] or 0) + (r[5] or 0), "estimated": r[6]} for r in usage],
                       "free_content": [{"attempt_no": r[0], "outcome": r[1], "prompt_module_version": r[2], "body_chars": r[3]} for r in free],  # chỉ độ dài — không văn bản
-                      "pdf": pdf_checks(storage, db, rid), "provider_errors": errors.drain()}
-            if export_pdf is not None and n == 0:  # chỉ job đầu; ghi trước khi `db.drop()` và xoá bucket
-                result["exported_pdf_bytes"] = export_draft_pdf(storage, db, rid, export_pdf)
+                      "voice": voice_flags(last[0]) if last else None, "pdf": pdf_checks(storage, db, rid), "provider_errors": errors.drain()}
+            if export_pdf is not None and (n == 0 or "{n}" in str(export_pdf)):  # job đầu, hoặc mọi job khi đường dẫn có `{n}`; ghi trước khi `db.drop()` và xoá bucket
+                result["exported_pdf_bytes"] = export_draft_pdf(storage, db, rid, Path(str(export_pdf).replace("{n}", str(n + 1))))
             results.append(result)
             echo(f"Lượt {n + 1}: job {job[0]} ({job[2] or 'ok'}) · document {result['document_status']} · {elapsed_ms} ms · " + ", ".join(f"{c['call']} {c['duration_ms']} ms/{c['tokens']} token" for c in result["calls"]))
     finally:
@@ -251,12 +261,12 @@ def render_md(summary: dict) -> str:
     lines = [f"# Chạy `render_document` với Groq thật — {LABEL} (B9a)", "",
              "- **Công cụ:** `tools/render-trial/render_trial.py`. **Chỉ số, mã và cờ đúng/sai** — không văn bản do LLM sinh, không giá trị slot. Mọi văn bản đầu vào mang nhãn \"(giả)\" (A-080).",
              f"- **Hồ sơ model của P4:** `{summary['model']}`, `max_completion_tokens` {summary['max_completion_tokens']}. **n nhỏ** ({len(summary['runs'])} job, {summary['calls_used']} lời gọi, {summary['tokens_used']} token): số đo, không phải thống kê.", "",
-             "| Job | Job `status` | Lỗi | `document` | Cả job (ms) | Lời gọi (tên: ms / ms phía provider / token) | Lần sinh (số · kết quả · độ dài) | `Subject` đúng | `Author` trung lập | DB `watermark_text` đúng |", "|---|---|---|---|---|---|---|---|---|---|"]
+             "| Job | Job `status` | Lỗi | `document` | Cả job (ms) | Lời gọi (tên: ms / ms phía provider / token) | Lần sinh (số · kết quả · độ dài) | Còn cụm đơn xin | Có Ông/Bà | `Subject` đúng | `Author` trung lập | DB `watermark_text` đúng |", "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in summary["runs"]:
         calls = "; ".join(f"{c['call']}: {c['duration_ms']} / {c['provider_completion_ms']} / {c['tokens']}{' (ước lượng)' if c['estimated'] else ''}{'' if c['outcome'] in ('OK', 'PARSE_REPAIRED') else ' [' + c['outcome'] + ']'}" for c in r["calls"])
         free = "; ".join(f"{f['attempt_no']} · {f['outcome']} · {f['body_chars']}" for f in r["free_content"])
         p = r["pdf"]
-        lines.append(f"| {r['run']} | {r['job_status']} | {r['job_error_code'] or ''} | {r['document_status']} | {r['elapsed_ms']} | {calls} | {free} | {p.get('pdf_subject_ok')} | {p.get('pdf_author_neutral')} | {p.get('db_watermark_text_ok')} |")
+        lines.append(f"| {r['run']} | {r['job_status']} | {r['job_error_code'] or ''} | {r['document_status']} | {r['elapsed_ms']} | {calls} | {free} | {(r.get('voice') or {}).get('request_voice')} | {(r.get('voice') or {}).get('issuer_address')} | {p.get('pdf_subject_ok')} | {p.get('pdf_author_neutral')} | {p.get('db_watermark_text_ok')} |")
     return "\n".join(lines) + "\n"
 
 

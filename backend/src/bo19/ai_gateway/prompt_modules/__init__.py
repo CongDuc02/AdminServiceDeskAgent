@@ -120,19 +120,27 @@ def _draft_schema(_inputs: dict[str, Any], variable: VariableSpec | None) -> dic
 DRAFT_FREE_CONTENT = PromptModule(
     call_name="draft_free_content",
     tier="STRONG",
-    version="1.0",
+    version="1.1",  # 1.1 (PO, 2026-10-16): giọng bên phát hành; cấm giọng đơn xin; không chép tin nhắn; không lặp thông tin của mẫu (07-prompts.md, mục 4.4)
     fixed_inputs=frozenset({"variable_guidance", "request_type"}),
     uses_variable=True,
     # Lớp phòng thủ thứ hai (mục Guardrail chung của 07-prompts.md; mục Allowlist input — Không nhận): khoá nào ở đây bị từ chối dù template có khai.
     forbidden_inputs=frozenset({"national_id", "bearer_national_id", "date_of_birth", "contract_type", "employment_end_date", "recipient_org", "recipient_person"}),
     instructions=(
-        "Bạn là soạn thảo viên hành chính. Viết tiếng Việt chuẩn dấu, văn phong hành chính, ngắn gọn. Chỉ trả JSON.\n"
+        "Bạn là soạn thảo viên hành chính của bên PHÁT HÀNH văn bản. Viết tiếng Việt chuẩn dấu, văn phong hành chính, ngắn gọn. Chỉ trả JSON.\n"
         "Vai trò: Soạn thảo — chỉ sinh nội dung tự do, không chạm khung thể thức.\n"
         "Nhiệm vụ: Đọc slot đã khai + variable_guidance, sinh body cho variable_name.\n"
+        "Giọng và ngôi: văn bản do bên phát hành viết, nói với nơi nhận ở dòng \"Kính gửi\" của mẫu; người được cấp văn bản gọi là \"Ông/Bà\". "
+        "Gọi văn bản bằng đúng tên loại mà variable_guidance hay request_type chỉ ra (ví dụ \"Giấy xác nhận này\"). "
+        "CẤM giọng đơn xin hay đề nghị: không viết \"Xin được\", \"Kính xin\", \"Đề nghị cấp\", \"Tôi xin\", \"Mong được\"; không dùng ngôi thứ nhất. "
+        "Không chép lại câu chữ của nhân viên: chuyển mục đích thành một câu văn hành chính. "
+        "Không lặp thông tin đã có chỗ khác trong mẫu (nơi nhận, họ tên, chức danh, đơn vị, số, ngày).\n"
         "Ràng buộc: Không được thêm câu khung, không đổi bố cục, không thêm nơi nhận/số ký hiệu. Không được dùng recipient_org, HR_PROFILE, đoạn quy trình. Độ dài ≤ max_length.\n"
         "Ví dụ (dữ liệu giả):\n"
         'Input: purpose="bổ sung hồ sơ vay vốn tại Ngân hàng X" -> '
-        '{"variable_name":"purpose_statement","body":"Bổ sung hồ sơ vay vốn tại Ngân hàng X theo yêu cầu của đơn vị tiếp nhận."}'
+        '{"variable_name":"purpose_statement","body":"Giấy xác nhận này được cấp để Ông/Bà bổ sung hồ sơ vay vốn tại Ngân hàng X."}\n'
+        'Input: purpose="làm thủ tục xin cấp thị thực đi công tác nước ngoài" -> '
+        '{"variable_name":"purpose_statement","body":"Giấy xác nhận này được cấp để Ông/Bà làm thủ tục xin cấp thị thực đi công tác nước ngoài."}\n'
+        'KHÔNG viết (giọng đơn xin, chép lại người dùng): "Xin được cấp giấy xác nhận công tác để bổ sung hồ sơ vay vốn tại ngân hàng."'
     ),
     build_schema=_draft_schema,
     check_inputs=_check_draft,
