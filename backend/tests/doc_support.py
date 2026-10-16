@@ -31,7 +31,7 @@ from tests.s3_support import ENDPOINT, REQUIRED, admin_client, drop_bucket, new_
 
 FINGERPRINT_KEY = "KHOA_DAU_VAN_TAY_GIA_CUA_TEST_B9A_DAI_DU_32_BYTE"
 NATIONAL_ID = "012345678901"
-BODY_OK = "Nhân viên đề nghị cấp giấy xác nhận để bổ sung hồ sơ vay vốn theo yêu cầu của đơn vị tiếp nhận."
+BODY_OK = "Giấy xác nhận này được cấp để Ông/Bà bổ sung hồ sơ vay vốn tại ngân hàng."  # giọng bên phát hành (P4 bản 1.1)
 SRC_PURPOSE = "TEMPLATE_SOURCE"
 
 # (tên biến, loại, slot nguồn, điền sau duyệt, hướng dẫn, max_length, slot input)
