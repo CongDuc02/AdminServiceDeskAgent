@@ -3606,3 +3606,7 @@ PO duyệt kế hoạch B8a (`proposals/b8a-ke-hoach.md`) và quyết thêm về
 ### 2026-10-16 — P4 `draft_free_content` bản 1.1: giọng bên phát hành (PO)
 
 `07-prompts.md` v0.7, mục 4.4: quy định ngôi và giọng bên phát hành, cấm giọng đơn xin, không chép lại tin nhắn, không lặp thông tin đã có ở mẫu; hai few-shot đúng giọng và một ví dụ "không viết". `prompt_module_version` 1.0 → 1.1. Nguyên nhân: PDF nháp mẫu của B9a viết "Xin được cấp giấy xác nhận…". Gốc rễ thứ hai: câu mẫu 1.0 ("…theo yêu cầu của đơn vị tiếp nhận") và `variable_guidance` của template thử ("nêu mục đích nhân viên xin giấy…") đều dẫn giọng người xin — đã sửa cả hai (`variable_guidance` là dữ liệu của template; template thật là M1.1).
+
+### 2026-10-16 — P4 1.1: PO chấp nhận (n = 3), không thêm `REQUEST_VOICE`
+
+`07-prompts.md` v0.8, mục 4.4: giọng văn không có phép kiểm bằng code — bộ lọc cụm từ chặn nhầm ("xin cấp thị thực"), và chặn ở `document_graph` là `halt_for_human`; chốt chặn là người duyệt ở `CONTENT_REVIEW`. Theo dõi ở UAT: câu sinh chép sát input (nhãn "(giả)", "nơi nhân viên…" lệch ngôi) và tỷ lệ bản nháp phải sửa giọng.
