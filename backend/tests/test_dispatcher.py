@@ -294,6 +294,49 @@ class TatEm(DispatcherBase):
         self.assertTrue(again.run_once())
         self.assertEqual(self.row(jid)["attempts"], 1)
 
+    def test_hook_drain_het_han_chay_mot_lan_truoc_release_va_loi_cua_no_khong_chan_release(self):
+        for hook_raises in (False, True):
+            jid = self.add()
+            started, order = threading.Event(), []
+
+            def handler(job, ctx):
+                started.set()
+                ctx.cancel.wait(10)
+
+            def hook():
+                order.append(("hook", self.row(jid)["status"]))  # lúc hook chạy job còn RUNNING: hook đứng TRƯỚC release
+                if hook_raises:
+                    raise RuntimeError("lỗi của hook")
+
+            d = self.dispatcher({"render_document": handler}, drain_s=0.2, on_drain_expired=hook)
+            t = threading.Thread(target=d.run_once)
+            t.start()
+            self.assertTrue(started.wait(10))
+            d.stop()
+            t.join(10)
+            self.assertEqual(order, [("hook", "RUNNING")], hook_raises)
+            self.assertEqual((self.row(jid)["status"], self.row(jid)["attempts"]), ("QUEUED", 0), hook_raises)  # vẫn release, không tiêu lượt thử
+            if hook_raises:
+                self.assertIn("DRAIN_HOOK_ERROR", self.log_text())
+            with self.db.connect("bo19_migrator", autocommit=True) as c:
+                c.execute("delete from job")  # job đã release sẽ bị vòng sau giành lại — dọn để mỗi vòng thử một job mới
+
+    def test_job_xong_trong_han_drain_thi_hook_khong_chay(self):
+        jid = self.add()
+        started, calls = threading.Event(), []
+
+        def handler(job, ctx):
+            started.set()
+            time.sleep(0.2)
+
+        d = self.dispatcher({"render_document": handler}, drain_s=5, on_drain_expired=lambda: calls.append(1))
+        t = threading.Thread(target=d.run_once)
+        t.start()
+        self.assertTrue(started.wait(10))
+        d.stop()
+        t.join(10)
+        self.assertEqual((self.row(jid)["status"], calls), ("SUCCEEDED", []))
+
     def test_release_xong_thi_handler_cu_khong_ghi_de_ket_qua_cua_worker_khac(self):
         jid = self.add()
         started, finish = threading.Event(), threading.Event()

@@ -21,6 +21,7 @@ REGISTRY: dict[str, Check] = {
     "15": checks_environment.step_15,
     "16": checks_environment.step_16,
     "17": checks_environment.step_17,
+    "18": checks_environment.step_18,
     "19": checks_security.step_19,
     "20": checks_security.step_20,
     "21": checks_gateway.step_21,

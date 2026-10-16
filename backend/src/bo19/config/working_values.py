@@ -24,6 +24,7 @@ JOB_BACKOFF_BASE_S = {"render_document": 10, "resume_document_graph": 10, "final
 JOB_LEASE_S = 120
 JOB_HEARTBEAT_S = 40
 JOB_POLL_S = 2
+COMBINED_JOB_DRAIN_S = 1.0  # WV-32 (chưa hiệu chỉnh; B9a2): `combined_main` cho job đang chạy chừng này giây sau SIGTERM để xong; chưa xong thì giết `soffice` và `release` — Render SIGKILL ≈ 5 s sau SIGTERM (A-031)
 WORKER_CONCURRENCY = 1
 
 # WV-15 — số ký tự tối đa của MỘT tin nhắn trong chat (A-031; roadmap O1-1: giữ 2.000). `chat_message_append` chặn lần cuối; `api` chặn ở `TurnBody`.

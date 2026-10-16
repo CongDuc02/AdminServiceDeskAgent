@@ -20,7 +20,7 @@ from bo19.config.settings import load_settings
 from bo19.observability.log import configure_logging
 from bo19.persistence import read
 from bo19.startup import runner
-from bo19.startup.checks_environment import step_15, step_16, step_17
+from bo19.startup.checks_environment import step_15, step_16, step_17, step_18
 from bo19.startup.model import Context, Entry
 
 BASE = {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": "x", "BO19_SESSION_SECRET": "y" * 32}
@@ -53,6 +53,30 @@ class Buoc16(unittest.TestCase):
     def test_gia_tri_la_chan(self):
         for bad in ("Dev", "production", "test", "PROD", "local"):
             self.assertEqual(step_16(ctx(BO19_ENVIRONMENT=bad)).codes, ("STARTUP_16_ENVIRONMENT_INVALID",), bad)
+
+
+class Buoc18(unittest.TestCase):
+    """ADR-033: `combined_main` chỉ chạy ở `BO19_ENVIRONMENT = dev` — topology gộp không bao giờ tới `staging` hay `prod` do quên đổi lệnh."""
+
+    def test_dev_dat(self):
+        self.assertEqual(step_18(ctx(Entry.COMBINED, BO19_ENVIRONMENT="dev")).codes, ())
+
+    def test_staging_prod_va_gia_tri_la_chan(self):
+        for v in ("staging", "prod", "Dev", "DEV", "local", "xyz"):
+            self.assertEqual(step_18(ctx(Entry.COMBINED, BO19_ENVIRONMENT=v)).codes, ("STARTUP_18_COMBINED_ONLY_IN_DEV",), v)
+
+    def test_thieu_bien_cung_chan_khong_mac_dinh_thanh_dev(self):
+        env = {k: v for k, v in BASE.items() if k != "BO19_ENVIRONMENT"}
+        c = Context(Entry.COMBINED, load_settings(env), {}, None, Path("."))
+        self.assertEqual(step_18(c).codes, ("STARTUP_18_COMBINED_ONLY_IN_DEV",))
+
+    def test_chi_ap_cho_combined(self):
+        from bo19.startup.model import MATRIX
+        step = next(s for s in MATRIX if s.number == "18")
+        self.assertEqual(step.entries, frozenset())
+        self.assertTrue(step.applies(Entry.COMBINED))
+        for entry in (Entry.API, Entry.WORKER, Entry.CRON):
+            self.assertFalse(step.applies(entry))
 
 
 class Buoc17(unittest.TestCase):

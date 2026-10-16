@@ -15,6 +15,7 @@ import sys
 
 from bo19.ai_gateway.gateway import build_gateway
 from bo19.config.settings import Settings, load_settings
+from bo19.observability import reaper
 from bo19.observability.log import configure_logging, get_logger
 from bo19.observability.shutdown import ShutdownLog
 from bo19.orchestrator.runner import DocumentRunner
@@ -24,6 +25,7 @@ from bo19.queue_worker.handlers import build_handlers
 from bo19.startup.model import Entry
 from bo19.startup.runner import run
 from bo19.tool_layer import storage as store
+from bo19.tool_layer.rendering import convert
 
 
 def open_document_runner(settings: Settings, pool: Pool) -> DocumentRunner | None:
@@ -52,8 +54,10 @@ def serve(shutdown: ShutdownLog) -> int:
         pool = Pool(settings.database_url, application_name="bo19-worker", max_size=4)  # một job một lúc + heartbeat + thu hồi lease
         pool.open()
         runner = open_document_runner(settings, pool)
+        reap = None
         try:
-            dispatcher = Dispatcher(pool, build_handlers(document_runner=runner), drain_s=float(settings.shutdown_delay_s))
+            dispatcher = Dispatcher(pool, build_handlers(document_runner=runner), drain_s=float(settings.shutdown_delay_s), on_drain_expired=convert.abort_all)
+            reap = reaper.start_if_init(convert.live_pids)  # PID 1 của container: dọn zombie mồ côi của `soffice` (B9a2)
 
             def on_signal(sig: int, _frame: object) -> None:
                 shutdown.received(sig)
@@ -64,6 +68,10 @@ def serve(shutdown: ShutdownLog) -> int:
             dispatcher.run_forever()
             return 0
         finally:
+            convert.abort_all()
+            convert.wait_idle(2.0)
+            if reap is not None:
+                reap.stop()
             if runner is not None:
                 runner.close()
             pool.close()

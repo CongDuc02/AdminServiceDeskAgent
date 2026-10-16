@@ -37,6 +37,11 @@ def step_16(ctx: Context) -> Result:
     return Result((code("16", problem.removeprefix("CONFIG_")),) if problem else ())
 
 
+def step_18(ctx: Context) -> Result:
+    """Chỉ `combined_main` (ADR-033): `BO19_ENVIRONMENT = dev`. Topology gộp không bao giờ tới `staging` hay `prod` do quên đổi lệnh. Thiếu hay sai biến thì #16 đã báo — ở đây cũng trượt (không phải `dev`)."""
+    return Result(() if ctx.settings.environment is Environment.DEV else (code("18", "COMBINED_ONLY_IN_DEV"),))
+
+
 def step_17(ctx: Context) -> Result:
     environment = ctx.settings.environment
     if environment is None or environment is Environment.PROD:

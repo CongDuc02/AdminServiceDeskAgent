@@ -59,3 +59,4 @@ tools/llm-probe/out/
 # turn-trial — kết quả đo thô (chỉ số và mã) của B6b
 tools/turn-trial/out/
 tools/render-trial/out/
+tools/combined-probe/out/
