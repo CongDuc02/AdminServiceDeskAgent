@@ -53,3 +53,7 @@ Không đổi quyết định A. Bổ sung sau S0 (`docs/reference/render-postgr
 - Trên Render, database thuộc user mặc định `bo19_admin`, không thuộc `bo19_migrator`. `bo19_migrator` không tạo được extension, và không có quyền `CREATE` trên `public` cho tới khi được cấp.
 - **Bước 0** của mục Migration và checkpointer của `06-structure.md` — `CREATE EXTENSION`, `GRANT CREATE ON SCHEMA public`, tạo `bo19_migrator` và `bo19_app` — chạy **bằng `bo19_admin`, do PO**, một lần cho mỗi database, theo runbook dựng lại PostgreSQL free ở `11-ops.md`. **Không** đưa `bo19_admin` vào CI.
 - CI vẫn chạy bước 1–4 bằng `bo19_migrator` như mục Decision. Ranh giới tin cậy gồm cả `bo19_admin` — đoạn "Giới hạn — nói thẳng" ở mục Hai role, và bất biến bằng quyền của `04-data.md`.
+
+## Cập nhật 2026-10-16 — giai đoạn build: PO áp tay, trước merge
+
+Không đổi quyết định A (CI là ngữ cảnh đích). Hiện trạng: CI **chưa** có secret `bo19_migrator` và chưa có bước migrate, nên không có gì tự áp migration khi deploy. Cho tới khi có, quy trình cố định là: migration chỉ thêm (tương thích ngược với code đang live), **PO áp lên DB Render trước, merge sau**, kế hoạch mỗi lát có migration nêu tương thích ngược và lệnh áp — chi tiết ở mục Migration của `11-ops.md`. B8b (0013) merge trước khi áp và deploy trượt `STARTUP_01_NOT_APPLIED` — thứ tự ngược này là lý do của quy trình.

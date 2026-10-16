@@ -3598,3 +3598,11 @@ PO duyệt kế hoạch B8a (`proposals/b8a-ke-hoach.md`) và quyết thêm về
 - **A-097 `Đã chốt`:** khoá dấu vân tay input render là secret riêng `BO19_RENDER_FINGERPRINT_KEY`, không dẫn xuất từ `BO19_SESSION_SECRET` (đổi secret phiên làm đổi dấu vân tay đã lưu; lộ một secret là lộ cả hai mục đích). **`06-structure.md`:** bước kiểm khởi động **#24** (`worker`, Chặn; 24 bước, bước #4 chia ba). **`11-ops.md` v0.36:** biến trong bảng và mục 19 Khoá dấu vân tay input render. **`ADR-039`:** mục 8 viết lại, phương án HKDF chuyển sang "bác bỏ". **`04-data.md`:** dòng `input_fingerprint`. `.env.example`: tên biến.
 - **A-098:** PO đồng ý, kèm điều kiện đã làm — dấu giữ chỗ nhìn ra ngay là chưa chính thức (`[Số văn bản — cấp khi phát hành]`); render `FINAL` thất bại nếu còn sót bất kỳ dấu giữ chỗ nào. **`ADR-039`:** mục 9; **`ASSUMPTIONS.md` v0.70**; **`12-roadmap.md`:** O1-20.
 - **Bản PDF nháp mẫu** (`docs/reference/render-trial-b9a-ban-nhap.pdf`, kèm `.md` ghi sha256 và kết quả quét).
+
+### 2026-10-16 — quy trình cố định cho migration (PO)
+
+`11-ops.md` v0.37 (mục Migration: quy trình bốn điểm và lệnh áp; sơ đồ ADR-022 ghi là đích chưa hiện thực), `12-roadmap.md` v0.60 (dòng Render `dev`), `ADR-022` (mục Cập nhật 2026-10-16). Không có câu nào trong thiết kế còn ghi `migrate_main` tự áp khi deploy: chỗ gần nhất là sơ đồ và câu mở đầu mục Migration của `11-ops.md` và dòng Render `dev` của `12-roadmap.md`, đã sửa.
+
+### 2026-10-16 — P4 `draft_free_content` bản 1.1: giọng bên phát hành (PO)
+
+`07-prompts.md` v0.7, mục 4.4: quy định ngôi và giọng bên phát hành, cấm giọng đơn xin, không chép lại tin nhắn, không lặp thông tin đã có ở mẫu; hai few-shot đúng giọng và một ví dụ "không viết". `prompt_module_version` 1.0 → 1.1. Nguyên nhân: PDF nháp mẫu của B9a viết "Xin được cấp giấy xác nhận…". Gốc rễ thứ hai: câu mẫu 1.0 ("…theo yêu cầu của đơn vị tiếp nhận") và `variable_guidance` của template thử ("nêu mục đích nhân viên xin giấy…") đều dẫn giọng người xin — đã sửa cả hai (`variable_guidance` là dữ liệu của template; template thật là M1.1).

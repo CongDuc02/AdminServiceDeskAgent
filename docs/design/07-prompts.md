@@ -1,6 +1,6 @@
 # Prompt Architecture — Admin Service Desk Agent (BO-19)
 
-**Phiên bản:** 0.6 · **Trạng thái:** Draft chờ duyệt · **v0.2:** đợt sửa A-075 — enum của output contract sinh từ cấu hình lúc gọi (ADR-025), `secondary_intent`, luật phiên bản khi catalog đổi — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.3:** đợt sửa 4 sau Phase 13 — slot `LIST` và `maxLength` điền lúc gọi (AUD-14); ghi chú ID `P1`–`P5` (AUD-22) · **v0.4:** đợt sửa 5 sau Phase 13 — 16 tham chiếu `file.md:dòng` thành tên mục (AUD-17); JSON Schema draft 2020-12 `[CẦN XÁC MINH]` (AUD-21) · **v0.5:** `ClassifyIntentResult`: `secondary_intent`, `retrieval_query` vào `required`, `null` = không có (PO, 2026-10-02) · **v0.6:** B6b — P2 `extract_slots` 1.1: `value` chép đúng từng chữ từ đoạn trích; độ chặt hai phép so khớp (PO, 2026-10-09)
+**Phiên bản:** 0.7 · **Trạng thái:** Draft chờ duyệt · **v0.2:** đợt sửa A-075 — enum của output contract sinh từ cấu hình lúc gọi (ADR-025), `secondary_intent`, luật phiên bản khi catalog đổi — mục ngày 2026-09-25 (đợt sửa A-068, A-073, A-075) của `CHANGELOG.md` · **v0.3:** đợt sửa 4 sau Phase 13 — slot `LIST` và `maxLength` điền lúc gọi (AUD-14); ghi chú ID `P1`–`P5` (AUD-22) · **v0.4:** đợt sửa 5 sau Phase 13 — 16 tham chiếu `file.md:dòng` thành tên mục (AUD-17); JSON Schema draft 2020-12 `[CẦN XÁC MINH]` (AUD-21) · **v0.5:** `ClassifyIntentResult`: `secondary_intent`, `retrieval_query` vào `required`, `null` = không có (PO, 2026-10-02) · **v0.6:** B6b — P2 `extract_slots` 1.1: `value` chép đúng từng chữ từ đoạn trích; độ chặt hai phép so khớp (PO, 2026-10-09) · **v0.7:** P4 bản 1.1 — giọng bên phát hành, cấm giọng đơn xin, không chép tin nhắn, không lặp thông tin của mẫu (PO, 2026-10-16)
 
 > File này chốt prompt nào tồn tại, mỗi prompt được đọc gì, trả về dạng gì và bị chặn thế nào. File này **không** mô tả khung thể thức (nằm trong `template .docx` — ADR-001, D-007), **không** chọn provider/model cụ thể (A-026), **không** thiết kế màn hình duyệt hay cơ chế dừng khi chạm trần (Phase 8).
 
@@ -194,9 +194,13 @@ Một biến một lời gọi. Schema theo biến:
 * **Task:** Đọc slot đã khai + `variable_guidance`, sinh `body` cho `variable_name`.
 * **Context (theo biến):** `purpose` → `purpose_statement`; `work_content` → `work_content_statement`; cộng `variable_guidance` (INT), `request_type` (INT).
 * **Guardrail:** Không được thêm câu khung, không đổi bố cục, không thêm nơi nhận/số ký hiệu. Không được dùng `recipient_org`, `HR_PROFILE`, đoạn quy trình. Độ dài ≤ `max_length`.
-* **Failure:** `validate_free_content` trượt → sinh lại 1 lần → vẫn trượt thì `halt_for_human` (dòng Failure handling ở mục `drafting_agent` của `03-agents.md`).
+* **Giọng và ngôi — bản 1.1 (PO, 2026-10-16):** văn bản do **bên phát hành** (công ty) viết và nói với nơi nhận ở dòng "Kính gửi" của mẫu; người được cấp văn bản gọi là "Ông/Bà". **Cấm giọng đơn xin** — "Xin được…", "Kính xin…", "Đề nghị cấp…", "Tôi xin…", "Mong được…", ngôi thứ nhất. **Không chép lại tin nhắn của nhân viên:** chuyển mục đích thành câu văn hành chính, không khẩu ngữ. **Không lặp thông tin đã có chỗ khác trong mẫu** — nơi nhận, họ tên, chức danh, đơn vị, số, ngày. Gọi văn bản bằng đúng tên loại mà `variable_guidance` hay `request_type` chỉ ra ("Giấy xác nhận này…").
+* **Failure:** `validate_free_content` trượt → sinh lại 1 lần → vẫn trượt thì `halt_for_human` (dòng Failure handling ở mục `drafting_agent` của `03-agents.md`). **Giọng đơn xin chưa có phép kiểm bằng code** — chỉ có chỉ dẫn và few-shot; đề xuất thêm một mã trượt `REQUEST_VOICE` vào `validate_free_content` là việc của B9b nếu PO muốn (bằng chứng: số đo ở `docs/reference/render-trial-p4-giong-van.md`).
 * **Few-shot (dữ liệu giả):**
-  > Input (giả): `purpose`="bổ sung hồ sơ vay vốn tại Ngân hàng X" → `{"variable_name":"purpose_statement","body":"Bổ sung hồ sơ vay vốn tại Ngân hàng X theo yêu cầu của đơn vị tiếp nhận."}`
+  > Input (giả): `purpose`="bổ sung hồ sơ vay vốn tại Ngân hàng X" → `{"variable_name":"purpose_statement","body":"Giấy xác nhận này được cấp để Ông/Bà bổ sung hồ sơ vay vốn tại Ngân hàng X."}`
+  > Input (giả): `purpose`="làm thủ tục xin cấp thị thực đi công tác nước ngoài" → `{"variable_name":"purpose_statement","body":"Giấy xác nhận này được cấp để Ông/Bà làm thủ tục xin cấp thị thực đi công tác nước ngoài."}`
+  > **Không viết** (giọng đơn xin, chép lại người dùng): "Xin được cấp giấy xác nhận công tác để bổ sung hồ sơ vay vốn tại ngân hàng."
+* **Phiên bản:** `1.1` (đổi wording và guardrail — `minor`, mục Phiên bản bên dưới). Bản `1.0` chạy ở B9a viết giọng đơn xin (PDF nháp mẫu `docs/reference/render-trial-b9a-ban-nhap.pdf`).
 
 ### 4.5 P5 `revise_free_content`
 

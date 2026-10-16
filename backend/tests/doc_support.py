@@ -40,7 +40,7 @@ VARIABLES: tuple[tuple[str, str, str | None, bool, str | None, int | None, tuple
     ("department_name", "DIRECT_SLOT", "department_name", False, None, None, ()),
     ("job_title", "DIRECT_SLOT", "job_title", False, None, None, ()),
     ("recipient_org", "DIRECT_SLOT", "recipient_org", False, None, None, ()),
-    ("purpose_statement", "FREE_CONTENT", None, False, "Một câu hành chính ngắn nêu mục đích xin giấy xác nhận.", 400, ("purpose",)),
+    ("purpose_statement", "FREE_CONTENT", None, False, "Một câu hành chính ngắn, giọng bên phát hành, nêu mục đích cấp giấy xác nhận.", 400, ("purpose",)),
     ("document_number", "SYSTEM", None, True, None, None, ()),
     ("issued_date", "SYSTEM", None, True, None, None, ()),
     ("signer_user_id", "SYSTEM", None, True, None, None, ()),
