@@ -29,11 +29,11 @@ CRASHED = "HANDLER_CRASHED"
 
 
 class JobFailure(Exception):
-    """Thất bại có mã của một lượt thử. `retry_after_s` — của 429 (mục Retry của 11-ops.md)."""
+    """Thất bại có mã của một lượt thử. `retry_after_s` — của 429 (mục Retry của 11-ops.md). `permanent` — thử lại không đổi được kết quả: job `FAILED` ngay (B9a, ADR-039)."""
 
-    def __init__(self, code: str, retry_after_s: int | None = None) -> None:
+    def __init__(self, code: str, retry_after_s: int | None = None, *, permanent: bool = False) -> None:
         super().__init__(code)
-        self.code, self.retry_after_s = code, retry_after_s
+        self.code, self.retry_after_s, self.permanent = code, retry_after_s, permanent
 
 
 @dataclass
@@ -144,7 +144,7 @@ class Dispatcher:
             ok = jobs.succeed(self.pool, job)
             log.info("JOB_SUCCEEDED", job_id=str(job.id), job_type=job.job_type, recorded=ok)
         elif isinstance(error, JobFailure):
-            result = jobs.fail(self.pool, job, error.code, retry_after_s=error.retry_after_s)
+            result = jobs.fail(self.pool, job, error.code, retry_after_s=error.retry_after_s, permanent=error.permanent)
             log.warning("JOB_FAILED_ATTEMPT", job_id=str(job.id), job_type=job.job_type, code=error.code, status=result.status if result else None)
         else:
             result = jobs.fail(self.pool, job, CRASHED)

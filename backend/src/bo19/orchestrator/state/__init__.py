@@ -80,3 +80,47 @@ def initial_state(*, trace_id: str, chat_session_id: str, actor_employee_id: str
         active_request_id=None, active_request_type=None, intent_result=None, unsupported_type=None, procedure_store=None, pending_intents=[], pending_question=None,
         clarification_count=0, last_seen_request_status=None, missing_slots=[], rejected_slots=[], rejection_codes=[], proposed_slots=[], retrieved_chunk_ids=[], selected_chunk_ids=[],
         reply_template_id=None, last_error_code=None)
+
+
+# ---- document_graph (B9a, ADR-039) -------------------------------------------------------------------------------------------------------------------------------
+# Cùng luật với IntakeState: không trường nào mang giá trị slot, văn bản LLM hay `change_reason` — chỉ id, mã, tên biến, bộ đếm. Contract ở mục State schema của 03-agents.md.
+DOCUMENT_SCHEMA_VERSION = 1
+
+VariableName = str
+
+
+class ReviewSignal(TypedDict):
+    decision_record_id: str  # bản ghi do thao tác cổng ghi; chi tiết đọc từ DB
+    kind: str | None  # `route_review` điền sau khi đọc DB (APPROVED, CHANGES_REQUESTED, …); `None` ngay sau resume — payload resume chỉ mang `decision_record_id`
+    change_scope: Literal["FREE_CONTENT", "SLOT_DATA"] | None
+    change_targets: list[str]
+
+
+class HaltInfo(TypedDict):
+    reason_code: str
+    at_node: str
+
+
+class DocumentState(TypedDict):
+    schema_version: int
+    trace_id: str
+    document_id: str
+    request_id: str
+    request_type: RequestTypeCode
+    template_id: str
+    template_version: int
+    free_content_variables: list[VariableName]
+    pending_targets: list[VariableName]
+    regenerated_variables: list[VariableName]
+    revision_round: int
+    last_signal: ReviewSignal | None
+    readiness_failures: list[str]
+    draft_render_key: str | None
+    halt: HaltInfo | None  # Sprint 1 không bao giờ đặt (job `FAILED`, ADR-039); Sprint 2 là `halt_for_human`
+
+
+def initial_document_state(*, trace_id: str, document_id: str, request_id: str, request_type: str) -> DocumentState:
+    """Giá trị của một thread `document:{id}` mới; `prepare_draft` điền phần còn lại từ DB."""
+    return DocumentState(
+        schema_version=DOCUMENT_SCHEMA_VERSION, trace_id=trace_id, document_id=document_id, request_id=request_id, request_type=request_type, template_id="", template_version=0,
+        free_content_variables=[], pending_targets=[], regenerated_variables=[], revision_round=0, last_signal=None, readiness_failures=[], draft_render_key=None, halt=None)

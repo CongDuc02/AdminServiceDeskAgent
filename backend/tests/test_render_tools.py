@@ -27,11 +27,12 @@ from bo19.persistence.pool import Pool
 from bo19.tool_layer import storage as st
 from bo19.tool_layer.kernel.context import Actor, ToolContext
 from bo19.tool_layer.kernel.permission import SystemActorRequired, system_context
-from bo19.tool_layer.rendering import convert
+from bo19.tool_layer.rendering import convert, watermark
+from bo19.tool_layer.rendering.doc_properties import SYSTEM_AUTHOR
 from bo19.tool_layer.tools import docx_render as dr
 from bo19.tool_layer.tools import pdf_export as pe
 from tests import pg_support
-from tests.render_support import DECLARED, VALUES, build_template, docx_text, pdf_text, require_tool, watermark_count
+from tests.render_support import DECLARED, VALUES, build_template, docx_props, docx_text, pdf_text, require_tool, watermark_count
 from tests.s3_support import ENDPOINT, REQUIRED, admin_client, drop_bucket, new_bucket, storage_for
 
 SRC_PURPOSE = "TEMPLATE_SOURCE"
@@ -104,23 +105,27 @@ class RenderBase(unittest.TestCase):
 
 
 class InputHash(unittest.TestCase):
-    """Khoá theo INPUT (mục 5.6 của 03-agents.md): phụ thuộc đúng ba thứ — phiên bản template, bảng giá trị, chế độ — và không thứ nào khác."""
+    """Khoá theo INPUT (mục 5.6 của 03-agents.md): phụ thuộc đúng bốn thứ — phiên bản template, bảng giá trị, chế độ, chuỗi watermark (ADR-038) — và không thứ nào khác."""
 
     V = uuid.UUID("11111111-1111-4111-8111-111111111111")
+    W = "BẢN THỬ NGHIỆM — KHÔNG CÓ GIÁ TRỊ PHÁP LÝ"
 
-    def test_phu_thuoc_tung_trong_ba_thanh_phan(self):
-        base = dr.input_hash(self.V, {"a": "1"}, "NON_PRODUCTION")
-        self.assertNotEqual(base, dr.input_hash(uuid.uuid4(), {"a": "1"}, "NON_PRODUCTION"))
-        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "2"}, "NON_PRODUCTION"))
-        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "1", "b": ""}, "NON_PRODUCTION"))
-        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "1"}, "PRODUCTION"))
+    def test_phu_thuoc_tung_trong_bon_thanh_phan(self):
+        base = dr.input_hash(self.V, {"a": "1"}, "NON_PRODUCTION", self.W)
+        self.assertNotEqual(base, dr.input_hash(uuid.uuid4(), {"a": "1"}, "NON_PRODUCTION", self.W))
+        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "2"}, "NON_PRODUCTION", self.W))
+        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "1", "b": ""}, "NON_PRODUCTION", self.W))
+        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "1"}, "PRODUCTION", self.W))
+        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "1"}, "NON_PRODUCTION", self.W + "."))  # đổi chuỗi → khoá khác
+        self.assertNotEqual(base, dr.input_hash(self.V, {"a": "1"}, "NON_PRODUCTION", None))
+        self.assertNotEqual(dr.input_hash(self.V, {"a": "1"}, "PRODUCTION", None), dr.input_hash(self.V, {"a": "1"}, "PRODUCTION", ""))
 
     def test_tat_dinh_va_khong_phu_thuoc_thu_tu(self):
-        self.assertEqual(dr.input_hash(self.V, {"a": "1", "b": "2"}, "PRODUCTION"), dr.input_hash(self.V, {"b": "2", "a": "1"}, "PRODUCTION"))
-        self.assertEqual(len(dr.input_hash(self.V, {}, "PRODUCTION")), 32)
+        self.assertEqual(dr.input_hash(self.V, {"a": "1", "b": "2"}, "PRODUCTION", None), dr.input_hash(self.V, {"b": "2", "a": "1"}, "PRODUCTION", None))
+        self.assertEqual(len(dr.input_hash(self.V, {}, "PRODUCTION", None)), 32)
 
     def test_tieng_viet_khong_bi_escape_va_khoa_la_hex_64(self):
-        h = dr.input_hash(self.V, {"a": "Đặng"}, "PRODUCTION")
+        h = dr.input_hash(self.V, {"a": "Đặng"}, "PRODUCTION", None)
         key = dr.render_key(uuid.UUID(int=5), h, "pdf")
         self.assertEqual(key, f"renders/{uuid.UUID(int=5)}/{h.hex()}.pdf")
         self.assertRegex(key, r"^renders/[0-9a-f-]{36}/[0-9a-f]{64}\.pdf$")
@@ -146,6 +151,29 @@ class DocxRender(RenderBase):
         prod = self.render_docx(prod_doc)
         self.assertEqual(prod.operating_mode, "PRODUCTION")
         self.assertEqual(watermark_count(self.s3_bytes(prod.docx_key)), 0)
+
+    def test_doi_chuoi_watermark_thi_khoa_khac_ban_cu_con_nguyen_khong_reused_nham(self):
+        """ADR-038: chuỗi watermark nằm trong input. Đổi chuỗi → khoá khác, bản cũ còn nguyên và mang chuỗi cũ, lần render mới KHÔNG bị trả `reused` bản cũ."""
+        did = self.make_document(self.make_template())
+        old = self.render_docx(did)
+        with mock.patch.object(watermark, "WATERMARK_TEXT", "CHUỖI WATERMARK ĐỔI SAU NÀY"):
+            new = self.render_docx(did)
+        self.assertNotEqual(old.docx_key, new.docx_key)
+        self.assertEqual((old.reused, new.reused), (False, False))
+        self.assertEqual((old.watermark_text, new.watermark_text), (watermark.WATERMARK_TEXT, "CHUỖI WATERMARK ĐỔI SAU NÀY"))
+        self.assertEqual(docx_props(self.s3_bytes(old.docx_key)).subject, watermark.WATERMARK_TEXT)
+        self.assertEqual(docx_props(self.s3_bytes(new.docx_key)).subject, "CHUỖI WATERMARK ĐỔI SAU NÀY")
+        again = self.render_docx(did)  # chuỗi cũ trở lại → đúng khoá cũ, reused
+        self.assertEqual((again.docx_key, again.reused), (old.docx_key, True))
+
+    def test_docx_mang_subject_va_tac_gia_trung_tinh(self):
+        version = self.make_template(template=build_template(properties={"author": "Nguyễn Văn Soạn Mẫu", "last_modified_by": "Trần Thị Người Sửa"}))
+        np_doc, prod_doc = self.make_document(version, mode="NON_PRODUCTION"), self.make_document(version, mode="PRODUCTION")
+        np_r, prod_r = self.render_docx(np_doc), self.render_docx(prod_doc)
+        self.assertEqual((np_r.watermark_text, prod_r.watermark_text), (watermark.WATERMARK_TEXT, None))
+        for r, subject in ((np_r, watermark.WATERMARK_TEXT), (prod_r, "")):
+            props = docx_props(self.s3_bytes(r.docx_key))
+            self.assertEqual((props.subject, props.author, props.last_modified_by), (subject, SYSTEM_AUTHOR, SYSTEM_AUTHOR))
 
     def test_khong_co_tham_so_che_do_trong_chu_ky_tool(self):
         import inspect
@@ -227,9 +255,130 @@ class DocxRender(RenderBase):
         self.assertEqual(cm.exception.reason, "CHECKSUM_MISMATCH")
 
 
+MARK = "[Số văn bản — cấp khi phát hành]"
+
+
+class FinalKhongConDauGiuCho(RenderBase):
+    """A-098 (PO, 2026-10-15): bản NHÁP được mang dấu giữ chỗ của hệ thống và phải hiện rõ; bản `FINAL` THẤT BẠI nếu còn sót bất kỳ dấu giữ chỗ nào — ở giá trị hay ở chữ của file."""
+
+    def assert_nothing_written(self, did):
+        self.assertEqual(self.scalar("select count(*) from stored_object_commit where object_key like %s", f"renders/{did}/%"), 0)
+        self.assertEqual(self.scalar("select count(*) from audit_event where document_id = %s and action = 'document.docx_render'", did), 0)
+
+    def test_ban_nhap_mang_dau_va_dau_hien_trong_docx_va_pdf(self):
+        did = self.make_document(self.make_template())
+        values = {**VALUES, "tieu_de": MARK}
+        docx = self.render_docx(did, values, "DRAFT")
+        self.assertIn(MARK, docx_text(self.s3_bytes(docx.docx_key)))
+        pdf = pe.pdf_export(self.pool, self.storage, self.sys, docx)
+        self.assertIn(MARK, " ".join(pdf_text(self.s3_bytes(pdf.pdf_key)).split()))
+
+    def test_final_that_bai_khi_gia_tri_la_dau_giu_cho_cua_he_thong(self):
+        did = self.make_document(self.make_template())
+        with self.assertRaises(dr.PlaceholderRemains) as cm:
+            self.render_docx(did, {**VALUES, "tieu_de": MARK, "ho_ten": f"Ông {MARK}"}, "FINAL")
+        self.assertEqual((cm.exception.code, cm.exception.names), ("PLACEHOLDER_REMAINS", ("ho_ten", "tieu_de")))
+        self.assertNotIn("cấp khi phát hành", str(cm.exception))  # chỉ tên biến
+        self.assert_nothing_written(did)
+
+    def test_final_that_bai_khi_gia_tri_la_giu_cho_chung(self):
+        for bad in ("...", "[điền sau]", "N/A", "…", "TBD", "  "):
+            did = self.make_document(self.make_template())
+            with self.assertRaises(dr.PlaceholderRemains, msg=repr(bad)) as cm:
+                self.render_docx(did, {**VALUES, "noi_dung": bad}, "FINAL")
+            self.assertEqual(cm.exception.names, ("noi_dung",), repr(bad))
+            self.assert_nothing_written(did)
+
+    def test_dau_khong_phan_biet_dau_gach_hoa_thuong_va_dang_unicode(self):
+        did = self.make_document(self.make_template())
+        import unicodedata
+        for bad in ("[số văn bản - CẤP KHI PHÁT HÀNH]", "[Số văn bản – cấp khi phát hành]", unicodedata.normalize("NFD", MARK), "[Ngày — cấp khi phát hành ]"):
+            with self.assertRaises(dr.PlaceholderRemains, msg=repr(bad)):
+                self.render_docx(did, {**VALUES, "noi_nhan": bad}, "FINAL")
+        self.assert_nothing_written(did)
+
+    def test_final_dat_khi_khong_con_dau_nao(self):
+        did = self.make_document(self.make_template())
+        r = self.render_docx(did, {**VALUES, "tieu_de": "GIẤY XÁC NHẬN GIẢ số 123/QĐ-GIẢ"}, "FINAL")
+        self.assertEqual((r.render_kind, r.reused), ("FINAL", False))
+        self.assertFalse(provisional_in(docx_text(self.s3_bytes(r.docx_key))))
+
+    def test_giua_chung_cau_co_chu_cap_khi_phat_hanh_khong_co_ngoac_khong_bi_nham(self):
+        did = self.make_document(self.make_template())
+        r = self.render_docx(did, {**VALUES, "noi_dung": "Số văn bản được cấp khi phát hành theo quy định của cơ quan."}, "FINAL")
+        self.assertFalse(r.reused)
+
+    def test_final_that_bai_khi_dau_nam_san_trong_khung_cua_template(self):
+        tpl = build_template(extra_paragraphs=(MARK,))
+        did = self.make_document(self.make_template(template=tpl))
+        with self.assertRaises(dr.PlaceholderRemains) as cm:
+            self.render_docx(did, VALUES, "FINAL")
+        self.assertEqual(cm.exception.names, ("document_text",))
+        self.assert_nothing_written(did)
+
+    def test_dau_nam_san_trong_header_hay_footer_cung_bi_bat(self):
+        for kw in ({"header_text": f"{MARK} {{{{ co_quan }}}}"}, {"footer_text": f"Trang — {MARK} {{{{ noi_nhan }}}}"}):
+            did = self.make_document(self.make_template(template=build_template(**kw)))
+            with self.assertRaises(dr.PlaceholderRemains, msg=repr(kw)):
+                self.render_docx(did, VALUES, "FINAL")
+
+    def test_khoa_da_co_tu_ban_nhap_van_bi_kiem_khi_render_final(self):
+        """Bản NHÁP cùng input đã commit docx có dấu nằm sẵn ở khung; FINAL cùng khoá không được tái dùng nó."""
+        tpl = build_template(extra_paragraphs=(MARK,))
+        did = self.make_document(self.make_template(template=tpl))
+        draft = self.render_docx(did, VALUES, "DRAFT")
+        self.assertFalse(draft.reused)
+        with self.assertRaises(dr.PlaceholderRemains):
+            self.render_docx(did, VALUES, "FINAL")
+        self.assertEqual(self.scalar("select count(*) from stored_object_commit where object_key like %s", f"renders/{did}/%"), 1)  # chỉ bản nháp
+
+    def test_ban_nhap_khong_bi_kiem_du_co_dau_o_khung(self):
+        tpl = build_template(extra_paragraphs=(MARK,))
+        did = self.make_document(self.make_template(template=tpl))
+        self.assertFalse(self.render_docx(did, {**VALUES, "noi_dung": "..."}, "DRAFT").reused)
+
+
+def provisional_in(text: str) -> bool:
+    from bo19.domain import provisional
+    return provisional.contains_marker(text)
+
+
 class PdfExport(RenderBase):
     def export(self, docx: dr.DocxRender, **kw) -> pe.PdfExport:
         return pe.pdf_export(self.pool, self.storage, self.sys, docx, **kw)
+
+    def test_dong_document_render_ghi_chuoi_watermark_cua_input(self):
+        version = self.make_template()
+        np_doc, prod_doc = self.make_document(version, mode="NON_PRODUCTION"), self.make_document(version, mode="PRODUCTION")
+        np_out, prod_out = self.export(self.render_docx(np_doc)), self.export(self.render_docx(prod_doc))
+        self.assertEqual(self.scalar("select watermark_text from document_render where id = %s", np_out.render_id), watermark.WATERMARK_TEXT)
+        self.assertIsNone(self.scalar("select watermark_text from document_render where id = %s", prod_out.render_id))
+
+    def test_doi_chuoi_thi_dong_moi_mang_chuoi_moi_dong_cu_dung_yen(self):
+        did = self.make_document(self.make_template())
+        old = self.export(self.render_docx(did))
+        with mock.patch.object(watermark, "WATERMARK_TEXT", "CHUỖI MỚI"):
+            new = self.export(self.render_docx(did))
+        self.assertNotEqual((old.render_id, old.pdf_key), (new.render_id, new.pdf_key))
+        self.assertEqual(self.scalar("select watermark_text from document_render where id = %s", old.render_id), watermark.WATERMARK_TEXT)
+        self.assertEqual(self.scalar("select watermark_text from document_render where id = %s", new.render_id), "CHUỖI MỚI")
+
+    def test_check_chan_non_production_thieu_hoac_rong_chuoi(self):
+        """`ck_document_render_watermark` ở DB: NON_PRODUCTION thì phải có chuỗi, không rỗng; PRODUCTION thì NULL được. (Siêu người dùng, bỏ khoá ngoại — chỉ CHECK được thử.)"""
+        import psycopg
+        did = self.make_document(self.make_template())
+
+        def insert(mode, text):
+            with self.db.connect(autocommit=True) as c:
+                c.execute("set session_replication_role = replica")
+                c.execute("insert into document_render (id, document_id, operating_mode, render_kind, input_hash, template_version_id, revision_round, docx_object_key, pdf_object_key, watermark_text) "
+                          "values (%s, %s, %s, 'DRAFT', %s, %s, 0, %s, %s, %s)", (uuid.uuid4(), did, mode, uuid.uuid4().bytes * 2, uuid.uuid4(), f"k/{uuid.uuid4()}.docx", f"k/{uuid.uuid4()}.pdf", text))
+        for text in (None, ""):
+            with self.assertRaises(psycopg.errors.CheckViolation, msg=repr(text)) as cm:
+                insert("NON_PRODUCTION", text)
+            self.assertEqual(cm.exception.diag.constraint_name, "ck_document_render_watermark")
+        insert("NON_PRODUCTION", "BẤT KỲ")
+        insert("PRODUCTION", None)
 
     def test_ghi_pdf_va_them_dong_document_render(self):
         did = self.make_document(self.make_template(), revision_round=2)

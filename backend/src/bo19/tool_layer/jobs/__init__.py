@@ -92,14 +92,15 @@ def succeed(pool: Pool, job: ClaimedJob) -> bool:
     return row is not None
 
 
-def fail(pool: Pool, job: ClaimedJob, code: str, *, retry_after_s: int | None = None) -> FailOutcome | None:
-    """Một lượt thử hỏng. `None` nếu không còn là chủ lease. `retry_after_s` — của 429: lấy `max` với backoff; vượt WV-19 thì `FAILED` ngay với `PROVIDER_RATE_LIMITED`."""
+def fail(pool: Pool, job: ClaimedJob, code: str, *, retry_after_s: int | None = None, permanent: bool = False) -> FailOutcome | None:
+    """Một lượt thử hỏng. `None` nếu không còn là chủ lease. `retry_after_s` — của 429: lấy `max` với backoff; vượt WV-19 thì `FAILED` ngay với `PROVIDER_RATE_LIMITED`.
+    `permanent` (B9a, ADR-039; mục 3.2 của 11-ops.md): lỗi mà thử lại cho cùng kết quả — `FAILED` ngay, không chờ hết `max_attempts`, mã lỗi giữ nguyên."""
     if not _CODE.match(code):
         raise ValueError("code")  # chỉ mã — không thông điệp, không giá trị
     if retry_after_s is not None and retry_after_s < 0:
         raise ValueError("retry_after_s")
     give_up = retry_after_s is not None and retry_after_s > wv.LLM_RETRY_AFTER_CEILING_SECONDS
-    final = give_up or job.attempts >= job.max_attempts
+    final = give_up or permanent or job.attempts >= job.max_attempts
     stored = RATE_LIMITED if give_up else code
     with pool.acquire() as conn, unit_of_work(conn):
         if final:

@@ -9,12 +9,14 @@ của lượt không vào bảng (test đọc bảng). **Không** để văn b�
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from typing import Any
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END as _END
 from langgraph.graph import START as _START
 from langgraph.graph import StateGraph
+from langgraph.types import Command, interrupt
 
 from bo19.orchestrator.runtime.node_boundary import guard
 
@@ -23,20 +25,59 @@ NodeFn = Callable[..., dict[str, Any]]
 RouteFn = Callable[..., str]
 
 
+INTERRUPTED = "__interrupt__"  # khoá LangGraph đặt vào kết quả `invoke` khi graph dừng ở một `interrupt`
+
+
+def wait_for_human(payload: Mapping[str, Any]) -> Any:
+    """Dừng graph tại node gọi (`interrupt`) cho tới khi có giá trị resume; trả giá trị đó. Lần đầu chạy tới đây graph dừng và checkpoint được ghi; resume chạy lại node từ đầu và `interrupt` trả giá trị.
+
+    Payload và giá trị resume chỉ mang id, mã, tên (mục Checkpointer và PII của 03-agents.md). **Node gọi hàm này không được có tác động nào TRƯỚC lời gọi** — resume chạy lại node từ đầu.
+    """
+    return interrupt(dict(payload))
+
+
+@dataclass(frozen=True)
+class Snapshot:
+    """Trạng thái của một thread: state, node sẽ chạy kế tiếp, và node đang chờ ở `interrupt` (nếu có)."""
+
+    values: dict[str, Any] | None
+    next_nodes: tuple[str, ...]
+    waiting_at: str | None
+
+    @property
+    def exists(self) -> bool:
+        return bool(self.values)
+
+    @property
+    def finished(self) -> bool:
+        return self.exists and not self.next_nodes
+
+
 class Graph:
     """Mặt tiền hẹp của một graph đã biên dịch."""
 
     def __init__(self, compiled: Any) -> None:
         self._compiled = compiled
 
-    def invoke(self, thread_id: str, state_input: Mapping[str, Any], *, configurable: Mapping[str, Any], recursion_limit: int = 40) -> dict[str, Any]:
+    def invoke(self, thread_id: str, state_input: Mapping[str, Any] | None, *, configurable: Mapping[str, Any], recursion_limit: int = 40) -> dict[str, Any]:
+        """`state_input = None`: tiếp tục từ checkpoint cuối của thread (một lần chạy dở bị ngắt) — không bắt đầu lại từ START."""
         config = {"configurable": {**configurable, "thread_id": thread_id}, "recursion_limit": recursion_limit}
-        return dict(self._compiled.invoke(dict(state_input), config))
+        return dict(self._compiled.invoke(None if state_input is None else dict(state_input), config))
+
+    def resume(self, thread_id: str, value: Any, *, configurable: Mapping[str, Any], recursion_limit: int = 40) -> dict[str, Any]:
+        """Trả `value` cho `interrupt` đang chờ của thread rồi chạy tiếp. Giá trị resume chỉ mang id (ADR-008)."""
+        config = {"configurable": {**configurable, "thread_id": thread_id}, "recursion_limit": recursion_limit}
+        return dict(self._compiled.invoke(Command(resume=value), config))
 
     def values(self, thread_id: str) -> dict[str, Any] | None:
         """State hiện có của thread, hoặc `None` nếu thread chưa có checkpoint nào."""
         snapshot = self._compiled.get_state({"configurable": {"thread_id": thread_id}})
         return dict(snapshot.values) if snapshot.values else None
+
+    def snapshot(self, thread_id: str) -> Snapshot:
+        snap = self._compiled.get_state({"configurable": {"thread_id": thread_id}})
+        waiting = next((t.name for t in snap.tasks if getattr(t, "interrupts", None)), None)
+        return Snapshot(dict(snap.values) if snap.values else None, tuple(snap.next), waiting)
 
 
 class GraphBuilder:

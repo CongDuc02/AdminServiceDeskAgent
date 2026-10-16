@@ -101,6 +101,16 @@ class KetQuaHandler(DispatcherBase):
         self.assertEqual(got, {"payload": {"request_id": "r-1"}, "attempts": 1})
         self.assertEqual(self.row(jid)["status"], "SUCCEEDED")
 
+    def test_job_failure_permanent_failed_ngay(self):
+        jid = self.add()
+
+        def handler(job, ctx):
+            raise JobFailure("FREE_CONTENT_INVALID", permanent=True)
+
+        self.assertTrue(self.dispatcher({"render_document": handler}).run_once())
+        r = self.row(jid)
+        self.assertEqual((r["status"], r["attempts"], r["last_error_code"]), ("FAILED", 1, "FREE_CONTENT_INVALID"))
+
     def test_job_failure_ve_queued_voi_backoff_va_retry_after(self):
         jid = self.add()
 

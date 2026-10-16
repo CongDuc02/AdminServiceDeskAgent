@@ -42,6 +42,7 @@ ENV_NAMES: Mapping[str, str] = {
     "argon2_parallelism": "BO19_ARGON2_PARALLELISM",
     "llm_base_url": "BO19_LLM_BASE_URL",
     "llm_api_key": "BO19_LLM_API_KEY",
+    "render_fingerprint_key": "BO19_RENDER_FINGERPRINT_KEY",
     "object_storage_endpoint_url": "BO19_OBJECT_STORAGE_ENDPOINT_URL",
     "object_storage_bucket": "BO19_OBJECT_STORAGE_BUCKET",
     "object_storage_region": "BO19_OBJECT_STORAGE_REGION",
@@ -81,15 +82,17 @@ class Settings:
     object_storage_region: str = "us-east-1"
     object_storage_access_key_id: str | None = field(default=None, repr=False)
     object_storage_secret_access_key: str | None = field(default=None, repr=False)
+    # B9a — khoá HMAC của dấu vân tay input render (ADR-009, ADR-039, A-097). SECRET riêng, không dẫn xuất từ secret phiên; bước kiểm #24 là nơi chặn khi thiếu hay ngắn.
+    render_fingerprint_key: str | None = field(default=None, repr=False)
     problems: tuple[tuple[str, str], ...] = ()  # (trường, mã) — mã dạng CONFIG_<TÊN>_MISSING | _INVALID
 
     def problem(self, name: str) -> str | None:
         return dict(self.problems).get(name)
 
     def __repr__(self) -> str:
-        hidden = ("database_url", "session_secret", "llm_api_key", "object_storage_access_key_id", "object_storage_secret_access_key")
+        hidden = ("database_url", "session_secret", "llm_api_key", "render_fingerprint_key", "object_storage_access_key_id", "object_storage_secret_access_key")
         shown = ", ".join(f"{f}={getattr(self, f)!r}" for f in ENV_NAMES if f not in hidden)
-        return f"Settings({shown}, database_url=<ẩn>, session_secret=<ẩn>, llm_api_key=<ẩn>, object_storage_access_key_id=<ẩn>, object_storage_secret_access_key=<ẩn>, problems={[p for p, _ in self.problems]})"
+        return f"Settings({shown}, database_url=<ẩn>, session_secret=<ẩn>, llm_api_key=<ẩn>, render_fingerprint_key=<ẩn>, object_storage_access_key_id=<ẩn>, object_storage_secret_access_key=<ẩn>, problems={[p for p, _ in self.problems]})"
 
 
 def _code(name: str, kind: str) -> str:
@@ -164,6 +167,7 @@ def load_settings(env: Mapping[str, str] = os.environ) -> Settings:
     values["llm_base_url"] = raw if _https_url(raw) else None  # bắt buộc https (bước kiểm #21)
     if values["llm_base_url"] is None:
         problems.append(("llm_base_url", _code("llm_base_url", "INVALID")))
+    values["render_fingerprint_key"] = _get(env, "render_fingerprint_key")  # như khoá LLM: không ở `problems` — bước kiểm #24 chặn khi thiếu hay ngắn
     values["llm_api_key"] = _get(env, "llm_api_key")  # không có ở `problems`: bước kiểm #22 (B6b) là nơi chặn khi thiếu khoá — `Settings` vẫn dựng được để các bước khác báo cùng lúc
 
     # Object storage: cả nhóm vắng là hợp lệ (chưa dùng); có một phần thì mọi phần còn lại bắt buộc. `https://` bắt buộc ngoài `dev` (local trỏ SeaweedFS, mục Biến môi trường của 11-ops.md).

@@ -26,6 +26,7 @@ Không sửa `schema.sql` — kể cả chỉ một dòng chú thích. Sửa th�
 | `0011_slot_definition_label.sql` | Cột `slot_definition.label_vi` (`NOT NULL`, không rỗng) | R4 của `proposals/reply-templates.md`; mục `slot_definition` của `04-data.md` |
 | `0012_chat_message_reply_link.sql` | Cột `chat_message.in_reply_to_message_id`; `UNIQUE (chat_session_id, id)`; khoá ngoại ghép tự tham chiếu (`NO ACTION`); hai `CHECK`; `UNIQUE` từng phần `uq_chat_message_one_agent_reply` | PO duyệt 2026-10-12 (B6b, Q6); mục `chat_message` của `04-data.md`; mục SSE của `05-api.md` |
 | `0013_job_lease_id.sql` | Cột `job.lease_id uuid`; `CHECK ck_job_lease_id_iff_running` (có mặt khi và chỉ khi `RUNNING`) | PO 2026-10-13 (B8b); ADR-004 mục Bổ sung; mục `job` của `04-data.md` |
+| `0014_document_render_watermark_text.sql` | Cột `document_render.watermark_text text`; `CHECK ck_document_render_watermark` (`NON_PRODUCTION` thì có và không rỗng) | PO 2026-10-13 (B9a, M5); ADR-038; mục 5.1 của `04-data.md` |
 
 Diễn giải từng bảng, cột và index — kể cả phần do migration thêm — ở mục Bảng chi tiết của `04-data.md`. Ngoài schema, còn hai thư mục migration khác: `backend/migrations/data/` (dữ liệu danh mục) và `backend/migrations/library/` (quyền trên bảng của thư viện checkpointer). Thứ tự áp cả ba thư mục ở mục Migration và checkpointer của `06-structure.md`.
 

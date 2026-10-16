@@ -1,4 +1,4 @@
-"""Bước kiểm khởi động #12, #19 và #20 — secret phiên (có mặt, ≥ 32 byte), tracing của `langsmith`, tham số `argon2id`.
+"""Bước kiểm khởi động #12, #19, #20 và #24 — secret phiên (có mặt, ≥ 32 byte), tracing của `langsmith`, tham số `argon2id`, khoá dấu vân tay render (có mặt, ≥ 32 byte).
 
 #19 — tên biến lấy từ tài liệu gốc đã tải bằng `curl` (`docs/reference/langsmith-tracing-env-nguon-goc.md`, đúng bản lock):
 bốn tên bật tracing là `{LANGSMITH,LANGCHAIN}_TRACING{,_V2}`; sáu tên `*_TRACING_MODE`, `*_TRACING_SAMPLING_RATE`, `*_TRACING_QUEUE_MAX_SIZE`
@@ -19,6 +19,9 @@ _SAFE_NAME = re.compile(r"[^A-Za-z0-9_]")
 
 # A-088 `Đã chốt` (B3): `HS256` cần khoá ít nhất 32 byte — PyJWT 2.15.0 và RFC 7518 mục 3.2 (docs/reference/pyjwt-hmac-key-length.md). Đơn vị là BYTE sau mã hoá UTF-8.
 MIN_SESSION_SECRET_BYTES = 32
+
+# A-097 (PO, 2026-10-15): khoá HMAC-SHA256 của dấu vân tay input render là secret RIÊNG, độ dài tối thiểu như #12 (kích cỡ đầu ra của hàm băm — RFC 7518 mục 3.2 cho HS256).
+MIN_RENDER_FINGERPRINT_KEY_BYTES = 32
 
 # WV-16 — OWASP, cấu hình thứ hai trong năm cấu hình (docs/reference/owasp-password-storage-argon2id.md). Không ngoại lệ theo môi trường.
 ARGON2_MIN_TIME_COST = 2
@@ -48,6 +51,16 @@ def step_12(ctx: Context) -> Result:
         return Result((code("12", problem.removeprefix("CONFIG_")),))
     if len(ctx.settings.session_secret.encode("utf-8")) < MIN_SESSION_SECRET_BYTES:
         return Result((code("12", "SESSION_SECRET_TOO_SHORT"),))
+    return Result()
+
+
+def step_24(ctx: Context) -> Result:
+    """`BO19_RENDER_FINGERPRINT_KEY` có mặt và dài ít nhất `MIN_RENDER_FINGERPRINT_KEY_BYTES` byte (A-097). Chỉ `worker` — tiến trình duy nhất băm input render. Cùng giới hạn của #12: độ dài là điều kiện cần, không phải đủ."""
+    key = ctx.settings.render_fingerprint_key
+    if not key:
+        return Result((code("24", "RENDER_FINGERPRINT_KEY_MISSING"),))
+    if len(key.encode("utf-8")) < MIN_RENDER_FINGERPRINT_KEY_BYTES:
+        return Result((code("24", "RENDER_FINGERPRINT_KEY_TOO_SHORT"),))
     return Result()
 
 

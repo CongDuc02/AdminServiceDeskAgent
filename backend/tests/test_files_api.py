@@ -80,8 +80,8 @@ class FilesBase(AuthBase):
                       (did, req, ver, doc_status, b"\x00" * 32 if doc_status not in ("DRAFT", "PENDING_APPROVAL") else None, uuid.uuid4() if doc_status not in ("DRAFT", "PENDING_APPROVAL") else None,
                        uuid.uuid4() if doc_status not in ("DRAFT", "PENDING_APPROVAL") else None, self.signer if doc_status not in ("DRAFT", "PENDING_APPROVAL") else None,
                        rid if (issued and pinned) or force_pin else (uuid.uuid4() if issued else None), uuid.uuid4() if issued else None, now.date() if issued else None, now if issued else None))
-            c.execute("insert into document_render (id, document_id, operating_mode, render_kind, input_hash, template_version_id, revision_round, docx_object_key, pdf_object_key) "
-                      "values (%s, %s, 'NON_PRODUCTION', %s, %s, %s, 0, %s, %s)", (rid, did, kind, uuid.uuid4().bytes * 2, ver, docx_key, pdf_key))
+            c.execute("insert into document_render (id, document_id, operating_mode, render_kind, input_hash, template_version_id, revision_round, docx_object_key, pdf_object_key, watermark_text) "
+                      "values (%s, %s, 'NON_PRODUCTION', %s, %s, %s, 0, %s, %s, 'BẢN THỬ NGHIỆM — KHÔNG CÓ GIÁ TRỊ PHÁP LÝ')", (rid, did, kind, uuid.uuid4().bytes * 2, ver, docx_key, pdf_key))  # `ck_document_render_watermark` (0014): NON_PRODUCTION phải có chuỗi
         self.version_of = {did: (tid, ver)}
         return did, rid
 

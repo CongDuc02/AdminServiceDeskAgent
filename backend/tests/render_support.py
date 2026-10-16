@@ -7,6 +7,7 @@ from __future__ import annotations
 import io
 import shutil
 import subprocess
+import tempfile
 import unittest
 import os
 
@@ -23,8 +24,11 @@ VIETNAMESE = "Nguyễn Thị Hương Giang đã công tác tại Phòng Hành ch
 
 
 def build_template(*, header_text: str | None = "{{ co_quan }}", footer_text: str | None = "Trang — {{ noi_nhan }}", extra_paragraphs: tuple[str, ...] = (),
-                   font: str = FONT, two_sections: bool = False) -> bytes:
+                   font: str = FONT, two_sections: bool = False, properties: dict[str, str] | None = None) -> bytes:
+    """`properties`: thuộc tính tài liệu của mẫu (`author`, `last_modified_by`, `title`, `subject`, …) — để thử rằng tên người soạn mẫu không lọt vào PDF (B9a)."""
     document = Document()
+    for name, value in (properties or {}).items():
+        setattr(document.core_properties, name, value)
     for style in ("Normal", "Header", "Footer"):
         s = document.styles[style]
         s.font.name = font
@@ -68,6 +72,11 @@ def docx_text(docx: bytes) -> str:
     return "\n".join(out)
 
 
+def docx_props(docx: bytes):
+    """`core_properties` của file (python-docx): `subject`, `author`, `last_modified_by`, `title`."""
+    return Document(io.BytesIO(docx)).core_properties
+
+
 def watermark_count(docx: bytes) -> int:
     """Số shape watermark (`v:shape` kiểu WordArt mang đúng chữ AC-1.3) ở mọi phần tiêu đề của file — kiểm "có watermark trong file" ở mức `.docx` (M5)."""
     import zipfile
@@ -92,6 +101,30 @@ def require_tool(testcase_cls_or_none, tool: str) -> None:
 def pdf_text(pdf: bytes) -> str:
     out = subprocess.run(["pdftotext", "-layout", "-", "-"], input=pdf, capture_output=True, timeout=60, check=True)
     return out.stdout.decode("utf-8")
+
+
+def pdfinfo_fields(pdf: bytes) -> dict[str, str]:
+    """Các trường `Khoá: giá trị` của `pdfinfo` (poppler) — công cụ CHUẨN, độc lập với mã của dự án (ADR-038). Trường vắng thì không có khoá."""
+    out = _pdfinfo(pdf)
+    fields = {}
+    for line in out.splitlines():
+        key, sep, value = line.partition(":")
+        if sep:
+            fields[key.strip()] = value.strip()
+    return fields
+
+
+def pdfinfo_xmp(pdf: bytes) -> str:
+    return _pdfinfo(pdf, "-meta")
+
+
+def _pdfinfo(pdf: bytes, *flags: str) -> str:
+    """`pdfinfo` cần đọc ngẫu nhiên nên không nhận ống dẫn: ghi ra tệp tạm."""
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "x.pdf")
+        with open(path, "wb") as f:
+            f.write(pdf)
+        return subprocess.run(["pdfinfo", "-enc", "UTF-8", *flags, path], capture_output=True, timeout=60, check=True).stdout.decode("utf-8")
 
 
 def pdf_fonts(pdf: bytes) -> list[str]:
