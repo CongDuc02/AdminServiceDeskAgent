@@ -17,6 +17,7 @@ from tests import _guard  # noqa: F401 — chốt chặn mạng và khoá API c�
 import io
 import os
 import stat
+import subprocess
 import sys
 import tempfile
 import time
@@ -201,6 +202,58 @@ class CombinedMain(DocBase):
         self.assertEqual(self.job(rid)[1], 1)  # lượt thử 1: lần bị huỷ không được tính
         self.assertEqual(self.document(rid)["status"], "PENDING_APPROVAL")
         self.assertEqual(q.terminate(30), 0)
+
+    def test_bo_xu_ly_tin_hieu_som_dung_vong_poll_va_ghi_tin_hieu_mot_lan(self):
+        """Tín hiệu tới trước khi uvicorn cài bộ xử lý của nó không được mất — `serve` dựa vào đó để không chạy uvicorn nữa."""
+        import signal as _signal
+        from bo19.entrypoints.combined_main import make_signal_handler
+        from bo19.observability.shutdown import ShutdownLog
+        from bo19.queue_worker.dispatcher import Dispatcher
+        shutdown, dispatcher = ShutdownLog("bo19.test"), Dispatcher(object(), {})
+        handler = make_signal_handler(shutdown, dispatcher)
+        self.assertFalse(dispatcher.stopping)
+        handler(_signal.SIGTERM, None)
+        self.assertTrue(dispatcher.stopping)
+        self.assertEqual(shutdown.signals, ["SIGTERM"])
+        handler(_signal.SIGTERM, None)  # uvicorn bắn lại tín hiệu sau khi tắt: không ghi lần hai
+        self.assertEqual(shutdown.signals, ["SIGTERM"])
+
+    def test_cau_noi_tin_hieu_dat_should_exit_khi_tin_hieu_toi_truoc_uvicorn(self):
+        import threading as _threading
+        from bo19.entrypoints.combined_main import watch_for_signal
+        from bo19.observability.shutdown import ShutdownLog
+
+        class FakeServer:
+            should_exit = False
+
+        shutdown, server, finished = ShutdownLog("bo19.test"), FakeServer(), _threading.Event()
+        t = _threading.Thread(target=watch_for_signal, args=(shutdown, server, finished, 0.01))
+        t.start()
+        time.sleep(0.1)
+        self.assertFalse(server.should_exit)  # chưa có tín hiệu: không đụng tới uvicorn
+        import signal as _signal
+        shutdown.received(_signal.SIGTERM)
+        t.join(5)
+        self.assertTrue(server.should_exit)
+        # `finished` được đặt thì cầu nối dừng dù không có tín hiệu
+        fresh_server, fresh_finished = FakeServer(), _threading.Event()
+        t2 = _threading.Thread(target=watch_for_signal, args=(ShutdownLog("bo19.test"), fresh_server, fresh_finished, 0.01))
+        t2.start()
+        fresh_finished.set()
+        t2.join(5)
+        self.assertFalse(t2.is_alive() or fresh_server.should_exit)
+
+    def test_sigterm_ngay_sau_khi_vong_poll_bat_dau_van_thoat_nhanh(self):
+        for _ in range(3):
+            p, _ = self.start()
+            self.assertIsNotNone(p.wait_for("WORKER_LOOP_START", 60), p.text()[-2000:])
+            started = time.monotonic()
+            try:
+                code = p.terminate(30)  # gửi ngay: có thể trước cả khi uvicorn cài bộ xử lý
+            except subprocess.TimeoutExpired:
+                self.fail("không thoát sau SIGTERM 30 s: " + " ".join(m for m in p.messages()[-12:]))
+            self.assertEqual(code, 0, p.text()[-2000:])
+            self.assertLess(time.monotonic() - started, 6.0)
 
     def test_sigterm_khi_roi_khong_co_job_thoat_nhanh(self):
         p, _ = self.start()
