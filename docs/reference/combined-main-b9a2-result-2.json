@@ -1,0 +1,316 @@
+{
+  "cpus": "0.1",
+  "memory": "512m",
+  "started_at": "2026-10-16T11:20:47+00:00",
+  "setup": {
+    "db": "trial_5d42e5c8",
+    "bucket": "bo19-probe-5e4aa87ccc"
+  },
+  "A_startup": {
+    "healthz_after_s": 44.3,
+    "wall_s": 47.2
+  },
+  "pid1": [
+    {
+      "pid": 47653,
+      "ppid": 47631,
+      "stat": "Ssl",
+      "comm": "python"
+    }
+  ],
+  "B_baseline_turns": [
+    {
+      "employee": "GIA-0001",
+      "login_ms": 701,
+      "login_status": 204,
+      "session_status": 201,
+      "turn_http_status": 200,
+      "events": [
+        [
+          "turn.accepted",
+          0.28
+        ],
+        [
+          "turn.progress",
+          0.57
+        ],
+        [
+          "turn.progress",
+          7.09
+        ],
+        [
+          "turn.reply",
+          7.37
+        ]
+      ],
+      "turn_s": 7.37,
+      "within_wv02": true
+    },
+    {
+      "employee": "GIA-0001",
+      "login_ms": 635,
+      "login_status": 204,
+      "session_status": 200,
+      "turn_http_status": 200,
+      "events": [
+        [
+          "turn.accepted",
+          0.19
+        ],
+        [
+          "turn.progress",
+          0.39
+        ],
+        [
+          "turn.progress",
+          5.69
+        ],
+        [
+          "turn.reply",
+          5.99
+        ]
+      ],
+      "turn_s": 5.99,
+      "within_wv02": true
+    }
+  ],
+  "C_request": "6f8f5c06-64a0-4835-b0ec-a4b8ebf0191e",
+  "C_soffice_seen_after_s": 6.4,
+  "C_turns_during_conversion": [
+    {
+      "employee": "GIA-0002",
+      "login_ms": 1118,
+      "login_status": 204,
+      "session_status": 201,
+      "turn_http_status": 200,
+      "events": [
+        [
+          "turn.accepted",
+          0.7
+        ],
+        [
+          "turn.progress",
+          1.2
+        ],
+        [
+          "turn.progress",
+          10.5
+        ],
+        [
+          "turn.reply",
+          11.1
+        ]
+      ],
+      "turn_s": 11.1,
+      "within_wv02": true,
+      "soffice_running_after": true
+    },
+    {
+      "employee": "GIA-0002",
+      "login_ms": 960,
+      "login_status": 204,
+      "session_status": 200,
+      "turn_http_status": 200,
+      "events": [
+        [
+          "turn.accepted",
+          0.5
+        ],
+        [
+          "turn.progress",
+          1.4
+        ],
+        [
+          "turn.progress",
+          17.0
+        ],
+        [
+          "turn.reply",
+          18.0
+        ]
+      ],
+      "turn_s": 18.0,
+      "within_wv02": true,
+      "soffice_running_after": true
+    },
+    {
+      "employee": "GIA-0002",
+      "login_ms": 2048,
+      "login_status": 204,
+      "session_status": 200,
+      "turn_http_status": 200,
+      "events": [
+        [
+          "turn.accepted",
+          0.6
+        ],
+        [
+          "turn.progress",
+          1.7
+        ],
+        [
+          "turn.progress",
+          12.8
+        ],
+        [
+          "turn.reply",
+          13.7
+        ]
+      ],
+      "turn_s": 13.7,
+      "within_wv02": true,
+      "soffice_running_after": true
+    }
+  ],
+  "C_job_before_sigterm": {
+    "job": "RUNNING",
+    "attempts": 1,
+    "error": null,
+    "document": "DRAFT"
+  },
+  "E_memory": {
+    "cgroup_memory_peak_mib": 307.9,
+    "cgroup_memory_now_mib": 179.3,
+    "oom_kill": [
+      "oom_kill 0"
+    ],
+    "pid1_vmhwm_mib": 169.2,
+    "pid1_vmrss_mib": 169.2
+  },
+  "D_soffice_running_at_sigterm": true,
+  "D_table_before": [
+    {
+      "pid": 47653,
+      "ppid": 47631,
+      "stat": "Ssl",
+      "comm": "python"
+    },
+    {
+      "pid": 48151,
+      "ppid": 47653,
+      "stat": "Ssl",
+      "comm": "oosplash"
+    },
+    {
+      "pid": 48335,
+      "ppid": 48151,
+      "stat": "Rl",
+      "comm": "soffice.bin"
+    }
+  ],
+  "vm_clock_skew_s": 0.106,
+  "D_exit_seen_after_s": 3.27,
+  "D_snapshots": [
+    {
+      "t_s": 0.3,
+      "procs": [
+        "47653/Rsl/python",
+        "48151/Ssl/oosplash",
+        "48335/Rl/soffice.bin"
+      ]
+    },
+    {
+      "t_s": 0.53,
+      "procs": [
+        "47653/Rsl/python",
+        "48151/Ssl/oosplash",
+        "48335/Rl/soffice.bin"
+      ]
+    },
+    {
+      "t_s": 0.73,
+      "procs": [
+        "47653/Ssl/python",
+        "48151/Ssl/oosplash",
+        "48335/Rl/soffice.bin"
+      ]
+    },
+    {
+      "t_s": 0.92,
+      "procs": [
+        "47653/Ssl/python",
+        "48151/Ssl/oosplash",
+        "48335/Rl/soffice.bin"
+      ]
+    },
+    {
+      "t_s": 1.14,
+      "procs": [
+        "47653/Ssl/python",
+        "48151/Ssl/oosplash",
+        "48335/Rl/soffice.bin"
+      ]
+    },
+    {
+      "t_s": 1.38,
+      "procs": [
+        "47653/Ssl/python"
+      ]
+    },
+    {
+      "t_s": 1.62,
+      "procs": [
+        "47653/Ssl/python"
+      ]
+    },
+    {
+      "t_s": 1.86,
+      "procs": [
+        "47653/Ssl/python"
+      ]
+    },
+    {
+      "t_s": 2.11,
+      "procs": [
+        "47653/Ssl/python"
+      ]
+    },
+    {
+      "t_s": 2.34,
+      "procs": [
+        "47653/Ssl/python"
+      ]
+    },
+    {
+      "t_s": 2.58,
+      "procs": [
+        "47653/Rsl/python"
+      ]
+    },
+    {
+      "t_s": 3.17,
+      "procs": []
+    }
+  ],
+  "D_sigterm_at": "2026-10-16T11:23:36.534+00:00",
+  "D_exit_code": "0",
+  "llm_server_calls": {
+    "classify_intent": 5,
+    "extract_slots": 5
+  },
+  "llm_log_messages": [
+    "LLM_ATTEMPT_MEASURED",
+    "LLM_CALL_DONE"
+  ],
+  "D_log_lines": [
+    "{\"timestamp\":\"2026-10-16T11:22:24.080Z\",\"level\":\"INFO\",\"component\":\"bo19.queue_worker\",\"trace_id\":null,\"message\":\"JOB_START\",\"job_id\":\"44519848-10ad-44ad-828d-81af6b324bda\",\"job_type\":\"render_document\",\"attempt\":1}",
+    "{\"timestamp\":\"2026-10-16T11:23:36.637Z\",\"level\":\"INFO\",\"component\":\"bo19.combined\",\"trace_id\":null,\"message\":\"SIGTERM_RECEIVED\",\"signal\":\"SIGTERM\"}",
+    "{\"timestamp\":\"2026-10-16T11:23:38.540Z\",\"level\":\"WARNING\",\"component\":\"bo19.queue_worker\",\"trace_id\":null,\"message\":\"JOB_RELEASED_ON_DRAIN\",\"job_id\":\"44519848-10ad-44ad-828d-81af6b324bda\",\"job_type\":\"render_document\",\"released\":true}",
+    "{\"timestamp\":\"2026-10-16T11:23:38.541Z\",\"level\":\"INFO\",\"component\":\"bo19.queue_worker\",\"trace_id\":null,\"message\":\"WORKER_LOOP_STOP\",\"worker_id\":\"7ff1d43ddc99-1-e79662\"}",
+    "{\"timestamp\":\"2026-10-16T11:23:39.034Z\",\"level\":\"INFO\",\"component\":\"bo19.reaper\",\"trace_id\":null,\"message\":\"PROCESS_TABLE_AT_EXIT\",\"children\":0,\"zombies\":0,\"reaped\":1,\"alive\":null}",
+    "{\"timestamp\":\"2026-10-16T11:23:39.036Z\",\"level\":\"INFO\",\"component\":\"bo19.combined\",\"trace_id\":null,\"message\":\"PROCESS_EXIT\",\"exit_code\":0,\"seconds_since_sigterm\":2.483,\"signals\":\"SIGTERM\"}"
+  ],
+  "D_job_after": {
+    "job": "QUEUED",
+    "attempts": 0,
+    "error": null,
+    "document": "DRAFT"
+  },
+  "D_witness": {
+    "polls": 635,
+    "errors": 0,
+    "last_seen_with_connections_s_after_sigterm": 2.39,
+    "connections_gone_s_after_sigterm": 2.64,
+    "interval_s": 0.25
+  }
+}
