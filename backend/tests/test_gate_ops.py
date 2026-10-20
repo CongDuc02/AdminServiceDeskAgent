@@ -177,6 +177,27 @@ class Duyet(GateBase):
             self.sign(doc2, x_ctx, key2)
         self.assertEqual(self.snapshot(doc2), before)
 
+    def test_trung_khoa_cung_nguoi_cung_document_nhung_khac_loai_thao_tac(self):
+        """Cùng người, cùng `document`, khác loại: id của quyết định APPROVED không dùng lại được cho thao tác phát hành."""
+        doc, (_, octx) = self.doc(), self.officer()
+        key = uuid.uuid4()
+        self.approve(doc, octx, key)
+        before = self.snapshot(doc)
+        with self.assertRaises(gate.DecisionIdConflict):
+            self.issue(doc, octx, key)
+        with self.assertRaises(gate.DecisionIdConflict):
+            self.seal(doc, octx, key)
+        self.assertEqual(self.snapshot(doc), before)
+
+    def test_khong_co_ban_nhap_hien_hanh_thi_khong_duyet(self):
+        doc, (_, ctx) = self.doc(), self.officer()
+        with self.db.connect("bo19_migrator") as c:
+            c.execute("update document set current_draft_render_id = null where id = %s", (doc.document_id,))
+        before = self.snapshot(doc)
+        with self.assertRaises(NotApprovable):
+            self.approve(doc, ctx)
+        self.assertEqual(self.snapshot(doc), before)
+
     def test_hai_can_bo_bam_cung_luc_mot_thang_mot_state_conflict(self):
         doc = self.doc()
         a, b = self.officer(), self.officer()

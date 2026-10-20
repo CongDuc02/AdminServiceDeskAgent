@@ -244,7 +244,11 @@ class HangDoiDuyet(DocApiBase):
         for d in (mine, other):
             self.approve(d, self.octx)
         self.assign_signature(mine, signer)
+        self.assign_signature(other, self.db.make_employee(roles=("SIGNER",))[0])  # cũng chờ ký, nhưng giao cho người khác
         self.assertEqual(self.ids(self.queue("PENDING_SIGNATURE", h)), [str(mine.document_id)])  # chỉ văn bản có bước giao cho mình
+        with self.db.connect("bo19_migrator") as c:
+            c.execute("update approval_step set status = 'CANCELLED', closed_at = now() where document_id = %s and step_kind = 'SIGNATURE'", (mine.document_id,))
+        self.assertEqual(self.ids(self.queue("PENDING_SIGNATURE", h)), [])  # bước CANCELLED không còn là việc được giao
 
     def test_hang_doi_approved_hien_job_failed_va_ma_cua_sprint_1(self):
         doc = self.doc()
