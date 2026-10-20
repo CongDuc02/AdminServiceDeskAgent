@@ -3618,3 +3618,7 @@ PO duyệt kế hoạch B8a (`proposals/b8a-ke-hoach.md`) và quyết thêm về
 ### 2026-10-20 — B9a2: sửa `api_main`, hạ ưu tiên `soffice`, runbook và rủi ro UAT (PO)
 
 `11-ops.md` v0.39 (mục 20: điều kiện chuyển sang `combined_main` = cổng 2.5 đạt; đo O1-6 và `/tmp` khi chuyển), `12-roadmap.md` v0.62 (R4-4 bổ sung khởi động ≈ 42 s; cổng 4.9 — phương án `/healthz` định kỳ < 15 phút suốt buổi UAT), `06-structure.md` v0.45, `ASSUMPTIONS.md` v0.72 (A-095), `ADR-033` (mục Cập nhật 2026-10-20), `proposals/sprint1-working-values-a031-a048.md` (WV-33). Số đo: `docs/reference/combined-main-b9a2.md`, mục Hạ ưu tiên. Không migration, không biến môi trường mới.
+
+### 2026-10-20 (2) — B9a2: ghim một CPU (WV-34) và hạn khởi động của Render
+
+`observability/cpu_pin.py` (PO duyệt phương án mặc định: ghim khi `cpu.max` < 1 CPU, CPU đầu tiên của tập affinity, `combined_main` và `worker_main`). `06-structure.md` v0.46, `11-ops.md` v0.40 (mục 20: phép đo quyết định trên Render thật, ngưỡng lớn nhất ≤ WV-02 − 5 s), `ASSUMPTIONS.md` v0.73, `12-roadmap.md` v0.63 (cổng 4.9: hạn khởi động), `ADR-033`, WV-34. Số đo bằng mã thật (n = 9): lượt chat khi `soffice` chạy trung vị 8,1 s, lớn nhất 9,2 s (`docs/reference/combined-main-b9a2.md`, mục Ghim CPU bằng mã). Tài liệu mới `docs/reference/render-khoi-dong-cong.md` (hạn quét cổng — Render không công bố số; hạn 15 phút đã công bố; phương án "mở cổng trước" CHƯA áp).

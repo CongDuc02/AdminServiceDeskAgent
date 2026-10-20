@@ -75,5 +75,33 @@ Kết quả: `tools/combined-probe/out/result.json` (thư mục `out/` nằm tro
 - **Job render không chậm đi**: 77/63 s → 76/43 s (khi `api` rảnh, `soffice` vẫn nhận gần đủ hạn mức) — "job chậm hơn là chấp nhận được" chưa phải trả giá nào.
 - **Vì sao `nice` không có tác dụng — đo trực tiếp (cùng cgroup `--cpus=0.1`, hai tiến trình ăn CPU liên tục, 12 s):** máy ảo thấy 12 CPU; hai tiến trình nằm trên hai CPU khác nhau (hai runqueue) nên không tranh nhau — nice 0 nhận 73 tick, nice 19 nhận 57 tick (gần bằng nhau). **Ghim cả hai vào cùng một CPU (`taskset -c 0`): nice 0 = 118 tick, nice 19 = 2 tick** — đúng mô hình trọng số. Hạn mức 0,1 CPU của cgroup là hạn mức chung; trọng số `nice` chỉ chia phần CPU giữa các tiến trình **chung một runqueue**. `sched_autogroup` không có trong nhân này nên không phải nguyên nhân.
 - **Ghim container vào một CPU làm `nice` có tác dụng, và chính nó cũng giúp**: lớn nhất 21,1 → **9,9 s** (n = 6), trung vị 11,7 → 8,4 s, trung bình 13,4 → 8,1 s; lượt khi `soffice` chạy chỉ còn hơn lượt nền ≈ 3 s. Ghim mà không `nice` ("trước, ghim"): trung vị 8,6 s nhưng vẫn có lượt 16,8 s. Cần cả hai.
-- **Giới hạn:** Docker Desktop (WSL2, 12 CPU ảo), không phải Render; provider giả; n = 6 mỗi điều kiện, bốn điều kiện đo trong cùng một buổi nhưng máy ngoài kiểm soát (nhiễu). `--cpuset-cpus` là thử nghiệm: trên Render không đặt được cờ này; tương đương trong mã là `os.sched_setaffinity` ghim tiến trình (con thừa kế) vào một CPU — **chưa làm, chờ PO** (ngoài kế hoạch đã duyệt).
-- **Phương án mặc định đề xuất:** giữ `nice` 19 (vô hại, đã đo) **và** ghim tiến trình `combined_main` (và `worker_main`) vào một CPU khi hạn mức cgroup `cpu.max` nhỏ hơn một CPU; đo lại trên Render thật khi chuyển Start Command (cổng 2.5). Phương án khác: tạm dừng `soffice` (`SIGSTOP`/`SIGCONT`) trong lúc có lượt chat đang chạy — chắc hơn nhưng phức tạp hơn (cần `TurnSupervisor` báo cho vòng poll).
+- **Giới hạn:** Docker Desktop (WSL2, 12 CPU ảo), không phải Render; provider giả; n = 6 mỗi điều kiện, bốn điều kiện đo trong cùng một buổi nhưng máy ngoài kiểm soát (nhiễu). `--cpuset-cpus` là thử nghiệm: trên Render không đặt được cờ này; tương đương trong mã là `os.sched_setaffinity` — **PO duyệt và đã làm 2026-10-20**, đo lại bằng chính mã đó ở mục kế dưới.
+- **Phương án được duyệt (2026-10-20):** giữ `nice` 19 **và** ghim tiến trình `combined_main` / `worker_main` vào một CPU khi `cpu.max` < 1 CPU (WV-34). Phương án `SIGSTOP`/`SIGCONT` đã bị loại (PO).
+
+## Ghim CPU bằng mã (WV-34) — đo lại bằng chính mã đó, 2026-10-20
+
+**PO duyệt phương án mặc định:** giữ `nice` 19 và ghim tiến trình vào **một CPU** bằng `os.sched_setaffinity` ở `combined_main` và `worker_main`, **chỉ khi `cpu.max` của cgroup < 1 CPU**, chọn CPU **đầu tiên** của tập affinity hiện có; `soffice` thừa hưởng. Không `SIGSTOP`/`SIGCONT`. Cài đặt: `observability/cpu_pin.py` (gọi ở đầu `main()`, trước khi tạo luồng nào), ngưỡng `PIN_CPU_WHEN_QUOTA_BELOW = 1.0` (WV-34). Log lúc khởi động: `CPU_PINNED cpu=0 cpu_limit=0.1 cpus_allowed_before=12` (cả ba lần đo). Test: đọc `cpu.max` v2/v1, quyết định, và **`sched_setaffinity` thật** trong tiến trình con (luồng sinh sau và tiến trình con thừa hưởng).
+
+**Đo (KHÔNG dùng `--cpuset-cpus`):** image dựng từ mã có ghim, container `--cpus=0.1 --memory=512m`, ba lần chạy, mỗi lần ≥ 3 lượt chat có `soffice` chạy cả trước và sau lượt (n = **9**). Kết quả thô: `combined-main-b9a2-nice/code-pin-{1,2,3}.json`.
+
+| Lượt chat khi `soffice` chạy (s), n = 9 | nhỏ nhất | **trung vị** | trung bình | **lớn nhất** |
+|---|---|---|---|---|
+| **Ghim bằng mã** (WV-34) + `nice` 19 | 6,9 | **8,1** | 8,1 | **9,2** |
+| so sánh — "trước" (không `nice`, không ghim), n = 6 | 8,8 | 11,7 | 13,4 | 21,1 |
+| so sánh — `nice` một mình, n = 6 | 10,2 | 11,8 | 13,2 | 19,1 |
+
+**So với WV-02 = 20 s và ngưỡng của PO (lớn nhất ≤ WV-02 − 5 s = 15 s): đạt** — lớn nhất 9,2 s, còn 5,8 s dưới ngưỡng và 10,8 s dưới WV-02; phụ trội so với lượt nền (trung vị 5,7 s) ≈ 2,4 s.
+
+| Thông số (ba lần) | Giá trị |
+|---|---|
+| Lượt chat nền, không chuyển đổi (s) | 5,9 · 5,5 · 6,0 · 5,4 · 5,9 · 5,1 |
+| Job render một mình, gửi → `SUCCEEDED` (s) | 46,0 · 39,7 · 42,3 |
+| Lên `/healthz` (s) | 47,0 · 39,7 · 39,7 |
+| `SIGTERM` lúc `soffice` chạy: container dừng (s); job sau đó | 2,8 · 2,2 · 2,4; `QUEUED`, `attempts = 0` |
+| Đỉnh cgroup (MiB), `oom_kill` | **373** · 332 · 314, đều 0 |
+
+- **Lưu ý bộ nhớ:** đỉnh 373 MiB / 512 MiB ở lần 1 (lần 2, 3: 332, 314) — cao hơn các lần trước (301–349). Còn dư 139 MiB nhưng không rộng; theo dõi khi chuyển Render (mục Runbook — chuyển Render sang `combined_main` của `11-ops.md`).
+
+**Phạm vi của số đo này — nói rõ:**
+- Là **Docker Desktop (WSL2, 12 CPU ảo)**, provider LLM giả trễ 2 s, mẫu `.docx` giả không có biến nội dung tự do. Không phải Render.
+- **Phép đo quyết định là trên Render thật khi chuyển sang `combined_main`** (cổng 2.5 đạt). Ngưỡng: lượt chat khi `soffice` chạy, **lớn nhất ≤ WV-02 − 5 s = 15 s**. **Không đạt thì dừng và báo PO**, không tự chọn phương án. Render có thể cho instance ít CPU ảo hơn 12 (lúc đó ghim ít khác biệt hơn) hay nhiều hơn — số này không suy ra được cho Render.
