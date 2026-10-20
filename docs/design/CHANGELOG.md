@@ -3626,3 +3626,7 @@ PO duyệt kế hoạch B8a (`proposals/b8a-ke-hoach.md`) và quyết thêm về
 ### 2026-10-20 (3) — runbook mục 20: tải hỗn hợp
 
 `11-ops.md` v0.41, mục 20 bước 4b: khi chuyển Render sang `combined_main` đo đỉnh bộ nhớ dưới tải hỗn hợp (đăng nhập dồn 4 verify argon2id đồng thời + một job render + một lượt tải file); dừng và báo PO nếu đỉnh > 460 MiB hoặc `oom_kill` > 0 (PO, 2026-10-20).
+
+### 2026-10-20 (4) — kế hoạch B9b; cổng 2.5 / S7 (chỉ tài liệu)
+
+`proposals/b9b-ke-hoach.md` (đề xuất, chờ PO duyệt; gồm rà `request.read_assigned` và O1-15). `proposals/s7-danh-sach-ngan-object-storage.md` và `docs/reference/s7-object-storage-ung-vien.md` (bốn ứng viên: Cloudflare R2, Tigris, OVHcloud, Scaleway — tiêu chí `412` của `If-None-Match: *`, vùng dữ liệu, hạn mức miễn phí, tương thích S3; trích nguyên văn từ tài liệu gốc tải bằng `curl`, kèm sha256). `12-roadmap.md` v0.64: dòng cổng 2.5. Chưa tạo tài khoản, chưa chạy phép thử, chưa đổi mã.
