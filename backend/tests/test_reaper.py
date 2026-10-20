@@ -116,7 +116,8 @@ class HuyChuyenDoi(unittest.TestCase):
         fake = Path(self.tmp.name) / "soffice"
         self.marker = Path(self.tmp.name) / "started"
         # soffice giả: một tiến trình con sống lâu (như soffice.bin) + chờ nó; ghi PID nhóm vào file mốc
-        fake.write_text(f"#!/bin/sh\nsleep 300 &\necho $$ > {self.marker}\nwait\n", encoding="utf-8")
+        self.nice_file = Path(self.tmp.name) / "niceness"
+        fake.write_text(f"#!/bin/sh\nawk '{{print $19}}' /proc/$$/stat > {self.nice_file}\nsleep 300 &\necho $$ > {self.marker}\nwait\n", encoding="utf-8")
         fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
         patcher = mock.patch.dict(os.environ, {"PATH": f"{self.tmp.name}{os.pathsep}{os.environ['PATH']}"})
         patcher.start()
@@ -157,6 +158,29 @@ class HuyChuyenDoi(unittest.TestCase):
         self.assertEqual(results[0].code, "JOB_CANCELLED")
         self.assertEqual(convert.live_pids(), set())
         self.assertEqual([m for m in group_members(pgid) if m[1] != "Z"], [])  # không còn tiến trình sống nào của nhóm (zombie mồ côi là việc của PID 1 và bộ dọn)
+
+    def test_soffice_chay_voi_nice_19_theo_wv_33_va_nhom_van_la_pid_cua_no(self):
+        results: list = []
+        t = self.run_conversion(results)
+        pgid = self.wait_started()
+        self.assertEqual(self.nice_file.read_text().strip(), "19")  # `nice` exec thẳng: tiến trình soffice thật mang niceness 19
+        self.assertEqual(convert.live_pids(), {pgid})              # PID đã theo dõi == PID nhóm == PID của script (nice không thêm tầng)
+        convert.abort_all()
+        t.join(5)
+
+    def test_niceness_0_thi_khong_ha_uu_tien(self):
+        def work():
+            try:
+                convert.convert_to_pdf(docx_bytes(), timeout_s=120, niceness=0)
+            except BaseException:  # noqa: BLE001
+                pass
+
+        t = threading.Thread(target=work, daemon=True)
+        t.start()
+        self.wait_started()
+        self.assertEqual(self.nice_file.read_text().strip(), "0")
+        convert.abort_all()
+        t.join(5)
 
     def test_thu_muc_tam_duoc_don_sau_khi_bi_huy(self):
         tmp_root = tempfile.mkdtemp()

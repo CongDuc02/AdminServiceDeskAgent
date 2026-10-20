@@ -186,6 +186,20 @@ class ApiMain(EntrypointBase):
         self.assertLess(msgs.index("SIGTERM_RECEIVED"), msgs.index("PROCESS_EXIT"))
         self.assert_no_secrets(p)
 
+    def test_sigterm_toi_som_truoc_khi_uvicorn_cai_bo_xu_ly_van_thoat_ma_0(self):
+        """B9a2 (PO 2026-10-20): `SIGTERM` tới giữa lúc cài bộ xử lý gốc và lúc uvicorn cài bộ xử lý của nó bị mất — tiến trình chạy mãi (Render đang chạy `api_main`). Gửi ngay sau khi bước kiểm xong, nhiều lần."""
+        for i in range(4):
+            p = self.start("bo19.entrypoints.api_main", PORT=str(free_port()), BO19_SHUTDOWN_DELAY_SECONDS="30")
+            self.assertIsNotNone(p.wait_for("STARTUP_BEGIN" if i % 2 == 0 else "STARTUP_OK", 60), p.text()[-2000:])  # lúc sớm nhất có thể và lúc bước kiểm xong
+            started = time.monotonic()
+            try:
+                code = p.terminate(30)
+            except subprocess.TimeoutExpired:
+                self.fail(f"lần {i}: không thoát sau SIGTERM 30 s: " + " ".join(p.messages()[-10:]))
+            self.assertEqual(code, 0, p.text()[-2500:])
+            self.assertLess(time.monotonic() - started, 8.0, i)
+            self.assertIn("SIGTERM_RECEIVED", p.messages())
+
     def test_buoc_kiem_truot_thi_thoat_ma_1_va_log_process_exit(self):
         env = self.env(PORT=str(free_port()), BO19_SHUTDOWN_DELAY_SECONDS="30")
         del env["BO19_SESSION_SECRET"]

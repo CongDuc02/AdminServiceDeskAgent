@@ -74,12 +74,15 @@ def main() -> int:
     ap.add_argument("--cpus", default="0.1")
     ap.add_argument("--memory", default="512m")
     ap.add_argument("--keep", action="store_true", help="không dọn container/DB sau khi đo")
+    ap.add_argument("--image", default="bo19-runtime", help="image runtime để đo (so trước/sau: dựng hai tag từ hai commit)")
+    ap.add_argument("--label", default="", help="nhãn ghi vào kết quả")
+    ap.add_argument("--cpuset", default="", help="ghim container vào CPU này (docker --cpuset-cpus), ví dụ 0 — thử nghiệm: `nice` chỉ có tác dụng khi hai tiến trình chung một runqueue")
     a = ap.parse_args()
     OUT.mkdir(exist_ok=True)
     for f in OUT.glob("*"):
         if f.is_file():
             f.unlink()
-    res: dict = {"cpus": a.cpus, "memory": a.memory, "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    res: dict = {"cpuset": a.cpuset, "image": a.image, "label": a.label, "cpus": a.cpus, "memory": a.memory, "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
     for c in (COMBINED, LLM, POLL):
         sh("rm", "-f", c, check=False)
     try:
@@ -91,12 +94,12 @@ def main() -> int:
            "--entrypoint", "sh", "bo19-test", "-c", "python /repo/tools/render-probes/s4_witness_poll.py --duration 3000 --interval 0.25 --like 'bo19-combined%' > /out/poll.jsonl")
 
         # `ProviderClient` dùng `trust_env=False` (không đọc SSL_CERT_FILE): chứng chỉ giả phải nằm trong bộ CA của certifi. Dựng bộ CA = bộ của image + chứng chỉ giả, gắn đè lên đúng file đó.
-        ca = sh("run", "--rm", "--entrypoint", "python", "bo19-runtime", "-c", "import certifi,sys;sys.stdout.write(certifi.where()+chr(10)+open(certifi.where(),encoding='utf-8').read())").stdout
+        ca = sh("run", "--rm", "--entrypoint", "python", a.image, "-c", "import certifi,sys;sys.stdout.write(certifi.where()+chr(10)+open(certifi.where(),encoding='utf-8').read())").stdout
         ca_path, _, ca_body = ca.partition(NL)
         (OUT / "cacert.pem").write_text(ca_body.rstrip(NL) + NL + (OUT / "llm-cert.pem").read_text(encoding="utf-8"), encoding="utf-8")
         t0 = time.monotonic()
-        sh("run", "-d", "--name", COMBINED, "--network", NET, "--cpus", a.cpus, "--memory", a.memory, "--memory-swap", a.memory, "--env-file", str(OUT / "probe.env"),
-           "-v", f"{OUT}:/out:ro", "-v", f"{OUT / 'cacert.pem'}:{ca_path.strip()}:ro", "bo19-runtime", "python", "-m", "bo19.entrypoints.combined_main")
+        sh("run", "-d", "--name", COMBINED, "--network", NET, "--cpus", a.cpus, *(["--cpuset-cpus", a.cpuset] if a.cpuset else []), "--memory", a.memory, "--memory-swap", a.memory, "--env-file", str(OUT / "probe.env"),
+           "-v", f"{OUT}:/out:ro", "-v", f"{OUT / 'cacert.pem'}:{ca_path.strip()}:ro", a.image, "python", "-m", "bo19.entrypoints.combined_main")
         res["A_startup"] = jlast(tool(a.s3_env, "tools/combined-probe/combined_probe.py", "health", "--base", BASE, "--timeout", "420").stdout)
         res["A_startup"]["wall_s"] = round(time.monotonic() - t0, 1)
         res["pid1"] = top()[:1]
@@ -104,24 +107,37 @@ def main() -> int:
         # B. nền — không có chuyển đổi
         res["B_baseline_turns"] = [jlast(tool(a.s3_env, "tools/combined-probe/combined_probe.py", "turn", "--base", BASE, "--employee", "GIA-0001").stdout) for _ in range(2)]
 
-        # C. chuyển đổi + ba lượt chat
-        rid = jlast(tool(a.s3_env, "tools/combined-probe/combined_probe.py", "submit").stdout)["request_id"]
-        res["C_request"] = rid
-        t_sub = time.monotonic()
-        seen = None
-        while time.monotonic() - t_sub < 180:
-            rows = top()
-            if any(r["comm"].startswith("soffice") for r in rows):
-                seen = time.monotonic() - t_sub
-                break
-            time.sleep(0.5)
-        res["C_soffice_seen_after_s"] = None if seen is None else round(seen, 1)
-        turns = []
-        for _ in range(3):
-            turns.append(jlast(tool(a.s3_env, "tools/combined-probe/combined_probe.py", "turn", "--base", BASE, "--employee", "GIA-0002").stdout))
-            turns[-1]["soffice_running_after"] = any(r["comm"].startswith("soffice") for r in top())
+        # F. job render MỘT MÌNH (không có lượt chat nào): thời gian từ lúc gửi tới lúc `SUCCEEDED` — cái giá của việc hạ ưu tiên `soffice`
+        rid0 = jlast(tool(a.s3_env, "tools/combined-probe/combined_probe.py", "submit").stdout)["request_id"]
+        t_job = time.monotonic()
+        while time.monotonic() - t_job < 400 and jlast(tool(a.s3_env, "tools/combined-probe/combined_probe.py", "job", "--request", rid0).stdout)["job"] != "SUCCEEDED":
+            time.sleep(1)
+        res["F_job_alone_s"] = round(time.monotonic() - t_job, 1)
+
+        # C. lượt chat TRONG LÚC `soffice` chuyển đổi — gom đủ >= 3 lượt có `soffice` chạy cả TRƯỚC và SAU lượt (gửi thêm job khi chuyển đổi xong mà chưa đủ)
+        def soffice_up() -> bool:
+            return any(r["comm"].startswith("soffice") or r["comm"] == "oosplash" for r in top())
+
+        turns, valid, rid, jobs_sent = [], [], None, 0
+        while len(valid) < 3 and len(turns) < 14:
+            if not soffice_up():
+                if jobs_sent >= 4:
+                    break
+                rid = jlast(tool(a.s3_env, "tools/combined-probe/combined_probe.py", "submit").stdout)["request_id"]
+                jobs_sent += 1
+                t_sub = time.monotonic()
+                while time.monotonic() - t_sub < 240 and not soffice_up():
+                    time.sleep(0.3)
+            before = soffice_up()
+            turn = jlast(tool(a.s3_env, "tools/combined-probe/combined_probe.py", "turn", "--base", BASE, "--employee", "GIA-0002").stdout)
+            turn["soffice_running_before"], turn["soffice_running_after"] = before, soffice_up()
+            turns.append(turn)
+            if before and turn["soffice_running_after"] and turn["turn_s"] is not None:
+                valid.append(turn["turn_s"])
         res["C_turns_during_conversion"] = turns
-        res["C_job_before_sigterm"] = jlast(tool(a.s3_env, "tools/combined-probe/combined_probe.py", "job", "--request", rid).stdout)
+        res["C_valid_turn_s"] = valid
+        res["C_jobs_sent"] = jobs_sent
+        res["C_job_before_sigterm"] = jlast(tool(a.s3_env, "tools/combined-probe/combined_probe.py", "job", "--request", rid).stdout) if rid else None
         res["E_memory"] = memory()
 
         # D. SIGTERM khi soffice còn chạy. Chuyển đổi của job trên có thể đã xong lúc này (các lượt chat chiếm vài chục giây) — khi đó gửi một job mới và chờ `soffice` xuất hiện, rồi mới gửi SIGTERM.

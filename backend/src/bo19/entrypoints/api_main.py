@@ -15,6 +15,7 @@ from __future__ import annotations
 import os
 import signal
 import sys
+import threading
 from collections.abc import Callable
 
 import uvicorn
@@ -72,6 +73,26 @@ def install_original_signal_handlers(shutdown: ShutdownLog) -> None:
     signal.signal(signal.SIGINT, original)
 
 
+def watch_for_signal(shutdown: ShutdownLog, server: uvicorn.Server, finished: threading.Event, interval_s: float = 0.05) -> None:
+    """Cầu nối cho tín hiệu tới TRONG KHOẢNG từ lúc bộ xử lý gốc được cài tới lúc uvicorn cài bộ xử lý của nó (dựng event loop, nạp cấu hình — hàng trăm ms ở 0,1 CPU): uvicorn không biết gì về nó và sẽ chạy mãi.
+    Thấy `shutdown.signals` thì đặt `should_exit` — đúng việc `handle_exit` của uvicorn làm. (B9a2: tìm ra ở `combined_main`; `api_main` — thứ Render đang chạy — có cùng khoảng hở.)"""
+    while not finished.wait(interval_s):
+        if shutdown.signals:
+            server.should_exit = True
+            return
+
+
+def run_server(server: uvicorn.Server, shutdown: ShutdownLog) -> None:
+    """Chạy uvicorn với cầu nối tín hiệu; không chạy gì nếu tín hiệu đã tới trong lúc dựng."""
+    finished = threading.Event()
+    threading.Thread(target=watch_for_signal, args=(shutdown, server, finished), name="signal-watch", daemon=True).start()
+    try:
+        if not shutdown.signals:
+            server.run()
+    finally:
+        finished.set()
+
+
 def serve(shutdown: ShutdownLog) -> int:
     settings = load_settings()
     if not run(Entry.API, settings, os.environ).ok:
@@ -82,8 +103,7 @@ def serve(shutdown: ShutdownLog) -> int:
     reap = reaper.start_if_init()  # PID 1 của container: dọn zombie mồ côi (B9a2); api không sinh tiến trình con nhưng là PID 1 trên Render
     try:
         # `proxy_headers=False`: uvicorn không được tự đọc X-Forwarded-For. IP của rate limit đọc ở đúng một hàm, `bo19.api.auth.client_ip` (A-062, cổng 2.7).
-        install_original_signal_handlers(shutdown)
-        _Server(uvicorn.Config(app, host="0.0.0.0", port=settings.port, log_config=None, log_level="info", proxy_headers=False), shutdown).run()
+        run_server(_Server(uvicorn.Config(app, host="0.0.0.0", port=settings.port, log_config=None, log_level="info", proxy_headers=False), shutdown), shutdown)
         return 0
     finally:
         if reap is not None:
@@ -95,6 +115,7 @@ def serve(shutdown: ShutdownLog) -> int:
 def main() -> None:
     configure_logging()
     shutdown = ShutdownLog("bo19.api")
+    install_original_signal_handlers(shutdown)  # NGAY từ đầu: SIGTERM tới trong lúc bước kiểm/dựng app không được giết tiến trình bằng hành vi mặc định (-15, không log) — `run_server` thấy tín hiệu đã ghi và không chạy uvicorn
     code = serve(shutdown)
     shutdown.exited(code)
     sys.exit(code)

@@ -54,6 +54,12 @@ class Buoc6(unittest.TestCase):
         with mock.patch.object(convert, "available", return_value=False):
             self.assertEqual(cr.step_06(ctx()).codes, ("STARTUP_06_SOFFICE_MISSING",))
 
+    def test_thieu_nice_bao_ngay_luc_khoi_dong_neu_wv_33_bat(self):
+        with mock.patch.object(convert, "available", return_value=True), mock.patch.object(convert, "nice_available", return_value=False):
+            self.assertEqual(cr.step_06(ctx()).codes, ("STARTUP_06_NICE_MISSING",))
+        with mock.patch.object(convert, "available", return_value=True), mock.patch.object(convert, "nice_available", return_value=False), mock.patch.object(cr.wv, "SOFFICE_NICENESS", 0),                 mock.patch.object(fonts, "_run", side_effect=fonts.FontToolMissing):
+            self.assertNotIn("STARTUP_06_NICE_MISSING", cr.step_06(ctx()).codes)  # WV-33 = 0: không dùng nice thì không đòi nó
+
     def test_version_hong(self):
         with mock.patch.object(convert, "available", return_value=True), mock.patch.object(fonts, "_run", return_value="Liberation Serif\n"),                 mock.patch.object(convert, "soffice_version", side_effect=convert.VersionFailed):
             r = cr.step_06(ctx())

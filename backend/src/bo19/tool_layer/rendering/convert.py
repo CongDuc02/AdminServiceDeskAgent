@@ -8,6 +8,8 @@ là `ConversionFailed`. **Lỗi chỉ mang mã**: đầu ra của `soffice` có 
 
 Không giả định PDF tất định theo byte (ADR-015): thứ tự "chuyển đổi xong rồi mới giành khoá" của tool `pdf_export` là chỗ chịu tính không tất định đó.
 
+**Độ ưu tiên (B9a2; PO 2026-10-20; WV-33):** `soffice` chạy qua `nice -n 19` để `api` thắng CPU trong hạn mức 0,1 CPU chung. `nice` `exec` thẳng vào `soffice` nên PID và nhóm tiến trình không đổi (`killpg` vẫn đúng).
+
 **Tắt tiến trình (B9a2; ADR-033):** `abort_all()` giết NGAY nhóm tiến trình của mọi chuyển đổi đang chạy và chặn chuyển đổi mới (`ConversionAborted`, mã `JOB_CANCELLED` — lỗi tạm, job được `release` chứ không tiêu lượt thử).
 Gọi nó từ composition root khi drain hết hạn, để `SIGTERM` lúc `soffice` đang chạy (một chuyển đổi mất 32–88 s ở 0,1 CPU) không để lại `soffice` mồ côi và tiến trình thoát trong ≈ 5 s của Render.
 `live_pids()` trả PID các tiến trình con còn sống mà chủ của chúng sẽ tự `wait` — bộ dọn zombie của PID 1 (`observability.reaper`) không được đụng vào chúng.
@@ -24,9 +26,11 @@ import threading
 import zipfile
 from pathlib import Path
 
+from bo19.config import working_values as wv
 from bo19.tool_layer.tools._common import ToolError
 
 SOFFICE = "soffice"
+NICE = "nice"
 _LIVE: set[int] = set()
 _LOCK = threading.Lock()
 ABORT = threading.Event()  # đặt khi tiến trình đang tắt; một chiều (trừ `reset_abort` của test)
@@ -126,6 +130,15 @@ def soffice_command(workdir: Path, source: Path) -> list[str]:
             "--convert-to", "pdf", "--outdir", str(workdir / "out"), str(source)]
 
 
+def niced(cmd: list[str], niceness: int) -> list[str]:
+    """`nice -n <n> <cmd>` khi `niceness` > 0; nguyên lệnh khi 0."""
+    return [NICE, "-n", str(niceness), *cmd] if niceness else cmd
+
+
+def nice_available() -> bool:
+    return shutil.which(NICE) is not None
+
+
 def _kill_group(proc: subprocess.Popen) -> None:
     try:
         os.killpg(proc.pid, signal.SIGKILL)  # `start_new_session=True`: pgid == pid
@@ -146,7 +159,7 @@ def _looks_like_docx(data: bytes) -> bool:
         return False
 
 
-def convert_to_pdf(docx: bytes, *, timeout_s: float, tmp_root: str | None = None) -> bytes:
+def convert_to_pdf(docx: bytes, *, timeout_s: float, tmp_root: str | None = None, niceness: int = wv.SOFFICE_NICENESS) -> bytes:
     if not _looks_like_docx(docx):
         raise ConversionFailed
     if ABORT.is_set():
@@ -158,7 +171,7 @@ def convert_to_pdf(docx: bytes, *, timeout_s: float, tmp_root: str | None = None
         source.write_bytes(docx)
         env = {**os.environ, "HOME": str(workdir)}
         try:
-            proc = subprocess.Popen(soffice_command(workdir, source), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env, start_new_session=True)
+            proc = subprocess.Popen(niced(soffice_command(workdir, source), niceness), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env, start_new_session=True)
         except OSError:
             raise ConversionFailed from None
         _track(proc)

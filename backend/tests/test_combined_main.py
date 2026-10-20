@@ -220,7 +220,7 @@ class CombinedMain(DocBase):
 
     def test_cau_noi_tin_hieu_dat_should_exit_khi_tin_hieu_toi_truoc_uvicorn(self):
         import threading as _threading
-        from bo19.entrypoints.combined_main import watch_for_signal
+        from bo19.entrypoints.api_main import watch_for_signal
         from bo19.observability.shutdown import ShutdownLog
 
         class FakeServer:

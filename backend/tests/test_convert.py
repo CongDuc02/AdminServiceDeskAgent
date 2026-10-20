@@ -21,6 +21,7 @@ import time
 import unittest
 from pathlib import Path
 
+from bo19.config import working_values as wv
 from bo19.tool_layer.rendering import convert, docx_fill
 from tests.render_support import DECLARED, VALUES, VIETNAMESE, build_template, pdf_fonts, pdf_text, require_tool
 
@@ -144,6 +145,12 @@ class HetHanVaLoi(unittest.TestCase):
         for flag in ("--headless", "--norestore", "--nolockcheck", "-env:UserInstallation=file:///tmp/w/profile", "--convert-to", "pdf", "--outdir", "/tmp/w/out"):
             self.assertIn(flag, cmd)
         self.assertEqual(cmd[-1], "/tmp/w/input.docx")
+
+    def test_niced_boc_lenh_bang_nice_va_giu_nguyen_khi_bang_0(self):
+        cmd = ["soffice", "--headless"]
+        self.assertEqual(convert.niced(cmd, 19), ["nice", "-n", "19", "soffice", "--headless"])
+        self.assertEqual(convert.niced(cmd, 0), cmd)
+        self.assertEqual(wv.SOFFICE_NICENESS, 19)  # WV-33
 
     def test_tien_trinh_con_khong_dung_shell(self):
         import inspect

@@ -22,7 +22,7 @@ import uvicorn
 
 from bo19.config import working_values as wv
 from bo19.config.settings import load_settings
-from bo19.entrypoints.api_main import _Server, open_api
+from bo19.entrypoints.api_main import _Server, install_original_signal_handlers, open_api, run_server
 from bo19.entrypoints.worker_main import open_document_runner
 from bo19.observability import reaper
 from bo19.observability.log import configure_logging, get_logger
@@ -48,15 +48,6 @@ def make_signal_handler(shutdown: ShutdownLog, dispatcher: Dispatcher) -> Callab
     return handler
 
 
-def watch_for_signal(shutdown: ShutdownLog, server: uvicorn.Server, finished: threading.Event, interval_s: float = 0.05) -> None:
-    """Cầu nối cho tín hiệu tới TRONG KHOẢNG từ lúc bộ xử lý gốc được cài tới lúc uvicorn cài bộ xử lý của nó (dựng event loop, nạp cấu hình — hàng trăm ms ở 0,1 CPU): uvicorn không biết gì về nó
-    và sẽ chạy mãi. Thấy `shutdown.signals` thì đặt `should_exit` — đúng việc `handle_exit` của uvicorn làm."""
-    while not finished.wait(interval_s):
-        if shutdown.signals:
-            server.should_exit = True
-            return
-
-
 def serve(shutdown: ShutdownLog) -> int:
     """Mã thoát: 0 sau tắt êm, 1 khi bước kiểm khởi động trượt hay tiến trình sập. Ngoại lệ chỉ ghi kiểu — thông điệp có thể mang giá trị."""
     log = get_logger("bo19.combined")
@@ -75,15 +66,10 @@ def serve(shutdown: ShutdownLog) -> int:
             handler = make_signal_handler(shutdown, dispatcher)
             signal.signal(signal.SIGTERM, handler)
             signal.signal(signal.SIGINT, handler)
+            if shutdown.signals:  # tín hiệu đã tới trong lúc bước kiểm/dựng: vòng poll không được chạy
+                dispatcher.stop()
             poller.start()
-            server = _Server(uvicorn.Config(app, host="0.0.0.0", port=settings.port, log_config=None, log_level="info", proxy_headers=False), shutdown, on_exit=dispatcher.stop)
-            finished = threading.Event()
-            threading.Thread(target=watch_for_signal, args=(shutdown, server, finished), name="signal-watch", daemon=True).start()
-            try:
-                if not shutdown.signals:  # tín hiệu đã tới trong lúc dựng: không chạy uvicorn
-                    server.run()
-            finally:
-                finished.set()
+            run_server(_Server(uvicorn.Config(app, host="0.0.0.0", port=settings.port, log_config=None, log_level="info", proxy_headers=False), shutdown, on_exit=dispatcher.stop), shutdown)
             dispatcher.stop()  # uvicorn thoát vì lý do khác tín hiệu (lỗi bind cổng): vòng poll cũng phải dừng
             poller.join(timeout=float(settings.shutdown_delay_s))
             if poller.is_alive():
@@ -106,6 +92,7 @@ def serve(shutdown: ShutdownLog) -> int:
 def main() -> None:
     configure_logging()
     shutdown = ShutdownLog("bo19.combined")
+    install_original_signal_handlers(shutdown)  # NGAY từ đầu (xem api_main.main); `serve` thay bằng bộ xử lý biết dừng vòng poll khi đã dựng xong
     code = serve(shutdown)
     shutdown.exited(code)
     # Thoát CỨNG sau khi mọi thứ đã đóng tường minh: `sys.exit` còn chờ tiến trình hoàn tất interpreter (nối luồng nền của thư viện, giải phóng module) — đo ở B9a2 trong cgroup 0,1 CPU:
