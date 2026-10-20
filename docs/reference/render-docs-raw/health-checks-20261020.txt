@@ -1,0 +1,230 @@
+Health Checks – Render Docs
+Docs
+Changelog
+Search Ask AI
+Sign in
+Get started
+Search Ask
+Start
+Home
+Your first deploy
+Free instances
+Platform features by plan
+Use with coding agents
+FAQ
+Templates
+Migrate from…
+Heroku
+Railway
+Compute
+Compute plans New
+Service types
+Which to use?
+Static sites
+Web services
+Private services
+Background workers
+Cron jobs
+Workflows
+Multi-service architectures
+Data storage
+Render Postgres
+Render Key Value (Redis®-compatible)
+Persistent disks
+Sandboxes EA
+Overview
+CLI commands
+TypeScript SDK
+Python SDK
+Deploys
+How deploys work
+Supported languages
+Git providers (GitHub, etc.)
+Build pipeline
+Deploy hooks
+Monorepo support
+Troubleshooting deploys
+Previewing changes
+Single-service previews
+Preview environments (multi-service)
+Docker deploys
+Overview
+Deploy a registered image
+Using secrets
+Runtime
+Native runtimes
+Environment variables & secrets
+Default environment variables
+Workflows
+Intro to workflows
+Tutorial
+Limits & pricing
+How to…
+Define tasks
+Trigger runs
+Develop locally
+SDK reference
+TypeScript SDK
+Python SDK
+Example workflows
+TypeScript examples
+Python examples
+Render Postgres
+Overview
+Create & connect
+Database credentials
+Extensions
+Version upgrades
+Logical replication
+Legacy instance types
+Database recovery
+Recovery & backups
+High availability
+Database performance
+Read replicas
+Connection pooling
+Admin apps
+Repacking tables
+Troubleshooting performance
+Networking
+Regions
+Inbound IP rules
+Edge caching
+WebSockets
+TLS certificates
+Custom domains
+Overview
+Cloudflare
+Namecheap
+Other DNS providers
+Internal traffic
+Private network
+Private links
+Outbound traffic
+Default IP ranges
+Dedicated IP addresses
+Outbound bandwidth
+Handling network changes
+Static site config
+Custom response headers
+Redirects & rewrites
+Operational Controls
+The Render Dashboard
+SSH / Shell access
+Projects & environments
+Service actions
+Scaling
+Rollbacks
+Maintenance mode
+One-off jobs
+Infrastructure as code
+Blueprints overview
+render.yaml reference
+Terraform provider
+Observability
+In-dashboard metrics
+Health checks
+Uptime best practices
+Logging
+In-dashboard logs
+Log streams (syslog/HTTPS)
+OpenTelemetry (OTel) metrics
+Provider setup
+Metrics reference
+Notifications
+Webhooks
+Email / Slack
+Integrations
+MCP Server
+Render CLI
+Overview
+Command reference
+REST API
+Overview
+API reference
+Third-party connections
+OIDC support
+Datadog
+User Management
+Workspaces, members, & roles
+Login settings
+Audit logs
+Organizations
+Overview
+SAML SSO
+Platform Protections
+DDoS protection
+Platform maintenance
+Compliance
+Overview
+HIPAA (US health data)
+HIPAA best practices
+Shared responsibility model
+Pentest policy
+Compare
+Heroku vs Render
+Vercel vs Render
+Health Checks
+Render makes sure your services are ready for incoming traffic.
+Copy page
+Every few seconds, Render sends health checks to each running web service and private service instance to confirm it's healthy and able to receive traffic:
+Render runs health checks on:
+Newly deployed instances to confirm they start successfully and are ready to receive traffic.
+Running instances to confirm they're still responsive, automatically restarting them if they're not.
+Health checks only apply to web services and private services.
+These checks are specific to service types that receive incoming network traffic.
+By default, health checks are TCP socket probes to one of your service's open ports. For web services, this is usually the port of your public-facing HTTP server (default 10000 ).
+Web services can enable HTTP health checks to determine application-level readiness. Private services only support default TCP checks.
+HTTP health checks (web services only)
+Web services can receive health checks as HTTP GET requests to a path you specify:
+By defining a health check endpoint in your service, you can execute custom logic to verify instance health:
+To indicate a healthy instance, your endpoint can respond with any 2xx or 3xx status code.
+To indicate an unhealthy instance, your endpoint can respond with any 4xx or 5xx status code.
+If your service has any verified custom domains , Render sets one of those domains as the value of the Host header for all HTTP health checks. Otherwise, Render uses the service's onrender.com subdomain.
+How should my endpoint verify instance health?
+This varies from service to service. We recommend performing operation-critical checks, such as executing a simple database query to confirm connectivity.
+Setup
+Enable HTTP health checks in any of the following ways:
+Render Dashboard Render Dashboard
+Blueprint (render.yaml) Blueprint (render.yaml)
+In the Render Dashboard , scroll down to the Health Checks section of your web service's Settings page:
+Click Edit .
+Specify a path starting with a / character.
+Click Save Changes .
+In your Blueprint YAML file, add the healthCheckPath field to your web service's definition:
+Success criteria
+For default TCP checks, Render considers a check successful if the instance accepts the attempted TCP connection within five seconds.
+For HTTP checks , Render considers a check successful if the instance responds with a 2xx or 3xx status code within five seconds.
+In all other cases, Render considers the check failed.
+Handling failures
+Render handles health check failures for new deploys and actively running services in different ways:
+New deploy New deploy
+Running service Running service
+Whenever you deploy a new version of your service, Render does not immediately start routing traffic to the new instances. Instead, Render starts sending them health checks:
+Whenever all of the new instances are passing their health checks at the same time , Render considers the deploy successful and starts routing traffic to the new instances.
+If this condition is not met within 15 minutes, Render cancels the deploy and continues routing traffic to your service's existing instances.
+In this case, Render notifies you according to your settings.
+Learn more about zero-downtime deploys .
+If a running service instance fails consecutive health checks for 15 seconds, Render temporarily stops routing traffic to it to give it an opportunity to recover.
+If your service has other instances that are healthy, Render continues routing traffic to them.
+If an instance fails consecutive health checks for 60 seconds, Render automatically restarts the instance .
+In this case, Render notifies you according to your settings.
+For details on specific health check errors and causes, see Troubleshooting deploys .
+Copy page
+Health Checks
+HTTP health checks (web services only) Setup
+Success criteria
+Handling failures
+Pricing
+Blog
+Security
+Customers
+Careers
+© Render 2026
+render.yaml yaml Copy to clipboard
+services :
+- type : web
+runtime : node
+name : my - service
+healthCheckPath : /health
+# …

@@ -131,6 +131,7 @@ class WorkerMain(EntrypointBase):
         self.assertLess(time.monotonic() - before, 10)
         msgs = p.messages()
         self.assertIn("SIGTERM_RECEIVED", msgs)
+        self.assertTrue({"CPU_PINNED", "CPU_PIN_SKIPPED"} & set(msgs), "worker_main phải quyết định ghim CPU lúc khởi động (WV-34)")
         self.assertIn("WORKER_LOOP_STOP", msgs)
         exit_line = next(e for e in p.lines if e.get("message") == "PROCESS_EXIT")
         self.assertEqual((exit_line["exit_code"], exit_line["signals"]), (0, "SIGTERM"))

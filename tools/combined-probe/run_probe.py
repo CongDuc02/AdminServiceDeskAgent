@@ -168,6 +168,7 @@ def main() -> int:
         res["D_exit_code"] = sh("inspect", "-f", "{{.State.ExitCode}}", COMBINED, check=False).stdout.strip()
         logs = sh("logs", COMBINED, check=False)
         text = logs.stdout + logs.stderr
+        res["cpu_pin_log"] = [l for l in text.splitlines() if '"CPU_PIN' in l]
         keep = ("SIGTERM_RECEIVED", "JOB_RELEASED_ON_DRAIN", "PROCESS_TABLE_AT_EXIT", "PROCESS_EXIT", "WORKER_LOOP_STOP", "JOB_START", "JOB_HANDLER_CRASHED", "DRAIN_HOOK_ERROR", "JOB_POLL_NOT_STOPPED")
         llm_calls = [json.loads(l) for l in (OUT / "llm.jsonl").read_text(encoding="utf-8").splitlines()] if (OUT / "llm.jsonl").exists() else []
         res["llm_server_calls"] = {n: sum(1 for c in llm_calls if c["call"] == n) for n in sorted({c["call"] for c in llm_calls})}

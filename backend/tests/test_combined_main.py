@@ -258,6 +258,7 @@ class CombinedMain(DocBase):
     def test_sigterm_khi_roi_khong_co_job_thoat_nhanh(self):
         p, _ = self.start()
         self.assertIsNotNone(p.wait_for("WORKER_LOOP_START", 60), p.text()[-2000:])
+        self.assertTrue({"CPU_PINNED", "CPU_PIN_SKIPPED"} & set(p.messages()), "combined_main phải quyết định ghim CPU lúc khởi động (WV-34)")
         started = time.monotonic()
         self.assertEqual(p.terminate(30), 0, p.text()[-2000:])
         self.assertLess(time.monotonic() - started, 5.0)

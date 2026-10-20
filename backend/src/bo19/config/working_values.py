@@ -83,6 +83,9 @@ SOFFICE_STARTUP_CHECK_TIMEOUT_S = 20
 # còn `api` chỉ dùng theo đợt (lượt chat, đăng nhập argon2id) nên `api` cần thắng mỗi lần tranh. Trọng số CFS: nice 0 = 1024, nice 19 = 15 (api ≈ 98,5 % lúc tranh); lúc `api` rảnh `soffice` vẫn nhận gần đủ hạn mức nên chỉ chậm khi có tải chat.
 # Job render chậm hơn là chấp nhận được (PO). 0 = không hạ ưu tiên. Số đo trước/sau: docs/reference/combined-main-b9a2.md.
 SOFFICE_NICENESS = 19
+# WV-34 (B9a2; PO 2026-10-20, "chưa hiệu chỉnh") — ghim tiến trình vào MỘT CPU khi hạn mức CPU của cgroup nhỏ hơn giá trị này (đơn vị: CPU; 1.0 = một lõi). Render free: 0,1. Không có hạn mức hay hạn mức >= 1: không ghim.
+# Lý do: `nice` chỉ có tác dụng giữa các tiến trình chung runqueue (WV-33; docs/reference/combined-main-b9a2.md, mục Hạ ưu tiên).
+PIN_CPU_WHEN_QUOTA_BELOW = 1.0
 
 # WV-26 đến WV-30 (B8c; PO 2026-10-13, O1-18; "chưa hiệu chỉnh") — tải file qua tệp tạm (`storage.fetch_verified`, endpoint tải file). WV-27, WV-28, WV-29 do PO chỉ định/duyệt; WV-26, WV-30 do người triển khai chọn.
 FILE_FETCH_CHUNK_BYTES = 256 * 1024  # WV-26 — một khối khi tải object về tệp tạm và khi stream ra client

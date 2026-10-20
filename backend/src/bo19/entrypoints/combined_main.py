@@ -24,7 +24,7 @@ from bo19.config import working_values as wv
 from bo19.config.settings import load_settings
 from bo19.entrypoints.api_main import _Server, install_original_signal_handlers, open_api, run_server
 from bo19.entrypoints.worker_main import open_document_runner
-from bo19.observability import reaper
+from bo19.observability import cpu_pin, reaper
 from bo19.observability.log import configure_logging, get_logger
 from bo19.observability.shutdown import ShutdownLog
 from bo19.persistence.pool import Pool
@@ -91,6 +91,7 @@ def serve(shutdown: ShutdownLog) -> int:
 
 def main() -> None:
     configure_logging()
+    cpu_pin.pin_if_limited()  # TRƯỚC khi tạo luồng nào: luồng và tiến trình con (soffice) thừa hưởng affinity (WV-34)
     shutdown = ShutdownLog("bo19.combined")
     install_original_signal_handlers(shutdown)  # NGAY từ đầu (xem api_main.main); `serve` thay bằng bộ xử lý biết dừng vòng poll khi đã dựng xong
     code = serve(shutdown)

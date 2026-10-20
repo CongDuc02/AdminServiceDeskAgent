@@ -15,7 +15,7 @@ import sys
 
 from bo19.ai_gateway.gateway import build_gateway
 from bo19.config.settings import Settings, load_settings
-from bo19.observability import reaper
+from bo19.observability import cpu_pin, reaper
 from bo19.observability.log import configure_logging, get_logger
 from bo19.observability.shutdown import ShutdownLog
 from bo19.orchestrator.runner import DocumentRunner
@@ -82,6 +82,7 @@ def serve(shutdown: ShutdownLog) -> int:
 
 def main() -> None:
     configure_logging()
+    cpu_pin.pin_if_limited()  # TRƯỚC khi tạo luồng nào: luồng và tiến trình con (soffice) thừa hưởng affinity (WV-34)
     shutdown = ShutdownLog("bo19.worker")
     code = serve(shutdown)
     shutdown.exited(code)
