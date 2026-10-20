@@ -3610,3 +3610,19 @@ PO duyệt kế hoạch B8a (`proposals/b8a-ke-hoach.md`) và quyết thêm về
 ### 2026-10-16 — P4 1.1: PO chấp nhận (n = 3), không thêm `REQUEST_VOICE`
 
 `07-prompts.md` v0.8, mục 4.4: giọng văn không có phép kiểm bằng code — bộ lọc cụm từ chặn nhầm ("xin cấp thị thực"), và chặn ở `document_graph` là `halt_for_human`; chốt chặn là người duyệt ở `CONTENT_REVIEW`. Theo dõi ở UAT: câu sinh chép sát input (nhãn "(giả)", "nơi nhân viên…" lệch ngôi) và tỷ lệ bản nháp phải sửa giọng.
+
+### 2026-10-16 — B9a2: `combined_main`, bộ dọn zombie PID 1, WV-32
+
+`06-structure.md` v0.44 (mục Triển khai ở B9a2; cây `observability/reaper.py`), `11-ops.md` v0.38 (mục 20 runbook chuyển Render), `12-roadmap.md` v0.61 (B9a2, O1-6), `ASSUMPTIONS.md` v0.71 (A-095 đã đo), `ADR-033` (mục Cập nhật 2026-10-16: drain khi `soffice` chạy, thoát cứng, PID 1, không `tini`), `proposals/sprint1-working-values-a031-a048.md` (WV-32). Số đo: `docs/reference/combined-main-b9a2.md`. Không migration, không biến môi trường mới.
+
+### 2026-10-20 — B9a2: sửa `api_main`, hạ ưu tiên `soffice`, runbook và rủi ro UAT (PO)
+
+`11-ops.md` v0.39 (mục 20: điều kiện chuyển sang `combined_main` = cổng 2.5 đạt; đo O1-6 và `/tmp` khi chuyển), `12-roadmap.md` v0.62 (R4-4 bổ sung khởi động ≈ 42 s; cổng 4.9 — phương án `/healthz` định kỳ < 15 phút suốt buổi UAT), `06-structure.md` v0.45, `ASSUMPTIONS.md` v0.72 (A-095), `ADR-033` (mục Cập nhật 2026-10-20), `proposals/sprint1-working-values-a031-a048.md` (WV-33). Số đo: `docs/reference/combined-main-b9a2.md`, mục Hạ ưu tiên. Không migration, không biến môi trường mới.
+
+### 2026-10-20 (2) — B9a2: ghim một CPU (WV-34) và hạn khởi động của Render
+
+`observability/cpu_pin.py` (PO duyệt phương án mặc định: ghim khi `cpu.max` < 1 CPU, CPU đầu tiên của tập affinity, `combined_main` và `worker_main`). `06-structure.md` v0.46, `11-ops.md` v0.40 (mục 20: phép đo quyết định trên Render thật, ngưỡng lớn nhất ≤ WV-02 − 5 s), `ASSUMPTIONS.md` v0.73, `12-roadmap.md` v0.63 (cổng 4.9: hạn khởi động), `ADR-033`, WV-34. Số đo bằng mã thật (n = 9): lượt chat khi `soffice` chạy trung vị 8,1 s, lớn nhất 9,2 s (`docs/reference/combined-main-b9a2.md`, mục Ghim CPU bằng mã). Tài liệu mới `docs/reference/render-khoi-dong-cong.md` (hạn quét cổng — Render không công bố số; hạn 15 phút đã công bố; phương án "mở cổng trước" CHƯA áp).
+
+### 2026-10-20 (3) — runbook mục 20: tải hỗn hợp
+
+`11-ops.md` v0.41, mục 20 bước 4b: khi chuyển Render sang `combined_main` đo đỉnh bộ nhớ dưới tải hỗn hợp (đăng nhập dồn 4 verify argon2id đồng thời + một job render + một lượt tải file); dừng và báo PO nếu đỉnh > 460 MiB hoặc `oom_kill` > 0 (PO, 2026-10-20).

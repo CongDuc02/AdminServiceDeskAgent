@@ -7,6 +7,12 @@ trạng thái), `--convert-to pdf`, `--outdir <thư mục tạm của lần đó
 là `ConversionFailed`. **Lỗi chỉ mang mã**: đầu ra của `soffice` có thể chứa tên file, đường dẫn, đoạn văn bản — không bao giờ vào thông điệp, log hay `audit_event`.
 
 Không giả định PDF tất định theo byte (ADR-015): thứ tự "chuyển đổi xong rồi mới giành khoá" của tool `pdf_export` là chỗ chịu tính không tất định đó.
+
+**Độ ưu tiên (B9a2; PO 2026-10-20; WV-33):** `soffice` chạy qua `nice -n 19` để `api` thắng CPU trong hạn mức 0,1 CPU chung. `nice` `exec` thẳng vào `soffice` nên PID và nhóm tiến trình không đổi (`killpg` vẫn đúng).
+
+**Tắt tiến trình (B9a2; ADR-033):** `abort_all()` giết NGAY nhóm tiến trình của mọi chuyển đổi đang chạy và chặn chuyển đổi mới (`ConversionAborted`, mã `JOB_CANCELLED` — lỗi tạm, job được `release` chứ không tiêu lượt thử).
+Gọi nó từ composition root khi drain hết hạn, để `SIGTERM` lúc `soffice` đang chạy (một chuyển đổi mất 32–88 s ở 0,1 CPU) không để lại `soffice` mồ côi và tiến trình thoát trong ≈ 5 s của Render.
+`live_pids()` trả PID các tiến trình con còn sống mà chủ của chúng sẽ tự `wait` — bộ dọn zombie của PID 1 (`observability.reaper`) không được đụng vào chúng.
 """
 from __future__ import annotations
 
@@ -16,12 +22,18 @@ import shutil
 import signal
 import subprocess
 import tempfile
+import threading
 import zipfile
 from pathlib import Path
 
+from bo19.config import working_values as wv
 from bo19.tool_layer.tools._common import ToolError
 
 SOFFICE = "soffice"
+NICE = "nice"
+_LIVE: set[int] = set()
+_LOCK = threading.Lock()
+ABORT = threading.Event()  # đặt khi tiến trình đang tắt; một chiều (trừ `reset_abort` của test)
 
 
 class ConversionFailed(ToolError):
@@ -32,8 +44,55 @@ class ConversionTimeout(ToolError):
     code = "TIMEOUT"
 
 
+class ConversionAborted(ToolError):
+    code = "JOB_CANCELLED"  # tiến trình đang tắt: chuyển đổi bị giết hay không được bắt đầu — không phải lỗi của tài liệu
+
+
 class VersionFailed(ToolError):
     code = "SOFFICE_VERSION_FAILED"  # `soffice --headless --version` không chạy được, thoát mã khác 0, hoặc không in dòng phiên bản
+
+
+def live_pids() -> set[int]:
+    with _LOCK:
+        return set(_LIVE)
+
+
+def abort_all() -> int:
+    """Chặn chuyển đổi mới và `SIGKILL` nhóm tiến trình của mọi chuyển đổi đang chạy. Trả số nhóm đã giết. Chủ của mỗi chuyển đổi (luồng đang `wait`) tự thu xác con trực tiếp và dọn thư mục tạm."""
+    ABORT.set()
+    with _LOCK:
+        pids = list(_LIVE)
+    for pid in pids:
+        try:
+            os.killpg(pid, signal.SIGKILL)  # `start_new_session=True`: pgid == pid
+        except ProcessLookupError:
+            pass
+    return len(pids)
+
+
+def wait_idle(timeout_s: float) -> bool:
+    """Chờ tới khi không còn chuyển đổi nào đang chạy (chủ của chúng đã thu xác con trực tiếp). `True` nếu rỗng trong hạn."""
+    import time
+    deadline = time.monotonic() + timeout_s
+    while live_pids():
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.02)
+    return True
+
+
+def reset_abort() -> None:
+    ABORT.clear()
+
+
+def _track(proc: subprocess.Popen) -> None:
+    with _LOCK:
+        _LIVE.add(proc.pid)
+
+
+def _untrack(proc: subprocess.Popen) -> None:
+    with _LOCK:
+        _LIVE.discard(proc.pid)
 
 
 def available() -> bool:
@@ -47,6 +106,7 @@ def soffice_version(*, timeout_s: float) -> str:
         proc = subprocess.Popen([SOFFICE, "--headless", "--version"], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, start_new_session=True)
     except OSError:
         raise VersionFailed from None
+    _track(proc)
     try:
         out, _ = proc.communicate(timeout=timeout_s)
     except subprocess.TimeoutExpired:
@@ -57,6 +117,8 @@ def soffice_version(*, timeout_s: float) -> str:
         _kill_group(proc)
         proc.stdout.close()
         raise
+    finally:
+        _untrack(proc)
     line = next((l.strip() for l in out.splitlines() if l.strip().startswith("LibreOffice")), None)
     if proc.returncode != 0 or line is None:
         raise VersionFailed
@@ -66,6 +128,15 @@ def soffice_version(*, timeout_s: float) -> str:
 def soffice_command(workdir: Path, source: Path) -> list[str]:
     return [SOFFICE, "--headless", "--norestore", "--nolockcheck", f"-env:UserInstallation={(workdir / 'profile').as_uri()}",
             "--convert-to", "pdf", "--outdir", str(workdir / "out"), str(source)]
+
+
+def niced(cmd: list[str], niceness: int) -> list[str]:
+    """`nice -n <n> <cmd>` khi `niceness` > 0; nguyên lệnh khi 0."""
+    return [NICE, "-n", str(niceness), *cmd] if niceness else cmd
+
+
+def nice_available() -> bool:
+    return shutil.which(NICE) is not None
 
 
 def _kill_group(proc: subprocess.Popen) -> None:
@@ -88,9 +159,11 @@ def _looks_like_docx(data: bytes) -> bool:
         return False
 
 
-def convert_to_pdf(docx: bytes, *, timeout_s: float, tmp_root: str | None = None) -> bytes:
+def convert_to_pdf(docx: bytes, *, timeout_s: float, tmp_root: str | None = None, niceness: int = wv.SOFFICE_NICENESS) -> bytes:
     if not _looks_like_docx(docx):
         raise ConversionFailed
+    if ABORT.is_set():
+        raise ConversionAborted
     workdir = Path(tempfile.mkdtemp(prefix="bo19-convert-", dir=tmp_root))
     try:
         (workdir / "out").mkdir()
@@ -98,9 +171,14 @@ def convert_to_pdf(docx: bytes, *, timeout_s: float, tmp_root: str | None = None
         source.write_bytes(docx)
         env = {**os.environ, "HOME": str(workdir)}
         try:
-            proc = subprocess.Popen(soffice_command(workdir, source), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env, start_new_session=True)
+            proc = subprocess.Popen(niced(soffice_command(workdir, source), niceness), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env, start_new_session=True)
         except OSError:
             raise ConversionFailed from None
+        _track(proc)
+        if ABORT.is_set():  # `abort_all` chạy giữa `Popen` và `_track`: nó không thấy nhóm này
+            _kill_group(proc)
+            _untrack(proc)
+            raise ConversionAborted
         try:
             code = proc.wait(timeout=timeout_s)
         except subprocess.TimeoutExpired:
@@ -109,7 +187,11 @@ def convert_to_pdf(docx: bytes, *, timeout_s: float, tmp_root: str | None = None
         except BaseException:
             _kill_group(proc)  # bị ngắt giữa chừng (tắt êm, cờ huỷ): không để lại tiến trình mồ côi
             raise
+        finally:
+            _untrack(proc)
         _kill_group(proc)  # tiến trình con còn sót (soffice.bin) thì dọn nốt; nhóm đã chết thì không làm gì
+        if ABORT.is_set():
+            raise ConversionAborted
         out = workdir / "out" / "input.pdf"
         if code != 0 or not out.is_file():
             raise ConversionFailed

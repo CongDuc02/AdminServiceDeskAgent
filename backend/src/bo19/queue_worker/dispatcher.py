@@ -6,6 +6,8 @@ Mỗi vòng: `reclaim_expired` (job của worker đã chết) → `claim` (chỉ
 **Tắt êm (`stop`):** ngừng giành job mới; job đang chạy được chờ tới `drain_s`; chưa xong thì đặt cờ huỷ, `release` (không tiêu lượt thử) rồi bỏ cuộc chờ. Thread của handler là daemon: tiến trình thoát thì nó chết theo — một
 lệnh ghi muộn của nó không có chỗ đi nữa, và nếu nó kịp chạy thì hàng rào chủ lease từ chối. Drain thật trên gói free ≈ 5 s (R2-5): không kịp `release` thì lease hết hạn và mất một lượt thử.
 
+**`on_drain_expired` (B9a2):** gọi MỘT lần khi drain hết hạn mà job còn chạy, TRƯỚC `release` — composition root dùng nó để giết tiến trình con của handler (`convert.abort_all`: `soffice`) nên tiến trình thoát đúng hạn mà không để lại mồ côi. Lỗi của hook chỉ được ghi log, không chặn `release`.
+
 **Handler** — `handler(job, ctx)`; trả về bình thường là thành công. Ném `JobFailure(code, retry_after_s)` là thất bại có mã (429 của provider mang `retry_after_s`); ngoại lệ khác là `HANDLER_CRASHED` — **chỉ mã**, không bao giờ thông điệp
 của ngoại lệ (có thể mang giá trị slot). Handler dài phải kiểm `ctx.cancelled` định kỳ.
 """
@@ -56,10 +58,11 @@ def new_worker_id() -> str:
 
 class Dispatcher:
     def __init__(self, pool: Pool, handlers: Mapping[str, Handler], *, worker_id: str | None = None, poll_s: float = wv.JOB_POLL_S, lease_s: float = wv.JOB_LEASE_S,
-                 heartbeat_s: float = wv.JOB_HEARTBEAT_S, drain_s: float = 25.0) -> None:
+                 heartbeat_s: float = wv.JOB_HEARTBEAT_S, drain_s: float = 25.0, on_drain_expired: Callable[[], object] | None = None) -> None:
         self.pool, self.handlers = pool, dict(handlers)
         self.worker_id = worker_id or new_worker_id()
         self.poll_s, self.lease_s, self.heartbeat_s, self.drain_s = poll_s, lease_s, heartbeat_s, drain_s
+        self.on_drain_expired = on_drain_expired
         self._stop = threading.Event()
         self._drain_deadline: float | None = None
 
@@ -134,6 +137,11 @@ class Dispatcher:
                 if self._drain_deadline is not None and time.monotonic() >= self._drain_deadline:
                     ctx.cancel.set()
                     beat_stop.set()
+                    if self.on_drain_expired is not None:
+                        try:
+                            self.on_drain_expired()
+                        except Exception as e:  # noqa: BLE001 — hook hỏng không được giữ job lại: vẫn `release`
+                            log.error("DRAIN_HOOK_ERROR", exc=e)
                     released = jobs.release(self.pool, job)  # không tiêu lượt thử
                     log.warning("JOB_RELEASED_ON_DRAIN", job_id=str(job.id), job_type=job.job_type, released=released)
                     return

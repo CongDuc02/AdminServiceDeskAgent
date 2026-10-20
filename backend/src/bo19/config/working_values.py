@@ -24,6 +24,7 @@ JOB_BACKOFF_BASE_S = {"render_document": 10, "resume_document_graph": 10, "final
 JOB_LEASE_S = 120
 JOB_HEARTBEAT_S = 40
 JOB_POLL_S = 2
+COMBINED_JOB_DRAIN_S = 1.0  # WV-32 (chưa hiệu chỉnh; B9a2): `combined_main` cho job đang chạy chừng này giây sau SIGTERM để xong; chưa xong thì giết `soffice` và `release` — Render SIGKILL ≈ 5 s sau SIGTERM (A-031)
 WORKER_CONCURRENCY = 1
 
 # WV-15 — số ký tự tối đa của MỘT tin nhắn trong chat (A-031; roadmap O1-1: giữ 2.000). `chat_message_append` chặn lần cuối; `api` chặn ở `TurnBody`.
@@ -78,6 +79,13 @@ RENDER_CONVERT_TIMEOUT_S = 120
 FILE_FETCH_MAX_BYTES = 8 * 1024 * 1024
 # WV-25 (B8c, PO O1-19; "chưa hiệu chỉnh") — hạn của bước kiểm khởi động #6, `soffice --headless --version` (đo: 0,2–3 s ở CPU đầy đủ, 1,8–2,6 s ở 0,1 CPU): giây.
 SOFFICE_STARTUP_CHECK_TIMEOUT_S = 20
+# WV-33 (B9a2; PO 2026-10-20, "chưa hiệu chỉnh") — độ ưu tiên (`nice`) của tiến trình `soffice` chuyển đổi: 19 = thấp nhất. Trong cgroup 0,1 CPU của Render free `api` và `soffice` chia chung MỘT hạn mức; `soffice` ăn CPU liên tục
+# còn `api` chỉ dùng theo đợt (lượt chat, đăng nhập argon2id) nên `api` cần thắng mỗi lần tranh. Trọng số CFS: nice 0 = 1024, nice 19 = 15 (api ≈ 98,5 % lúc tranh); lúc `api` rảnh `soffice` vẫn nhận gần đủ hạn mức nên chỉ chậm khi có tải chat.
+# Job render chậm hơn là chấp nhận được (PO). 0 = không hạ ưu tiên. Số đo trước/sau: docs/reference/combined-main-b9a2.md.
+SOFFICE_NICENESS = 19
+# WV-34 (B9a2; PO 2026-10-20, "chưa hiệu chỉnh") — ghim tiến trình vào MỘT CPU khi hạn mức CPU của cgroup nhỏ hơn giá trị này (đơn vị: CPU; 1.0 = một lõi). Render free: 0,1. Không có hạn mức hay hạn mức >= 1: không ghim.
+# Lý do: `nice` chỉ có tác dụng giữa các tiến trình chung runqueue (WV-33; docs/reference/combined-main-b9a2.md, mục Hạ ưu tiên).
+PIN_CPU_WHEN_QUOTA_BELOW = 1.0
 
 # WV-26 đến WV-30 (B8c; PO 2026-10-13, O1-18; "chưa hiệu chỉnh") — tải file qua tệp tạm (`storage.fetch_verified`, endpoint tải file). WV-27, WV-28, WV-29 do PO chỉ định/duyệt; WV-26, WV-30 do người triển khai chọn.
 FILE_FETCH_CHUNK_BYTES = 256 * 1024  # WV-26 — một khối khi tải object về tệp tạm và khi stream ra client

@@ -18,6 +18,8 @@ TERMINAL_DOCUMENT_STATUSES = ("ISSUED", "REVOKED", "SUPERSEDED", "ARCHIVED", "RE
 def step_06(ctx: Context) -> Result:
     if not convert.available():
         return Result((code("6", "SOFFICE_MISSING"),))
+    if wv.SOFFICE_NICENESS and not convert.nice_available():
+        return Result((code("6", "NICE_MISSING"),))  # WV-33: `soffice` chạy qua `nice`; thiếu nó thì chuyển đổi đầu tiên mới hỏng — báo ngay lúc khởi động
     try:
         fonts.installed_families()
         fonts.match_families("serif")

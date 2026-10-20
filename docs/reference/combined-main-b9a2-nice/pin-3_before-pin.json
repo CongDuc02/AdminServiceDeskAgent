@@ -1,0 +1,342 @@
+{
+  "cpuset": "0",
+  "image": "bo19-runtime-before",
+  "label": "before-pin",
+  "cpus": "0.1",
+  "memory": "512m",
+  "started_at": "2026-10-20T03:34:51+00:00",
+  "setup": {
+    "db": "trial_feba1968",
+    "bucket": "bo19-probe-c37508050b"
+  },
+  "A_startup": {
+    "healthz_after_s": 43.8,
+    "wall_s": 47.0
+  },
+  "pid1": [
+    {
+      "pid": 22924,
+      "ppid": 22902,
+      "stat": "Ssl",
+      "comm": "python"
+    }
+  ],
+  "B_baseline_turns": [
+    {
+      "employee": "GIA-0001",
+      "login_ms": 410,
+      "login_status": 204,
+      "session_status": 201,
+      "turn_http_status": 200,
+      "events": [
+        [
+          "turn.accepted",
+          0.1
+        ],
+        [
+          "turn.progress",
+          0.29
+        ],
+        [
+          "turn.progress",
+          5.69
+        ],
+        [
+          "turn.reply",
+          5.79
+        ]
+      ],
+      "turn_s": 5.79,
+      "within_wv02": true
+    },
+    {
+      "employee": "GIA-0001",
+      "login_ms": 213,
+      "login_status": 204,
+      "session_status": 200,
+      "turn_http_status": 200,
+      "events": [
+        [
+          "turn.accepted",
+          0.1
+        ],
+        [
+          "turn.progress",
+          0.2
+        ],
+        [
+          "turn.progress",
+          5.09
+        ],
+        [
+          "turn.reply",
+          5.11
+        ]
+      ],
+      "turn_s": 5.11,
+      "within_wv02": true
+    }
+  ],
+  "F_job_alone_s": 41.4,
+  "C_turns_during_conversion": [
+    {
+      "employee": "GIA-0002",
+      "login_ms": 3873,
+      "login_status": 204,
+      "session_status": 201,
+      "turn_http_status": 200,
+      "events": [
+        [
+          "turn.accepted",
+          0.7
+        ],
+        [
+          "turn.progress",
+          1.4
+        ],
+        [
+          "turn.progress",
+          15.6
+        ],
+        [
+          "turn.reply",
+          16.8
+        ]
+      ],
+      "turn_s": 16.8,
+      "within_wv02": true,
+      "soffice_running_before": true,
+      "soffice_running_after": true
+    },
+    {
+      "employee": "GIA-0002",
+      "login_ms": 1162,
+      "login_status": 204,
+      "session_status": 200,
+      "turn_http_status": 200,
+      "events": [
+        [
+          "turn.accepted",
+          0.41
+        ],
+        [
+          "turn.progress",
+          0.91
+        ],
+        [
+          "turn.progress",
+          8.3
+        ],
+        [
+          "turn.reply",
+          8.6
+        ]
+      ],
+      "turn_s": 8.6,
+      "within_wv02": true,
+      "soffice_running_before": true,
+      "soffice_running_after": true
+    },
+    {
+      "employee": "GIA-0002",
+      "login_ms": 663,
+      "login_status": 204,
+      "session_status": 200,
+      "turn_http_status": 200,
+      "events": [
+        [
+          "turn.accepted",
+          0.4
+        ],
+        [
+          "turn.progress",
+          0.8
+        ],
+        [
+          "turn.progress",
+          6.1
+        ],
+        [
+          "turn.reply",
+          6.2
+        ]
+      ],
+      "turn_s": 6.2,
+      "within_wv02": true,
+      "soffice_running_before": true,
+      "soffice_running_after": false
+    },
+    {
+      "employee": "GIA-0002",
+      "login_ms": 899,
+      "login_status": 204,
+      "session_status": 200,
+      "turn_http_status": 200,
+      "events": [
+        [
+          "turn.accepted",
+          0.2
+        ],
+        [
+          "turn.progress",
+          0.6
+        ],
+        [
+          "turn.progress",
+          7.7
+        ],
+        [
+          "turn.reply",
+          8.0
+        ]
+      ],
+      "turn_s": 8.0,
+      "within_wv02": true,
+      "soffice_running_before": true,
+      "soffice_running_after": true
+    }
+  ],
+  "C_valid_turn_s": [
+    16.8,
+    8.6,
+    8.0
+  ],
+  "C_jobs_sent": 2,
+  "C_job_before_sigterm": {
+    "job": "RUNNING",
+    "attempts": 1,
+    "error": null,
+    "document": "DRAFT"
+  },
+  "E_memory": {
+    "cgroup_memory_peak_mib": 348.6,
+    "cgroup_memory_now_mib": 247.6,
+    "oom_kill": [
+      "oom_kill 0"
+    ],
+    "pid1_vmhwm_mib": 208.5,
+    "pid1_vmrss_mib": 208.4
+  },
+  "D_soffice_running_at_sigterm": true,
+  "D_table_before": [
+    {
+      "pid": 22924,
+      "ppid": 22902,
+      "stat": "Ssl",
+      "comm": "python"
+    },
+    {
+      "pid": 25136,
+      "ppid": 22924,
+      "stat": "Ssl",
+      "comm": "oosplash"
+    },
+    {
+      "pid": 25236,
+      "ppid": 25136,
+      "stat": "Rl",
+      "comm": "soffice.bin"
+    }
+  ],
+  "vm_clock_skew_s": 0.096,
+  "D_exit_seen_after_s": 2.28,
+  "D_snapshots": [
+    {
+      "t_s": 0.23,
+      "procs": [
+        "22924/Rsl/python",
+        "25136/Ssl/oosplash",
+        "25236/Rl/soffice.bin"
+      ]
+    },
+    {
+      "t_s": 0.42,
+      "procs": [
+        "22924/Rsl/python",
+        "25136/Ssl/oosplash",
+        "25236/Rl/soffice.bin"
+      ]
+    },
+    {
+      "t_s": 0.61,
+      "procs": [
+        "22924/Ssl/python",
+        "25136/Ssl/oosplash",
+        "25236/Rl/soffice.bin"
+      ]
+    },
+    {
+      "t_s": 0.78,
+      "procs": [
+        "22924/Ssl/python",
+        "25136/Ssl/oosplash",
+        "25236/Rl/soffice.bin"
+      ]
+    },
+    {
+      "t_s": 0.98,
+      "procs": [
+        "22924/Ssl/python",
+        "25136/Ssl/oosplash",
+        "25236/Rl/soffice.bin"
+      ]
+    },
+    {
+      "t_s": 1.2,
+      "procs": [
+        "22924/Ssl/python",
+        "25136/Ssl/oosplash",
+        "25236/Rl/soffice.bin"
+      ]
+    },
+    {
+      "t_s": 1.45,
+      "procs": [
+        "22924/Ssl/python"
+      ]
+    },
+    {
+      "t_s": 1.66,
+      "procs": [
+        "22924/Ssl/python"
+      ]
+    },
+    {
+      "t_s": 1.98,
+      "procs": []
+    }
+  ],
+  "D_sigterm_at": "2026-10-20T03:38:41.980+00:00",
+  "D_exit_code": "0",
+  "llm_server_calls": {
+    "classify_intent": 6,
+    "extract_slots": 6
+  },
+  "llm_log_messages": [
+    "LLM_ATTEMPT_MEASURED",
+    "LLM_CALL_DONE"
+  ],
+  "D_log_lines": [
+    "{\"timestamp\":\"2026-10-20T03:36:27.229Z\",\"level\":\"INFO\",\"component\":\"bo19.queue_worker\",\"trace_id\":null,\"message\":\"JOB_START\",\"job_id\":\"941b8e7a-7852-45dd-8c9b-2150cecfa3af\",\"job_type\":\"render_document\",\"attempt\":1}",
+    "{\"timestamp\":\"2026-10-20T03:37:20.127Z\",\"level\":\"INFO\",\"component\":\"bo19.queue_worker\",\"trace_id\":null,\"message\":\"JOB_START\",\"job_id\":\"7bb5980f-67f3-4e13-8347-cc1bca9f8a63\",\"job_type\":\"render_document\",\"attempt\":1}",
+    "{\"timestamp\":\"2026-10-20T03:38:21.222Z\",\"level\":\"INFO\",\"component\":\"bo19.queue_worker\",\"trace_id\":null,\"message\":\"JOB_START\",\"job_id\":\"bfc55f92-3923-4966-b023-0a5ac30179ba\",\"job_type\":\"render_document\",\"attempt\":1}",
+    "{\"timestamp\":\"2026-10-20T03:38:41.992Z\",\"level\":\"INFO\",\"component\":\"bo19.combined\",\"trace_id\":null,\"message\":\"SIGTERM_RECEIVED\",\"signal\":\"SIGTERM\"}",
+    "{\"timestamp\":\"2026-10-20T03:38:43.388Z\",\"level\":\"WARNING\",\"component\":\"bo19.queue_worker\",\"trace_id\":null,\"message\":\"JOB_RELEASED_ON_DRAIN\",\"job_id\":\"bfc55f92-3923-4966-b023-0a5ac30179ba\",\"job_type\":\"render_document\",\"released\":true}",
+    "{\"timestamp\":\"2026-10-20T03:38:43.389Z\",\"level\":\"INFO\",\"component\":\"bo19.queue_worker\",\"trace_id\":null,\"message\":\"WORKER_LOOP_STOP\",\"worker_id\":\"f6c37925b424-1-d089c3\"}",
+    "{\"timestamp\":\"2026-10-20T03:38:43.692Z\",\"level\":\"INFO\",\"component\":\"bo19.reaper\",\"trace_id\":null,\"message\":\"PROCESS_TABLE_AT_EXIT\",\"children\":0,\"zombies\":0,\"reaped\":11,\"alive\":null}",
+    "{\"timestamp\":\"2026-10-20T03:38:43.699Z\",\"level\":\"INFO\",\"component\":\"bo19.combined\",\"trace_id\":null,\"message\":\"PROCESS_EXIT\",\"exit_code\":0,\"seconds_since_sigterm\":1.703,\"signals\":\"SIGTERM\"}"
+  ],
+  "D_job_after": {
+    "job": "QUEUED",
+    "attempts": 0,
+    "error": null,
+    "document": "DRAFT"
+  },
+  "D_witness": {
+    "polls": 854,
+    "errors": 0,
+    "last_seen_with_connections_s_after_sigterm": 1.44,
+    "connections_gone_s_after_sigterm": 1.69,
+    "interval_s": 0.25
+  }
+}
