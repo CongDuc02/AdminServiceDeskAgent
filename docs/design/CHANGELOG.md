@@ -3630,3 +3630,11 @@ PO duyệt kế hoạch B8a (`proposals/b8a-ke-hoach.md`) và quyết thêm về
 ### 2026-10-20 (4) — kế hoạch B9b; cổng 2.5 / S7 (chỉ tài liệu)
 
 `proposals/b9b-ke-hoach.md` (đề xuất, chờ PO duyệt; gồm rà `request.read_assigned` và O1-15). `proposals/s7-danh-sach-ngan-object-storage.md` và `docs/reference/s7-object-storage-ung-vien.md` (bốn ứng viên: Cloudflare R2, Tigris, OVHcloud, Scaleway — tiêu chí `412` của `If-None-Match: *`, vùng dữ liệu, hạn mức miễn phí, tương thích S3; trích nguyên văn từ tài liệu gốc tải bằng `curl`, kèm sha256). `12-roadmap.md` v0.64: dòng cổng 2.5. Chưa tạo tài khoản, chưa chạy phép thử, chưa đổi mã.
+
+### 2026-10-20 (5) — PO duyệt kế hoạch B9b; cổng 2.5 chọn Cloudflare R2; bắt đầu B9b1
+
+**Duyệt (PO):** chia B9b1/B9b2; tám câu của `proposals/b9b-ke-hoach.md` (mục Quyết định của PO). Cổng 2.5: **Cloudflare R2, gói miễn phí**; S7 chỉ chạy trên R2; không xét nhà cung cấp khác hay trong nước; gói trả phí tính sau. **Điều kiện trước production:** xét lại nhà cung cấp object storage và vùng lưu trữ khi có dữ liệu thật (A-080).
+
+**Sửa tài liệu:** `12-roadmap.md` v0.65 (B9b1/B9b2; cổng 2.5; S7), `09-security.md` (mục 3.4 quy ước `read_assigned`; 3.5 tên và chức danh người ký trên bản `FINAL`), `05-api.md` (mục Triển khai ở B9b1; `status=APPROVED` của `review-queue` ở Sprint 1), `contracts/openapi.yaml` (`ReviewQueueStatus` thêm `APPROVED`), `08-hitl.md` (Sprint 1: hàng đợi `APPROVED`, `NO_ELIGIBLE_SIGNER` là job `FAILED`), `03-agents.md` (mục 6.4.2), `06-structure.md` (mục Triển khai ở B9b1), `ASSUMPTIONS.md` (A-099), `GLOSSARY.md`, **ADR-040** (cột đi kèm qua kernel, `approved_content_hash` chuẩn tắc, resume theo loại quyết định, người ký chỉ ký khi được giao). Chưa migration; không biến môi trường mới.
+
+**Lệch nhẹ so với bản gốc, báo để PO biết:** (1) hàng đợi `status=APPROVED` — ngoài ba giá trị của thiết kế gốc — để thực hiện "hiện được trong hàng đợi cho cán bộ" (PO, câu 2) khi chưa có `/takeover-queue`; (2) `document_sign` chỉ nhận người được giao, để tên in trên bản `FINAL` (PO, câu 5) đúng người đã ký; (3) bị chặn D-006 thì luôn `SELF_APPROVAL_BLOCKED` ở Sprint 1, kể cả khi không còn ai thay thế (kế hoạch B9b, mục Không làm).

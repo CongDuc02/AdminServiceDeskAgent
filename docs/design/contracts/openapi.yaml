@@ -1837,8 +1837,11 @@ components:
           ARCHIVED,
         ]
     ReviewQueueStatus:
+      description: >-
+        APPROVED chỉ ở Sprint 1 (ADR-040 mục 7): văn bản đã duyệt nội dung mà bước ký chưa mở được
+        (NO_ELIGIBLE_SIGNER); permission document.approve_content. Bỏ khi /takeover-queue có (Sprint 2).
       type: string
-      enum: [PENDING_APPROVAL, PENDING_SIGNATURE, PENDING_SEAL]
+      enum: [PENDING_APPROVAL, PENDING_SIGNATURE, PENDING_SEAL, APPROVED]
     RequestListScope:
       type: string
       enum: [OWN, ALL, ASSIGNED]
