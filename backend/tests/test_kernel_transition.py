@@ -18,6 +18,7 @@ from pathlib import Path
 
 import psycopg
 
+from bo19.domain.approval_step_machine import APPROVAL_STEP_TRANSITIONS
 from bo19.domain.document_machine import DOCUMENT_TRANSITIONS
 from bo19.domain.request_machine import REQUEST_STATUSES, REQUEST_TRANSITIONS
 from bo19.persistence.pool import Pool
@@ -83,11 +84,12 @@ class QuetVanBan(unittest.TestCase):
 
 
 class KhongCoMayThiBiTuChoi(unittest.TestCase):
-    def test_chi_request_va_document_dang_ky(self):
-        """`request` từ B5; `document` từ B9a (ADR-039). `approval_step`, `room_booking` chưa có máy — không đoán cạnh."""
-        self.assertEqual(set(tr.SPECS), {"request", "document"})
+    def test_chi_request_document_va_approval_step_dang_ky(self):
+        """`request` từ B5; `document` từ B9a (ADR-039); `approval_step` từ B9b1 (ADR-040). `room_booking` chưa có máy — không đoán cạnh."""
+        self.assertEqual(set(tr.SPECS), {"request", "document", "approval_step"})
         self.assertIs(tr.SPECS["request"].machine, REQUEST_TRANSITIONS)
         self.assertIs(tr.SPECS["document"].machine, DOCUMENT_TRANSITIONS)
+        self.assertIs(tr.SPECS["approval_step"].machine, APPROVAL_STEP_TRANSITIONS)
 
 
 @unittest.skipUnless(pg_support.SUPERUSER_DSN, "cần BO19_TEST_PG_SUPERUSER_DSN")
@@ -178,7 +180,7 @@ class ChuyenTrangThai(unittest.TestCase):
         with self.assertRaises(tr.RowNotFound):
             self.go(uuid.uuid4(), to="SUBMITTED")
         with self.pool.acquire() as conn, unit_of_work(conn):
-            for table in ("approval_step", "room_booking", "request; DROP TABLE request", "job", ""):  # `document` có máy từ B9a (ADR-039)
+            for table in ("room_booking", "request; DROP TABLE request", "job", ""):  # `document` có máy từ B9a (ADR-039), `approval_step` từ B9b1 (ADR-040)
                 with self.assertRaises(tr.NoStateMachine, msg=table):
                     tr.transition(conn, table, uuid.uuid4(), to="X")
 

@@ -1,10 +1,13 @@
-"""Cạnh của `document_graph` — lát Sprint 1 (B9a), sơ đồ ở mục 6.4.1 của 03-agents.md.
+"""Cạnh của `document_graph` — lát Sprint 1 (B9a, B9b1), sơ đồ ở mục 6.4.1 và 6.4.2 của 03-agents.md.
 
 ```
 START → prepare_draft → draft_free_content → validate_free_content ─ redraft → draft_free_content   (sinh lại đúng một lần mỗi biến, rồi `FREE_CONTENT_INVALID`)
                                                                    └ render ──→ render_draft → check_review_readiness → submit_for_review
-                                                                                  → await_content_review (INTERRUPT, cổng 1) → route_review → END
+                                                                                  → await_content_review (INTERRUPT, cổng 1) → route_review
+  → route_signing → await_signature (INTERRUPT) → route_after_signature ─ seal ─→ await_seal (INTERRUPT, cổng 2) → await_issue (INTERRUPT) → END
+                                                                         └ issue ───────────────────────────────→ await_issue
 ```
+B9b1 dừng ở `await_issue`; `finalize_issue` và `END` thật là B9b2 (ADR-040 mục 8).
 Node dựng qua `GraphBuilder` — mọi node qua biên node (`runtime.node_boundary`). `document_graph` không import `langgraph`. **Tên node `interrupt` là contract** (mục Schema state đổi giữa chừng của 03-agents.md):
 không đổi `await_content_review` khi còn thread đang chờ ở đó.
 """
@@ -17,7 +20,8 @@ from bo19.orchestrator.document_graph.runtime import DocumentDeps
 from bo19.orchestrator.runtime.builder import END, START, Graph, GraphBuilder
 from bo19.orchestrator.state import DocumentState
 
-NODE_NAMES = ("prepare_draft", "draft_free_content", "validate_free_content", "render_draft", "check_review_readiness", "submit_for_review", "await_content_review", "route_review")
+NODE_NAMES = ("prepare_draft", "draft_free_content", "validate_free_content", "render_draft", "check_review_readiness", "submit_for_review", "await_content_review", "route_review",
+              "route_signing", "await_signature", "route_after_signature", "await_seal", "await_issue")
 INTERRUPT_NODE = "await_content_review"
 RECURSION_LIMIT = 30
 
@@ -35,5 +39,10 @@ def build_document_graph(deps: DocumentDeps, checkpointer: Any) -> Graph:
     b.edge("check_review_readiness", "submit_for_review")
     b.edge("submit_for_review", "await_content_review")
     b.edge("await_content_review", "route_review")
-    b.edge("route_review", END)
+    b.edge("route_review", "route_signing")
+    b.edge("route_signing", "await_signature")
+    b.edge("await_signature", "route_after_signature")
+    b.route("route_after_signature", n["after_signature_target"], {"seal": "await_seal", "issue": "await_issue"})
+    b.edge("await_seal", "await_issue")
+    b.edge("await_issue", END)
     return b.compile(checkpointer)

@@ -50,9 +50,11 @@ class Chua(unittest.TestCase):
             self.assertIn("(GIẢ)", e.full_name)
         self.assertEqual(seed_dev.SOURCE, "SEED_DEV_FAKE")
 
-    def test_chi_mot_dong_cap_le_va_la_document_sign_cho_mot_admin_officer(self):
-        self.assertEqual((seed_dev.SIGNER_CODE, seed_dev.SIGNER_PERMISSION), ("GIA-0101", "document.sign"))
-        self.assertEqual({e.role for e in seed_dev.EMPLOYEES if e.code == seed_dev.SIGNER_CODE}, {"ADMIN_OFFICER"})
+    def test_hai_dong_cap_le_la_document_sign_cho_hai_admin_officer(self):
+        """PO, 2026-10-20 (B9b): seed giả luôn có ≥ 2 người đủ quyền ký."""
+        self.assertEqual((seed_dev.SIGNER_CODES, seed_dev.SIGNER_PERMISSION), (("GIA-0101", "GIA-0102"), "document.sign"))
+        self.assertGreaterEqual(len(set(seed_dev.SIGNER_CODES)), 2)
+        self.assertEqual({e.role for e in seed_dev.EMPLOYEES if e.code in seed_dev.SIGNER_CODES}, {"ADMIN_OFFICER"})
 
     def test_id_co_dinh_theo_ma(self):
         self.assertEqual(seed_dev.employee_id("GIA-0001"), seed_dev.employee_id("GIA-0001"))
@@ -125,7 +127,7 @@ class SeedTrenPostgres(unittest.TestCase):
 
     def test_1_lan_dau_nap_dung_du_lieu_gia_co_nhan(self):
         report, stdout = self.seed()
-        self.assertEqual((report.employees_created, report.roles_created, report.grants_created, report.credentials_written), (5, 5, 1, 5))
+        self.assertEqual((report.employees_created, report.roles_created, report.grants_created, report.credentials_written), (5, 5, 2, 5))
         rows = self.query("select employee_code, source, full_name, national_id, date_of_birth, is_active from employee order by 1")
         self.assertEqual([r[0] for r in rows], ["GIA-0001", "GIA-0002", "GIA-0003", "GIA-0101", "GIA-0102"])
         for code, source, name, national_id, dob, active in rows:
@@ -137,10 +139,10 @@ class SeedTrenPostgres(unittest.TestCase):
         roles = dict(self.query("select e.employee_code, er.role_code from employee_role er join employee e on e.id = er.employee_id"))
         self.assertEqual(roles, {"GIA-0001": "EMPLOYEE", "GIA-0002": "EMPLOYEE", "GIA-0003": "EMPLOYEE", "GIA-0101": "ADMIN_OFFICER", "GIA-0102": "ADMIN_OFFICER"})
 
-    def test_2_dung_mot_dong_cap_le_document_sign_cho_admin_officer_va_khong_operating_mode_change(self):
+    def test_2_dung_hai_dong_cap_le_document_sign_cho_admin_officer_va_khong_operating_mode_change(self):
         self.seed()
-        grants = self.query("select e.employee_code, g.permission_code, g.revoked_at from employee_permission_grant g join employee e on e.id = g.employee_id")
-        self.assertEqual(grants, [("GIA-0101", "document.sign", None)])
+        grants = self.query("select e.employee_code, g.permission_code, g.revoked_at from employee_permission_grant g join employee e on e.id = g.employee_id order by e.employee_code")
+        self.assertEqual(grants, [("GIA-0101", "document.sign", None), ("GIA-0102", "document.sign", None)])
         self.assertEqual(self.query("select count(*) from employee_permission_grant where permission_code = 'operating_mode.change'"), [(0,)])  # ADR-023 lớp 1
         self.assertEqual(self.query("select count(*) from operating_mode_change"), [(0,)])  # không đụng chế độ vận hành
 
@@ -168,7 +170,7 @@ class SeedTrenPostgres(unittest.TestCase):
         self.assertEqual(self.query("select employee_id, password_hash from employee_credential order by 1"), before_hash)
         self.assertEqual(self.pw_file.read_bytes(), before_file)
         self.assertNotIn("SEED_DEV_PASSWORDS_FILE", stdout)  # không ghi file thì không nhắc file
-        self.assertEqual(self.query("select count(*) from employee_permission_grant"), [(1,)])
+        self.assertEqual(self.query("select count(*) from employee_permission_grant"), [(2,)])
 
     def test_5_reset_passwords_doi_mat_khau_cua_ca_nam(self):
         self.seed()
@@ -202,7 +204,8 @@ class SeedTrenPostgres(unittest.TestCase):
         signer, officer, employee = me("GIA-0101"), me("GIA-0102"), me("GIA-0001")
         self.assertIn("document.sign", signer["permissions"])  # cấp lẻ
         self.assertIn("document.issue", signer["permissions"])  # gói ADMIN_OFFICER
-        self.assertNotIn("document.sign", officer["permissions"])  # chỉ MỘT người được cấp
+        self.assertIn("document.sign", officer["permissions"])  # cả hai cán bộ giả đều được cấp (≥ 2 người ký)
+        self.assertNotIn("document.sign", employee["permissions"])
         self.assertNotIn("document.issue", employee["permissions"])
         for body in (signer, officer, employee):
             self.assertNotIn("operating_mode.change", body["permissions"])

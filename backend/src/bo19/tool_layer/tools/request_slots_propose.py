@@ -47,7 +47,7 @@ def request_slots_propose(pool: Pool, ctx: ToolContext, *, request_id: uuid.UUID
         row = load_own_request(conn, ctx, request_id)
         if row.beneficiary_employee_id != row.created_by_employee_id:
             raise BeneficiaryNotSelf  # hồ sơ chỉ của chính người yêu cầu — không đọc cho request lập hộ
-        require_editable(row)
+        require_editable(conn, row)
         definitions = {d.name: d for d in load_definitions(conn, row.request_type_code)}
         existing = {r[0]: r[1:] for r in conn.execute("SELECT slot_name, value_status, value, provenance_source, provenance_synced_at FROM request_slot WHERE request_id = %s FOR UPDATE", (request_id,)).fetchall()}
         written: list[str] = []

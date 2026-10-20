@@ -60,8 +60,9 @@ EMPLOYEES: tuple[FakeEmployee, ...] = (
     FakeEmployee("GIA-0101", "CÁN BỘ HÀNH CHÍNH GIẢ 01 (GIẢ)", "ADMIN_OFFICER"),
     FakeEmployee("GIA-0102", "CÁN BỘ HÀNH CHÍNH GIẢ 02 (GIẢ)", "ADMIN_OFFICER"),
 )
-# Một dòng cấp lẻ — lớp 1 của ADR-023: KHÔNG cấp `operating_mode.change` cho ai.
-SIGNER_CODE, SIGNER_PERMISSION = "GIA-0101", "document.sign"
+# Hai dòng cấp lẻ `document.sign` (PO, 2026-10-20, B9b): luôn có ≥ 2 người đủ quyền ký, để khi một người là người thụ hưởng của văn bản thì vẫn còn người khác (D-006; `signing_route` loại người thụ hưởng).
+# Lớp 1 của ADR-023: KHÔNG cấp `operating_mode.change` cho ai.
+SIGNER_CODES, SIGNER_PERMISSION = ("GIA-0101", "GIA-0102"), "document.sign"
 
 
 class SeedRefused(Exception):
@@ -138,9 +139,10 @@ def run(dsn: str, passwords_file: Path = DEFAULT_PASSWORDS_FILE, *, allow_hosts:
                 "date '2020-01-01', %s, %s) on conflict do nothing", (employee_id(e.code), e.code, e.full_name, SOURCE, now)).rowcount
             roles += conn.execute("insert into employee_role (employee_id, role_code) values (%s, %s) on conflict do nothing",
                                   (employee_id(e.code), e.role)).rowcount
-        grants += conn.execute(
-            "insert into employee_permission_grant (id, employee_id, permission_code) values (%s, %s, %s) on conflict do nothing",
-            (uuid.uuid5(NAMESPACE, f"grant:{SIGNER_CODE}:{SIGNER_PERMISSION}"), employee_id(SIGNER_CODE), SIGNER_PERMISSION)).rowcount
+        for code in SIGNER_CODES:
+            grants += conn.execute(
+                "insert into employee_permission_grant (id, employee_id, permission_code) values (%s, %s, %s) on conflict do nothing",
+                (uuid.uuid5(NAMESPACE, f"grant:{code}:{SIGNER_PERMISSION}"), employee_id(code), SIGNER_PERMISSION)).rowcount
 
         have = {r[0] for r in conn.execute("select employee_id from employee_credential where employee_id = any(%s)",
                                            ([employee_id(e.code) for e in EMPLOYEES],))}

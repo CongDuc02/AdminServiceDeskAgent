@@ -116,6 +116,7 @@ class DocumentState(TypedDict):
     last_signal: ReviewSignal | None
     readiness_failures: list[str]
     draft_render_key: str | None
+    requires_seal: bool | None  # B9b1: `route_after_signature` đặt (đọc từ DB) để cạnh điều kiện rẽ `await_seal`/`await_issue`; thread cũ chưa có khoá — đọc bằng `.get`. Không phải nguồn sự thật: `document.requires_seal` là
     halt: HaltInfo | None  # Sprint 1 không bao giờ đặt (job `FAILED`, ADR-039); Sprint 2 là `halt_for_human`
 
 
@@ -123,4 +124,4 @@ def initial_document_state(*, trace_id: str, document_id: str, request_id: str, 
     """Giá trị của một thread `document:{id}` mới; `prepare_draft` điền phần còn lại từ DB."""
     return DocumentState(
         schema_version=DOCUMENT_SCHEMA_VERSION, trace_id=trace_id, document_id=document_id, request_id=request_id, request_type=request_type, template_id="", template_version=0,
-        free_content_variables=[], pending_targets=[], regenerated_variables=[], revision_round=0, last_signal=None, readiness_failures=[], draft_render_key=None, halt=None)
+        free_content_variables=[], pending_targets=[], regenerated_variables=[], revision_round=0, last_signal=None, readiness_failures=[], draft_render_key=None, requires_seal=None, halt=None)

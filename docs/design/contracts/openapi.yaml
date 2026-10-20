@@ -2547,6 +2547,7 @@ components:
           issue_in_progress,
           halted,
           job_failed,
+          job_failed_code,
           document_number,
           issued_date,
           row_version,
@@ -2578,6 +2579,11 @@ components:
             document này đã FAILED vĩnh viễn. Không phủ render_document —
             mục Background worker & Cron của 11-ops.md.
           type: boolean
+        job_failed_code:
+          description: >-
+            Sprint 1 (B9b1): mã job.last_error_code của job mới nhất khi job_failed — ví dụ
+            NO_ELIGIBLE_SIGNER. Chỉ mã, không văn bản. null khi job_failed = false.
+          type: [string, "null"]
         document_number:
           description: Chỉ có từ ISSUED trở đi
           type: [string, "null"]

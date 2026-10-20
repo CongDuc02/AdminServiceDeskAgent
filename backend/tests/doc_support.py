@@ -21,6 +21,7 @@ from bo19.ai_gateway.routing.profiles import load_profiles
 from bo19.orchestrator.runner import DocumentRunner, document_id_for
 from bo19.persistence.pool import Pool
 from bo19.tool_layer import storage as st
+from bo19.tool_layer.gate_ops.document_approve_content import document_approve_content
 from bo19.tool_layer.gate_ops.request_submit import request_submit
 from bo19.tool_layer.kernel.permission import employee_context, system_context
 from tests import pg_support
@@ -179,14 +180,18 @@ class DocBase(unittest.TestCase):
         return len(self.llm.calls("draft_free_content"))
 
     def approve(self, rid: uuid.UUID) -> uuid.UUID:
-        """Ghi một `decision_record` `APPROVED` (bằng chủ bảng, thay cho thao tác cổng của B9b) trên bước `CONTENT_REVIEW` đang mở — để thử resume."""
+        """Duyệt nội dung qua thao tác cổng THẬT `document_approve_content` (B9b1) bằng một cán bộ `ADMIN_OFFICER` không phải người thụ hưởng. Trả id `decision_record` `APPROVED`."""
         did = document_id_for(rid)
-        approver, _ = self.db.make_employee(roles=("ADMIN_OFFICER",))
-        decision = uuid.uuid4()
-        with self.db.connect("bo19_migrator") as c:
-            step = c.execute("select id from approval_step where document_id = %s and step_kind = 'CONTENT_REVIEW' and status = 'OPEN'", (did,)).fetchone()[0]
-            c.execute("insert into decision_record (id, kind, actor_employee_id, request_id, document_id, approval_step_id) values (%s, 'APPROVED', %s, %s, %s, %s)", (decision, approver, rid, did, step))
-        return decision
+        approver, _ = self.db.make_employee(roles=("EMPLOYEE", "ADMIN_OFFICER"))
+        with self.pool.acquire() as conn:
+            ctx = employee_context(conn, approver)
+        version = self.scalar("select row_version from document where id = %s", did)
+        return document_approve_content(self.pool, ctx, document_id=did, decision_id=uuid.uuid4(), expected_row_version=version).decision_record_id
+
+    def make_signer(self) -> uuid.UUID:
+        """Một cán bộ được cấp lẻ `document.sign` (cấp lẻ, không thuộc gói vai trò) — để `signing_route` có người ký. DB riêng của lớp test dùng chung: người đã cấp ở test trước vẫn còn."""
+        signer, _ = self.db.make_employee(roles=("EMPLOYEE", "ADMIN_OFFICER"), grants=("document.sign",))
+        return signer
 
     def checkpoint_text(self) -> str:
         """Mọi dòng của mọi bảng checkpoint của LangGraph, nối thành một chuỗi — để quét giá trị `RES`/văn bản LLM không lọt vào."""

@@ -816,6 +816,8 @@ flowchart TD
 - **`document_approve_content` ghim bản nháp** (`document_render_pin`, `pin_reason = APPROVED_CONTENT`, mục 5.1 của `04-data.md`) và ghi `approved_render_id = current_draft_render_id`, `approved_decision_id`, `approved_content_hash` cùng câu `UPDATE` đổi sang `APPROVED`. Không đọc `object_storage` trong luồng request (mục 5.4 của `04-data.md`).
 - **`document_apply_seal`** ghi `seal_action` (`seal_type` từ `document`, `operating_mode` đã ghim — `NON_PRODUCTION` là dấu thử nghiệm, D-009).
 - **`document_issue`** sinh bước `ISSUE_ORDER` đã `DECIDED`, `decision_record` `ISSUE_ORDERED`, enqueue `finalize_issue`; `document` không đổi trạng thái.
+- **State thêm khoá `requires_seal`** (`route_after_signature` đặt, đọc từ DB, để cạnh điều kiện rẽ `await_seal`/`await_issue`; thread cũ chưa có khoá — đọc bằng `.get`; `schema_version` vẫn 1 vì chưa thread nào chạy ngoài dev).
+- **Chạy lại sau lần chạy dở (ADR-040 mục 9):** `resume_document` tiếp bằng `invoke(None)` khi thread không chờ mà `Snapshot.pending` (còn node kế **hoặc** task đã xong chưa thành checkpoint). Bản đầu coi `next` rỗng là `END` — sai sau `SIGKILL`; test tiến trình thật bắt được.
 - **Lỗi → job `FAILED`** (như B9a, ADR-039 mục 5); mã mới trong `failure.py`: `NO_ELIGIBLE_SIGNER` (vĩnh viễn), `RENDER_CHECKSUM_MISMATCH`/`RENDER_OBJECT_MISSING` ở `route_signing` (đã có, tạm).
 
 ### 6.5 Checkpointer và PII

@@ -38,13 +38,16 @@ from bo19.persistence.pool import Pool
 from bo19.tool_layer.kernel.permission import employee_context, system_context
 from bo19.tool_layer.storage import ObjectStorage
 from bo19.tool_layer.tools.document_draft_save import InputFingerprinter
-from bo19.tool_layer.tools.document_reads import request_header_read
+from bo19.tool_layer.tools.document_reads import decision_record_read, request_header_read
 from bo19.tool_layer.tools.document_transition import document_create_draft
 from bo19.tool_layer.tools.template_fetch import template_fetch
 
 log = get_logger("bo19.orchestrator.runner")
 
 BUDGET_EXCEEDED = "BUDGET_EXCEEDED"
+# Điểm `interrupt` theo thứ tự đi qua, và điểm mà mỗi loại `decision_record` đánh thức (ADR-040 mục 5).
+WAIT_ORDER = ("await_content_review", "await_signature", "await_seal", "await_issue")
+WAKES = {"APPROVED": "await_content_review", "SIGNED": "await_signature", "SEALED": "await_seal"}
 RECURSION_LIMIT = 40
 
 
@@ -191,7 +194,14 @@ class DocumentRunner:
                 raise self._failed(code_of(e), run, exception_type=type(e).__name__) from None
 
     def resume_document(self, *, document_id: uuid.UUID, decision_record_id: uuid.UUID, trace_id: str | None = None, cancel: threading.Event | None = None) -> RenderOutcome:
-        """Đánh thức thread đang chờ ở một `interrupt` bằng id của `decision_record` (payload resume chỉ mang id). Graph đã `END` thì no-op (thử lại job)."""
+        """Đánh thức thread bằng id của `decision_record` (payload resume chỉ mang id) — **chỉ ở đúng điểm chờ mà loại quyết định đó đánh thức** (ADR-040 mục 5):
+        `APPROVED` ↔ `await_content_review`, `SIGNED` ↔ `await_signature`, `SEALED` ↔ `await_seal`. Job chạy ít nhất một lần (ADR-004), nên:
+
+        - graph đã `END`, hoặc thread đang chờ ở điểm **sau** điểm quyết định này đánh thức → no-op (`already`): việc này đã xong ở lần chạy trước;
+        - thread đang chờ đúng điểm → `resume`;
+        - thread **không chờ mà còn việc để chạy** (`snap.pending`: lần chạy trước chết giữa chừng sau khi `interrupt` đã trả — có thể ngay sau khi một node xong và trước khi checkpoint kế tiếp được ghi, lúc đó `next` rỗng
+          mà graph chưa kết thúc) → tiếp từ checkpoint bằng `invoke(None)`;
+        - còn lại (chưa có thread, hay đang chờ ở điểm **trước**) → `THREAD_NOT_WAITING`."""
         trace = trace_id or new_trace_id()
         with trace_scope(trace):
             run = RenderRuntime(sys=system_context(trace), cancel=cancel or threading.Event())
@@ -200,9 +210,23 @@ class DocumentRunner:
                 snap = self._graph.snapshot(thread_id)
                 if snap.finished:
                     return RenderOutcome(document_id, "ENDED", None, True)
-                if not snap.waiting_at:
+                if not snap.exists:
                     raise NodeError(THREAD_NOT_WAITING)
-                out = self._graph.resume(thread_id, {"decision_record_id": str(decision_record_id)}, configurable={"run": run, "trace_id": trace}, recursion_limit=DOCUMENT_RECURSION_LIMIT)
+                decision = run.call_tool(decision_record_read, self._deps.pool, run.sys, decision_record_id=decision_record_id, document_id=document_id)  # `DECISION_NOT_FOUND` nếu không thuộc `document` này
+                wanted = WAKES.get(decision.kind)
+                if wanted is None:
+                    raise NodeError("UNSUPPORTED_DECISION")
+                configurable = {"run": run, "trace_id": trace}
+                if snap.waiting_at == wanted:
+                    out = self._graph.resume(thread_id, {"decision_record_id": str(decision_record_id)}, configurable=configurable, recursion_limit=DOCUMENT_RECURSION_LIMIT)
+                elif snap.waiting_at:
+                    if WAIT_ORDER.index(snap.waiting_at) < WAIT_ORDER.index(wanted):
+                        raise NodeError(THREAD_NOT_WAITING)
+                    return RenderOutcome(document_id, "WAITING", snap.waiting_at, True)  # đã qua điểm này
+                elif snap.pending:
+                    out = self._graph.invoke(thread_id, None, configurable=configurable, recursion_limit=DOCUMENT_RECURSION_LIMIT)
+                else:
+                    raise NodeError(THREAD_NOT_WAITING)
                 return self._after(document_id, thread_id, out, already=False)
             except RenderFailed:
                 raise

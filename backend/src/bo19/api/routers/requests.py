@@ -22,7 +22,7 @@ from bo19.api.schemas.requests import DecisionResultOut, RequestDetailOut, Reque
 from bo19.config import working_values as wv
 from bo19.observability.trace import current_trace_id
 from bo19.tool_layer.employee_ops.request_slot_confirm import Confirmation, NotProposed, StaleValue, request_slot_confirm
-from bo19.tool_layer.gate_ops.request_submit import DecisionIdConflict, NotReady, StateConflict, request_submit
+from bo19.tool_layer.gate_ops.request_submit import AwaitingTakeover, DecisionIdConflict, NotReady, StateConflict, request_submit
 from bo19.tool_layer.kernel.context import ToolContext
 from bo19.tool_layer.kernel.permission import PermissionDenied, employee_context
 from bo19.tool_layer.tools._common import NotEditable, NotOwnRequest
@@ -110,6 +110,8 @@ def submit_request(request_id: uuid.UUID, body: SubmitBody, idempotency_key_head
         raise ApiError("IDEMPOTENCY_KEY_CONFLICT") from None
     except StateConflict as e:
         raise ApiError("STATE_CONFLICT", {"current_status": e.current_status}) from None
+    except AwaitingTakeover:
+        raise ApiError("DOCUMENT_AWAITING_TAKEOVER") from None
     except NotReady as e:
         raise ApiError("REQUEST_NOT_READY", {"missing_slots": list(e.missing_slots), "unconfirmed_slots": list(e.unconfirmed_slots),
                                              "failed_rules": [{"slot_name": s, "rule_code": c} for s, c in e.failed_rules]}) from None

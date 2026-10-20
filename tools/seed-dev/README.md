@@ -10,7 +10,7 @@ Quyết định: PO, 2026-10-05 (kế hoạch B3) — seed chỉ trên Postgres 
 | `employee` | 5 nhân viên giả: `GIA-0001`…`GIA-0003` (vai trò `EMPLOYEE`), `GIA-0101`, `GIA-0102` (vai trò `ADMIN_OFFICER`). `source = 'SEED_DEV_FAKE'`, tên có "(GIẢ)", không `national_id`, không ngày sinh |
 | `employee_role` | mỗi nhân viên một vai trò như trên |
 | `employee_credential` | hash `argon2id` (tham số WV-16 của cấu hình) của mật khẩu sinh ngẫu nhiên |
-| `employee_permission_grant` | **một** dòng: `document.sign` cho `GIA-0101`. **Không** cấp `operating_mode.change` cho ai — lớp 1 của ADR-023 |
+| `employee_permission_grant` | **hai** dòng: `document.sign` cho `GIA-0101` và `GIA-0102` — luôn có ≥ 2 người đủ quyền ký (PO, 2026-10-20), để người thụ hưởng không thể là người ký duy nhất. **Không** cấp `operating_mode.change` cho ai — lớp 1 của ADR-023 |
 
 ## Mật khẩu — ở đâu, và ai đọc
 

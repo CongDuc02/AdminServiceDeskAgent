@@ -570,9 +570,11 @@ Chạy trước khi tiến trình phục vụ request hay giành job đầu tiê
 
 **Triển khai ở B9b1 (2026-10-20) — bốn thao tác cổng, hàng đợi, `GET /documents/{id}`, graph tới `await_issue`** *(kế hoạch đã duyệt: `proposals/b9b-ke-hoach.md`; ADR-040; chưa migration)*:
 
-- **Kernel:** `transition(..., set_values=)` với danh sách cột cho phép theo trạng thái đích (`TableSpec.value_columns`); `approval_step` có máy trạng thái (`domain/approval_step_machine.py`).
+- **Kernel:** `transition(..., set_values=)` với danh sách cột cho phép theo trạng thái đích (`TableSpec.value_columns`; thiếu → `SetValuesIncomplete`, thừa → `ExtraColumnNotAllowed`); `approval_step` có máy trạng thái (`domain/approval_step_machine.py`); `permission.eligible_holders` (tập E(P, d) của `signing_route`).
 - **Miền:** `domain/content_hash.py` — `approved_content_hash` chuẩn tắc.
-- **`tool_layer/gate_ops/`:** `document_approve_content`, `document_sign`, `document_apply_seal`, `document_issue` (cùng `_gate.py`: khoá, lặp lại, D-006, E(P, d)); `tool_layer/tools/`: `render_integrity_check`, `signing_route`; `document_reads` thêm các phép đọc cho `route_review`/`route_after_signature`.
+- **`tool_layer/gate_ops/`:** `document_approve_content`, `document_sign`, `document_apply_seal`, `document_issue` (cùng `_gate.py`: khoá `document` rồi `request`, lặp lại, D-006; `_errors.py`: `StateConflict`, `DecisionIdConflict`, `AwaitingTakeover` dùng chung với `request_submit`); `tool_layer/tools/`: `render_integrity_check`, `signing_route`; `document_reads.document_header_read` thêm `requires_seal`, `approved_render_id`, `signer_employee_id`.
+- **O1-15 (mức mã):** `_common.slot_data_reopened` + `require_editable(conn, row)`; `request_submit` ca `SLOT_DATA`; khoá `document` trước `request`.
+- **`orchestrator.runtime.builder.Snapshot`** thêm `has_tasks`/`pending` (ADR-040 mục 9); `tools/seed-dev/` cấp `document.sign` cho **hai** cán bộ giả (PO, 2026-10-20).
 - **Graph:** `route_review` (nhánh `APPROVED`), `route_signing`, `await_signature`, `route_after_signature`, `await_seal`, `await_issue`; `DocumentRunner.resume_document` đọc loại quyết định (ADR-040 mục 5); `queue_worker/handlers/resume_document_graph.py`, đăng ký ở `build_handlers`.
 - **`api`:** `routers/documents.py`, `queries/documents.py`, `schemas/documents.py`; mã lỗi `SELF_APPROVAL_BLOCKED`, `DOCUMENT_AWAITING_TAKEOVER` vào `api/errors.py`.
 - **Không làm ở B9b1:** `finalize_issue`, `document_number_assign` trong luồng, bản `FINAL`, `ISSUED` (B9b2); `document_request_changes`, `document_reject`, `halt_for_human`, tiếp quản (Sprint 2); đường thoát tự duyệt (Sprint 3); client (B10).

@@ -358,22 +358,24 @@ class LoiMangMa(DocBase):
 
 
 class Resume(DocBase):
-    def test_resume_doc_quyet_dinh_tu_db_va_ket_thuc_graph(self):
+    def test_resume_doc_quyet_dinh_tu_db_va_toi_diem_cho_ky(self):
+        """B9b1: sau cổng 1 graph đi tiếp `route_review` → `route_signing` và dừng ở `await_signature` (không còn `END` ngay sau `route_review` như B9a)."""
+        self.make_signer()
         self.llm.will("draft_free_content", draft_output())
         rid = self.submitted_request()
         self.run_render(rid)
         decision = self.approve(rid)
         did = document_id_for(rid)
         out = self.runner.resume_document(document_id=did, decision_record_id=decision)
-        self.assertEqual((out.status, out.already), ("ENDED", False))
+        self.assertEqual((out.status, out.waiting_at, out.already), ("WAITING", "await_signature", False))
         snap = self.runner.snapshot(did)
-        self.assertTrue(snap.finished)
+        self.assertFalse(snap.finished)
         self.assertEqual(snap.values["last_signal"], {"decision_record_id": str(decision), "kind": "APPROVED", "change_scope": None, "change_targets": []})
         thread = self.thread(rid)
-        self.assertEqual((thread["status"], thread["waiting_at_node"], thread["ended_at"] is not None), ("ENDED", None, True))
+        self.assertEqual((thread["status"], thread["waiting_at_node"], thread["ended_at"]), ("WAITING", "await_signature", None))
         self.assertEqual(self.llm_calls(), 1)  # resume không chạy lại node nào đã xong
         again = self.runner.resume_document(document_id=did, decision_record_id=decision)  # thử lại job: no-op
-        self.assertEqual((again.status, again.already), ("ENDED", True))
+        self.assertEqual((again.status, again.waiting_at, again.already), ("WAITING", "await_signature", True))
 
     def test_quyet_dinh_cua_document_khac_la_system_defect(self):
         self.llm.will("draft_free_content", draft_output())

@@ -48,7 +48,7 @@ def request_slot_confirm(pool: Pool, ctx: ToolContext, *, request_id: uuid.UUID,
     require(ctx, "request.supply_info")
     with pool.acquire() as conn, unit_of_work(conn):
         row = load_own_request(conn, ctx, request_id)
-        require_editable(row)
+        require_editable(conn, row)
         confirmed: list[str] = []
         unchanged: list[str] = []
         for item in items:

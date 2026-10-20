@@ -43,14 +43,21 @@ class Snapshot:
     values: dict[str, Any] | None
     next_nodes: tuple[str, ...]
     waiting_at: str | None
+    has_tasks: bool = False  # checkpoint còn task — kể cả task ĐÃ XONG mà superstep chưa được ghi thành checkpoint mới (xem `pending`)
 
     @property
     def exists(self) -> bool:
         return bool(self.values)
 
     @property
+    def pending(self) -> bool:
+        """Còn việc để chạy tiếp từ checkpoint: có node kế, **hoặc** có task đã xong mà kết quả (pending writes) chưa thành checkpoint. Tiến trình bị `SIGKILL` ngay sau khi một node xong và trước khi
+        checkpoint kế tiếp được ghi để lại đúng trạng thái này: `next` rỗng nhưng graph CHƯA kết thúc (B9b1, test tiến trình thật)."""
+        return self.exists and (bool(self.next_nodes) or self.has_tasks)
+
+    @property
     def finished(self) -> bool:
-        return self.exists and not self.next_nodes
+        return self.exists and not self.pending
 
 
 class Graph:
@@ -77,7 +84,7 @@ class Graph:
     def snapshot(self, thread_id: str) -> Snapshot:
         snap = self._compiled.get_state({"configurable": {"thread_id": thread_id}})
         waiting = next((t.name for t in snap.tasks if getattr(t, "interrupts", None)), None)
-        return Snapshot(dict(snap.values) if snap.values else None, tuple(snap.next), waiting)
+        return Snapshot(dict(snap.values) if snap.values else None, tuple(snap.next), waiting, bool(snap.tasks))
 
 
 class GraphBuilder:

@@ -26,7 +26,7 @@ class NotEditable(ToolError):
     code = "NOT_EDITABLE"
 
 
-EDITABLE_STATUSES = frozenset({"DRAFT", "NEEDS_INFO"})  # CHANGES_REQUESTED ca SLOT_DATA mở khi có document_graph (chưa xác định được ca ở B6a)
+EDITABLE_STATUSES = frozenset({"DRAFT", "NEEDS_INFO"})  # CHANGES_REQUESTED còn sửa được chỉ ở ca SLOT_DATA — `slot_data_reopened` (O1-15, B9b)
 
 
 @dataclass(frozen=True)
@@ -56,9 +56,20 @@ def load_own_request(conn: psycopg.Connection, ctx: ToolContext, request_id: uui
     return RequestRow(*row)
 
 
-def require_editable(row: RequestRow) -> None:
-    if row.status not in EDITABLE_STATUSES:
-        raise NotEditable(row.status)
+def slot_data_reopened(conn: psycopg.Connection, request_id: uuid.UUID) -> bool:
+    """Ca `SLOT_DATA` của `CHANGES_REQUESTED` (O1-15): quyết định **mới nhất** của `document` thuộc `request` là `CHANGES_REQUESTED` với `change_scope = SLOT_DATA` — người duyệt trả về vì dữ liệu `HR_PROFILE`
+    sai, nhân viên phải xác nhận lại. Quyết định mới hơn (kể cả `RESUBMITTED`) làm vị từ sai; `FREE_CONTENT` là việc của agent, không phải của nhân viên. Không có `document` thì sai. Chỉ đọc."""
+    row = conn.execute("SELECT x.kind, x.change_scope FROM decision_record x JOIN document d ON d.id = x.document_id WHERE d.request_id = %s ORDER BY x.created_at DESC, x.id DESC LIMIT 1",
+                       (request_id,)).fetchone()
+    return row is not None and tuple(row) == ("CHANGES_REQUESTED", "SLOT_DATA")
+
+
+def require_editable(conn: psycopg.Connection, row: RequestRow) -> None:
+    if row.status in EDITABLE_STATUSES:
+        return
+    if row.status == "CHANGES_REQUESTED" and slot_data_reopened(conn, row.id):
+        return
+    raise NotEditable(row.status)
 
 
 def jsonb(value: Any) -> Jsonb:

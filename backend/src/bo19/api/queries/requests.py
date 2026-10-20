@@ -42,7 +42,12 @@ def _summary(row: tuple) -> dict[str, Any]:
 def request_summary(conn: psycopg.Connection, request_id: uuid.UUID) -> dict[str, Any] | None:
     """Không lọc người xem — người gọi phải đã biết `request` này thuộc phạm vi của họ (lượt chat của chính họ, hay `decision_record` của chính họ)."""
     with read_only(conn):
-        row = conn.execute(_SUMMARY + " WHERE r.id = %s", (request_id,)).fetchone()
+        return request_summary_in(conn, request_id)
+
+
+def request_summary_in(conn: psycopg.Connection, request_id: uuid.UUID) -> dict[str, Any] | None:
+    """Như `request_summary` nhưng **trong giao dịch chỉ đọc đang mở** của người gọi (màn hình duyệt đọc mọi phần trong MỘT ảnh nhất quán). Không mở giao dịch riêng."""
+    row = conn.execute(_SUMMARY + " WHERE r.id = %s", (request_id,)).fetchone()
     return _summary(row) if row else None
 
 
