@@ -3622,3 +3622,7 @@ PO duyệt kế hoạch B8a (`proposals/b8a-ke-hoach.md`) và quyết thêm về
 ### 2026-10-20 (2) — B9a2: ghim một CPU (WV-34) và hạn khởi động của Render
 
 `observability/cpu_pin.py` (PO duyệt phương án mặc định: ghim khi `cpu.max` < 1 CPU, CPU đầu tiên của tập affinity, `combined_main` và `worker_main`). `06-structure.md` v0.46, `11-ops.md` v0.40 (mục 20: phép đo quyết định trên Render thật, ngưỡng lớn nhất ≤ WV-02 − 5 s), `ASSUMPTIONS.md` v0.73, `12-roadmap.md` v0.63 (cổng 4.9: hạn khởi động), `ADR-033`, WV-34. Số đo bằng mã thật (n = 9): lượt chat khi `soffice` chạy trung vị 8,1 s, lớn nhất 9,2 s (`docs/reference/combined-main-b9a2.md`, mục Ghim CPU bằng mã). Tài liệu mới `docs/reference/render-khoi-dong-cong.md` (hạn quét cổng — Render không công bố số; hạn 15 phút đã công bố; phương án "mở cổng trước" CHƯA áp).
+
+### 2026-10-20 (3) — runbook mục 20: tải hỗn hợp
+
+`11-ops.md` v0.41, mục 20 bước 4b: khi chuyển Render sang `combined_main` đo đỉnh bộ nhớ dưới tải hỗn hợp (đăng nhập dồn 4 verify argon2id đồng thời + một job render + một lượt tải file); dừng và báo PO nếu đỉnh > 460 MiB hoặc `oom_kill` > 0 (PO, 2026-10-20).
