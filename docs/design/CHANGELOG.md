@@ -3614,3 +3614,7 @@ PO duyệt kế hoạch B8a (`proposals/b8a-ke-hoach.md`) và quyết thêm về
 ### 2026-10-16 — B9a2: `combined_main`, bộ dọn zombie PID 1, WV-32
 
 `06-structure.md` v0.44 (mục Triển khai ở B9a2; cây `observability/reaper.py`), `11-ops.md` v0.38 (mục 20 runbook chuyển Render), `12-roadmap.md` v0.61 (B9a2, O1-6), `ASSUMPTIONS.md` v0.71 (A-095 đã đo), `ADR-033` (mục Cập nhật 2026-10-16: drain khi `soffice` chạy, thoát cứng, PID 1, không `tini`), `proposals/sprint1-working-values-a031-a048.md` (WV-32). Số đo: `docs/reference/combined-main-b9a2.md`. Không migration, không biến môi trường mới.
+
+### 2026-10-20 — B9a2: sửa `api_main`, hạ ưu tiên `soffice`, runbook và rủi ro UAT (PO)
+
+`11-ops.md` v0.39 (mục 20: điều kiện chuyển sang `combined_main` = cổng 2.5 đạt; đo O1-6 và `/tmp` khi chuyển), `12-roadmap.md` v0.62 (R4-4 bổ sung khởi động ≈ 42 s; cổng 4.9 — phương án `/healthz` định kỳ < 15 phút suốt buổi UAT), `06-structure.md` v0.45, `ASSUMPTIONS.md` v0.72 (A-095), `ADR-033` (mục Cập nhật 2026-10-20), `proposals/sprint1-working-values-a031-a048.md` (WV-33). Số đo: `docs/reference/combined-main-b9a2.md`, mục Hạ ưu tiên. Không migration, không biến môi trường mới.

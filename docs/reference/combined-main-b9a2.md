@@ -46,3 +46,34 @@ docker start pg bo19-s3
 python tools/combined-probe/run_probe.py --s3-env <file-env-S3-test-ngoài-repo>     # ≈ 6–8 phút; --keep để giữ container và DB
 ```
 Kết quả: `tools/combined-probe/out/result.json` (thư mục `out/` nằm trong `.gitignore`).
+
+## Hạ ưu tiên `soffice` (`nice -n 19`, WV-33) — đo trước/sau, 2026-10-20
+
+**Yêu cầu của PO:** hạ ưu tiên `soffice` khi khởi chạy để `api` được ưu tiên CPU trong 0,1 CPU; đo lại "lượt chat khi `soffice` chạy" (n ≥ 3), báo trước/sau; job render chậm hơn là chấp nhận được.
+
+**Cài đặt:** `soffice` chạy qua `nice -n 19` (`convert.niced`); `nice` `exec` thẳng vào `soffice` nên PID và nhóm tiến trình không đổi; bước kiểm #6 đòi có `nice` (`STARTUP_06_NICE_MISSING`). Test chứng minh tiến trình `soffice` thật mang niceness 19 (đọc `/proc/<pid>/stat`). **Giá trị 19 và lý do:** trọng số CFS nice 0 = 1024, nice 19 = 15 → khi tranh, `api` ≈ 98,5 %; lúc `api` rảnh (phần lớn thời gian) `soffice` vẫn nhận gần đủ hạn mức nên chỉ chậm khi có tải chat; 19 là thấp nhất nên không còn nấc nào để tinh chỉnh.
+
+**Đo:** cùng công cụ `tools/combined-probe/`, hai image dựng từ hai commit — "trước" = `4a74f61` (không `nice`), "sau" = có `nice` — chạy **xen kẽ** (trước, sau, trước, sau) để trôi theo thời gian không dồn về một phía, mỗi điều kiện hai lần, mỗi lần gom **≥ 3 lượt chat có `soffice` chạy cả trước và sau lượt** (gửi thêm job khi chuyển đổi xong mà chưa đủ). Thêm hai lần × hai điều kiện với container **ghim vào một CPU** (`docker --cpuset-cpus=0`) — lý do ở mục kế. Kết quả thô: `docs/reference/combined-main-b9a2-nice/`.
+
+| Điều kiện (n = 6 lượt chat khi `soffice` chạy) | nhỏ nhất | trung vị | trung bình | lớn nhất | các lượt (s) |
+|---|---|---|---|---|---|
+| **trước** (không `nice`), không ghim | 8,8 | **11,7** | 13,4 | **21,1** | 8,8 · 10,9 · 11,2 · 12,1 · 16,3 · 21,1 |
+| **sau** (`nice` 19), không ghim | 10,2 | **11,8** | 13,2 | **19,1** | 10,2 · 11,4 · 11,6 · 12,1 · 15,0 · 19,1 |
+| trước, ghim 1 CPU | 8,0 | 8,6 | 10,6 | 16,8 | 8,0 · 8,2 · 8,5 · 8,6 · 13,4 · 16,8 |
+| **sau, ghim 1 CPU** | 6,6 | **8,4** | 8,1 | **9,9** | 6,6 · 6,7 · 8,1 · 8,7 · 8,7 · 9,9 |
+
+| Thông số (hai lần mỗi điều kiện) | trước | sau | trước, ghim | sau, ghim |
+|---|---|---|---|---|
+| Lượt chat nền, không chuyển đổi (s) | 8,1 · 5,7 · 7,8 · 5,8 | 9,1 · 5,9 · 6,4 · 5,3 | 8,4 · 5,3 · 5,8 · 5,1 | 6,3 · 5,3 · 5,7 · 5,4 |
+| **Job render một mình**, gửi → `SUCCEEDED` (s) | 77,4 · 62,5 | 76,4 · 42,8 | 50,3 · 41,4 | 40,2 · 43,6 |
+| Lên `/healthz` (s) | 62,6 · 61,4 | 78,8 · 44,9 | 38,8 · 43,8 | 40,7 · 41,8 |
+| `SIGTERM`: container dừng (s) | 3,4 · 2,8 | 3,4 · 2,1 | 2,5 · 2,3 | 2,2 · 2,2 |
+| Đỉnh cgroup (MiB), `oom_kill` | 328 · 306, 0 | 301 · 322, 0 | 318 · 349, 0 | 334 · 315, 0 |
+
+**Kết quả — nói thẳng:**
+- **`nice` một mình KHÔNG cải thiện được lượt chat**: trung vị 11,7 s → 11,8 s, trung bình 13,4 → 13,2 s; lớn nhất 21,1 → 19,1 s nằm trong nhiễu của n = 6 (biến thiên giữa hai lần chạy cùng điều kiện lớn hơn chênh lệch trước/sau; lên `/healthz` của cùng một image dao động 44,9–78,8 s). **Trong điều kiện "trước" đã có một lượt 21,1 s — vượt hạn chót WV-02 (20 s)**; "sau" có lượt 19,1 s, sát hạn.
+- **Job render không chậm đi**: 77/63 s → 76/43 s (khi `api` rảnh, `soffice` vẫn nhận gần đủ hạn mức) — "job chậm hơn là chấp nhận được" chưa phải trả giá nào.
+- **Vì sao `nice` không có tác dụng — đo trực tiếp (cùng cgroup `--cpus=0.1`, hai tiến trình ăn CPU liên tục, 12 s):** máy ảo thấy 12 CPU; hai tiến trình nằm trên hai CPU khác nhau (hai runqueue) nên không tranh nhau — nice 0 nhận 73 tick, nice 19 nhận 57 tick (gần bằng nhau). **Ghim cả hai vào cùng một CPU (`taskset -c 0`): nice 0 = 118 tick, nice 19 = 2 tick** — đúng mô hình trọng số. Hạn mức 0,1 CPU của cgroup là hạn mức chung; trọng số `nice` chỉ chia phần CPU giữa các tiến trình **chung một runqueue**. `sched_autogroup` không có trong nhân này nên không phải nguyên nhân.
+- **Ghim container vào một CPU làm `nice` có tác dụng, và chính nó cũng giúp**: lớn nhất 21,1 → **9,9 s** (n = 6), trung vị 11,7 → 8,4 s, trung bình 13,4 → 8,1 s; lượt khi `soffice` chạy chỉ còn hơn lượt nền ≈ 3 s. Ghim mà không `nice` ("trước, ghim"): trung vị 8,6 s nhưng vẫn có lượt 16,8 s. Cần cả hai.
+- **Giới hạn:** Docker Desktop (WSL2, 12 CPU ảo), không phải Render; provider giả; n = 6 mỗi điều kiện, bốn điều kiện đo trong cùng một buổi nhưng máy ngoài kiểm soát (nhiễu). `--cpuset-cpus` là thử nghiệm: trên Render không đặt được cờ này; tương đương trong mã là `os.sched_setaffinity` ghim tiến trình (con thừa kế) vào một CPU — **chưa làm, chờ PO** (ngoài kế hoạch đã duyệt).
+- **Phương án mặc định đề xuất:** giữ `nice` 19 (vô hại, đã đo) **và** ghim tiến trình `combined_main` (và `worker_main`) vào một CPU khi hạn mức cgroup `cpu.max` nhỏ hơn một CPU; đo lại trên Render thật khi chuyển Start Command (cổng 2.5). Phương án khác: tạm dừng `soffice` (`SIGSTOP`/`SIGCONT`) trong lúc có lượt chat đang chạy — chắc hơn nhưng phức tạp hơn (cần `TurnSupervisor` báo cho vòng poll).

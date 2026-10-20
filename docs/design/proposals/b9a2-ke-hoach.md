@@ -42,3 +42,7 @@ Test mới đạt; CI xanh; mutation: bỏ #18, bỏ giới hạn một job, b�
 ## Kết quả (2026-10-16)
 
 PO duyệt 2026-10-16 (cron để sau; vi phạm hạn chót thì dừng; provider giả 2 s; thêm: `SIGTERM` giữa chuyển đổi giết `soffice`, release, thoát ≈ 5 s, không mồ côi/zombie). Làm xong: mục Triển khai ở B9a2 của `06-structure.md`; số đo `docs/reference/combined-main-b9a2.md`. **Không vi phạm hạn chót lượt và không vượt 5 s** nên không phải dừng. Hai phát hiện ngoài kế hoạch, đã xử lý trong cùng lát: Python PID 1 để lại zombie sau mỗi chuyển đổi (bộ dọn `observability.reaper`) và thoát mềm ở 0,1 CPU mất ≈ 10 s (thoát cứng).
+
+### Bổ sung 2026-10-20 (PO chấp nhận số đo; việc thêm trước merge)
+
+`api_main` sửa `SIGTERM` tới sớm (có test tiến trình thật). `soffice` qua `nice -n 19` (WV-33) và đo lại trước/sau, n = 6 mỗi điều kiện: **`nice` một mình không cải thiện lượt chat** (trung vị 11,7 → 11,8 s) — hai tiến trình ở hai CPU khác nhau trong cgroup 0,1 CPU không tranh nhau; ghim một CPU làm nó có tác dụng (lớn nhất 21,1 → 9,9 s). Ghim CPU ngoài kế hoạch — chờ PO. Render chưa chuyển sang `combined_main` (chờ cổng 2.5). Rủi ro UAT khởi động ≈ 42 s: R4-4 và cổng 4.9.

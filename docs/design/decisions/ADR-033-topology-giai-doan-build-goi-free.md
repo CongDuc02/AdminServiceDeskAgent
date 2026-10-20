@@ -128,3 +128,8 @@ Không đổi quyết định A. Số đo ở `docs/reference/combined-main-b9a2
 - **`SIGTERM` tới sớm không được mất:** giữa lúc cài bộ xử lý gốc và lúc uvicorn cài bộ xử lý của nó, `combined_main` dừng vòng poll từ bộ xử lý gốc và một luồng cầu nối đặt `should_exit` của uvicorn. `api_main` có cùng khoảng hở — chưa sửa (ngoài kế hoạch B9a2).
 - **Bộ hẹn giờ cron chưa có** — chưa có thao tác cron nào để gọi (PO, 2026-10-16); đi cùng thao tác cron đầu tiên.
 - **Một pool kết nối** cho cả hai vai (`POOL_MAX_SIZE` + 3). Bước kiểm #18 và phần hợp các cột của `startup` có test tiến trình thật.
+
+## Cập nhật 2026-10-20 — B9a2: tín hiệu tới sớm ở `api_main`; hạ ưu tiên `soffice`
+
+- **`api_main` (thứ Render đang chạy) có cùng khoảng hở `SIGTERM` tới sớm** như `combined_main` và đã sửa cùng khuôn: bộ xử lý gốc cài **ngay từ đầu tiến trình** (trước bước kiểm khởi động — tín hiệu tới lúc đó không còn giết tiến trình bằng hành vi mặc định `-15` không log), `run_server` không chạy uvicorn nếu tín hiệu đã ghi, và luồng cầu nối đặt `should_exit` nếu tín hiệu tới giữa lúc cài bộ xử lý và lúc uvicorn cài bộ xử lý của nó. Test tiến trình thật (`SIGTERM` ngay sau `STARTUP_BEGIN` và sau `STARTUP_OK`, bốn lần).
+- **Hạ ưu tiên `soffice` (`nice -n 19`, WV-33) — PO yêu cầu; số đo trước/sau ở `docs/reference/combined-main-b9a2.md`, mục Hạ ưu tiên.** Kết quả: `nice` một mình **không** cải thiện lượt chat trong hạn mức 0,1 CPU (trung vị 11,7 → 11,8 s; hai tiến trình ở hai CPU khác nhau không tranh nhau nên trọng số không có chỗ tác dụng); ghim cả tiến trình vào một CPU làm nó có tác dụng (lớn nhất 21,1 → 9,9 s). Giữ `nice` (vô hại: job render một mình không chậm đi); **ghim CPU chưa làm — chờ PO**.
