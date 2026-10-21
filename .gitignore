@@ -60,3 +60,4 @@ tools/llm-probe/out/
 tools/turn-trial/out/
 tools/render-trial/out/
 tools/combined-probe/out/
+tools/object-storage-contract/out/
