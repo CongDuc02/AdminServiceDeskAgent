@@ -21,6 +21,8 @@ import unittest
 import uuid
 from unittest import mock
 
+import psycopg
+
 from bo19.persistence.pool import Pool
 from bo19.tool_layer import numbering
 from bo19.tool_layer.kernel.permission import PermissionDenied, SystemActorRequired, employee_context, system_context
@@ -204,17 +206,49 @@ class DongThoi(NumberingBase):
 
 
 class KhongLoKhiThatBai(NumberingBase):
-    def test_mau_thieu_year_o_so_yearly_hong_thay_vi_phat_so_trung(self):
-        self.make_format(pattern="{seq}/{symbol}")
+    def test_mau_khong_co_year_o_so_yearly_hop_le_va_so_lap_lai_moi_nam(self):
+        """ADR-043 / migration 0015: khuôn `{seq}/{symbol}` (không năm) là hợp lệ — số 01/… lặp lại mỗi năm (Nghị định 30/2020, Điều 15 khoản 1: duy nhất trong MỘT năm)."""
+        self.make_format(pattern="{seq}/{symbol}", digits=2)
         first = self.assign(self.make_document(), dt.datetime(2026, 5, 1, tzinfo=UTC))
-        self.assertEqual(first.formatted_number, "001/GIA")
+        second = self.assign(self.make_document(), dt.datetime(2026, 6, 1, tzinfo=UTC))
+        next_year = self.assign(self.make_document(), dt.datetime(2027, 5, 1, tzinfo=UTC))  # seq 1 của 2027 → cùng chữ với seq 1 của 2026
+        self.assertEqual((first.period_key, first.seq, first.formatted_number), ("2026", 1, "01/GIA"))
+        self.assertEqual((second.seq, second.formatted_number), (2, "02/GIA"))
+        self.assertEqual((next_year.period_key, next_year.seq, next_year.formatted_number), ("2027", 1, "01/GIA"))
+        self.assertEqual(self.counters(), {("TRIAL", "2026"): 3, ("TRIAL", "2027"): 2})
+        self.assertEqual([(e["period_key"], e["seq"], e["formatted_number"]) for e in self.entries()], [("2026", 1, "01/GIA"), ("2026", 2, "02/GIA"), ("2027", 1, "01/GIA")])
+
+    def test_trung_chuoi_so_trong_cung_ky_van_hong_va_khong_tieu_so(self):
+        """Lưới an toàn còn nguyên trong (sổ, dải, kỳ): đổi mẫu giữa kỳ làm hai `seq` khác nhau ra cùng chữ thì giao dịch HỎNG, `seq` không bị tiêu."""
+        self.make_format(pattern="{seq}0/{symbol}", digits=1, effective_from=dt.datetime(2026, 1, 1, tzinfo=UTC))  # seq 1 → "10/GIA"
+        first = self.assign(self.make_document(), dt.datetime(2026, 5, 1, tzinfo=UTC))
+        self.assertEqual(first.formatted_number, "10/GIA")
+        self.make_format(pattern="{seq}/{symbol}", digits=1, effective_from=dt.datetime(2026, 6, 1, tzinfo=UTC))  # đổi mẫu giữa kỳ
+        with self.db.connect("bo19_migrator", autocommit=True) as c:  # đẩy bộ đếm tới 10: seq 10 → "10/GIA" trùng chuỗi của seq 1 TRONG CÙNG KỲ
+            c.execute("update document_register_counter set next_seq = 10 where series = 'TRIAL' and period_key = '2026'")
         with self.assertRaises(numbering.NumberFormatCollision):
-            self.assign(self.make_document(), dt.datetime(2027, 5, 1, tzinfo=UTC))  # năm 2027 seq 1 → "001/GIA" lại
-        self.assertEqual(self.counters(), {("TRIAL", "2026"): 2})  # không có dòng bộ đếm 2027: giao dịch lăn hết
+            self.assign(self.make_document(), dt.datetime(2026, 7, 1, tzinfo=UTC))
+        self.assertEqual(self.counters(), {("TRIAL", "2026"): 10})  # lăn hết: bộ đếm không nhích
         self.assertEqual(len(self.entries()), 1)
-        self.make_format(pattern="{seq}/{year}/{symbol}", effective_from=dt.datetime(2027, 1, 1, tzinfo=UTC))  # sửa cấu hình rồi cấp lại
-        fixed = self.assign(self.make_document(), dt.datetime(2027, 5, 1, tzinfo=UTC))
-        self.assertEqual((fixed.seq, fixed.formatted_number), (1, "001/2027/GIA"))  # seq 1: lần hỏng không tiêu số
+
+    def test_rang_buoc_chuoi_so_o_db_la_theo_ky(self):
+        """Ở DB: cùng (sổ, dải, chuỗi số) khác kỳ — được; cùng kỳ khác `seq` — `uq_register_entry_number`."""
+        self.make_format(pattern="{seq}/{symbol}", digits=2)
+        e26 = self.assign(self.make_document(), dt.datetime(2026, 5, 1, tzinfo=UTC))
+        e27 = self.assign(self.make_document(), dt.datetime(2027, 5, 1, tzinfo=UTC))
+        self.assertEqual(e26.formatted_number, e27.formatted_number)
+        doc, decision = self.make_document()
+        with self.db.connect("bo19_migrator", autocommit=True) as c:
+            c.execute("insert into document_register_counter (document_register_id, series, period_key, next_seq) values (%s, 'TRIAL', '2028', 5)", (REGISTER,))
+            c.execute("insert into document_register_entry (id, document_register_id, series, period_key, seq, formatted_number, format_id, document_id, issue_decision_id) "
+                      "select %s, document_register_id, series, '2028', 1, formatted_number, format_id, %s, %s from document_register_entry where id = %s",
+                      (uuid.uuid4(), doc, decision, e26.entry_id))  # kỳ 2028, cùng chuỗi: được
+            other, other_decision = self.make_document()
+            with self.assertRaises(psycopg.errors.UniqueViolation) as ctx:
+                c.execute("insert into document_register_entry (id, document_register_id, series, period_key, seq, formatted_number, format_id, document_id, issue_decision_id) "
+                          "select %s, document_register_id, series, '2028', 2, formatted_number, format_id, %s, %s from document_register_entry where id = %s",
+                          (uuid.uuid4(), other, other_decision, e26.entry_id))  # cùng kỳ 2028, seq khác, cùng chuỗi: hỏng
+            self.assertEqual(ctx.exception.diag.constraint_name, "uq_register_entry_number")
 
     def test_token_la_hong_va_khong_tieu_so(self):
         self.make_format(pattern="{seq}-{khong_co}")

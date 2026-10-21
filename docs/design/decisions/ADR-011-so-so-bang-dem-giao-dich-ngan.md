@@ -63,3 +63,9 @@ Chưa biết: tổ chức dùng một sổ chung cho mọi loại văn bản hay
 **C — `MAX(seq) + 1`.** Bị loại vì dưới đồng thời hai giao dịch đọc cùng một `MAX`, một bên đụng `UNIQUE` và phải thử lại. Số lần thử không có trần đúng lúc tải dồn. Thêm vào đó, `MAX` phải tính cả dòng `VOIDED`, tức một truy vấn tổng hợp nằm trên đường cấp số. B biến va chạm thành chờ khoá có thứ tự.
 
 **Cấp số sớm hơn `ISSUED`** — ở `DRAFT` hay `APPROVED`. Đã bị domain loại (mục Cấp số văn bản của `00-domain.md`); ghi lại để không ai dựng lại.
+
+---
+
+## Cập nhật 2026-10-21 — chuỗi số duy nhất theo kỳ (ADR-043)
+
+Gạch đầu dòng "Định dạng" ở mục Decision nói chuỗi kết quả `UNIQUE` trong (sổ, dải) và một mẫu thiếu `{year}` ở sổ reset theo năm làm giao dịch hỏng. **Phần đó đã đổi:** khuôn số của PO (M1.2) không có năm, và Nghị định 30/2020 coi số là duy nhất trong một năm; `uq_register_entry_number` nay là `UNIQUE (sổ, dải, kỳ, chuỗi số)` (migration `0015`, ADR-043). Mẫu không có `{year}` ở sổ `YEARLY` là hợp lệ; trùng chuỗi **trong cùng kỳ** vẫn làm giao dịch hỏng. Mọi ý khác của ADR này giữ nguyên.

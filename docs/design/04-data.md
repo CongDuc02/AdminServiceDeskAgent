@@ -637,6 +637,8 @@ Lập luận và phương án bị loại ở ADR-011. Mục này chỉ mô tả
 
 Mẫu cụ thể trông thế nào là `[CẦN XÁC MINH]` theo Nghị định 30/2020/NĐ-CP (A-009, A-036). Không chỗ nào trong thiết kế giả định hình dạng của nó; tập token là thứ duy nhất được chốt.
 
+**Khuôn của PO cho `WORK_CONFIRMATION` (mốc M1.2, 2026-10-21):** chữ in trên văn bản là `Số: {seq}/GXN-{VIẾT_TẮT}` — nhãn `Số:` nằm trong **mẫu `.docx`**, còn `format_pattern` chỉ là `{seq}/GXN-{symbol}` với `symbol = ABC` và `seq_min_digits = 2` (số nhỏ hơn 10 thêm số 0 phía trước, đánh lại từ 01 mỗi năm — Phụ lục I và Điều 15 của Nghị định 30/2020, trích ở `docs/reference/nghi-dinh-30-2020-so-ky-hieu-van-ban.md`). `GXN` do công ty tự đặt (không có trong Phụ lục III). Khuôn **không có `{year}`** nên chuỗi số lặp lại mỗi năm — hợp lệ nhờ `0015`. Dòng `document_register_format` thật vào data migration khi PO chốt cách đánh dấu dải `TRIAL` (`proposals/ac-1-1-dau-vao-cua-po.md` mục E).
+
 **`document_register_counter`** — PK (sổ, `series`, `period_key`), `next_seq ≥ 1`. `period_key` là năm bốn chữ số khi `YEARLY`, `ALL` khi `NEVER`.
 
 **`document_register_entry`**
@@ -645,7 +647,7 @@ Mẫu cụ thể trông thế nào là `[CẦN XÁC MINH]` theo Nghị định 3
 |---|---|---|---|
 | `document_register_id`, `series`, `period_key` | | — | FK ghép tới bộ đếm |
 | `seq` | bigint | — | `UNIQUE (sổ, series, period_key, seq)` — không trùng số |
-| `formatted_number` | text | — | Chuỗi số đã định dạng, **lưu nguyên**. `UNIQUE (sổ, series, formatted_number)` |
+| `formatted_number` | text | — | Chuỗi số đã định dạng, **lưu nguyên**. `UNIQUE (sổ, series, period_key, formatted_number)` — duy nhất trong **kỳ**, không qua mọi kỳ (migration `0015`, ADR-043) |
 | `format_id` | uuid | — | FK ghép (`format_id`, sổ, `series`): mẫu phải thuộc đúng sổ và đúng dải |
 | `document_id` | uuid | — | FK ghép (`document_id`, `series`) → `document (id, register_series)` |
 | `issue_decision_id` | uuid | — | FK tới `decision_record` loại `ISSUE_ORDERED` — lệnh phát hành của người mang `document.issue` |
@@ -678,7 +680,7 @@ Mẫu cụ thể trông thế nào là `[CẦN XÁC MINH]` theo Nghị định 3
 | Bất biến | Nơi thực thi |
 |---|---|
 | Không trùng số trong (sổ, dải, kỳ) | `uq_register_entry_seq` |
-| Không trùng chuỗi số trong (sổ, dải) — kể cả khi mẫu cấu hình sai, ví dụ sổ `YEARLY` mà mẫu thiếu `{year}` | `uq_register_entry_number`: giao dịch cấp số hỏng, không phát số trùng |
+| Không trùng chuỗi số trong (sổ, dải, **kỳ**) — kể cả khi mẫu cấu hình sai, ví dụ đổi mẫu giữa kỳ làm hai `seq` ra cùng chữ. Sổ `YEARLY` với mẫu không có `{year}` là **hợp lệ**: số lặp lại ở kỳ khác (Nghị định 30/2020 Điều 15 khoản 1; ADR-043) | `uq_register_entry_number` (`0015`): giao dịch cấp số hỏng, không phát số trùng trong kỳ |
 | **Số không tái sử dụng** | `uq_register_entry_seq` — đứng ở dòng sổ, không ở bộ đếm. Kể cả khi bộ đếm bị ghi lùi, dòng mới vẫn đụng dòng cũ |
 | Một văn bản có tối đa một số đang `ASSIGNED` | `uq_register_entry_one_assigned_per_document` |
 | Dải của số khớp chế độ đã ghim (D-009) | `fk_register_entry_document_series` |

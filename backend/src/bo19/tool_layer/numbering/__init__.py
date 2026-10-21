@@ -9,7 +9,7 @@
 **Idempotent theo `document_id`:** hàng `document` bị khoá trước, nên hai lần gọi đồng thời cho cùng một `document` xếp hàng và lần sau thấy dòng của lần trước — không lấy số thứ hai. `uq_register_entry_one_assigned_per_document` là lớp thứ hai.
 **Dải** (`TRIAL`/`OFFICIAL`) lấy từ `document.register_series` — cột sinh từ `operating_mode` đã ghim lúc tạo `DRAFT`; hai dải không bao giờ chung bộ đếm (D-009), và khoá ngoại ghép của DB buộc dải của dòng sổ khớp dải của `document`.
 **Kỳ** tính từ ngày cấp số theo múi giờ của tổ chức (A-041, `Asia/Ho_Chi_Minh`); sổ `YEARLY` có kỳ là năm, `NEVER` có kỳ `ALL`. **Định dạng** là cấu hình (`document_register_format`, chỉ thêm; áp dòng có `effective_from` lớn nhất không sau thời điểm cấp);
-chuỗi số lưu **nguyên** trên dòng sổ nên đổi mẫu không đổi số đã cấp. Mẫu thiếu `{year}` ở sổ `YEARLY` làm giao dịch HỎNG (`NUMBER_FORMAT_COLLISION`, `seq` không bị tiêu) thay vì phát số trùng năm trước.
+chuỗi số lưu **nguyên** trên dòng sổ nên đổi mẫu không đổi số đã cấp. **Chuỗi số duy nhất trong (sổ, dải, KỲ)** (`uq_register_entry_number`, migration `0015`, ADR-043): khuôn không có `{year}` là hợp lệ ở sổ `YEARLY` — số `01/…` lặp lại mỗi năm đúng chữ "duy nhất trong một năm" của Điều 15 Nghị định 30/2020. Hai `seq` khác nhau trong CÙNG kỳ mà ra cùng chuỗi (đổi mẫu giữa kỳ) làm giao dịch HỎNG (`NUMBER_FORMAT_COLLISION`, `seq` không bị tiêu).
 
 `audit_event` chỉ mang mã, số đếm và id — không chuỗi số, không giá trị slot.
 
@@ -60,7 +60,7 @@ class BadFormat(ToolError):
 
 
 class NumberFormatCollision(ToolError):
-    code = "NUMBER_FORMAT_COLLISION"  # chuỗi số đã có trong (sổ, dải) — mẫu cấu hình sai; giao dịch lăn, không số nào bị tiêu
+    code = "NUMBER_FORMAT_COLLISION"  # chuỗi số đã có trong (sổ, dải, kỳ) — mẫu cấu hình sai; giao dịch lăn, không số nào bị tiêu
 
 
 class EntryNotFound(ToolError):
