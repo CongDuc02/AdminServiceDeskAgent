@@ -3,7 +3,7 @@
 Điều được chứng minh, nói bằng hành vi:
 - **đường thẳng có dấu:** duyệt → worker chạy `resume_document_graph` → `route_signing` (`render_integrity_check` rồi `signing_route`) → chờ ở `await_signature`; ký → `PENDING_SEAL`, chờ ở `await_seal`;
   đóng dấu → `SEALED`, chờ ở `await_issue`; **không gọi LLM lại**, không render lại; mọi job `SUCCEEDED`; checkpoint không chứa văn bản LLM hay giá trị `RES` (ADR-008);
-- **không cần dấu:** ký xong đi thẳng `await_issue`; **lệnh phát hành** ghi job `finalize_issue` và job đó nằm `QUEUED` (B9b2 mới có handler) — `document` không đổi trạng thái;
+- **không cần dấu:** ký xong đi thẳng `await_issue`; **lệnh phát hành** ghi job `finalize_issue` (B9b2 có handler: `test_finalize_issue.py`) — `document` không đổi trạng thái tới khi worker chạy;
 - **`NO_ELIGIBLE_SIGNER`** (không ai, hoặc chỉ còn người thụ hưởng): job `FAILED` ngay, `document` ở `APPROVED`; cấp quyền rồi chạy lại **tiếp từ checkpoint**, không làm lại node nào đã xong;
 - **toàn vẹn byte:** bản đã duyệt bị sửa → job thử lại (lỗi tạm), không người ký nào được giao; khôi phục byte thì đi tiếp;
 - **resume theo loại quyết định:** chạy lại sau khi đã qua điểm chờ là no-op; quyết định của điểm chờ SAU thì `THREAD_NOT_WAITING`; quyết định lạ loại hay của `document` khác là lỗi hệ thống vĩnh viễn.
@@ -149,7 +149,7 @@ class DuongThang(GateGraphBase):
         self.assertEqual((self.status(rid), self.at(rid)), ("SIGNED", ("WAITING", "await_issue")))
         self.assertEqual(self.scalar("select count(*) from approval_step where document_id = %s and step_kind = 'SEAL'", document_id_for(rid)), 0)
 
-    def test_lenh_phat_hanh_ghi_job_finalize_issue_nam_queued_va_khong_doi_trang_thai(self):
+    def test_lenh_phat_hanh_ghi_job_finalize_issue_queued_va_khong_doi_trang_thai_toi_khi_worker_chay(self):
         _, sctx = self.signer()
         rid = self.waiting()
         self.approve(rid)
@@ -161,10 +161,9 @@ class DuongThang(GateGraphBase):
         order = self.issue(rid)
         self.assertEqual(self.status(rid), "SEALED")
         self.assertEqual(self.jobs(rid, "finalize_issue"), [("QUEUED", 0, None)])
-        self.assertFalse(self.dispatcher.run_once())  # chưa có handler (B9b2): worker không giành job của loại đó
-        self.assertEqual(self.jobs(rid, "finalize_issue"), [("QUEUED", 0, None)])
-        self.assertEqual(self.at(rid), ("WAITING", "await_issue"))
+        self.assertEqual(self.at(rid), ("WAITING", "await_issue"))  # lệnh chỉ ghi và enqueue; `finalize_issue` chạy ở worker (B9b2 — test_finalize_issue.py)
         self.assertEqual(self.rows("select kind from decision_record where id = %s", order), [("ISSUE_ORDERED",)])
+        self.assertEqual(self.scalar("select count(*) from document_register_entry where document_id = %s", document_id_for(rid)), 0)  # và không số nào bị tiêu ở luồng request
 
 
 class KhongCoNguoiKy(GateGraphBase):

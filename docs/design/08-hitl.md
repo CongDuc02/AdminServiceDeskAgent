@@ -330,6 +330,8 @@ Mã của người tiếp quản, không phải nguyên văn mã lỗi của too
 
 Ở `finalize_issue` không có `RETRY`: lối ra duy nhất là `RETURN_TO_ISSUE_QUEUE`, trừ `CONTENT_HASH_MISMATCH`. Mọi `at_node` khác đều nhận `REJECT_REQUEST`.
 
+**Sprint 1 (B9b2, ADR-041):** chưa có `halt_for_human` nên các mã của `finalize_issue` ở bảng trên là `last_error_code` của job `finalize_issue` `FAILED`; số đã cấp thì `VOIDED` với `void_reason` = mã đó (hoặc `ISSUE_RETRIES_EXHAUSTED` khi hết lượt vì lỗi tạm). `CONTENT_HASH_MISMATCH` dừng trước khi cấp số nên không có số nào `VOIDED`.
+
 `FREE_CONTENT_INVALID` thay tên cũ `VALIDATION_FAILED` — tên cũ trùng một `error_code` của `05-api.md` (AUD-20).
 
 **Khôi phục byte của object** — cho `RETRY` ở `RENDER_CHECKSUM_MISMATCH`, `RENDER_OBJECT_MISSING` — phụ thuộc năng lực của nhà cung cấp object storage (A-024), `[CẦN XÁC MINH]`. Không khôi phục được thì `REJECT_REQUEST`: khoá render theo input nên render lại cùng input trùng khoá và không ghi đè (mục Khoá object theo input và ràng buộc ghi một lần của `03-agents.md`).

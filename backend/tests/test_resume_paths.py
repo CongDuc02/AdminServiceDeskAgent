@@ -53,6 +53,52 @@ class NhanhResume(unittest.TestCase):
                 return e, graph
         return out, graph
 
+    def finalize(self, snap: Snapshot, kind: str = "ISSUE_ORDERED"):
+        """Như `resume`, nhưng qua `run_finalize_issue` (B9b2, ADR-041 mục 1)."""
+        r, graph = self.runner(snap)
+        with mock.patch.object(runner_module, "decision_record_read", return_value=DecisionRead(kind, None, ())),                 mock.patch.object(runner_module, "mark_document_thread"), mock.patch.object(runner_module, "document_thread_id", return_value="document:x"):
+            try:
+                out = r.run_finalize_issue(document_id=uuid.uuid4(), decision_record_id=uuid.uuid4())
+            except RenderFailed as e:
+                return e, graph
+        return out, graph
+
+    def test_finalize_cho_dung_diem_await_issue_thi_resume(self):
+        out, graph = self.finalize(Snapshot(STATE, ("await_issue",), "await_issue", has_tasks=True))
+        self.assertEqual([c[0] for c in graph.calls], ["resume"])
+
+    def test_finalize_chi_nhan_issue_ordered(self):
+        for kind in ("APPROVED", "SIGNED", "SEALED", "REJECTED"):
+            out, graph = self.finalize(Snapshot(STATE, ("await_issue",), "await_issue", has_tasks=True), kind)
+            self.assertEqual((type(out), out.raw_code, out.permanent), (RenderFailed, "UNSUPPORTED_DECISION", True), kind)
+            self.assertEqual(graph.calls, [])
+
+    def test_finalize_graph_da_ket_thuc_la_no_op(self):
+        out, graph = self.finalize(Snapshot(STATE, (), None, has_tasks=False))
+        self.assertEqual((out.status, out.already), ("ENDED", True))
+        self.assertEqual(graph.calls, [])
+
+    def test_finalize_cho_o_diem_truoc_thi_loi(self):
+        for waiting in ("await_content_review", "await_signature", "await_seal"):
+            out, graph = self.finalize(Snapshot(STATE, (waiting,), waiting, has_tasks=True))
+            self.assertEqual((type(out), out.raw_code), (RenderFailed, "THREAD_NOT_WAITING"), waiting)
+            self.assertEqual(graph.calls, [])
+
+    def test_finalize_con_node_ke_ma_khong_cho_thi_tiep_tu_checkpoint(self):
+        """Lần chạy trước chết giữa `finalize_issue` (job lease hết hạn rồi chạy lại): tiếp từ checkpoint, node chạy lại từ đầu."""
+        for snap in (Snapshot(STATE, ("finalize_issue",), None, has_tasks=True), Snapshot(STATE, (), None, has_tasks=True)):
+            out, graph = self.finalize(snap)
+            self.assertEqual(graph.calls, [("invoke", None)])
+
+    def test_finalize_chua_co_thread(self):
+        out, graph = self.finalize(Snapshot(None, (), None))
+        self.assertEqual((type(out), out.raw_code), (RenderFailed, "THREAD_NOT_WAITING"))
+
+    def test_resume_document_khong_nhan_issue_ordered_va_nguoc_lai(self):
+        out, graph = self.resume(Snapshot(STATE, ("await_issue",), "await_issue", has_tasks=True), "ISSUE_ORDERED")
+        self.assertEqual((type(out), out.raw_code), (RenderFailed, "UNSUPPORTED_DECISION"))
+        self.assertEqual(graph.calls, [])
+
     def test_graph_da_ket_thuc_thi_no_op_ma_khong_doc_quyet_dinh(self):
         out, graph = self.resume(Snapshot(STATE, (), None, has_tasks=False))
         self.assertEqual((out.status, out.already), ("ENDED", True))

@@ -61,6 +61,9 @@ EMPLOYEES: tuple[FakeEmployee, ...] = (
     FakeEmployee("GIA-0102", "CÁN BỘ HÀNH CHÍNH GIẢ 02 (GIẢ)", "ADMIN_OFFICER"),
 )
 # Hai dòng cấp lẻ `document.sign` (PO, 2026-10-20, B9b): luôn có ≥ 2 người đủ quyền ký, để khi một người là người thụ hưởng của văn bản thì vẫn còn người khác (D-006; `signing_route` loại người thụ hưởng).
+# Định dạng số văn bản dải `TRIAL` GIẢ (PO, 2026-10-20; B9b2, A-100): sổ của `WORK_CONFIRMATION` có ở data migration, định dạng thì không (thể thức thật là M1.1 + Nghị định 30/2020/NĐ-CP, `[CẦN XÁC MINH]`).
+# Chỉ local: không vào data migration nên không lên Render. Nhìn là biết giả: tiền tố `TRIAL`, ký hiệu `THU-NGHIEM`.
+TRIAL_FORMAT = ("TRIAL", "TRIAL-{seq}/{year}/{symbol}", "THU-NGHIEM", 3)  # (dải, mẫu, ký hiệu, số chữ số tối thiểu của seq)
 # Lớp 1 của ADR-023: KHÔNG cấp `operating_mode.change` cho ai.
 SIGNER_CODES, SIGNER_PERMISSION = ("GIA-0101", "GIA-0102"), "document.sign"
 
@@ -75,6 +78,7 @@ class SeedReport:
     credentials_written: int
     roles_created: int
     grants_created: int
+    formats_created: int = 0
 
 
 def employee_id(code: str) -> uuid.UUID:
@@ -144,6 +148,14 @@ def run(dsn: str, passwords_file: Path = DEFAULT_PASSWORDS_FILE, *, allow_hosts:
                 "insert into employee_permission_grant (id, employee_id, permission_code) values (%s, %s, %s) on conflict do nothing",
                 (uuid.uuid5(NAMESPACE, f"grant:{code}:{SIGNER_PERMISSION}"), employee_id(code), SIGNER_PERMISSION)).rowcount
 
+        register = conn.execute("select document_register_id from request_type where code = 'WORK_CONFIRMATION'").fetchone()
+        if register is None or register[0] is None:
+            raise SeedRefused("SEED_NO_DOCUMENT_REGISTER")  # data migration 0002 chưa áp: không có sổ để gắn định dạng
+        series, pattern, symbol, digits = TRIAL_FORMAT
+        formats = conn.execute(
+            "insert into document_register_format (id, document_register_id, series, format_pattern, symbol, seq_min_digits, effective_from) values (%s, %s, %s, %s, %s, %s, timestamptz '2020-01-01 00:00:00+00') "
+            "on conflict do nothing", (uuid.uuid5(NAMESPACE, f"format:{register[0]}:{series}"), register[0], series, pattern, symbol, digits)).rowcount
+
         have = {r[0] for r in conn.execute("select employee_id from employee_credential where employee_id = any(%s)",
                                            ([employee_id(e.code) for e in EMPLOYEES],))}
         passwords = read_passwords(passwords_file)
@@ -162,10 +174,10 @@ def run(dsn: str, passwords_file: Path = DEFAULT_PASSWORDS_FILE, *, allow_hosts:
         if written:
             write_passwords(passwords_file, passwords)  # ghi file TRƯỚC khi commit: mất file sau khi đã commit hash là mất mật khẩu
         conn.commit()
-    print(f"SEED_DEV_DONE employees_created={employees} roles_created={roles} grants_created={grants} credentials_written={written}", file=out)
+    print(f"SEED_DEV_DONE employees_created={employees} roles_created={roles} grants_created={grants} formats_created={formats} credentials_written={written}", file=out)
     if written:
         print(f"SEED_DEV_PASSWORDS_FILE {passwords_file}", file=out)  # đường dẫn — không phải nội dung
-    return SeedReport(employees, written, roles, grants)
+    return SeedReport(employees, written, roles, grants, formats)
 
 
 def main(argv: list[str] | None = None) -> int:

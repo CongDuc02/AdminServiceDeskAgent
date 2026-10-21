@@ -10,9 +10,14 @@ Hai hàm, mỗi hàm một giao dịch, mỗi hàm một `audit_event`:
   `SUBMITTED → IN_REVIEW` nếu chưa ở đó — một giao dịch. Đã ở `PENDING_APPROVAL` với đúng bản nháp đó thì trả như đã làm (idempotent), không mở thêm bước.
 
 Lỗi: `NOT_DRAFT`, `NOT_READY` (kèm mã), `REQUEST_NOT_SUBMITTED`, `DOCUMENT_CONFLICT`, `DRAFT_RENDER_NOT_FOUND`, `ILLEGAL_TRANSITION` (từ kernel). Chỉ tác nhân hệ thống.
+
+- `document_mark_issued` (B9b2, ADR-041 mục 2 bước 4) — phần của `finalize_issue`, **sau mọi cổng**: một giao dịch ghim bản `FINAL` (`document_render_pin`, `ISSUED`, `decision_record_id` = lệnh phát hành), `document`
+  `SIGNED`/`SEALED → ISSUED` kèm `issued_register_entry_id`, `final_render_id`, `issued_date` (`set_values` của kernel) và `issued_at`, `request APPROVED → FULFILLED` khi mọi `document` của nó đã qua `ISSUED`, và
+  `audit_event` mà **tác nhân là người ra lệnh phát hành** (mục 5.2 của 03-agents.md), payload thêm `executed_by = SYSTEM`. Đã `ISSUED` với đúng dòng sổ này thì trả như đã làm (idempotent).
 """
 from __future__ import annotations
 
+import datetime as dt
 import uuid
 from dataclasses import dataclass
 
@@ -20,7 +25,7 @@ from bo19.persistence.pool import Pool
 from bo19.persistence.read import current_operating_mode
 from bo19.persistence.write import unit_of_work
 from bo19.tool_layer.kernel import audit
-from bo19.tool_layer.kernel.context import ToolContext
+from bo19.tool_layer.kernel.context import Actor, ToolContext
 from bo19.tool_layer.kernel.permission import require_system
 from bo19.tool_layer.kernel.transition import transition
 from bo19.tool_layer.tools._common import ToolError
@@ -47,6 +52,14 @@ class DraftRenderNotFound(ToolError):
     code = "DRAFT_RENDER_NOT_FOUND"
 
 
+class NoIssueOrder(ToolError):
+    code = "NO_ISSUE_ORDER"
+
+
+class StaleDocument(ToolError):
+    code = "STALE_STATUS"  # `document` không ở `SIGNED`/`SEALED`, hay dòng sổ / bản render không thuộc `document` này
+
+
 class NotReady(ToolError):
     code = "NOT_READY"
 
@@ -66,6 +79,12 @@ class DraftCreated:
     operating_mode: str
     template_version_id: uuid.UUID
     revision_round: int
+
+
+@dataclass(frozen=True)
+class Issued:
+    document_id: uuid.UUID
+    already: bool  # đã `ISSUED` với đúng dòng sổ này từ lần chạy trước
 
 
 @dataclass(frozen=True)
@@ -128,3 +147,38 @@ def document_submit_for_review(pool: Pool, ctx: ToolContext, *, document_id: uui
         audit.record(conn, ctx, action="document.submit_for_review", entity_type="document", entity_id=document_id, document_id=document_id, request_id=request_id,
                      payload={"revision_round": round_, "render_id": render_id, "approval_step_id": step_id})
     return Submitted(document_id, step_id, render_id, already=False)
+
+
+_BODY_DONE = ("ISSUED", "REVOKED", "SUPERSEDED", "ARCHIVED", "REJECTED")  # `document` đã qua thân văn bản: không còn gì chờ cho `request`
+
+
+def document_mark_issued(pool: Pool, ctx: ToolContext, *, document_id: uuid.UUID, issue_decision_id: uuid.UUID, entry_id: uuid.UUID, render_id: uuid.UUID, issued_date: dt.date) -> Issued:
+    require_system(ctx)
+    with pool.acquire() as conn, unit_of_work(conn):
+        doc = conn.execute("SELECT status, request_id, issued_register_entry_id FROM document WHERE id = %s FOR UPDATE", (document_id,)).fetchone()
+        if doc is None:
+            raise DocumentNotFound
+        status, request_id, issued_entry = doc
+        if status == "ISSUED":
+            if issued_entry != entry_id:
+                raise StaleDocument
+            return Issued(document_id, already=True)
+        if status not in ("SIGNED", "SEALED"):
+            raise StaleDocument
+        order = conn.execute("SELECT actor_employee_id FROM decision_record WHERE id = %s AND document_id = %s AND kind = 'ISSUE_ORDERED'", (issue_decision_id, document_id)).fetchone()
+        if order is None:
+            raise NoIssueOrder
+        if conn.execute("SELECT 1 FROM document_register_entry WHERE id = %s AND document_id = %s AND status = 'ASSIGNED' AND issue_decision_id = %s", (entry_id, document_id, issue_decision_id)).fetchone() is None:
+            raise StaleDocument
+        if conn.execute("SELECT 1 FROM document_render WHERE id = %s AND document_id = %s AND render_kind = 'FINAL'", (render_id, document_id)).fetchone() is None:
+            raise StaleDocument
+        conn.execute("INSERT INTO document_render_pin (render_id, pin_reason, decision_record_id) VALUES (%s, 'ISSUED', %s)", (render_id, issue_decision_id))
+        transition(conn, "document", document_id, to="ISSUED", expected_from=status,
+                   set_values={"issued_register_entry_id": entry_id, "final_render_id": render_id, "issued_date": issued_date})
+        open_bodies = conn.execute("SELECT count(*) FROM document WHERE request_id = %s AND status <> ALL(%s)", (request_id, list(_BODY_DONE))).fetchone()[0]
+        if open_bodies == 0:
+            transition(conn, "request", request_id, to="FULFILLED", expected_from="APPROVED")
+        issuer = ToolContext(Actor.employee(order[0], frozenset()), ctx.trace_id)  # tác nhân của `audit_event` là người ra lệnh, không phải hệ thống (mục 5.2 của 03-agents.md)
+        audit.record(conn, issuer, action="document.issue_complete", entity_type="document", entity_id=document_id, document_id=document_id, request_id=request_id, decision_record_id=issue_decision_id,
+                     payload={"status_from": status, "status_to": "ISSUED", "render_id": render_id, "entry_id": entry_id, "executed_by": "SYSTEM"})
+    return Issued(document_id, already=False)

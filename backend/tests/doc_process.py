@@ -7,7 +7,9 @@ Chế độ:
   render <request_id>          chạy `run_render`; xong thì ngủ (nếu `BO19_PROC_SLEEP=1`) để test giết nó khi graph đang chờ ở `interrupt`;
   hang <request_id>            như `render` nhưng bản render bị treo ở `docx_render` (in `HANGING` rồi ngủ) — test giết nó GIỮA lúc chạy;
   resume <document_id> <decision_record_id>   chạy `resume_document`; xong thì ngủ nếu `BO19_PROC_SLEEP=1` (test giết nó khi graph đang chờ ở một `interrupt` kế tiếp);
-  hang_resume <document_id> <decision_record_id>   như `resume` nhưng `render_integrity_check` treo (in `HANGING` rồi ngủ) — test giết nó GIỮA lúc `route_signing` chạy (B9b1).
+  hang_resume <document_id> <decision_record_id>   như `resume` nhưng `render_integrity_check` treo (in `HANGING` rồi ngủ) — test giết nó GIỮA lúc `route_signing` chạy (B9b1);
+  finalize <document_id> <decision_record_id>   chạy `run_finalize_issue` (B9b2); xong thì ngủ nếu `BO19_PROC_SLEEP=1`;
+  hang_finalize_pdf / hang_finalize_mark <document_id> <decision_record_id>   như `finalize` nhưng `pdf_export` / `document_mark_issued` treo — test giết nó SAU khi đã cấp số (và, với `mark`, sau khi đã ghi bản FINAL và kiểm byte) mà TRƯỚC giao dịch `ISSUED` (B9b2).
 Môi trường: BO19_PROC_DSN (role `bo19_app`), BO19_PROC_BUCKET, BO19_TEST_S3_* (như test), BO19_PROC_LLM.
 """
 from __future__ import annotations
@@ -65,6 +67,18 @@ def main(argv: list[str]) -> int:
                     time.sleep(3600)
                 nodes_module.render_integrity_check = hang_integrity  # giữa `await_content_review` (đã trả) và `signing_route`
             out = runner.resume_document(document_id=uuid.UUID(argv[1]), decision_record_id=uuid.UUID(argv[2]))
+            emit(status=out.status, waiting_at=out.waiting_at, already=out.already, llm_calls=len(llm.calls("draft_free_content")), pid=os.getpid())
+            if os.environ.get("BO19_PROC_SLEEP") == "1":
+                time.sleep(3600)
+        elif mode in ("finalize", "hang_finalize_pdf", "hang_finalize_mark"):
+            if mode != "finalize":
+                from bo19.orchestrator.document_graph import nodes as nodes_module
+
+                def hang_finalize(*a, **k):
+                    print("HANGING", flush=True)
+                    time.sleep(3600)
+                setattr(nodes_module, "pdf_export" if mode == "hang_finalize_pdf" else "document_mark_issued", hang_finalize)
+            out = runner.run_finalize_issue(document_id=uuid.UUID(argv[1]), decision_record_id=uuid.UUID(argv[2]))
             emit(status=out.status, waiting_at=out.waiting_at, already=out.already, llm_calls=len(llm.calls("draft_free_content")), pid=os.getpid())
             if os.environ.get("BO19_PROC_SLEEP") == "1":
                 time.sleep(3600)

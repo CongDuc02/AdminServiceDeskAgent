@@ -669,7 +669,7 @@ Mẫu cụ thể trông thế nào là `[CẦN XÁC MINH]` theo Nghị định 3
 
 **Hai `finalize_issue` chạy trùng cho cùng một văn bản:** cả hai có thể qua bước 3 cùng lúc và cùng tăng bộ đếm, nhưng bên thứ hai đụng `uq_register_entry_one_assigned_per_document` ở bước 5. Giao dịch của nó rollback — **kể cả lần tăng bộ đếm** — nên không sinh lỗ hổng. Lần thử lại của nó đọc thấy dòng đã có ở bước 3.
 
-**Thất bại sau khi đã commit số** — hết lượt retry khi render hay upload, hoặc `approved_content_hash` lệch: một giao dịch riêng chuyển dòng sang `VOIDED` kèm lý do, ghi `audit_event`; `document` đứng yên ở `SIGNED`/`SEALED`; graph vào `halt_for_human`. Lần phát hành sau khi tiếp quản nhận số **mới**, vì chỉ dòng `ASSIGNED` mới chặn.
+**Thất bại sau khi đã commit số** — hết lượt retry khi render hay upload, hoặc bản cuối trượt kiểm toàn vẹn (`approved_content_hash` lệch thì `finalize_issue` dừng **trước** khi cấp số — ADR-041 mục 2): một giao dịch riêng chuyển dòng sang `VOIDED` kèm lý do, ghi `audit_event`; `document` đứng yên ở `SIGNED`/`SEALED`; graph vào `halt_for_human`. Lần phát hành sau khi tiếp quản nhận số **mới**, vì chỉ dòng `ASSIGNED` mới chặn.
 
 **Số chỉ gắn vào `document` ở giao dịch chuyển `ISSUED`** (bước 4 của `finalize_issue`): `document.issued_register_entry_id` được ghi cùng lúc với `status = 'ISSUED'`. Trước đó, trong khoảng hoàn tất phát hành, số đã có trong sổ nhưng `document` chưa trỏ tới nó (`ck_document_number_only_after_issue`).
 

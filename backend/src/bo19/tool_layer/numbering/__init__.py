@@ -12,6 +12,9 @@
 chuỗi số lưu **nguyên** trên dòng sổ nên đổi mẫu không đổi số đã cấp. Mẫu thiếu `{year}` ở sổ `YEARLY` làm giao dịch HỎNG (`NUMBER_FORMAT_COLLISION`, `seq` không bị tiêu) thay vì phát số trùng năm trước.
 
 `audit_event` chỉ mang mã, số đếm và id — không chuỗi số, không giá trị slot.
+
+**`document_number_void_open` (B9b2, ADR-041 mục 3):** huỷ số `ASSIGNED` đang mở của một `document` chưa `ISSUED`, tìm theo `document_id` — cho handler `finalize_issue` khi job sắp `FAILED`
+(Sprint 1 chưa có `halt_for_human`). Không có số `ASSIGNED`, hoặc `document` đã `ISSUED`, thì không làm gì (trả `None`).
 """
 from __future__ import annotations
 
@@ -150,3 +153,24 @@ def document_number_void(pool: Pool, ctx: ToolContext, *, entry_id: uuid.UUID, r
         conn.execute("UPDATE document_register_entry SET status = 'VOIDED', voided_at = now(), void_reason = %s WHERE id = %s", (reason_code, entry_id))
         audit.record(conn, ctx, action="document.number_void", entity_type="document", entity_id=document_id, request_id=request_id, document_id=document_id,
                      payload={"entry_id": str(entry_id), "reason_code": reason_code}, severity="WARNING")
+
+
+def document_number_void_open(pool: Pool, ctx: ToolContext, *, document_id: uuid.UUID, reason_code: str) -> uuid.UUID | None:
+    """Số `ASSIGNED` đang mở của `document` → `VOIDED` kèm `reason_code`; trả id dòng sổ đã huỷ, hoặc `None` nếu không có gì để huỷ. Khoá hàng `document` trước, như `document_number_assign`."""
+    require_system(ctx)
+    if not _REASON.match(reason_code):
+        raise ValueError("reason_code")
+    with pool.acquire() as conn, unit_of_work(conn):
+        doc = conn.execute("SELECT request_id, status FROM document WHERE id = %s FOR UPDATE", (document_id,)).fetchone()
+        if doc is None:
+            raise DocumentNotFound
+        request_id, status = doc
+        if status == "ISSUED":
+            return None  # đã phát hành: số đang gắn với văn bản, không bao giờ huỷ ở đây (`NOT_VOIDABLE` của `document_number_void`)
+        entry = conn.execute("SELECT id FROM document_register_entry WHERE document_id = %s AND status = 'ASSIGNED' FOR UPDATE", (document_id,)).fetchone()
+        if entry is None:
+            return None
+        conn.execute("UPDATE document_register_entry SET status = 'VOIDED', voided_at = now(), void_reason = %s WHERE id = %s", (reason_code, entry[0]))
+        audit.record(conn, ctx, action="document.number_void", entity_type="document", entity_id=document_id, request_id=request_id, document_id=document_id,
+                     payload={"entry_id": str(entry[0]), "reason_code": reason_code}, severity="WARNING")
+        return entry[0]

@@ -1,6 +1,6 @@
 # Cổng 2.5 / S7 — danh sách ngắn nhà cung cấp object storage (đề xuất, PO chọn)
 
-**Trạng thái:** đề xuất, chờ PO chọn · **Ngày:** 2026-10-20 · **Chỉ tài liệu** — chưa tạo tài khoản, chưa chạy phép thử nào, chưa đổi mã · **Căn cứ:** A-024 (nhà cung cấp phải có ít nhất một cơ chế ghi một lần ở tầng lưu trữ), ADR-037 (mọi `PUT` mang `If-None-Match: *`; điều kiện 3: phép thử `412` trên nhà cung cấp thật trước cổng 2.5), A-080 (vùng lưu trữ dữ liệu), A-085 (gói free/rẻ ở giai đoạn build), bước S7 của `.claude/commands/spike.md` (PO duyệt danh sách ngắn; spike không tự chọn) · **Bằng chứng:** `docs/reference/s7-object-storage-ung-vien.md` (URL, ngày, sha256, dòng trích nguyên văn)
+**Trạng thái:** PO chọn **Cloudflare R2, gói miễn phí** (2026-10-20); công cụ phép thử đã có (2026-10-21), chờ PO chạy với tài khoản R2 — xem mục cuối · **Ngày:** 2026-10-20 · **Chỉ tài liệu** — chưa tạo tài khoản, chưa chạy phép thử nào, chưa đổi mã · **Căn cứ:** A-024 (nhà cung cấp phải có ít nhất một cơ chế ghi một lần ở tầng lưu trữ), ADR-037 (mọi `PUT` mang `If-None-Match: *`; điều kiện 3: phép thử `412` trên nhà cung cấp thật trước cổng 2.5), A-080 (vùng lưu trữ dữ liệu), A-085 (gói free/rẻ ở giai đoạn build), bước S7 của `.claude/commands/spike.md` (PO duyệt danh sách ngắn; spike không tự chọn) · **Bằng chứng:** `docs/reference/s7-object-storage-ung-vien.md` (URL, ngày, sha256, dòng trích nguyên văn)
 
 ## Tiêu chí (theo PO) và cách kiểm
 
@@ -41,3 +41,10 @@
 1. Chọn 2–3 nhà cung cấp cho S7 (đề xuất: R2, Tigris, OVHcloud).
 2. Có muốn xét thêm nhà cung cấp trong nước theo A-080 không (cần tài liệu gốc — tôi sẽ tải bằng `curl` nếu PO cho tên)?
 3. Có cần gói **trả phí rẻ** thay vì miễn phí không (A-085 nói gói free; OVH/Scaleway ≈ $0,008/GB-tháng)?
+
+## Quyết định của PO và công cụ phép thử (2026-10-20, 2026-10-21)
+
+- **2026-10-20:** chọn **Cloudflare R2, gói miễn phí**; S7 **chỉ chạy trên R2** — không nhà cung cấp khác, không nhà cung cấp trong nước; gói trả phí tính sau. Điều kiện trước production: xét lại nhà cung cấp và vùng khi có dữ liệu thật (A-080).
+- **2026-10-21 — giá trị cấu hình, từ tài liệu gốc** (`docs/reference/r2-s3-endpoint-va-region.md`, lấy bằng `curl` cùng ngày): `BO19_OBJECT_STORAGE_REGION=auto` (tài liệu nêu `us-east-1` và giá trị rỗng là bí danh của `auto`); `BO19_OBJECT_STORAGE_ENDPOINT_URL=https://<ACCOUNT_ID>.r2.cloudflarestorage.com`, không kèm tên bucket (bucket đặt jurisdiction dùng endpoint `eu.`/`fedramp.`/`us.` riêng). Token loại **Object Read & Write** giới hạn vào đúng một bucket. **`[CẦN XÁC MINH]`:** tài liệu nêu "You must purchase R2 before you can generate an API token" nhưng không nói bước đó có đòi phương thức thanh toán không — PO báo trước nếu bước kích hoạt R2 phát sinh phí hay đòi thẻ (ràng buộc gói free).
+- **2026-10-21 — công cụ:** `tools/object-storage-contract/` (README ở đó) chạy bộ phép thử qua **đúng adapter của dự án**. Luật PO đặt: cấu hình chỉ từ năm biến `BO19_OBJECT_STORAGE_*` do PO export (như `llm-probe`; tool không đọc `.env`); có `--confirm-real`; chỉ khoá dưới tiền tố `s7-probe/<mã lần chạy>/` và dọn sạch sau khi đo; kết quả không chứa endpoint, tên bucket hay khoá. Versioning và object lock **không chạy** (token Object R&W không có quyền cấu hình bucket; R2 ghi chưa hỗ trợ) — A-024 chỉ đòi một trong ba lớp, lớp đã chọn là ghi có điều kiện (ADR-037).
+- **Không đặt biến `BO19_OBJECT_STORAGE_*` lên Render trước khi cổng 2.5 đạt** (PO, 2026-10-21).

@@ -15,6 +15,7 @@ from typing import Any
 
 import psycopg
 
+from bo19.api.queries import _doc_flags as flags
 from bo19.api.queries import requests as request_queries
 from bo19.domain.status_labels import document_status_label
 from bo19.persistence.read import read_only
@@ -23,14 +24,10 @@ from bo19.tool_layer.tools.render_values import build_values
 BadCursor = request_queries.BadCursor
 
 _HALTED = "EXISTS (SELECT 1 FROM approval_step h WHERE h.document_id = d.id AND h.step_kind = 'TAKEOVER' AND h.status = 'OPEN')"
-_ORDER = "SELECT o.id, o.created_at FROM decision_record o WHERE o.document_id = d.id AND o.kind = 'ISSUE_ORDERED' ORDER BY o.created_at DESC, o.id DESC LIMIT 1"
+_ORDER = flags.ORDER
 _JOB = ("SELECT j.status, j.last_error_code FROM job j WHERE j.subject_document_id = d.id AND j.job_type IN ('resume_document_graph', 'finalize_issue') "
         "ORDER BY j.enqueued_at DESC, j.id DESC LIMIT 1")
-_ISSUE_IN_PROGRESS = (
-    "(d.status IN ('SIGNED', 'SEALED') AND o.id IS NOT NULL "
-    "AND NOT EXISTS (SELECT 1 FROM document_register_entry v WHERE v.document_id = d.id AND v.issue_decision_id = o.id AND v.status = 'VOIDED') "
-    "AND NOT EXISTS (SELECT 1 FROM document_halt hh WHERE hh.document_id = d.id AND hh.at_node = 'finalize_issue' AND hh.created_at > o.created_at))"
-)
+_ISSUE_IN_PROGRESS = flags.ISSUE_IN_PROGRESS
 _ASSIGNED_TO_ME = "EXISTS (SELECT 1 FROM approval_step s WHERE s.document_id = d.id AND s.assignee_employee_id = %s AND s.status <> 'CANCELLED')"
 
 _BASE = (
