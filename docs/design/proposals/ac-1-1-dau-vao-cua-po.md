@@ -80,7 +80,9 @@ Mã chỉ hỗ trợ ba chỗ giữ `{seq}`, `{year}`, `{symbol}` (token lạ �
 
 ## D. Cập nhật 2026-10-21 — sau khi PO giao mẫu `.doc` và quyết khuôn số
 
-### D1. Mẫu `docs/reference/Mau-giay-xac-nhan-cong-tac.doc` (sha256 `fad306192f9eb5374f00bf37d1f19e40dcc787ac3647ba5aa14ad4bafd8fdc8e`, 34.304 byte)
+### D1. Mẫu `.doc` của PO — **đã gỡ khỏi repo (2026-10-21)**; sha256 `fad306192f9eb5374f00bf37d1f19e40dcc787ac3647ba5aa14ad4bafd8fdc8e`, 34.304 byte
+
+> PO kết luận: đây là phiếu khai của nhân viên, **sai loại**; và là file của bên thứ ba trong repo công khai. File đã bị gỡ, kể cả khỏi lịch sử nhánh `build/b10a-client` (viết lại trước khi merge). Phần dưới giữ lại như **ghi chép đã đọc**, không còn file đối chiếu trong repo. Mẫu thay thế: mục E.
 
 Đọc bằng LibreOffice (chuyển sang `.docx`/`.txt`, không chép từ trí nhớ). **Điều quan trọng: đây là PHIẾU KHAI của nhân viên, không phải giấy xác nhận do công ty phát hành.** Nội dung: Quốc hiệu, tiêu đề `GIẤY XÁC NHẬN CÔNG TÁC`, `Kính gửi (1): Ban Giám đốc Công ty…`, các dòng nhân viên tự khai (họ tên, địa chỉ, số CMND/ngày cấp/nơi cấp, công ty, địa chỉ công ty, điện thoại, fax, vị trí công tác, chức danh/chức vụ, **loại hợp đồng lao động** đánh dấu "x", ngày vào làm việc, ngày kết thúc, vị trí công việc theo quá trình công tác, lý do xin xác nhận), lời cam đoan "Tôi xin cam đoan… trước pháp luật và trước Công ty", "Kính trình Giám đốc/Tổng Giám đốc xem xét và xác nhận", rồi hai khối: **`XÁC NHẬN CỦA CÔNG TY`** (ký, ghi rõ họ tên, chức vụ và đóng dấu) và **`NGƯỜI KHAI`** (ký, ghi rõ họ tên). Có chú thích đánh số (1)–(10) trong thân nhưng **không có nội dung chú thích** trong file.
 
