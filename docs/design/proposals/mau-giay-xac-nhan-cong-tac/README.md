@@ -1,8 +1,8 @@
 # Đề xuất — mẫu `tpl_work_confirmation.docx` mới (M1.1) và cơ chế biến thể `contract_type` / "đã nghỉ việc"
 
-**Trạng thái:** bản NHÁP để PO duyệt · **Ngày:** 2026-10-21 · **Căn cứ:** quyết định của PO 2026-10-21 (phiếu `.doc` là sai loại — dựng mẫu mới theo thể thức Phụ lục I Nghị định 30/2020/NĐ-CP); mốc M1.1 của `12-roadmap.md`; `proposals/ac-1-1-dau-vao-cua-po.md` mục E.
+**Trạng thái:** mục 4 (cơ chế) **PO duyệt 2026-10-21** kèm điều kiện, đã làm trên nhánh `build/m11-mau-enum`; mẫu vẫn là bản NHÁP chờ tên công ty, địa danh và các câu ở mục 6 · **Ngày:** 2026-10-21 · **Căn cứ:** quyết định của PO 2026-10-21 (phiếu `.doc` là sai loại — dựng mẫu mới theo thể thức Phụ lục I Nghị định 30/2020/NĐ-CP); mốc M1.1 của `12-roadmap.md`; `proposals/ac-1-1-dau-vao-cua-po.md` mục E.
 
-**Không đổi gì trong mã.** Mục 4 là **đề xuất** thay đổi ngữ nghĩa dựng bảng giá trị (`render_values`) — theo luật "hỏi trước" chờ PO duyệt, chưa làm. Mẫu này **chưa tải được** vào hệ thống thật cho tới khi mục 4 được duyệt (biến `contract_type` kiểu `ENUM` hiện ra `VARIABLE_MISSING`).
+**Mục 4 đã được PO duyệt (2026-10-21) và làm xong trong mã** — `render_values` trả mã `ENUM` và chuỗi rỗng cho slot không bắt buộc; kiểu rule `not_in_future` có trong từ vựng nhưng **chưa bật** cho `employment_end_date` (cần data migration sau khi mã này live). Điều kiện của PO: điều kiện trong mẫu bao cả mệnh đề của slot không bắt buộc (không in nhãn rỗng) — test trên PDF thật. Mẫu **chưa tải** vào hệ thống thật: còn chờ tên công ty, địa danh.
 
 ## 1. Các file
 
@@ -14,7 +14,7 @@
 
 ## 2. Đối chiếu thể thức — Phụ lục I, Nghị định 30/2020/NĐ-CP
 
-Nguồn: bản Công báo số 283 + 284 đã lưu ở `docs/reference/nghi-dinh-30-2020-phong-chu-va-pham-vi.md` (sha256 `698e45e0…`). Tôi tải lại ngày 2026-10-21, sha256 khớp, và đọc lớp chữ của Phụ lục I Phần I mục I–II và bảng Phần V. Không trích từ trí nhớ.
+Nguồn: bản Công báo số 283 + 284 (sha256 `698e45e0…`). Trích nguyên văn Phụ lục I Phần I mục I–II và Phần V đã lưu ở **`docs/reference/nghi-dinh-30-2020-the-thuc-phu-luc-i.md`** (tải lại 2026-10-21, sha256 khớp); phông chữ và phạm vi ở `nghi-dinh-30-2020-phong-chu-va-pham-vi.md`. Không trích từ trí nhớ.
 
 | Thành phần (ô theo Mục IV) | Quy định (nguyên văn, đã gộp khoảng trắng thừa) | Mẫu làm gì |
 |---|---|---|
@@ -81,6 +81,12 @@ Bản gốc: `docs/reference/bo-luat-lao-dong-2019-loai-hop-dong-thu-viec.md` (B
 7. **Câu chữ ba mệnh đề** (duyệt từng chữ): đang làm — "Hiện đang làm việc tại Công ty từ ngày …"; đã nghỉ — "Đã làm việc tại Công ty từ ngày … đến ngày …"; kèm "theo hợp đồng lao động không xác định thời hạn" / "… xác định thời hạn" / "trong thời gian thử việc".
 8. **Duyệt mục 4** (cơ chế `ENUM`, slot không bắt buộc rỗng, "đã nghỉ" = có `employment_end_date`) và luật cấm ngày nghỉ ở tương lai.
 9. **Cách đánh dấu số dải `TRIAL`** — mặc định `{seq}/GXN-{symbol}-TN` (không bao giờ trùng dạng số thật, vẫn trong khuôn ký hiệu của Nghị định: chữ in hoa, nối bằng `-`).
+
+## 7. Trả lời của PO (2026-10-21) và cái đã áp
+
+- **Câu 8 — duyệt cơ chế mục 4** kèm hai điều kiện: (1) điều kiện trong mẫu bao **cả mệnh đề** của slot không bắt buộc, không in nhãn rỗng; (2) test: vắng `employment_end_date` thì **PDF** không có dòng nghỉ việc nào (`tests/test_work_confirmation_template.py`, lớp `TrongPdf`, trên PDF thật qua `soffice`). Luật cấm ngày nghỉ ở tương lai: đồng ý — kiểu rule `not_in_future` đã vào từ vựng và mã; **bật cho `employment_end_date` bằng data migration sau khi mã live** (mã cũ coi kiểu lạ là cấu hình không hợp lệ).
+- **Câu 9 — dải `TRIAL`:** `{seq}/GXN-{symbol}-TN` đồng ý. **Câu 1:** ký hiệu `ABC`.
+- **Chưa có:** tên công ty và địa danh (PO để `<…>`) — mẫu giữ `[TÊN CÔNG TY]`, `[Địa danh]`. **Câu 2–7** PO để `<trả lời>` — **áp mặc định đã nêu** (chủ ngữ "Công ty"; khối ký một dòng + chú thích; `Lưu: VT.`; không trích yếu; không in `date_of_birth`, `national_id`, `copies_count`, `language`; câu chữ ba mệnh đề như bản nháp). Sửa lại khi PO trả lời.
 
 ## Open Questions
 

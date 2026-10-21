@@ -145,7 +145,8 @@ class DuongThang(FinalizeBase):
         # metadata của bản ghim ISSUED nằm trong CÙNG lệnh PUT: hai object FINAL có, bản nháp không
         for key in (docx_key, pdf_key):
             meta = self.raw.head_object(Bucket=self.bucket, Key=key)["Metadata"]
-            self.assertEqual(meta, {"bo19-pin-reason": "ISSUED", "bo19-document-number": number}, key)
+            iso = "-".join(reversed(issued_date.split("/")))  # `issued_date` in trên văn bản là dd/mm/yyyy; metadata mang ISO yyyy-mm-dd (số không có năm nên đối soát cần ngày — ADR-043)
+            self.assertEqual(meta, {"bo19-pin-reason": "ISSUED", "bo19-document-number": number, "bo19-issued-date": iso}, key)
         draft_keys = self.rows("select docx_object_key, pdf_object_key from document_render where document_id = %s and render_kind = 'DRAFT'", did)[0]
         for key in draft_keys:
             self.assertEqual(self.raw.head_object(Bucket=self.bucket, Key=key)["Metadata"], {}, key)

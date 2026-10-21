@@ -6,7 +6,9 @@ thay vì điền chỗ trống), và (b) `issues` — danh sách (mã, tên bi�
 Nguồn của từng loại biến:
 - `DIRECT_SLOT` — giá trị slot nguồn: `HR_PROFILE` phải `CONFIRMED`, `USER_INPUT` phải `PROVIDED`/`CONFIRMED`, `SYSTEM` phải `SYSTEM_SET` (cùng bảng chấp nhận với `domain.eligibility`); trạng thái khác là `WRONG_SOURCE`
   ("agent tự đặt giá trị cho biến chưa xác nhận" — F2), vắng hay `ERASED` là `VARIABLE_MISSING`. Định dạng theo kiểu slot: `STRING`/`TEXT` nguyên văn, `INT` số nguyên, `DATE` `dd/mm/yyyy` (A-098);
-  kiểu khác (`ENUM`, `LIST`, `BOOL`, `FILE`) chưa hỗ trợ — biến vắng mặt, mã `VARIABLE_MISSING` (câu chữ theo loại hợp đồng là việc của đoạn điều kiện của template thật, M1.1).
+  **`ENUM` (M1.1, PO duyệt 2026-10-21): bảng giá trị chứa đúng MÃ** (ví dụ `PROBATION`) đã kiểm thuộc `validation_rules.one_of` của slot — chữ tiếng Việt cho từng mã nằm trong đoạn điều kiện của template, không ở mã hay DB; mã lạ là `VARIABLE_MISSING`.
+  **Slot không bắt buộc (`is_required = false`) mà vắng giá trị → chuỗi RỖNG**, không phải `VARIABLE_MISSING` — template bao cả mệnh đề của nó trong điều kiện nên không in nhãn rỗng; slot có giá trị nhưng sai nguồn vẫn là `WRONG_SOURCE`.
+  Kiểu khác (`LIST`, `BOOL`, `FILE`) chưa hỗ trợ — biến vắng mặt, mã `VARIABLE_MISSING`.
 - `FREE_CONTENT` — dòng `document_free_content` `PASSED` hiện hành (vòng lớn nhất, rồi lần sinh lớn nhất); vắng là `VARIABLE_MISSING`.
 - `SYSTEM` — chỉ biến mang cờ *điền sau duyệt* (INV-01: `document_number`, `issued_date`, `signer_user_id`…): bản nháp hiện dấu giữ chỗ nhìn ra ngay là chưa chính thức — `provisional.marker_for(tên)`, ví dụ `[Số văn bản — cấp khi phát hành]` (A-098, PO 2026-10-15) — **không** qua kiểm "không placeholder" và không vào
   `approved_content_hash`. `SYSTEM` không mang cờ thì chưa có nguồn ở B9a: vắng mặt, `VARIABLE_MISSING`.
@@ -67,10 +69,13 @@ class BuiltValues:
         return tuple(sorted({i.code for i in self.issues}))
 
 
-def _format(data_type: str, value: Any) -> str | None:
+def _format(data_type: str, value: Any, rules: Any = None) -> str | None:
     """Giá trị slot → chuỗi cho biến; `None` nếu kiểu chưa hỗ trợ hay giá trị không đúng kiểu."""
     if data_type in ("STRING", "TEXT"):
         return value if isinstance(value, str) else None
+    if data_type == "ENUM":  # mã, không phải chữ hiển thị; phải thuộc tập đã khai ở slot
+        allowed = rules.get("one_of") if isinstance(rules, dict) else None
+        return value if isinstance(value, str) and isinstance(allowed, list) and value in allowed else None
     if data_type == "INT":
         return str(value) if isinstance(value, int) and not isinstance(value, bool) else None
     if data_type == "DATE":
@@ -87,9 +92,10 @@ def build_values(conn: psycopg.Connection, document_id: uuid.UUID) -> BuiltValue
         raise DocumentNotFound
     request_id, version_id, requires_seal, seal_type = doc
     template = read_version(conn, version_id)
-    slots = {r[0]: r[1:] for r in conn.execute(
-        "SELECT s.slot_name, s.value, s.value_status, sd.source, sd.data_type, sd.sensitivity FROM request_slot s "
-        "JOIN slot_definition sd ON sd.request_type_code = s.request_type_code AND sd.slot_name = s.slot_name WHERE s.request_id = %s", (request_id,)).fetchall()}
+    defs = {r[0]: r[1:] for r in conn.execute(
+        "SELECT sd.slot_name, sd.source, sd.data_type, sd.is_required, sd.validation_rules FROM slot_definition sd "
+        "JOIN request q ON q.request_type_code = sd.request_type_code WHERE q.id = %s", (request_id,)).fetchall()}
+    slots = {r[0]: r[1:] for r in conn.execute("SELECT slot_name, value, value_status FROM request_slot WHERE request_id = %s", (request_id,)).fetchall()}
     free = {r[0]: r[1] for r in conn.execute(
         "SELECT DISTINCT ON (variable_name) variable_name, body FROM document_free_content WHERE document_id = %s AND validation_outcome = 'PASSED' "
         "ORDER BY variable_name, revision_round DESC, attempt_no DESC", (document_id,)).fetchall()}
@@ -101,15 +107,23 @@ def build_values(conn: psycopg.Connection, document_id: uuid.UUID) -> BuiltValue
 
     for v in template.variables:
         if v.kind == "DIRECT_SLOT":
-            slot = slots.get(v.source_slot_name or "")
-            if slot is None or slot[0] is None or slot[1] == "ERASED":
+            definition = defs.get(v.source_slot_name or "")
+            if definition is None:
                 bad(VARIABLE_MISSING, v.name)
                 continue
-            value, status, source, data_type, _sensitivity = slot
+            source, data_type, required, rules = definition
+            slot = slots.get(v.source_slot_name or "")
+            if slot is None or slot[0] is None or slot[1] == "ERASED":
+                if required:
+                    bad(VARIABLE_MISSING, v.name)
+                else:
+                    values[v.name] = ""  # slot không bắt buộc, vắng: chuỗi rỗng — template bao cả mệnh đề trong điều kiện
+                continue
+            value, status = slot
             if status not in _ACCEPTED.get(source, _OTHER):
                 bad(WRONG_SOURCE, v.name)
                 continue
-            text = _format(data_type, value)
+            text = _format(data_type, value, rules)
             if text is None:
                 bad(VARIABLE_MISSING, v.name)  # kiểu chưa hỗ trợ hay giá trị sai kiểu — A-098
                 continue

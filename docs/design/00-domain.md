@@ -116,9 +116,9 @@ Trách nhiệm khi văn bản sai vì dữ liệu nhân sự sai thuộc về ng
 | `full_name` | string | `HR_PROFILE` | `PER` | ✔ | Chỉ đọc. Lệch so với lời nhân viên khai thì chặn và báo phòng HC |
 | `department_name` | string | `HR_PROFILE` | `INT` | ✔ | Chỉ đọc |
 | `job_title` | string | `HR_PROFILE` | `INT` | ✔ | Chỉ đọc |
-| `contract_type` | enum | `HR_PROFILE` | `PER` | ✔ | Quyết định câu chữ trong văn bản. Agent **cấm** suy diễn — xem EC-WC-01 |
+| `contract_type` | enum | `HR_PROFILE` | `PER` | ✔ | Quyết định câu chữ trong văn bản. Agent **cấm** suy diễn — xem EC-WC-01. Bản render nhận **mã** (`PROBATION` / `FIXED_TERM` / `INDEFINITE`), chữ tiếng Việt nằm trong đoạn điều kiện của mẫu (M1.1, 2026-10-21) |
 | `employment_start_date` | date | `HR_PROFILE` | `PER` | ✔ | Chỉ đọc |
-| `employment_end_date` | date | `HR_PROFILE` | `PER` | ○ | Có giá trị và đã ở quá khứ → chuyển sang thể thức "đã từng công tác" (EC-WC-02) |
+| `employment_end_date` | date | `HR_PROFILE` | `PER` | ○ | Có giá trị → chuyển sang thể thức "đã từng công tác" (EC-WC-02); ngày ở tương lai bị rule `not_in_future` từ chối (PO 2026-10-21; bật bằng data migration). Vắng thì biến nhận chuỗi rỗng và mẫu bỏ cả mệnh đề |
 | `date_of_birth` | date | `HR_PROFILE` | `PER` | ○ | Chỉ đưa vào văn bản khi `recipient_org` yêu cầu. Là PII |
 | `national_id` | string | `HR_PROFILE` | `RES` | ○ | PII mức cao. Mask trong log. Không prompt module nào khai nó làm input (NFR-05 của PRD). Chỉ đưa vào bản render cuối |
 | `purpose` | text | `USER_INPUT` | `RES` | ✔ | Không rỗng. Nếu mục đích cần chứng minh thu nhập → xem EC-WC-03 |

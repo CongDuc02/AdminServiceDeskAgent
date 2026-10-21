@@ -38,6 +38,10 @@ Chuỗi số vẫn duy nhất trong (sổ, dải, **kỳ**): hai số khác `seq
 
 **Điều kiện đảo ngược:** nếu tổ chức sau này gộp nhiều năm vào một dãy (đổi sang `NEVER`) thì ràng buộc này vẫn đúng — không cần đảo.
 
+## Cập nhật 2026-10-21 (PO) — đối soát và metadata
+
+PO quyết hai điều cho chỗ "Phải chấp nhận" về đối soát sau khôi phục: **(1) đối soát theo `document_id`**, không theo chuỗi số; **(2) thêm ngày phát hành vào metadata** — `x-bo19-issued-date` (ISO `yyyy-mm-dd`, ngày cấp số theo múi giờ tổ chức) là trường thứ ba của bản ghim `ISSUED`, set trong cùng lệnh `PUT` (`04-data.md` mục 5.1 và 5.3; `11-ops.md` mục 5.2(b), (c)). Số không có năm nên cần ngày để biết kỳ của số; bước đẩy `next_seq` của (c) làm **theo từng kỳ**. Không PII: ngày cấp số in ngay trên văn bản. Object ghi trước thay đổi này (dải `TRIAL`, dữ liệu giả) không có trường này — giới hạn đã nói ở 5.2(b).
+
 ## Rejected alternatives
 
 - **(b) Năm trong ký hiệu:** khác khuôn PO đã chọn và khác ví dụ của Nghị định (số và ký hiệu viết `15/QĐ-BNV`, không năm). Giữ lại như phương án dự phòng nếu pháp chế đòi.

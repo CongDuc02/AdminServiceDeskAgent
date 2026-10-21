@@ -28,6 +28,7 @@
 | 2 | `min_tokens` | số nguyên ≥ 1 | `STRING`, `TEXT` | Số **đơn vị cách nhau bởi khoảng trắng** (sau chuẩn hoá NFC, tách theo khoảng trắng Unicode, bỏ đơn vị rỗng) ≥ N. **Với tiếng Việt đây là đếm tiếng (âm tiết), không phải đếm từ:** "xin visa" = 2 nên với N = 3 bị hỏi lại, dù là một yêu cầu rõ ràng. Cơ học: **không** đánh giá nghĩa |
 | 3 | `int_range` | `{"min": n, "max": m}` (mỗi khoá tuỳ chọn, có ít nhất một) | `INT` | `min ≤ giá trị ≤ max`. `bool` không phải số nguyên |
 | 4 | `one_of` | danh sách chuỗi không rỗng | `ENUM` | Giá trị bằng đúng một phần tử (phân biệt hoa thường) |
+| 5 | `not_in_future` | `true` | `DATE` | **Thêm 2026-10-21 (PO duyệt).** Ngày không sau **ngày hôm nay theo múi giờ tổ chức** (A-041). Kiểu duy nhất đọc đồng hồ (`check_value(..., today=)` tiêm được). Mã `RULE_NOT_IN_FUTURE`. Dùng cho `employment_end_date`: ngày nghỉ việc ở tương lai làm thể thức "đã từng công tác" sai (EC-WC-02). **Bật cho slot bằng data migration SAU KHI mã có kiểu này đã live** — mã cũ coi kiểu lạ là cấu hình không hợp lệ |
 
 Kiểm `data_type` có sẵn trước các rule (kiểu sai thì `RULE_FAILED` với mã `TYPE`): `INT` là số nguyên không phải `bool`; `DATE` là `YYYY-MM-DD` hợp lệ; `STRING`/`TEXT` là chuỗi; `ENUM` là chuỗi.
 

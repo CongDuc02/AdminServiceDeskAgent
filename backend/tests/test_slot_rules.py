@@ -6,8 +6,10 @@ from __future__ import annotations
 
 from tests import _guard  # noqa: F401 — chốt chặn mạng và khoá API của bộ test (tests/_guard.py)
 
+import datetime as dt
 import unicodedata
 import unittest
+from unittest import mock
 
 from bo19.domain import slot_rules as sr
 
@@ -83,6 +85,36 @@ class OneOf(unittest.TestCase):
             self.assertEqual(sr.check_value("ENUM", r, bad), ("RULE_ONE_OF",), repr(bad))
 
 
+class NotInFuture(unittest.TestCase):
+    RULES = {"not_in_future": True}
+    TODAY = dt.date(2026, 10, 21)
+
+    def test_hom_nay_va_qua_khu_dat_tuong_lai_hong(self):
+        for day in ("2026-10-21", "2026-10-20", "1999-01-01"):
+            self.assertEqual(sr.check_value("DATE", self.RULES, day, today=self.TODAY), (), day)
+        for day in ("2026-10-22", "2027-01-01"):
+            self.assertEqual(sr.check_value("DATE", self.RULES, day, today=self.TODAY), ("RULE_NOT_IN_FUTURE",), day)
+
+    def test_kieu_sai_van_la_rule_type_va_dung_truoc(self):
+        self.assertEqual(sr.check_value("DATE", self.RULES, "21/10/2026", today=self.TODAY), ("RULE_TYPE",))
+
+    def test_khong_tiem_today_thi_doc_dong_ho_theo_mui_gio_to_chuc(self):
+        with mock.patch.object(sr, "org_today", return_value=self.TODAY) as clock:
+            self.assertEqual(sr.check_value("DATE", self.RULES, "2026-10-22"), ("RULE_NOT_IN_FUTURE",))
+            self.assertEqual(sr.check_value("DATE", self.RULES, "2026-10-21"), ())
+        self.assertEqual(clock.call_count, 2)
+
+    def test_org_today_la_ngay_gio_viet_nam_khong_phai_utc(self):
+        fake = dt.datetime(2026, 12, 31, 17, 30, tzinfo=dt.timezone.utc)  # 00:30 ngày 01/01/2027 giờ Việt Nam
+        with mock.patch.object(sr.dt, "datetime", mock.Mock(now=lambda tz: fake.astimezone(tz))):
+            self.assertEqual(sr.org_today(), dt.date(2027, 1, 1))
+
+    def test_cau_hinh(self):
+        self.assertEqual(sr.validate_config("DATE", self.RULES), [])
+        self.assertEqual(sr.validate_config("DATE", {"not_in_future": False}), ["RULE_PARAM_INVALID:not_in_future"])
+        self.assertEqual(sr.validate_config("STRING", self.RULES), ["RULE_KIND_DATA_TYPE:not_in_future"])
+
+
 class KiemKieuDuLieu(unittest.TestCase):
     def test_kieu_sai_la_rule_type_va_dung_truoc_moi_rule(self):
         cases = [("INT", True), ("INT", "3"), ("INT", 3.0), ("INT", None), ("STRING", 5), ("TEXT", ["a"]), ("ENUM", 1), ("DATE", "2026-13-01"), ("DATE", "20261001"),
@@ -134,7 +166,7 @@ class CauHinh(unittest.TestCase):
 
     def test_moi_kieu_trong_tu_vung_co_ma_va_data_type(self):
         self.assertEqual(set(sr.KINDS), set(sr.KIND_DATA_TYPES))
-        self.assertEqual({sr.CODES[k] for k in sr.KINDS} | {sr.CODES["type"]}, {"RULE_NON_BLANK", "RULE_MIN_TOKENS", "RULE_INT_RANGE", "RULE_ONE_OF", "RULE_TYPE"})
+        self.assertEqual({sr.CODES[k] for k in sr.KINDS} | {sr.CODES["type"]}, {"RULE_NON_BLANK", "RULE_MIN_TOKENS", "RULE_INT_RANGE", "RULE_ONE_OF", "RULE_NOT_IN_FUTURE", "RULE_TYPE"})
 
 
 if __name__ == "__main__":

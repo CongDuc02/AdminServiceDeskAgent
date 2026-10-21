@@ -15,8 +15,10 @@ from pathlib import Path
 from docx import Document
 from docx.shared import Mm
 
+from bo19.tool_layer.rendering.convert import convert_to_pdf
 from bo19.tool_layer.rendering.docx_fill import fill_docx, template_variables
 from bo19.tool_layer.rendering.fonts import declared_families
+from tests.render_support import pdf_text, require_tool
 
 TEMPLATE = Path(__file__).resolve().parents[2] / "docs" / "design" / "proposals" / "mau-giay-xac-nhan-cong-tac" / "tpl_work_confirmation.docx"
 VARIABLES = frozenset({"full_name", "department_name", "job_title", "recipient_org", "contract_type", "employment_start_date", "employment_end_date",
@@ -93,6 +95,29 @@ class MauNhap(unittest.TestCase):
         self.assertIn("Số: 01/GXN-ABC", body)
         self.assertIn("Trần Thị Mẫu (GIẢ), Giám đốc (GIẢ)", body)
         self.assertIn("Kính gửi: Ngân hàng Mẫu (GIẢ)", body)
+
+
+def pdf(**over: str) -> str:
+    require_tool(None, "soffice")
+    require_tool(None, "pdftotext")
+    return pdf_text(convert_to_pdf(fill_docx(TEMPLATE.read_bytes(), {**BASE, **over}, declared=VARIABLES, operating_mode="NON_PRODUCTION"), timeout_s=120))
+
+
+class TrongPdf(unittest.TestCase):
+    """PO 2026-10-21: điều kiện trong mẫu bao CẢ MỆNH ĐỀ của slot không bắt buộc — vắng `employment_end_date` thì PDF không có dòng nghỉ việc nào, không nhãn rỗng."""
+
+    def test_vang_ngay_nghi_viec_khong_co_dong_nghi_viec_nao_trong_pdf(self):
+        text = pdf(employment_end_date="")
+        for fragment in ("Đã làm việc", "đến ngày", "nghỉ"):
+            self.assertNotIn(fragment, text, fragment)
+        self.assertIn("Hiện đang làm việc tại Công ty từ ngày 02/03/2022", text)
+        self.assertNotRegex(text, r"(?mi)^\s*(ngày\s+)?(nghỉ|kết thúc)[^\n]*:\s*$")  # không nhãn rỗng kiểu "Ngày nghỉ việc:"
+
+    def test_co_ngay_nghi_viec_thi_pdf_co_dung_mot_cau_da_lam_viec(self):
+        text = pdf(employment_end_date="15/09/2026", contract_type="FIXED_TERM")
+        self.assertEqual(text.count("Đã làm việc"), 1)
+        self.assertIn("15/09/2026", text)
+        self.assertNotIn("Hiện đang", text)
 
 
 if __name__ == "__main__":
