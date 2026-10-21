@@ -40,6 +40,7 @@ B9b1 dừng ở `await_issue`. `document_issue` đã ghi lệnh phát hành (`de
 6. **Kernel.** `TableSpec` của `document` thêm `value_columns["ISSUED"]` = {`issued_register_entry_id`, `final_render_id`, `issued_date`} và `on_enter_now["ISSUED"]` = `issued_at`: `ck_document_issued_complete` đòi cả bốn cột có mặt trong cùng câu `UPDATE` đổi sang `ISSUED` (cùng lý do ADR-040 mục 1). `transition` vẫn là nơi duy nhất ghi `status`.
 7. **Không migration.** Mọi bảng, cột, quyền `bo19_app` đã có ở `0001`–`0014` (kiểm trước khi viết mã: `document_register*`, `document_render_pin`, `document` các cột `issued_*`/`final_render_id`, `decision_record`, quyền `UPDATE`/`INSERT` của `bo19_app`). Dải `TRIAL` của sổ `WORK_CONFIRMATION` có sổ ở data migration `0002` nhưng **không có định dạng số** — định dạng giả vào `tools/seed-dev/` (chỉ local, PO 2026-10-20) và vào fixture test.
 8. **Không đổi contract `openapi.yaml`.** `issue_in_progress`, `document_number`, `issued_date`, `final_render_id`, `job_failed`, `job_failed_code` đã có từ B9b1; tải bản `FINAL` đi qua `downloadRender` đã có.
+9. **`GET /requests/{id}` điền `documents` (`DocumentOwnerView`).** Contract và `05-api.md` đã khai trường này "có giá trị từ B9" nhưng B8–B9b1 trả `[]`; không có nó người tạo yêu cầu không biết `final_render_id` để tải bản của mình sau `ISSUED`. Chỉ điền đúng các trường đã có trong `openapi.yaml`; cờ dẫn xuất `issue_in_progress` dùng chung đoạn SQL với `GET /documents/{id}` (một nơi định nghĩa). `changes_requested` vẫn `null` (Sprint 2).
 
 ## Consequences
 

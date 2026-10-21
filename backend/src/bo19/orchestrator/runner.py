@@ -36,6 +36,7 @@ from bo19.orchestrator.runtime.threads import document_thread_id, mark_document_
 from bo19.orchestrator.state import DOCUMENT_SCHEMA_VERSION, SCHEMA_VERSION, initial_document_state, initial_state
 from bo19.persistence.pool import Pool
 from bo19.tool_layer.kernel.permission import employee_context, system_context
+from bo19.tool_layer.numbering import document_number_void_open
 from bo19.tool_layer.storage import ObjectStorage
 from bo19.tool_layer.tools.document_draft_save import InputFingerprinter
 from bo19.tool_layer.tools.document_reads import decision_record_read, request_header_read
@@ -47,7 +48,9 @@ log = get_logger("bo19.orchestrator.runner")
 BUDGET_EXCEEDED = "BUDGET_EXCEEDED"
 # Điểm `interrupt` theo thứ tự đi qua, và điểm mà mỗi loại `decision_record` đánh thức (ADR-040 mục 5).
 WAIT_ORDER = ("await_content_review", "await_signature", "await_seal", "await_issue")
-WAKES = {"APPROVED": "await_content_review", "SIGNED": "await_signature", "SEALED": "await_seal"}
+WAKES = {"APPROVED": "await_content_review", "SIGNED": "await_signature", "SEALED": "await_seal", "ISSUE_ORDERED": "await_issue"}
+RESUME_KINDS = frozenset({"APPROVED", "SIGNED", "SEALED"})  # job `resume_document_graph`
+FINALIZE_KINDS = frozenset({"ISSUE_ORDERED"})  # job `finalize_issue` (B9b2, ADR-041 mục 1)
 RECURSION_LIMIT = 40
 
 
@@ -194,8 +197,22 @@ class DocumentRunner:
                 raise self._failed(code_of(e), run, exception_type=type(e).__name__) from None
 
     def resume_document(self, *, document_id: uuid.UUID, decision_record_id: uuid.UUID, trace_id: str | None = None, cancel: threading.Event | None = None) -> RenderOutcome:
+        """Job `resume_document_graph` — ba loại quyết định của cổng (`APPROVED`, `SIGNED`, `SEALED`). Xem `_wake`."""
+        return self._wake(document_id, decision_record_id, RESUME_KINDS, trace_id, cancel)
+
+    def run_finalize_issue(self, *, document_id: uuid.UUID, decision_record_id: uuid.UUID, trace_id: str | None = None, cancel: threading.Event | None = None) -> RenderOutcome:
+        """Job `finalize_issue` (B9b2, ADR-041): đánh thức `await_issue` bằng lệnh phát hành (`ISSUE_ORDERED`), `finalize_issue` chạy trong cùng lần đó. Cùng quy tắc chạy lại như `_wake`."""
+        return self._wake(document_id, decision_record_id, FINALIZE_KINDS, trace_id, cancel)
+
+    def abandon_issue(self, *, document_id: uuid.UUID, reason_code: str, trace_id: str | None = None) -> uuid.UUID | None:
+        """Handler `finalize_issue` gọi khi job sắp `FAILED` (ADR-041 mục 3): số `ASSIGNED` đang mở của `document` chưa `ISSUED` → `VOIDED` kèm `reason_code`. Trả id dòng sổ, hoặc `None` nếu không có số nào để huỷ."""
+        trace = trace_id or new_trace_id()
+        with trace_scope(trace):
+            return document_number_void_open(self._deps.pool, system_context(trace), document_id=document_id, reason_code=reason_code)
+
+    def _wake(self, document_id: uuid.UUID, decision_record_id: uuid.UUID, allowed: frozenset[str], trace_id: str | None, cancel: threading.Event | None) -> RenderOutcome:
         """Đánh thức thread bằng id của `decision_record` (payload resume chỉ mang id) — **chỉ ở đúng điểm chờ mà loại quyết định đó đánh thức** (ADR-040 mục 5):
-        `APPROVED` ↔ `await_content_review`, `SIGNED` ↔ `await_signature`, `SEALED` ↔ `await_seal`. Job chạy ít nhất một lần (ADR-004), nên:
+        `APPROVED` ↔ `await_content_review`, `SIGNED` ↔ `await_signature`, `SEALED` ↔ `await_seal`, `ISSUE_ORDERED` ↔ `await_issue`; mỗi loại job chỉ nhận các loại của nó (`allowed`). Job chạy ít nhất một lần (ADR-004), nên:
 
         - graph đã `END`, hoặc thread đang chờ ở điểm **sau** điểm quyết định này đánh thức → no-op (`already`): việc này đã xong ở lần chạy trước;
         - thread đang chờ đúng điểm → `resume`;
@@ -213,7 +230,7 @@ class DocumentRunner:
                 if not snap.exists:
                     raise NodeError(THREAD_NOT_WAITING)
                 decision = run.call_tool(decision_record_read, self._deps.pool, run.sys, decision_record_id=decision_record_id, document_id=document_id)  # `DECISION_NOT_FOUND` nếu không thuộc `document` này
-                wanted = WAKES.get(decision.kind)
+                wanted = WAKES.get(decision.kind) if decision.kind in allowed else None
                 if wanted is None:
                     raise NodeError("UNSUPPORTED_DECISION")
                 configurable = {"run": run, "trace_id": trace}

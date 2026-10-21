@@ -231,3 +231,94 @@ class KhoiDongLai(DocBase):
         self.assertEqual(self.scalar("select count(*) from document where request_id = %s", rid), 1)
         self.assertEqual(self.scalar("select count(*) from llm_usage where document_id = %s", document_id_for(rid)), 1)
         self.assertEqual(self.thread(rid)["status"], "WAITING")
+
+    # ---- B9b2: giết tiến trình trong `finalize_issue` (ADR-041 mục 5) ------------------------------------------------------------
+
+    def to_await_issue(self):
+        """Đưa một `request` tới `await_issue` bằng runner của test (không tiến trình con) và thao tác cổng thật, rồi ghi lệnh phát hành. Trả (rid, document_id, id lệnh phát hành)."""
+        from bo19.tool_layer.gate_ops.document_apply_seal import document_apply_seal
+        from bo19.tool_layer.gate_ops.document_issue import document_issue
+        from bo19.tool_layer.gate_ops.document_sign import document_sign
+        from bo19.tool_layer.kernel.permission import employee_context
+
+        with self.db.connect(autocommit=True) as c:  # siêu người dùng + replica: văn bản ISSUED của test trước còn trỏ tới dòng sổ
+            c.execute("set session_replication_role = replica")
+            reg = c.execute("select document_register_id from request_type where code = 'WORK_CONFIRMATION'").fetchone()[0]
+            c.execute("insert into document_register_format (id, document_register_id, series, format_pattern, symbol, seq_min_digits, effective_from) "
+                      "values (%s, %s, 'TRIAL', 'TRIAL-{seq}/{year}/{symbol}', 'THU-NGHIEM', 3, timestamptz '2020-01-01 00:00:00+00') on conflict do nothing", (uuid.uuid4(), reg))
+            c.execute("delete from document_register_entry")  # bộ đếm sạch cho mỗi test: số kỳ vọng tính từ 001
+            c.execute("delete from document_register_counter")
+        self.make_signer()
+        rid = self.submitted_request()
+        did = document_id_for(rid)
+        self.llm.will("draft_free_content", {"variable_name": "purpose_statement", "body": BODY_OK})
+        self.runner.run_render(request_id=rid)
+        approved = self.approve(rid)
+        self.runner.resume_document(document_id=did, decision_record_id=approved)
+        assigned = self.scalar("select signer_employee_id from document where id = %s", did)
+        officer = self.scalar("select actor_employee_id from decision_record where id = %s", approved)
+        version = lambda: self.scalar("select row_version from document where id = %s", did)  # noqa: E731
+        with self.pool.acquire() as conn:
+            sctx, octx = employee_context(conn, assigned), employee_context(conn, officer)
+        signed = document_sign(self.pool, sctx, document_id=did, decision_id=uuid.uuid4(), expected_row_version=version()).decision_record_id
+        self.runner.resume_document(document_id=did, decision_record_id=signed)
+        sealed = document_apply_seal(self.pool, octx, document_id=did, decision_id=uuid.uuid4(), expected_row_version=version(), copies_count=1, page_count=None).decision_record_id
+        self.runner.resume_document(document_id=did, decision_record_id=sealed)
+        order = document_issue(self.pool, octx, document_id=did, decision_id=uuid.uuid4(), expected_row_version=version()).decision_record_id
+        self.assertEqual((self.document(rid)["status"], self.thread(rid)["waiting_at_node"]), ("SEALED", "await_issue"))
+        return rid, did, order
+
+    def entry(self, did) -> tuple:
+        return self.rows("select id, seq, status from document_register_entry where document_id = %s", did)[0]
+
+    def assert_issued_once(self, rid, did, entry_before):
+        self.assertEqual(self.document(rid)["status"], "ISSUED")
+        self.assertEqual(self.rows("select id, seq, status from document_register_entry where document_id = %s", did), [entry_before])  # đúng một dòng sổ — cùng số
+        self.assertEqual(self.scalar("select next_seq from document_register_counter"), entry_before[1] + 1)  # bộ đếm tăng đúng một lần
+        self.assertEqual(self.scalar("select count(*) from document_render where document_id = %s and render_kind = 'FINAL'", did), 1)
+        self.assertEqual(self.scalar("select count(*) from document_render_pin p join document_render r on r.id = p.render_id where r.document_id = %s and p.pin_reason = 'ISSUED'", did), 1)
+        self.assertEqual(self.scalar("select count(*) from audit_event where document_id = %s and action = 'document.issue_complete'", did), 1)
+        self.assertEqual(self.scalar("select status from request where id = %s", rid), "FULFILLED")
+        self.assertEqual(self.thread(rid)["status"], "ENDED")
+
+    def test_giet_sau_khi_cap_so_truoc_khi_chuyen_pdf_tien_trinh_moi_phat_hanh_dung_so_do(self):
+        rid, did, order = self.to_await_issue()
+        h = Proc(self, "hang_finalize_pdf", str(did), str(order), llm="none")
+        self.addCleanup(self.reap, h)
+        h.wait_line("HANGING")  # đã cấp số, đã ghi .docx bản FINAL, kẹt ở pdf_export
+        self.assertEqual(h.kill(signal.SIGKILL), -signal.SIGKILL)
+        before = self.entry(did)
+        self.assertEqual((before[1], before[2]), (1, "ASSIGNED"))
+        self.assertEqual((self.document(rid)["status"], self.scalar("select count(*) from document_render where document_id = %s and render_kind = 'FINAL'", did)), ("SEALED", 0))
+        b = Proc(self, "finalize", str(did), str(order), llm="none")
+        out = b.result()
+        self.assertEqual((out["status"], out["already"], out["llm_calls"], b.finish()), ("ENDED", False, 0, 0))
+        self.assert_issued_once(rid, did, before)
+
+    def test_giet_truoc_giao_dich_issued_tien_trinh_moi_ghim_dung_ban_final_da_ghi(self):
+        rid, did, order = self.to_await_issue()
+        h = Proc(self, "hang_finalize_mark", str(did), str(order), llm="none")
+        self.addCleanup(self.reap, h)
+        h.wait_line("HANGING")  # đã cấp số, ghi cặp .docx/.pdf FINAL, kiểm byte đạt; kẹt ngay trước giao dịch ISSUED
+        self.assertEqual(h.kill(signal.SIGKILL), -signal.SIGKILL)
+        before = self.entry(did)
+        render_before = self.scalar("select id from document_render where document_id = %s and render_kind = 'FINAL'", did)
+        self.assertIsNotNone(render_before)  # bản FINAL đã ghi...
+        self.assertEqual((self.document(rid)["status"], self.scalar("select count(*) from document_render_pin where render_id = %s", render_before)), ("SEALED", 0))  # ...nhưng chưa ghim, chưa ISSUED
+        b = Proc(self, "finalize", str(did), str(order), llm="none")
+        out = b.result()
+        self.assertEqual((out["status"], out["already"], b.finish()), ("ENDED", False, 0))
+        self.assert_issued_once(rid, did, before)
+        self.assertEqual(self.scalar("select final_render_id from document where id = %s", did), render_before)  # đúng bản đã ghi, không bản thứ hai
+
+    def test_chay_lai_sau_khi_issued_o_tien_trinh_khac_la_no_op(self):
+        rid, did, order = self.to_await_issue()
+        a = Proc(self, "finalize", str(did), str(order), llm="none", sleep=True)
+        self.addCleanup(self.reap, a)
+        self.assertEqual(a.result()["status"], "ENDED")
+        a.kill()
+        before = self.entry(did)
+        b = Proc(self, "finalize", str(did), str(order), llm="none")
+        out = b.result()
+        self.assertEqual((out["status"], out["already"], b.finish()), ("ENDED", True, 0))
+        self.assert_issued_once(rid, did, before)

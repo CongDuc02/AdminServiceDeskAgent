@@ -14,6 +14,8 @@ chữ của file đã điền (kể cả file đã có sẵn ở khoá này) cò
 `TEMPLATE_NOT_ACTIVE`: bản `DRAFT` chỉ render từ phiên bản `ACTIVE`; bản `FINAL` còn render được từ phiên bản `RETIRED` (văn bản đã duyệt bằng phiên bản đó có thể đã bị thay từ lúc duyệt — `finalize_issue` render lại đúng nó,
 ADR-015 chốt 3), nhưng không từ phiên bản `UPLOADED`.
 
+`object_metadata` (B9b2, ADR-041 mục 2): hai trường metadata của bản ghim `ISSUED` (`bo19-pin-reason`, `bo19-document-number`; mục 5.1 và 5.3 của 04-data.md) đi trong CÙNG lệnh `PUT` của `.docx`; chỉ `finalize_issue` truyền. Không vào `input_hash`.
+
 `audit_event`: một dòng `document.docx_render` mỗi lần gọi (mã và tham chiếu, không giá trị). Lỗi chỉ mang mã và TÊN biến.
 """
 from __future__ import annotations
@@ -86,7 +88,7 @@ def render_key(document_id: uuid.UUID, digest: bytes, extension: str) -> str:
 
 
 def docx_render(pool: Pool, storage: ObjectStorage, ctx: ToolContext, *, document_id: uuid.UUID, render_kind: str, values: Mapping[str, str],
-                lease_s: float = 120) -> DocxRender:
+                lease_s: float = 120, object_metadata: Mapping[str, str] | None = None) -> DocxRender:
     require_system(ctx)
     if render_kind not in RENDER_KINDS:
         raise ValueError("render_kind")
@@ -116,7 +118,7 @@ def docx_render(pool: Pool, storage: ObjectStorage, ctx: ToolContext, *, documen
         data = docx_fill.fill_docx(template, values, declared=declared, operating_mode=mode)
         if render_kind == "FINAL":
             _scan_final(data)
-        stored = store.put_once(pool, storage, object_key=key, purpose="RENDER_DOCX", content_type=DOCX_CONTENT_TYPE, data=data, lease_s=lease_s)
+        stored = store.put_once(pool, storage, object_key=key, purpose="RENDER_DOCX", content_type=DOCX_CONTENT_TYPE, data=data, lease_s=lease_s, metadata=dict(object_metadata) if object_metadata else None)
         result = DocxRender(document_id, render_kind, mode, version_id, round_, digest, key, stored.checksum_sha256, reused=stored.reused, watermark_text=watermark_text)
     with pool.acquire() as conn, unit_of_work(conn):
         audit.record(conn, ctx, action="document.docx_render", entity_type="document", entity_id=document_id, document_id=document_id,

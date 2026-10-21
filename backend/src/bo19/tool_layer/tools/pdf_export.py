@@ -11,11 +11,14 @@ Dòng `document_render` chỉ thêm khi cả `.docx` lẫn `.pdf` đã commit (k
 `watermark_text` của dòng `document_render` = chuỗi đã nằm trong input của lần render (đi theo `DocxRender`; ADR-038) — **lời khai của tool, không phải kết quả đọc lại PDF**: runtime không đọc lại PDF. Việc kiểm `/Subject` bằng `pdfinfo` ở CI và
 ở phép kiểm sau UAT (`tools/render-audit/`, mục 18 của 11-ops.md).
 
+`object_metadata` (B9b2, ADR-041 mục 2): như ở `docx_render` — hai trường của bản ghim `ISSUED` trong cùng lệnh `PUT` của `.pdf`.
+
 `audit_event`: `document.pdf_export`, cùng giao dịch với dòng `document_render`.
 """
 from __future__ import annotations
 
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from bo19.config import working_values as wv
@@ -51,7 +54,8 @@ class PdfExport:
     reused: bool  # True: `.pdf` đã commit từ trước — không chuyển đổi lại
 
 
-def pdf_export(pool: Pool, storage: ObjectStorage, ctx: ToolContext, docx: DocxRender, *, lease_s: float = 120, timeout_s: float = wv.RENDER_CONVERT_TIMEOUT_S) -> PdfExport:
+def pdf_export(pool: Pool, storage: ObjectStorage, ctx: ToolContext, docx: DocxRender, *, lease_s: float = 120, timeout_s: float = wv.RENDER_CONVERT_TIMEOUT_S,
+               object_metadata: Mapping[str, str] | None = None) -> PdfExport:
     require_system(ctx)
     pdf_key = render_key(docx.document_id, docx.input_hash, "pdf")
     done = store.committed(pool, pdf_key)
@@ -66,7 +70,7 @@ def pdf_export(pool: Pool, storage: ObjectStorage, ctx: ToolContext, docx: DocxR
             raise FontMissing(lacking)  # TRƯỚC khi gọi soffice
         source = store.fetch(pool, storage, docx.docx_key, max_bytes=wv.FILE_FETCH_MAX_BYTES)
         pdf = convert.convert_to_pdf(source, timeout_s=timeout_s)  # chuyển đổi xong RỒI MỚI giành khoá
-        stored = store.put_once(pool, storage, object_key=pdf_key, purpose="RENDER_PDF", content_type=PDF_CONTENT_TYPE, data=pdf, lease_s=lease_s)
+        stored = store.put_once(pool, storage, object_key=pdf_key, purpose="RENDER_PDF", content_type=PDF_CONTENT_TYPE, data=pdf, lease_s=lease_s, metadata=dict(object_metadata) if object_metadata else None)
     with pool.acquire() as conn, unit_of_work(conn):
         row = conn.execute("INSERT INTO document_render (id, document_id, operating_mode, render_kind, input_hash, template_version_id, revision_round, docx_object_key, pdf_object_key, watermark_text) "
                            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (document_id, render_kind, input_hash) DO NOTHING RETURNING id",

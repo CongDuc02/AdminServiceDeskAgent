@@ -15,7 +15,8 @@ from typing import Any
 
 import psycopg
 
-from bo19.domain.status_labels import request_status_label
+from bo19.api.queries import _doc_flags as flags
+from bo19.domain.status_labels import document_status_label, request_status_label
 from bo19.persistence.read import read_only
 from bo19.tool_layer.checks.eligibility import check_request
 
@@ -116,6 +117,18 @@ def _slot(row: tuple) -> dict[str, Any]:
             "proposed_from_request_id": proposed_from, "confirmed_at": confirmed_at, "row_version": version}
 
 
+def _owner_documents(conn: psycopg.Connection, request_id: uuid.UUID) -> list[dict[str, Any]]:
+    """`DocumentOwnerView` của mọi `document` của `request` (B9b2, ADR-041 mục 9): số, ngày và `final_render_id` chỉ từ `ISSUED` trở đi. Cờ `issue_in_progress` cùng đoạn SQL với `GET /documents/{id}`."""
+    rows = conn.execute(
+        "SELECT d.id, d.status, " + flags.ISSUE_IN_PROGRESS + ", "
+        f"CASE WHEN d.status IN {flags.ISSUED_OR_LATER} THEN e.formatted_number END, "
+        f"CASE WHEN d.status IN {flags.ISSUED_OR_LATER} THEN d.issued_date END, "
+        f"CASE WHEN d.status IN {flags.ISSUED_OR_LATER} THEN d.final_render_id END "
+        "FROM document d LEFT JOIN document_register_entry e ON e.id = d.issued_register_entry_id "
+        f"LEFT JOIN LATERAL ({flags.ORDER}) o ON true WHERE d.request_id = %s ORDER BY d.created_at, d.id", (request_id,)).fetchall()
+    return [{"id": r[0], "status": r[1], "status_label": document_status_label(r[1], bool(r[2])), "issue_in_progress": bool(r[2]), "document_number": r[3], "issued_date": r[4], "final_render_id": r[5]} for r in rows]
+
+
 def own_request_detail(conn: psycopg.Connection, request_id: uuid.UUID, employee_id: uuid.UUID) -> dict[str, Any] | None:
     """`RequestDetail` của người tạo; `None` nếu không phải yêu cầu của người này. Mọi phần đọc trong MỘT giao dịch chỉ đọc — một ảnh nhất quán."""
     with read_only(conn):
@@ -125,9 +138,10 @@ def own_request_detail(conn: psycopg.Connection, request_id: uuid.UUID, employee
         detail = _summary(row)
         slots = [_slot(r) for r in conn.execute(_SLOTS, (request_id, detail["request_type_code"])).fetchall()]
         check = check_request(conn, request_id)
+        documents = _owner_documents(conn, request_id)
     return {**detail, "slots": slots, "missing_slots": list(check.missing_slots), "unconfirmed_slots": list(check.unconfirmed_slots),
             "failed_rules": [{"slot_name": s, "rule_code": c} for s, c in check.failed_rules], "submit_ready": check.eligible,
-            "changes_requested": None, "documents": []}  # hai trường cuối có giá trị khi có `document` (B9)
+            "changes_requested": None, "documents": documents}  # `changes_requested` là Sprint 2; `documents` từ B9b2
 
 
 def own_decision(conn: psycopg.Connection, decision_id: uuid.UUID, employee_id: uuid.UUID) -> tuple[str, dt.datetime, uuid.UUID] | None:

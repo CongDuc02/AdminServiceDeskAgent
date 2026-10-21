@@ -6,6 +6,8 @@ loại quyết định khác (`REJECTED`, `CHANGES_REQUESTED`) là Sprint 2 nên
 Node là hàm `(state, config) -> cập nhật state`. Mọi tác động ra ngoài đi qua `RenderRuntime.call_tool` hoặc `call_llm` (kiểm cờ huỷ trước), mọi tool thuộc `tool_layer`: node không chạm DB. Mọi node ra quyết định
 **đọc lại trạng thái từ DB**; state chỉ để định tuyến và không bao giờ mang giá trị slot hay văn bản do LLM sinh (ADR-008). Văn bản do LLM sinh nằm ở `RenderRuntime.scratch["drafts"]` — bộ nhớ của lần chạy.
 
+**B9b2 (ADR-041):** `await_issue` đọc id lệnh phát hành như ba điểm chờ kia; thêm `finalize_issue` (kiểm `approved_content_hash` → cấp số → render `FINAL` → kiểm byte → `ISSUED`) rồi `END`.
+
 **Lỗi ở Sprint 1:** node ném `NodeError(mã)` (mã của tool hay của chính node; `failure.classify` đổi sang `reason_code` của bảng mã `document_halt`); Sprint 2 đổi thành `halt_for_human`.
 
 **`await_content_review` chỉ gọi `wait_for_human` và không có tác động nào trước đó** — resume chạy lại node từ đầu. `route_review` là bản tối thiểu của B9a: đọc `decision_record` từ DB rồi kết thúc; bốn nhánh thật là B9b.
@@ -19,7 +21,7 @@ from typing import Any
 from bo19.ai_gateway.budget import BudgetOwner
 from bo19.ai_gateway.gateway import ParseFailed
 from bo19.ai_gateway.prompt_modules import DRAFT_FREE_CONTENT, VariableSpec
-from bo19.domain import free_content
+from bo19.domain import final_values, free_content
 from bo19.observability.log import get_logger
 from bo19.orchestrator.document_graph.runtime import DocumentDeps, RenderRuntime
 from bo19.orchestrator.runtime.builder import wait_for_human
@@ -27,8 +29,10 @@ from bo19.orchestrator.runtime.node_boundary import NodeError
 from bo19.tool_layer import storage as store
 from bo19.tool_layer.tools import document_reads as reads
 from bo19.tool_layer.tools.docx_render import docx_render
+from bo19.tool_layer.numbering import document_number_assign
 from bo19.tool_layer.tools.document_draft_save import document_draft_save
-from bo19.tool_layer.tools.document_transition import document_submit_for_review
+from bo19.tool_layer.tools.document_transition import document_mark_issued, document_submit_for_review
+from bo19.tool_layer.tools.issue_prepare import issue_prepare
 from bo19.tool_layer.tools.pdf_export import pdf_export
 from bo19.tool_layer.tools.render_integrity_check import render_integrity_check
 from bo19.tool_layer.tools.render_values import render_values_build
@@ -224,11 +228,34 @@ def make_nodes(deps: DocumentDeps) -> dict[str, NodeFn]:  # noqa: C901 — một
         return _await_decision(state)
 
     def await_issue(state: Mapping[str, Any], config: Any) -> dict[str, Any]:
-        """Điểm dừng cuối của B9b1: lệnh phát hành (`document_issue`) đánh thức nó ở B9b2 (`finalize_issue`). Không có tác động nào trước `interrupt`."""
-        wait_for_human({"document_id": state["document_id"], "revision_round": state["revision_round"]})
+        """Chờ lệnh phát hành (`document_issue`, `ISSUE_ORDERED`); `finalize_issue` hoàn tất. Không có tác động nào trước `interrupt`."""
+        return _await_decision(state)
+
+    def finalize_issue(state: Mapping[str, Any], config: Any) -> dict[str, Any]:
+        """Hoàn tất một lệnh phát hành (ADR-041 mục 2). Chạy lại sau khi chết giữa chừng hội tụ về cùng một số, cùng cặp object, cùng một `ISSUED` (bảng ở ADR-041 mục 5)."""
+        run = run_of(config)
+        document_id, _ = _ids(state)
+        decision_id = uuid.UUID(state["last_signal"]["decision_record_id"])
+        prep = run.call_tool(issue_prepare, pool, run.sys, document_id=document_id, issue_decision_id=decision_id)  # kiểm `approved_content_hash` TRƯỚC khi cấp số
+        if prep.already:
+            return {}
+        assigned = run.call_tool(document_number_assign, pool, run.sys, document_id=document_id, issue_decision_id=decision_id)
+        system = final_values.system_values(prep.fill_after_approval, formatted_number=assigned.formatted_number, issued_date=assigned.issued_date,
+                                            signer=final_values.signer_line(prep.signer_full_name, prep.signer_job_title))
+        if system.unresolved:
+            log.warning("FINAL_VARIABLE_UNRESOLVED", variables=",".join(system.unresolved))
+            raise NodeError("RENDER_INPUT_INVALID")
+        metadata = {"bo19-pin-reason": "ISSUED", "bo19-document-number": assigned.formatted_number}  # trong CÙNG lệnh PUT (mục 5.3 của 04-data.md)
+        try:
+            docx = run.call_tool(docx_render, pool, deps.storage, run.sys, document_id=document_id, render_kind="FINAL", values={**prep.values, **system.values}, object_metadata=metadata)
+            pdf = run.call_tool(pdf_export, pool, deps.storage, run.sys, docx, object_metadata=metadata)
+        except store.FileUnavailable as e:
+            raise NodeError("RENDER_CHECKSUM_MISMATCH" if e.reason == "CHECKSUM_MISMATCH" else "RENDER_OBJECT_MISSING") from None
+        run.call_tool(render_integrity_check, pool, deps.storage, run.sys, render_id=pdf.render_id)
+        run.call_tool(document_mark_issued, pool, run.sys, document_id=document_id, issue_decision_id=decision_id, entry_id=assigned.entry_id, render_id=pdf.render_id, issued_date=assigned.issued_date)
         return {}
 
     return {"prepare_draft": prepare_draft, "draft_free_content": draft_free_content, "validate_free_content": validate_free_content, "route_after_validate": route_after_validate,
             "render_draft": render_draft, "check_review_readiness": check_review_readiness, "submit_for_review": submit_for_review, "await_content_review": await_content_review,
             "route_review": route_review, "route_signing": route_signing, "await_signature": await_signature, "route_after_signature": route_after_signature,
-            "after_signature_target": after_signature_target, "await_seal": await_seal, "await_issue": await_issue}
+            "after_signature_target": after_signature_target, "await_seal": await_seal, "await_issue": await_issue, "finalize_issue": finalize_issue}

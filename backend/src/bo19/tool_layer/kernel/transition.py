@@ -72,9 +72,10 @@ class TableSpec:
 
 SPECS: dict[str, TableSpec] = {
     "request": TableSpec(REQUEST_TRANSITIONS, True, REQUEST_TERMINAL, "closed_at", {"NEEDS_INFO": "needs_info_asked_at"}, frozenset({"submitted_at"})),
-    "document": TableSpec(DOCUMENT_TRANSITIONS, True, DOCUMENT_TERMINAL, value_columns={
+    "document": TableSpec(DOCUMENT_TRANSITIONS, True, DOCUMENT_TERMINAL, on_enter_now={"ISSUED": "issued_at"}, value_columns={
         "APPROVED": frozenset({"approved_content_hash", "approved_decision_id", "approved_render_id"}),
         "PENDING_SIGNATURE": frozenset({"signer_employee_id"}),
+        "ISSUED": frozenset({"issued_register_entry_id", "final_render_id", "issued_date"}),  # B9b2 (ADR-041 mục 6): `ck_document_issued_complete` đòi cả bốn cột (cùng `issued_at`) trong cùng câu UPDATE
     }),
     "approval_step": TableSpec(APPROVAL_STEP_TRANSITIONS, False, APPROVAL_STEP_TERMINAL, "closed_at"),  # B9b1: `status_changed_at` không có ở bảng này; `closed_at` đặt khi rời `OPEN`
 }

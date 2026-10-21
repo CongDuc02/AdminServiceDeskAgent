@@ -471,6 +471,79 @@ class ThaoTacCong(DocApiBase):
                 self.assertNotIn(secret, r.text)
 
 
+class VanBanCuaNguoiTao(DocApiBase):
+    """`GET /requests/{id}` điền `documents` (`DocumentOwnerView`, B9b2, ADR-041 mục 9): người tạo thấy trạng thái văn bản của mình; số, ngày và `final_render_id` CHỈ từ `ISSUED` trở đi."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        with cls.db.connect("bo19_migrator", autocommit=True) as c:
+            reg = c.execute("select document_register_id from request_type where code = 'WORK_CONFIRMATION'").fetchone()[0]
+            c.execute("insert into document_register_format (id, document_register_id, series, format_pattern, symbol, seq_min_digits, effective_from) "
+                      "values (%s, %s, 'TRIAL', 'TRIAL-{seq}/{year}/{symbol}', 'THU-NGHIEM', 3, timestamptz '2020-01-01 00:00:00+00')", (uuid.uuid4(), reg))
+
+    def owner_documents(self, doc, who=None) -> list[dict]:
+        r = self.client.get(f"{API}/requests/{doc.request_id}", headers=who or self.as_user(doc.beneficiary_id))
+        self.assertEqual(r.status_code, 200, r.text)
+        return r.json()["documents"]
+
+    def final_render(self, doc) -> uuid.UUID:
+        rid = uuid.uuid4()
+        with self.db.connect(autocommit=True) as c:
+            c.execute("set session_replication_role = replica")
+            c.execute("insert into document_render (id, document_id, operating_mode, render_kind, input_hash, template_version_id, revision_round, docx_object_key, pdf_object_key, watermark_text) "
+                      "values (%s, %s, 'NON_PRODUCTION', 'FINAL', %s, %s, 0, %s, %s, 'BẢN THỬ NGHIỆM')", (rid, doc.document_id, rid.bytes * 2, doc.version_id, f"renders/{rid}.docx", f"renders/{rid}.pdf"))
+        return rid
+
+    def test_chua_co_document_thi_rong(self):
+        eid, _ = self.db.make_employee(roles=("EMPLOYEE",))
+        from tests.gate_support import ctx_of
+        from tests.request_support import build_request
+
+        rid = build_request(self.pool, self.db, eid, ctx_of(self.pool, eid))
+        r = self.client.get(f"{API}/requests/{rid}", headers=self.as_user(eid))
+        self.assertEqual((r.json()["documents"], r.json()["changes_requested"]), ([], None))
+
+    def test_theo_doi_tu_cho_duyet_toi_dang_hoan_tat_phat_hanh_roi_issued(self):
+        from bo19.tool_layer.numbering import document_number_assign
+        from bo19.tool_layer.tools.document_transition import document_mark_issued
+        import datetime as dt
+
+        self.officer(signer=True)
+        doc = self.doc()
+        got = self.owner_documents(doc)
+        self.assertEqual(got, [{"id": str(doc.document_id), "status": "PENDING_APPROVAL", "status_label": "Chờ duyệt nội dung", "issue_in_progress": False,
+                                "document_number": None, "issued_date": None, "final_render_id": None}])
+        self.approve(doc, self.octx)
+        self.route(doc)
+        signer_id = document_row(self.db, doc.document_id)["signer_employee_id"]
+        from tests.gate_support import ctx_of
+
+        self.sign(doc, ctx_of(self.pool, signer_id))
+        self.seal(doc, self.octx)
+        self.assertEqual([(d["status"], d["issue_in_progress"]) for d in self.owner_documents(doc)], [("SEALED", False)])
+        order = self.issue(doc, self.octx).decision_record_id
+        (mid,) = self.owner_documents(doc)
+        self.assertEqual((mid["status"], mid["issue_in_progress"], mid["status_label"], mid["document_number"], mid["final_render_id"]), ("SEALED", True, "Đang cấp số và phát hành", None, None))
+        entry = document_number_assign(self.pool, self.sys, document_id=doc.document_id, issue_decision_id=order)
+        (mid,) = self.owner_documents(doc)
+        self.assertEqual((mid["issue_in_progress"], mid["document_number"]), (True, None))  # đoạn 2: đã có số trong sổ nhưng văn bản chưa phát hành — KHÔNG lộ số
+        render = self.final_render(doc)
+        document_mark_issued(self.pool, self.sys, document_id=doc.document_id, issue_decision_id=order, entry_id=entry.entry_id, render_id=render, issued_date=dt.date(2026, 3, 9))
+        (done,) = self.owner_documents(doc)
+        self.assertEqual((done["status"], done["status_label"], done["issue_in_progress"], done["document_number"], done["issued_date"], done["final_render_id"]),
+                         ("ISSUED", "Đã phát hành", False, entry.formatted_number, "2026-03-09", str(render)))
+        detail = self.client.get(f"{API}/requests/{doc.request_id}", headers=self.as_user(doc.beneficiary_id)).json()
+        self.assertEqual(detail["status"], "FULFILLED")
+
+    def test_nguoi_khac_khong_thay(self):
+        doc = self.doc()
+        stranger, _ = self.db.make_employee(roles=("EMPLOYEE",))
+        r = self.client.get(f"{API}/requests/{doc.request_id}", headers=self.as_user(stranger))
+        self.assertEqual(r.status_code, 404)
+        self.assertNotIn(str(doc.document_id), r.text)
+
+
 class HopDongKhopOpenapi(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
