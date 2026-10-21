@@ -96,7 +96,7 @@
 Stream tín hiệu `GET /signals` thuộc Sprint 3 (mục Endpoint → sprint của `12-roadmap.md`), nên B10a và B10b chưa có nguồn tín hiệu. **Giải pháp tạm tới khi `GET /signals` có mặt:**
 
 - mọi query lấy lại khi **màn hình mở** và khi **cửa sổ lấy lại tiêu điểm** (`refetchOnWindowFocus`) — đúng luật đã có cho query ngoài chủ đề;
-- thêm **`refetchInterval` 10 s CHỈ ở trang chi tiết yêu cầu** (`/my-requests/:requestId`) và **chỉ khi còn `document` chưa ở trạng thái cuối**; dừng khi tab ẩn;
+- thêm **`refetchInterval` 10 s CHỈ ở trang chi tiết yêu cầu** (`/my-requests/:requestId`) và **chỉ khi còn gì để chờ**: `request` đang `SUBMITTED`/`IN_REVIEW`/`APPROVED` (chờ hệ thống hoặc cán bộ — lúc đó có thể chưa có `document` nào) **hoặc** còn `document` chưa ở trạng thái cuối; không polling khi `request` chờ chính người tạo (`DRAFT`, `NEEDS_INFO`, `CHANGES_REQUESTED`) hay đã kết thúc; dừng khi tab ẩn;
 - không `EventSource` ở B10a/B10b; module `signalSource.ts` giữ nguyên là vỏ.
 
 Khi Sprint 3 dựng `GET /signals`: gỡ `refetchInterval`, giữ `refetchOnWindowFocus`, bật luật invalidate theo tiền tố ở trên. Việc gỡ là một mục trong lát stream tín hiệu, không phải nợ ngầm.

@@ -63,7 +63,8 @@ Bảng secret đã chốt ở mục Secret management trên Render của `09-sec
 | `BO19_STORED_OBJECT_LEASE_SECONDS` | Không | `120` | WV-10 | #11 |
 | `BO19_OBJECT_STORAGE_ENDPOINT_URL` *(thêm B8a)* | Có, ở `api`/`worker` khi dùng `object_storage` | — | ADR-003, ADR-031 — local trỏ SeaweedFS `127.0.0.1`; bắt buộc `https://` ở `staging`/`prod` | #14 |
 | `BO19_OBJECT_STORAGE_BUCKET` *(thêm B8a)* | Có | — | ADR-003 | #14 |
-| `BO19_OBJECT_STORAGE_REGION` *(thêm B8a)* | Không | `us-east-1` | Client S3 đòi một vùng; giá trị với từng nhà cung cấp `[CẦN XÁC MINH]` (A-024) | #14 |
+| `BO19_OBJECT_STORAGE_REGION` *(thêm B8a)* | Không | `us-east-1` | Client S3 đòi một vùng; với Cloudflare R2 là `auto` (`docs/reference/r2-s3-endpoint-va-region.md`, S7 đã chạy thật) | #14 |
+| `BO19_STATIC_DIR` *(thêm B10a)* | Không | `/app/static` | Thư mục bản build client mà `api` phục vụ. Mặc định là nơi Dockerfile chép `dist/` vào; **chỉ đặt khi chạy ngoài image** (dev không Docker). Render không đặt | #8 |
 | `BO19_OBJECT_STORAGE_ACCESS_KEY_ID`, `BO19_OBJECT_STORAGE_SECRET_ACCESS_KEY` *(thêm B8a)* | Có — **secret**, không bao giờ vào log, lỗi hay `repr` | — | ADR-031 (credential bắt buộc ở mọi môi trường); mục Secret management trên Render của `09-security.md` | #14 |
 | `BO19_ARGON2_TIME_COST` | Không | `2` | WV-16 | #20 |
 | `BO19_ARGON2_MEMORY_COST_KIB` | Không | `19456` | WV-16 | #20 |

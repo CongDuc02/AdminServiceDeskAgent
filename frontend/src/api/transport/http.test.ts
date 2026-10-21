@@ -138,4 +138,10 @@ describe('stream và tệp', () => {
     const err = (await getBlob('/f2').catch((e: unknown) => e)) as ApiError
     expect([err.code, err.status, err.message]).toEqual(['FILE_UNAVAILABLE', 503, 'Tệp tạm thời không tải được.'])
   })
+
+  it('getBlob: 2xx mà là JSON (không phải tệp) bị từ chối — không lưu JSON thành "PDF"', async () => {
+    server.use(http.get('/api/v1/f3', () => HttpResponse.json({ ok: true })))
+    const err = (await getBlob('/f3').catch((e: unknown) => e)) as ApiError
+    expect([err.code, err.status]).toEqual(['CLIENT_UNEXPECTED_RESPONSE', 200])
+  })
 })
