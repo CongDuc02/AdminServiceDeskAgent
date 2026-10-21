@@ -38,6 +38,20 @@ def effective_permissions(conn: psycopg.Connection, employee_id: uuid.UUID) -> f
     return frozenset(r[0] for r in conn.execute(_EFFECTIVE, {"id": employee_id}).fetchall())
 
 
+_HOLDERS = (
+    "SELECT e.id, e.employee_code FROM employee e WHERE e.is_active AND e.id IS DISTINCT FROM %(exclude)s AND ("
+    "EXISTS (SELECT 1 FROM employee_role er JOIN role_permission rp ON rp.role_code = er.role_code WHERE er.employee_id = e.id AND rp.permission_code = %(p)s) OR "
+    "EXISTS (SELECT 1 FROM employee_permission_grant g WHERE g.employee_id = e.id AND g.permission_code = %(p)s AND g.revoked_at IS NULL AND g.granted_at <= now())) "
+    "ORDER BY e.employee_code"
+)
+
+
+def eligible_holders(conn: psycopg.Connection, permission: str, *, exclude: uuid.UUID | None = None) -> list[tuple[uuid.UUID, str]]:
+    """(id, `employee_code`) của mọi nhân viên **đang hoạt động** mang `permission` — qua vai trò hoặc cấp lẻ chưa thu hồi và đã tới hạn — trừ `exclude` (người thụ hưởng), sắp tăng dần theo mã.
+    Cùng nguồn quyền với `effective_permissions`; vắng mặt không làm ai rời khỏi tập (PO, 2026-09-26). Truy vấn thường, không mở giao dịch."""
+    return [(r[0], r[1]) for r in conn.execute(_HOLDERS, {"p": permission, "exclude": exclude}).fetchall()]
+
+
 def employee_context(conn: psycopg.Connection, employee_id: uuid.UUID, trace_id: str | None = None) -> ToolContext:
     """Ngữ cảnh của một nhân viên **đang hoạt động**, với permission hiệu lực đọc từ DB lúc này. Không tồn tại hay `is_active = false` → `ActorInactive`."""
     with read_only(conn):

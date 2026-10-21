@@ -6,7 +6,8 @@ Mỗi lần chạy là một tiến trình Python mới: mở pool, mở `Docume
 Chế độ:
   render <request_id>          chạy `run_render`; xong thì ngủ (nếu `BO19_PROC_SLEEP=1`) để test giết nó khi graph đang chờ ở `interrupt`;
   hang <request_id>            như `render` nhưng bản render bị treo ở `docx_render` (in `HANGING` rồi ngủ) — test giết nó GIỮA lúc chạy;
-  resume <document_id> <decision_record_id>   chạy `resume_document`.
+  resume <document_id> <decision_record_id>   chạy `resume_document`; xong thì ngủ nếu `BO19_PROC_SLEEP=1` (test giết nó khi graph đang chờ ở một `interrupt` kế tiếp);
+  hang_resume <document_id> <decision_record_id>   như `resume` nhưng `render_integrity_check` treo (in `HANGING` rồi ngủ) — test giết nó GIỮA lúc `route_signing` chạy (B9b1).
 Môi trường: BO19_PROC_DSN (role `bo19_app`), BO19_PROC_BUCKET, BO19_TEST_S3_* (như test), BO19_PROC_LLM.
 """
 from __future__ import annotations
@@ -55,9 +56,18 @@ def main(argv: list[str]) -> int:
             emit(status=out.status, waiting_at=out.waiting_at, already=out.already, llm_calls=len(llm.calls("draft_free_content")), pid=os.getpid())
             if os.environ.get("BO19_PROC_SLEEP") == "1":
                 time.sleep(3600)
-        elif mode == "resume":
+        elif mode in ("resume", "hang_resume"):
+            if mode == "hang_resume":
+                from bo19.orchestrator.document_graph import nodes as nodes_module
+
+                def hang_integrity(*a, **k):
+                    print("HANGING", flush=True)
+                    time.sleep(3600)
+                nodes_module.render_integrity_check = hang_integrity  # giữa `await_content_review` (đã trả) và `signing_route`
             out = runner.resume_document(document_id=uuid.UUID(argv[1]), decision_record_id=uuid.UUID(argv[2]))
-            emit(status=out.status, already=out.already, llm_calls=len(llm.calls("draft_free_content")), pid=os.getpid())
+            emit(status=out.status, waiting_at=out.waiting_at, already=out.already, llm_calls=len(llm.calls("draft_free_content")), pid=os.getpid())
+            if os.environ.get("BO19_PROC_SLEEP") == "1":
+                time.sleep(3600)
         else:
             return 2
         return 0

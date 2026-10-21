@@ -376,7 +376,7 @@ Node `open_request` gọi tool `request_open`; hai tên khác nhau có chủ đ�
 | **Cờ điền sau duyệt** | Đánh dấu trong danh mục biến của template cho biến `SYSTEM` được điền sau cổng nội dung (`document_number`, `issued_date`, `signer_user_id` và biến suy ra từ nó) |
 | **`change_targets`** | Danh sách biến hoặc slot người duyệt chọn khi yêu cầu sửa. LLM không tự quyết danh sách này |
 | **`change_reason`** | Lý do sửa, văn bản tự do, bắt buộc. Tới `revise_free_content` như dữ liệu, chỉ cho biến đã chọn |
-| **`approved_content_hash`** | Hash ghi lúc duyệt nội dung, kiểm lại ở `finalize_issue` để thực thi INV-01 |
+| **`approved_content_hash`** | Hash ghi lúc duyệt nội dung, kiểm lại ở `finalize_issue` để thực thi INV-01. Dạng chuẩn tắc (SHA-256 của JSON có phiên bản): mục 6.4.2 của `03-agents.md`, ADR-040 |
 | **Danh sách nạp** | Danh sách input tự khai của prompt module, dùng để nạp dữ liệu và kiểm prompt. Quên khai thì mất chức năng, không rò dữ liệu |
 | **`catalog_fingerprint`** · dấu vân tay catalog | sha256 của bản tuần tự hoá chuẩn của `request_type_catalog` đã nạp cho một lời gọi `classify_intent`. Enum output của lời gọi đó sinh từ chính catalog này (ADR-025), nên `prompt_module_version` một mình không tái tạo được lời gọi. Ghi vào log kỹ thuật và bản ghi eval, không vào `llm_usage`. Thêm ở đợt sửa A-075 |
 | **Khoảng hoàn tất phát hành** · cờ `issue_in_progress` | Từ lúc `document_issue` ghi lệnh phát hành tới lúc `finalize_issue` commit `ISSUED` hoặc bỏ cuộc. Document đứng yên ở `SIGNED`/`SEALED`; phần đầu chưa có `document_number`. Là **cờ dẫn xuất** như `sla_breached`, **không** phải trạng thái. Hiển thị: mục Duyệt dấu và khoảng hoàn tất phát hành của `08-hitl.md` |

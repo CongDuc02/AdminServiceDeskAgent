@@ -1,6 +1,6 @@
 # Kế hoạch B9b — bốn thao tác cổng, hàng đợi duyệt và phát hành, `finalize_issue`
 
-**Trạng thái:** đề xuất, chờ PO duyệt · **Ngày:** 2026-10-20 · **Căn cứ:** `12-roadmap.md` (Sprint 1, lát B9b; AC-1.2; O1-15), mục Thao tác cổng và `document_graph` của `03-agents.md`, mục Thao tác cổng trên văn bản của `05-api.md`, mục Hàng đợi và Thao tác của người duyệt của `08-hitl.md`, ADR-039 · **Migration:** dự kiến **không** (bảng `decision_record`, `approval_step`, `seal_action`, `document_register*`, `document_render_pin` đã có ở `schema.sql`; sẽ kiểm lại trước khi viết mã, có thì báo theo quy trình mục Migration của `11-ops.md`) · **Biến môi trường mới:** không · **Chặn bởi:** không (cổng 2.5 chỉ chặn việc chuyển Render, không chặn B9b — B9b chạy local)
+**Trạng thái:** PO duyệt 2026-10-20 — chia B9b1/B9b2, tám câu (mục Quyết định của PO) · **Ngày:** 2026-10-20 · **Căn cứ:** `12-roadmap.md` (Sprint 1, lát B9b; AC-1.2; O1-15), mục Thao tác cổng và `document_graph` của `03-agents.md`, mục Thao tác cổng trên văn bản của `05-api.md`, mục Hàng đợi và Thao tác của người duyệt của `08-hitl.md`, ADR-039 · **Migration:** dự kiến **không** (bảng `decision_record`, `approval_step`, `seal_action`, `document_register*`, `document_render_pin` đã có ở `schema.sql`; sẽ kiểm lại trước khi viết mã, có thì báo theo quy trình mục Migration của `11-ops.md`) · **Biến môi trường mới:** không · **Chặn bởi:** không (cổng 2.5 chỉ chặn việc chuyển Render, không chặn B9b — B9b chạy local)
 
 ## Mục tiêu
 
@@ -51,3 +51,18 @@ Nay có `document`, ca xác định được: `request.status = CHANGES_REQUESTE
 ## Điều kiện xong (mỗi lát)
 
 Test mới đạt trên PostgreSQL, SeaweedFS và `soffice` thật; test tiến trình thật cho resume giữa các cổng; đột biến ≥ một mẫu cho mỗi quy tắc (permission, D-006, trạng thái chuyển, hash, idempotency, `VOIDED`, một-giao-dịch); `lint-imports`, `check_grants`; CI xanh; tài liệu sửa trước (kể cả mục Triển khai ở B9b của `06-structure.md`); báo cáo kèm bằng chứng AC-1.2 (B9b2), rồi xin merge.
+
+## Quyết định của PO (2026-10-20)
+
+Chia **B9b1 / B9b2**. Tám câu:
+
+1. **Chia hai lát:** chia. B9b1 bắt đầu ngay; kiểm "không migration" trước khi viết mã — có migration thì báo kèm lệnh áp và lý do tương thích ngược.
+2. **Người ký chỉ còn người thụ hưởng:** job `FAILED` với mã riêng `NO_ELIGIBLE_SIGNER`, **hiện được trong hàng đợi cho cán bộ**; ghi "thay bằng `halt_for_human` khi có". Seed giả luôn có ≥ 2 người đủ quyền ký. *(Cách hiện — `GET /review-queue?status=APPROVED` — ở ADR-040 mục 7.)*
+3. **`document_register` và định dạng số giả:** vào `tools/seed-dev/`, chỉ local (B9b2).
+4. **Định dạng số thật:** vẫn `[CẦN XÁC MINH]` (M1.1 + Nghị định 30/2020); B9b dùng định dạng giả.
+5. **Bản `FINAL` in HỌ TÊN + CHỨC DANH người ký** (như văn bản hành chính thật), **không in mã**. Ghi ở mục AuthZ của `09-security.md`: dữ liệu công vụ của người phát hành, đúng mục đích. Ngày `issued_date`: `dd/mm/yyyy` theo múi giờ tổ chức (A-098).
+6. **`read_assigned`:** giữ định nghĩa B8b; chỉ bước `SIGNATURE` có người được giao; quy ước ghi ở `09-security.md`; test người ký.
+7. **O1-15:** mã + fixture ở B9b, tích hợp ở Sprint 2.
+8. **Test đầu-cuối dùng provider giả**, không gọi Groq.
+
+Quyết định kỹ thuật phát sinh khi viết B9b1 (cột đi kèm của cạnh trạng thái, dạng chuẩn tắc của `approved_content_hash`, resume theo loại quyết định, người ký chỉ ký được khi được giao): **ADR-040**.

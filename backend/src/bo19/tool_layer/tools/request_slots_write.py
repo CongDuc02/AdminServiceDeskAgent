@@ -78,7 +78,7 @@ def request_slots_write(pool: Pool, ctx: ToolContext, *, request_id: uuid.UUID, 
     require(ctx, "request.supply_info")
     with pool.acquire() as conn, unit_of_work(conn):
         row = load_own_request(conn, ctx, request_id)
-        require_editable(row)
+        require_editable(conn, row)
         definitions = {d.name: d for d in load_definitions(conn, row.request_type_code)}
         written: list[str] = []
         unchanged: list[str] = []

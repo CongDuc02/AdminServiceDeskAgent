@@ -16,7 +16,7 @@ from bo19.api.deps.csrf import require_csrf_header
 from bo19.api.deps.state import AppState
 from bo19.api.errors import install_exception_handlers
 from bo19.api.files_gate import FileGate
-from bo19.api.routers import auth, chat, files, requests
+from bo19.api.routers import auth, chat, documents, files, requests
 from bo19.api.trace import TraceMiddleware
 from bo19.config import working_values as wv
 
@@ -28,7 +28,7 @@ BODY_LIMITS = {
 
 
 def default_routers() -> list[APIRouter]:
-    return [auth.router, chat.router, requests.router, files.router]
+    return [auth.router, chat.router, requests.router, documents.router, files.router]
 
 
 def create_app(state: AppState, *, routers: Sequence[APIRouter] | None = None) -> FastAPI:

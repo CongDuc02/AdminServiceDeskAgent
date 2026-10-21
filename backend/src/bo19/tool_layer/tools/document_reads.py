@@ -44,6 +44,9 @@ class DocumentHeader:
     revision_round: int
     status: str
     operating_mode: str
+    requires_seal: bool | None  # B9b1: `route_after_signature` rẽ theo đây; None chỉ ở DRAFT/CHANGES_REQUESTED
+    approved_render_id: uuid.UUID | None  # B9b1: bản `route_signing` kiểm toàn vẹn byte trước khi mở bước ký
+    signer_employee_id: uuid.UUID | None
 
 
 @dataclass(frozen=True)
@@ -65,7 +68,7 @@ def request_header_read(pool: Pool, ctx: ToolContext, *, request_id: uuid.UUID) 
 def document_header_read(pool: Pool, ctx: ToolContext, *, document_id: uuid.UUID) -> DocumentHeader:
     require_system(ctx)
     with pool.acquire() as conn, read_only(conn):
-        row = conn.execute("SELECT id, request_id, template_version_id, revision_round, status, operating_mode FROM document WHERE id = %s", (document_id,)).fetchone()
+        row = conn.execute("SELECT id, request_id, template_version_id, revision_round, status, operating_mode, requires_seal, approved_render_id, signer_employee_id FROM document WHERE id = %s", (document_id,)).fetchone()
     if row is None:
         raise DocumentNotFound
     return DocumentHeader(*row)

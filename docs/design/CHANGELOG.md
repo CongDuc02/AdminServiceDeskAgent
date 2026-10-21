@@ -3630,3 +3630,17 @@ PO duyệt kế hoạch B8a (`proposals/b8a-ke-hoach.md`) và quyết thêm về
 ### 2026-10-20 (4) — kế hoạch B9b; cổng 2.5 / S7 (chỉ tài liệu)
 
 `proposals/b9b-ke-hoach.md` (đề xuất, chờ PO duyệt; gồm rà `request.read_assigned` và O1-15). `proposals/s7-danh-sach-ngan-object-storage.md` và `docs/reference/s7-object-storage-ung-vien.md` (bốn ứng viên: Cloudflare R2, Tigris, OVHcloud, Scaleway — tiêu chí `412` của `If-None-Match: *`, vùng dữ liệu, hạn mức miễn phí, tương thích S3; trích nguyên văn từ tài liệu gốc tải bằng `curl`, kèm sha256). `12-roadmap.md` v0.64: dòng cổng 2.5. Chưa tạo tài khoản, chưa chạy phép thử, chưa đổi mã.
+
+### 2026-10-20 (5) — PO duyệt kế hoạch B9b; cổng 2.5 chọn Cloudflare R2; bắt đầu B9b1
+
+**Duyệt (PO):** chia B9b1/B9b2; tám câu của `proposals/b9b-ke-hoach.md` (mục Quyết định của PO). Cổng 2.5: **Cloudflare R2, gói miễn phí**; S7 chỉ chạy trên R2; không xét nhà cung cấp khác hay trong nước; gói trả phí tính sau. **Điều kiện trước production:** xét lại nhà cung cấp object storage và vùng lưu trữ khi có dữ liệu thật (A-080).
+
+**Sửa tài liệu:** `12-roadmap.md` v0.65 (B9b1/B9b2; cổng 2.5; S7), `09-security.md` (mục 3.4 quy ước `read_assigned`; 3.5 tên và chức danh người ký trên bản `FINAL`), `05-api.md` (mục Triển khai ở B9b1; `status=APPROVED` của `review-queue` ở Sprint 1), `contracts/openapi.yaml` (`ReviewQueueStatus` thêm `APPROVED`), `08-hitl.md` (Sprint 1: hàng đợi `APPROVED`, `NO_ELIGIBLE_SIGNER` là job `FAILED`), `03-agents.md` (mục 6.4.2), `06-structure.md` (mục Triển khai ở B9b1), `ASSUMPTIONS.md` (A-099), `GLOSSARY.md`, **ADR-040** (cột đi kèm qua kernel, `approved_content_hash` chuẩn tắc, resume theo loại quyết định, người ký chỉ ký khi được giao). Chưa migration; không biến môi trường mới.
+
+**Lệch nhẹ so với bản gốc, báo để PO biết:** (1) hàng đợi `status=APPROVED` — ngoài ba giá trị của thiết kế gốc — để thực hiện "hiện được trong hàng đợi cho cán bộ" (PO, câu 2) khi chưa có `/takeover-queue`; (2) `document_sign` chỉ nhận người được giao, để tên in trên bản `FINAL` (PO, câu 5) đúng người đã ký; (3) bị chặn D-006 thì luôn `SELF_APPROVAL_BLOCKED` ở Sprint 1, kể cả khi không còn ai thay thế (kế hoạch B9b, mục Không làm).
+
+### 2026-10-20 (6) — B9b1 xong: bốn thao tác cổng, hàng đợi, màn hình duyệt, graph tới `await_issue`
+
+Nhánh `build/b9b1-cong`. Không migration (kiểm: mọi bảng, cột, quyền `bo19_app` đã có ở `0001`–`0014`; chỉ `ix_document_review_queue` là partial theo ba trạng thái nên `status=APPROVED` quét bảng — chấp nhận ở Sprint 1). Không biến môi trường mới. Sửa tài liệu cùng đợt: `ADR-040` (mục 9, 10 thêm khi viết mã), `05-api.md` (+`job_failed_code`, submit ca `SLOT_DATA`), `contracts/openapi.yaml` (`DocumentSummary.job_failed_code`), `03-agents.md`, `06-structure.md` (kết quả), `12-roadmap.md` (B9b1 đã làm, O1-15 mức mã, AC-1.2 phần B9b1), `tools/seed-dev/` (hai người mang `document.sign`, PO 2026-10-20).
+
+**Kết quả (2026-10-20):** 1.789 test đạt (bộ trọn trong image `test` — PostgreSQL 18, SeaweedFS 4.47, `soffice` thật; 1.141 s); `lint-imports` 9/9; không migration nên `check_grants` không đổi (AC-1.6 vẫn chạy ở `test_seed_dev`, `Lệch: 0`). **Đột biến: 77 mẫu (permission, D-006, trạng thái, `row_version`, idempotency, hash, ghim, bước, người ký, tập E, kernel `set_values`, resume, snapshot, hàng đợi, mã lỗi) — 70 đỏ ngay; 7 sống ở lần đầu, đều đã bổ sung test và đỏ ở lần chạy lại** (lặp lại khác loại, bản nháp hiện hành, nhánh `resume_document` bằng graph giả, node tự từ chối loại quyết định, hàng đợi `read_assigned` loại bước `CANCELLED`/bước người khác).

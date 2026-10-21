@@ -1,5 +1,8 @@
 """Node và router của `document_graph` — lát Sprint 1 (mục 6.4.1 của 03-agents.md; ADR-039).
 
+**B9b1 (ADR-040):** thêm `route_signing`, `await_signature`, `route_after_signature`, `await_seal`, `await_issue` — ba điểm `interrupt` mới, mỗi điểm chỉ gọi `wait_for_human`. `route_review` đã có nhánh `APPROVED`;
+loại quyết định khác (`REJECTED`, `CHANGES_REQUESTED`) là Sprint 2 nên là `UNSUPPORTED_DECISION`.
+
 Node là hàm `(state, config) -> cập nhật state`. Mọi tác động ra ngoài đi qua `RenderRuntime.call_tool` hoặc `call_llm` (kiểm cờ huỷ trước), mọi tool thuộc `tool_layer`: node không chạm DB. Mọi node ra quyết định
 **đọc lại trạng thái từ DB**; state chỉ để định tuyến và không bao giờ mang giá trị slot hay văn bản do LLM sinh (ADR-008). Văn bản do LLM sinh nằm ở `RenderRuntime.scratch["drafts"]` — bộ nhớ của lần chạy.
 
@@ -27,9 +30,11 @@ from bo19.tool_layer.tools.docx_render import docx_render
 from bo19.tool_layer.tools.document_draft_save import document_draft_save
 from bo19.tool_layer.tools.document_transition import document_submit_for_review
 from bo19.tool_layer.tools.pdf_export import pdf_export
+from bo19.tool_layer.tools.render_integrity_check import render_integrity_check
 from bo19.tool_layer.tools.render_values import render_values_build
 from bo19.tool_layer.tools.request_slots_read import request_slots_read
 from bo19.tool_layer.tools.review_readiness_check import review_readiness_check
+from bo19.tool_layer.tools.signing_route import signing_route
 from bo19.tool_layer.tools.template_fetch import TemplateInfo, template_version_read
 
 log = get_logger("bo19.orchestrator.document")
@@ -161,7 +166,8 @@ def make_nodes(deps: DocumentDeps) -> dict[str, NodeFn]:  # noqa: C901 — một
         run.call_tool(document_submit_for_review, pool, run.sys, document_id=document_id, draft_pdf_key=key)
         return {}
 
-    def await_content_review(state: Mapping[str, Any], config: Any) -> dict[str, Any]:
+    def _await_decision(state: Mapping[str, Any]) -> dict[str, Any]:
+        """Dùng chung cho ba điểm chờ có quyết định đi kèm. **Chỉ gọi `wait_for_human` và không có tác động nào trước đó** — resume chạy lại node từ đầu."""
         signal = wait_for_human({"document_id": state["document_id"], "revision_round": state["revision_round"]})
         decision_id = signal.get("decision_record_id") if isinstance(signal, dict) else None
         try:
@@ -170,14 +176,59 @@ def make_nodes(deps: DocumentDeps) -> dict[str, NodeFn]:  # noqa: C901 — một
             raise NodeError("SYSTEM_DEFECT") from None
         return {"last_signal": {"decision_record_id": str(decision_id), "kind": None, "change_scope": None, "change_targets": []}}
 
-    def route_review(state: Mapping[str, Any], config: Any) -> dict[str, Any]:
-        """Bản tối thiểu của B9a (ADR-039 mục 6): đọc quyết định từ DB, không từ payload resume; bốn nhánh thật là B9b."""
+    def await_content_review(state: Mapping[str, Any], config: Any) -> dict[str, Any]:
+        return _await_decision(state)
+
+    def _read_decision(state: Mapping[str, Any], config: Any, expected_kind: str) -> dict[str, Any]:
+        """Đọc quyết định từ DB (không từ payload resume), kiểm nó thuộc đúng `document` và đúng loại; trả `last_signal` đã điền."""
         run = run_of(config)
         document_id, _ = _ids(state)
         signal = state["last_signal"]
         decision = run.call_tool(reads.decision_record_read, pool, run.sys, decision_record_id=uuid.UUID(signal["decision_record_id"]), document_id=document_id)
-        return {"last_signal": {**signal, "kind": decision.kind, "change_scope": decision.change_scope, "change_targets": list(decision.change_targets)}}
+        if decision.kind != expected_kind:
+            raise NodeError("UNSUPPORTED_DECISION")  # `REJECTED`, `CHANGES_REQUESTED`: Sprint 2 — chưa có thao tác nào ghi chúng
+        return {**signal, "kind": decision.kind, "change_scope": decision.change_scope, "change_targets": list(decision.change_targets)}
+
+    def route_review(state: Mapping[str, Any], config: Any) -> dict[str, Any]:
+        """Sau cổng 1: đọc quyết định từ DB; `APPROVED` đi tiếp sang `route_signing`. Ba nhánh còn lại (`REJECTED`, `FREE_CONTENT`, `SLOT_DATA`) là Sprint 2."""
+        return {"last_signal": _read_decision(state, config, "APPROVED")}
+
+    def route_signing(state: Mapping[str, Any], config: Any) -> dict[str, Any]:
+        """`render_integrity_check` trên bản đã duyệt **trước**, rồi `signing_route` — người ký là người đầu tiên dựa vào byte (mục Tool Registry của 03-agents.md). Chạy lại sau lần chạy dở là idempotent."""
+        run = run_of(config)
+        document_id, _ = _ids(state)
+        header = run.call_tool(reads.document_header_read, pool, run.sys, document_id=document_id)
+        if header.approved_render_id is None:
+            raise NodeError("STALE_STATUS")  # chưa duyệt nội dung mà vào định tuyến ký: graph sai trạng thái
+        run.call_tool(render_integrity_check, pool, deps.storage, run.sys, render_id=header.approved_render_id)
+        run.call_tool(signing_route, pool, run.sys, document_id=document_id)
+        return {}
+
+    def await_signature(state: Mapping[str, Any], config: Any) -> dict[str, Any]:
+        return _await_decision(state)
+
+    def route_after_signature(state: Mapping[str, Any], config: Any) -> dict[str, Any]:
+        """Sau bước ký: đọc quyết định từ DB (`SIGNED`; người ký trả lại — `CHANGES_REQUESTED` — là Sprint 2) và `requires_seal`, để cạnh điều kiện rẽ `await_seal` / `await_issue`."""
+        run = run_of(config)
+        document_id, _ = _ids(state)
+        signal = _read_decision(state, config, "SIGNED")
+        header = run.call_tool(reads.document_header_read, pool, run.sys, document_id=document_id)
+        if header.requires_seal is None:
+            raise NodeError("SYSTEM_DEFECT")  # `ck_document_seal_determined`: từ `APPROVED` trở đi `requires_seal` đã xác định
+        return {"last_signal": signal, "requires_seal": header.requires_seal}
+
+    def after_signature_target(state: Mapping[str, Any], config: Any) -> str:
+        return "seal" if state.get("requires_seal") else "issue"
+
+    def await_seal(state: Mapping[str, Any], config: Any) -> dict[str, Any]:
+        return _await_decision(state)
+
+    def await_issue(state: Mapping[str, Any], config: Any) -> dict[str, Any]:
+        """Điểm dừng cuối của B9b1: lệnh phát hành (`document_issue`) đánh thức nó ở B9b2 (`finalize_issue`). Không có tác động nào trước `interrupt`."""
+        wait_for_human({"document_id": state["document_id"], "revision_round": state["revision_round"]})
+        return {}
 
     return {"prepare_draft": prepare_draft, "draft_free_content": draft_free_content, "validate_free_content": validate_free_content, "route_after_validate": route_after_validate,
             "render_draft": render_draft, "check_review_readiness": check_review_readiness, "submit_for_review": submit_for_review, "await_content_review": await_content_review,
-            "route_review": route_review}
+            "route_review": route_review, "route_signing": route_signing, "await_signature": await_signature, "route_after_signature": route_after_signature,
+            "after_signature_target": after_signature_target, "await_seal": await_seal, "await_issue": await_issue}
