@@ -55,7 +55,13 @@ class IssueBase(FlowMixin, unittest.TestCase):
 
     def issued_ready(self, **kw):
         """Một `document` đã qua mọi cổng và có lệnh phát hành. Trả (doc, signer, officer, issue_decision_id). `requires_seal=False`: dừng ở `SIGNED`."""
-        doc, signer, officer = self.sealed(**kw) if kw.get("requires_seal", True) else self.pending_seal(**kw)
+        version_id = kw.pop("version_id", self.version_id)
+        make = (lambda: self.sealed(**kw)) if kw.get("requires_seal", True) else (lambda: self.pending_seal(**kw))
+        saved, self.version_id = self.version_id, version_id
+        try:
+            doc, signer, officer = make()
+        finally:
+            self.version_id = saved
         decision = self.issue(doc, officer[1]).decision_record_id
         return doc, signer, officer, decision
 
@@ -129,10 +135,11 @@ class IssuePrepare(IssueBase):
 
     def test_phien_ban_template_da_go_van_phat_hanh_duoc(self):
         """Bản `FINAL` còn render được từ phiên bản `RETIRED` (ADR-015 chốt 3): văn bản đã duyệt bằng phiên bản đó không bị chặn chỉ vì template đã bị thay sau khi duyệt."""
-        doc, _, _, decision = self.issued_ready()
+        version = make_template_version(self.db)  # phiên bản riêng của test: gỡ phiên bản dùng chung của lớp sẽ làm hỏng các test sau
+        doc, _, _, decision = self.issued_ready(version_id=version)
         with self.db.connect(autocommit=True) as c:
             c.execute("set session_replication_role = replica")
-            c.execute("update template_version set status = 'RETIRED', retired_at = now() where id = %s", (doc.version_id,))
+            c.execute("update template_version set status = 'RETIRED', retired_at = now() where id = %s", (version,))
         self.assertFalse(self.prepare(doc, decision).already)
 
     def prepare_status(self, doc) -> str:

@@ -140,7 +140,7 @@ class DangKy(DocBase):
         self.assertEqual(self.scalar("select status from job where payload->>'request_id' = %s", str(rid)), "QUEUED")
 
     def test_co_runner_thi_dang_ky_render_document(self):
-        self.assertEqual(set(build_handlers(document_runner=self.runner)), {"render_document", "resume_document_graph"})
+        self.assertEqual(set(build_handlers(document_runner=self.runner)), {"render_document", "resume_document_graph", "finalize_issue"})
 
     def test_worker_main_khong_dung_runner_khi_thieu_storage_hoac_khoa_llm(self):
         base = dict(GOOD)

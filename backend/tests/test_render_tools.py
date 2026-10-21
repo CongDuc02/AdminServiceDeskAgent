@@ -177,7 +177,7 @@ class DocxRender(RenderBase):
 
     def test_khong_co_tham_so_che_do_trong_chu_ky_tool(self):
         import inspect
-        self.assertEqual(set(inspect.signature(dr.docx_render).parameters), {"pool", "storage", "ctx", "document_id", "render_kind", "values", "lease_s"})
+        self.assertEqual(set(inspect.signature(dr.docx_render).parameters), {"pool", "storage", "ctx", "document_id", "render_kind", "values", "lease_s", "object_metadata"})  # B9b2: metadata của bản ghim ISSUED — KHÔNG phải tham số chế độ/watermark
 
     def test_goi_lai_cung_input_khong_dien_lai_khong_ghi_lai(self):
         did = self.make_document(self.make_template())

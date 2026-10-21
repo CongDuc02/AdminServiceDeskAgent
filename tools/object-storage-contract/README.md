@@ -29,7 +29,9 @@ Không phải mã ứng dụng, không vào image. Đóng **A-024** (nhà cung c
 
 ## Chạy
 
-Từ thư mục gốc repo, với image `bo19-test` (đủ `boto3`) hoặc môi trường Python có `backend/requirements-linux.lock`. PowerShell, từng dòng — biến chỉ sống trong cửa sổ terminal đó:
+Từ thư mục gốc repo, trong **image `bo19-test`** (đã có `boto3` đúng bản của dự án; `.venv` của repo không có phụ thuộc). PowerShell, từng dòng — biến chỉ sống trong cửa sổ terminal đó.
+
+**1. Nạp năm biến.** Hoặc gõ tay (hai khoá nhập bằng `Read-Host`, không hiện trên dòng lệnh), hoặc nạp từ `.env` của anh **trong cửa sổ của anh** (người triển khai không đọc `.env`):
 
 ```powershell
 $env:BO19_OBJECT_STORAGE_ENDPOINT_URL = "https://<ACCOUNT_ID>.r2.cloudflarestorage.com"
@@ -37,9 +39,23 @@ $env:BO19_OBJECT_STORAGE_BUCKET = "<tên bucket>"
 $env:BO19_OBJECT_STORAGE_REGION = "auto"
 $env:BO19_OBJECT_STORAGE_ACCESS_KEY_ID = Read-Host "Access Key ID"
 $env:BO19_OBJECT_STORAGE_SECRET_ACCESS_KEY = Read-Host "Secret Access Key"
-python tools/object-storage-contract/object_storage_contract.py            # in kế hoạch, KHÔNG gọi mạng (mã 3)
-python tools/object-storage-contract/object_storage_contract.py --confirm-real --label r2
+# hoặc, từ .env (mỗi dòng NAME=value; bỏ dấu ngoặc kép nếu có):
+Get-Content .env | Where-Object { $_ -match '^BO19_OBJECT_STORAGE_' } | ForEach-Object { $k, $v = $_ -split '=', 2; Set-Item -Path "Env:$k" -Value $v.Trim().Trim('"') }
+Get-ChildItem Env:BO19_OBJECT_STORAGE_* | Select-Object Name   # chỉ TÊN: đủ năm biến là được, không in giá trị
 ```
+
+**2. Chạy** — `docker run -e TÊN` (không kèm `=giá trị`) lấy giá trị từ cửa sổ này, nên khoá không nằm trên dòng lệnh:
+
+```powershell
+$run = @("run", "--rm", "-v", "${PWD}:/repo", "-w", "/repo", "-e", "PYTHONPATH=/repo/backend/src", "-e", "PYTHONDONTWRITEBYTECODE=1",
+         "-e", "BO19_OBJECT_STORAGE_ENDPOINT_URL", "-e", "BO19_OBJECT_STORAGE_BUCKET", "-e", "BO19_OBJECT_STORAGE_REGION",
+         "-e", "BO19_OBJECT_STORAGE_ACCESS_KEY_ID", "-e", "BO19_OBJECT_STORAGE_SECRET_ACCESS_KEY", "--entrypoint", "python", "bo19-test",
+         "tools/object-storage-contract/object_storage_contract.py")
+docker @run                                    # in kế hoạch, KHÔNG gọi mạng (mã thoát 3)
+docker @run --confirm-real --label r2          # chạy thật trên R2
+```
+
+Cách khác, nếu máy có Python với `backend/requirements-linux.lock`: `python tools/object-storage-contract/object_storage_contract.py --confirm-real --label r2` (cùng năm biến).
 
 Mã thoát: `0` đạt · `1` có phép thử bắt buộc hỏng hoặc `self_check` không đạt · `2` thiếu biến / nhãn sai · `3` chưa xác nhận · `4` đạt nhưng dưới tiền tố còn khoá chưa dọn được. Kết quả: `tools/object-storage-contract/out/s7-<label>.md` (gitignored) và, nếu không có `--no-publish`, `docs/reference/object-storage-s7-<label>.md`.
 
