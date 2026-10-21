@@ -28,10 +28,20 @@ COOKIE = "bo19_session=COOKIE-GIA-KHONG-DUOC-LOT-RA"
 T0 = dt.datetime(2026, 10, 22, 8, 0, tzinfo=dt.timezone.utc)
 
 
+RID = "22222222-2222-4222-8222-222222222222"
+
+
 class Fake(BaseHTTPRequestHandler):
     logins = 0
     rate_limit_after: int | None = None
     lock = threading.Lock()
+    reply_has_request = True
+    submit_ready = True
+    confirmed = False
+    submitted = False
+    polls_after_submit = 0
+    done_after_polls = 3
+    confirm_calls = 0
 
     def log_message(self, *a):  # im lặng
         pass
@@ -47,7 +57,16 @@ class Fake(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self):
-        self._json(200, {"status": "ok"}) if self.path == "/healthz" else self._json(404, {})
+        if self.path == "/healthz":
+            return self._json(200, {"status": "ok"})
+        if self.path == f"/api/v1/requests/{RID}":
+            if Fake.submitted:
+                Fake.polls_after_submit += 1
+                done = Fake.polls_after_submit > Fake.done_after_polls
+                return self._json(200, {"status": "IN_REVIEW" if done else "SUBMITTED", "documents": [{"status": "PENDING_APPROVAL" if done else "DRAFT"}], "row_version": 5, "slots": [], "submit_ready": True})
+            slots = [] if Fake.confirmed else [{"slot_name": "full_name", "value_status": "PROPOSED", "row_version": 2}, {"slot_name": "job_title", "value_status": "PROPOSED", "row_version": 3}]
+            return self._json(200, {"status": "DRAFT", "documents": [], "row_version": 4, "slots": slots, "submit_ready": Fake.confirmed and Fake.submit_ready})
+        self._json(404, {})
 
     def do_POST(self):
         length = int(self.headers.get("content-length", 0))
@@ -65,8 +84,18 @@ class Fake(BaseHTTPRequestHandler):
             return self._json(401, {"error_code": "UNAUTHENTICATED"})
         if self.path == "/api/v1/chat-sessions":
             return self._json(201, {"id": "11111111-1111-4111-8111-111111111111"})
+        if self.path == f"/api/v1/requests/{RID}/actions/confirm-slots":
+            Fake.confirm_calls += 1
+            Fake.confirmed = True
+            return self._json(200, {"status": "DRAFT", "documents": [], "row_version": 4, "slots": [], "submit_ready": Fake.submit_ready})
+        if self.path == f"/api/v1/requests/{RID}/actions/submit":
+            if body.get("expected_row_version") != 4 or not self.headers.get("Idempotency-Key"):
+                return self._json(409, {"error_code": "ROW_VERSION_STALE"})
+            Fake.submitted = True
+            return self._json(200, {"decision_record_id": "x"})
         if self.path.endswith("/turns"):
-            data = b"event: turn.accepted\ndata: {}\n\nevent: turn.reply\ndata: {}\n\n"
+            reply = {"active_request": {"id": RID}} if Fake.reply_has_request else {"active_request": None}
+            data = ("event: turn.accepted\ndata: {}\n\nevent: turn.reply\ndata: " + json.dumps(reply) + "\n\n").encode()
             self.send_response(200)
             self.send_header("content-type", "text/event-stream")
             self.send_header("content-length", str(len(data)))
@@ -90,6 +119,7 @@ class Base(unittest.TestCase):
 
     def setUp(self):
         Fake.logins, Fake.rate_limit_after = 0, None
+        Fake.reply_has_request, Fake.submit_ready, Fake.confirmed, Fake.submitted, Fake.polls_after_submit, Fake.done_after_polls, Fake.confirm_calls = True, True, False, False, 0, 3, 0
         self.tmp = tempfile.TemporaryDirectory(prefix="bo19-measure-")
         self.addCleanup(self.tmp.cleanup)
         self.out = Path(self.tmp.name)
@@ -192,6 +222,54 @@ class Turns(Base):
             self.run_turns(2)
         self.assertEqual(str(cm.exception), "MEASURE_LOGIN_FAILED_401")
         self.assertEqual(rpm.read_budget(self.out)["turns_done"], 0)
+
+
+class JobWindow(Base):
+    def run_window(self, turns_during=2, **kw):
+        return rpm.job_window(self.url, "DO-0001", turns_during, out=self.out, stamp="t5", at=T0, echo=self.lines.append, sleep=lambda s: None, wait_s=3, **kw)
+
+    def test_dung_request_xac_nhan_slot_de_xuat_gui_roi_do_cac_luot_trong_luc_job(self):
+        Fake.done_after_polls = 100  # job "chưa xong" trong lúc các lượt đo chạy
+        res = self.run_window(turns_during=2, label="soffice")
+        self.assertEqual(Fake.confirm_calls, 1)  # slot PROPOSED được xác nhận (như giao diện)
+        self.assertEqual(len(res["turns"]), 2)
+        self.assertTrue(all(t["http_status"] == 200 and t["turn_s"] is not None for t in res["turns"]))
+        self.assertTrue(all(t["start_after_submit_s"] >= 0 for t in res["turns"]))
+        self.assertEqual([e["request"] for e in res["request_status_timeline"]][:1], ["SUBMITTED"])
+        self.assertEqual(rpm.read_budget(self.out)["turns_done"], 3)  # một lượt dựng request + hai lượt đo
+
+    def test_job_xong_thi_ghi_gio_va_danh_dau_luot_sau_do_khong_con_trong_luc_job(self):
+        Fake.done_after_polls = 0  # lần hỏi đầu sau submit đã thấy IN_REVIEW
+        res = self.run_window(turns_during=1)
+        self.assertIsNotNone(res["job_done_after_submit_s"])
+        self.assertEqual(rpm.read_budget(self.out)["turns_done"], 2)
+
+    def test_tran_luot_tinh_ca_luot_dung_request(self):
+        (self.out / "probe_budget.json").write_text(json.dumps({"turns_done": 6}), encoding="utf-8")
+        with self.assertRaises(rpm.Refused) as cm:
+            self.run_window(turns_during=2)  # 6 + 1 + 2 > 8
+        self.assertEqual(str(cm.exception), "MEASURE_LLM_BUDGET")
+        self.assertEqual(rpm.read_budget(self.out)["turns_done"], 6)
+
+    def test_luot_dung_request_khong_ra_request_thi_dung_khong_them_luot(self):
+        Fake.reply_has_request = False
+        with self.assertRaises(rpm.Refused) as cm:
+            self.run_window()
+        self.assertEqual(str(cm.exception), "MEASURE_NO_ACTIVE_REQUEST")
+        self.assertEqual(rpm.read_budget(self.out)["turns_done"], 1)  # chỉ đếm lượt đã chạy
+
+    def test_chua_du_dieu_kien_gui_thi_dung_truoc_khi_submit(self):
+        Fake.submit_ready = False
+        with self.assertRaises(rpm.Refused) as cm:
+            self.run_window()
+        self.assertEqual(str(cm.exception), "MEASURE_NOT_SUBMIT_READY")
+        self.assertFalse(Fake.submitted)
+
+    def test_mat_khau_va_cookie_khong_lot_ra(self):
+        self.run_window(turns_during=1)
+        everything = self.everything_written()
+        self.assertNotIn(PASSWORD, everything)
+        self.assertNotIn("COOKIE-GIA", everything)
 
 
 class Health(Base):
