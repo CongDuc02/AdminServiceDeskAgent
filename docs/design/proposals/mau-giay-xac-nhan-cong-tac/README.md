@@ -1,6 +1,6 @@
 # Đề xuất — mẫu `tpl_work_confirmation.docx` mới (M1.1) và cơ chế biến thể `contract_type` / "đã nghỉ việc"
 
-**Trạng thái:** mục 4 (cơ chế) **PO duyệt 2026-10-21** kèm điều kiện, đã làm trên nhánh `build/m11-enum-mau`; mẫu vẫn là bản NHÁP chờ tên công ty, địa danh và các câu ở mục 6 · **Ngày:** 2026-10-21 · **Căn cứ:** quyết định của PO 2026-10-21 (phiếu `.doc` là sai loại — dựng mẫu mới theo thể thức Phụ lục I Nghị định 30/2020/NĐ-CP); mốc M1.1 của `12-roadmap.md`; `proposals/ac-1-1-dau-vao-cua-po.md` mục E.
+**Trạng thái:** mục 4 (cơ chế) **PO duyệt 2026-10-21** kèm điều kiện, đã làm trên nhánh `build/m11-enum-mau`; mẫu là bản NHÁP chờ PO duyệt PDF xem trước (đã có tên công ty và địa danh hư cấu) · **Ngày:** 2026-10-21 · **Căn cứ:** quyết định của PO 2026-10-21 (phiếu `.doc` là sai loại — dựng mẫu mới theo thể thức Phụ lục I Nghị định 30/2020/NĐ-CP); mốc M1.1 của `12-roadmap.md`; `proposals/ac-1-1-dau-vao-cua-po.md` mục E.
 
 **Mục 4 đã được PO duyệt (2026-10-21) và làm xong trong mã** — `render_values` trả mã `ENUM` và chuỗi rỗng cho slot không bắt buộc; kiểu rule `not_in_future` có trong từ vựng nhưng **chưa bật** cho `employment_end_date` (cần data migration sau khi mã này live). Điều kiện của PO: điều kiện trong mẫu bao cả mệnh đề của slot không bắt buộc (không in nhãn rỗng) — test trên PDF thật. Mẫu **chưa tải** vào hệ thống thật: còn chờ tên công ty, địa danh.
 
@@ -8,7 +8,7 @@
 
 | File | Là gì |
 |---|---|
-| `tpl_work_confirmation.docx` | Mẫu nháp. Họ font khai trong file: **chỉ Times New Roman** (kiểm bằng `declared_families` của chính `tool_layer/rendering/fonts.py`) — nằm trong bộ cổng 1.6, không Webdings/Arial. Tên công ty và địa danh là **giữ chỗ trong ngoặc vuông** — PO điền |
+| `tpl_work_confirmation.docx` | Mẫu nháp. Họ font khai trong file: **chỉ Times New Roman** (kiểm bằng `declared_families` của chính `tool_layer/rendering/fonts.py`) — nằm trong bộ cổng 1.6, không Webdings/Arial. Tên công ty và địa danh đã điền (PO, 2026-10-21): **`CÔNG TY TNHH GIẢI PHÁP ABC`**, **`Hà Nội`** — **tên công ty là HƯ CẤU, dùng cho đồ án**, không phải tổ chức thật |
 | `xem-truoc-du-lieu-gia.pdf` | Ba trang xem trước, **dữ liệu giả có nhãn "(GIẢ)"**, đi đúng đường của `docx_render` (`fill_docx` kiểm biến + watermark `NON_PRODUCTION`, rồi LibreOffice): (1) `INDEFINITE`, đang làm; (2) `PROBATION`, đang làm; (3) `FIXED_TERM`, đã nghỉ việc |
 | `tools/template-build/build_work_confirmation.py` | Công cụ dựng cả hai file trên. Chạy trong image `test`; PO điền `--company-name`, `--place` rồi dựng lại |
 
@@ -86,7 +86,7 @@ Bản gốc: `docs/reference/bo-luat-lao-dong-2019-loai-hop-dong-thu-viec.md` (B
 
 - **Câu 8 — duyệt cơ chế mục 4** kèm hai điều kiện: (1) điều kiện trong mẫu bao **cả mệnh đề** của slot không bắt buộc, không in nhãn rỗng; (2) test: vắng `employment_end_date` thì **PDF** không có dòng nghỉ việc nào (`tests/test_work_confirmation_template.py`, lớp `TrongPdf`, trên PDF thật qua `soffice`). Luật cấm ngày nghỉ ở tương lai: đồng ý — kiểu rule `not_in_future` đã vào từ vựng và mã; **bật cho `employment_end_date` bằng data migration sau khi mã live** (mã cũ coi kiểu lạ là cấu hình không hợp lệ).
 - **Câu 9 — dải `TRIAL`:** `{seq}/GXN-{symbol}-TN` đồng ý. **Câu 1:** ký hiệu `ABC`.
-- **Chưa có:** tên công ty và địa danh (PO để `<…>`) — mẫu giữ `[TÊN CÔNG TY]`, `[Địa danh]`. **Câu 2–7** PO để `<trả lời>` — **áp mặc định đã nêu** (chủ ngữ "Công ty"; khối ký một dòng + chú thích; `Lưu: VT.`; không trích yếu; không in `date_of_birth`, `national_id`, `copies_count`, `language`; câu chữ ba mệnh đề như bản nháp). Sửa lại khi PO trả lời.
+- **Đã có (2026-10-21, lần hai):** tên công ty **Công ty TNHH Giải pháp ABC** (in hoa trên mẫu: `CÔNG TY TNHH GIẢI PHÁP ABC`), địa danh **Hà Nội**, ký hiệu `ABC`. **Tên công ty là HƯ CẤU, dùng cho đồ án** (PO). Mẫu dựng lại bằng `--company-name`, `--place`; PDF xem trước dựng lại. README mục 6: PO giữ mặc định. **Câu 2–7** — **mặc định đã áp** (chủ ngữ "Công ty"; khối ký một dòng + chú thích; `Lưu: VT.`; không trích yếu; không in `date_of_birth`, `national_id`, `copies_count`, `language`; câu chữ ba mệnh đề như bản nháp). 
 
 ## Open Questions
 

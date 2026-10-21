@@ -90,6 +90,13 @@ class MauNhap(unittest.TestCase):
         self.assertIn("[Ngày phát hành — cấp khi phát hành]", draft)
         self.assertNotRegex(draft, re.compile(r"ngày \[N"))
 
+    def test_ten_cong_ty_va_dia_danh_hu_cau_cua_do_an(self):
+        body = fill()
+        self.assertIn("CÔNG TY TNHH GIẢI PHÁP ABC", body)  # PO 2026-10-21: tên công ty HƯ CẤU, dùng cho đồ án
+        self.assertIn("Hà Nội, ngày 21 tháng 10 năm 2026", body)
+        self.assertNotIn("[TÊN CÔNG TY]", body)
+        self.assertNotIn("[Địa danh]", body)
+
     def test_so_va_nguoi_ky_dung_cho(self):
         body = fill()
         self.assertIn("Số: 01/GXN-ABC", body)
