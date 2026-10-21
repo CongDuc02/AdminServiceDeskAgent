@@ -131,3 +131,20 @@ Chỉ khác ngưỡng gốc ở mốc "không thấy": 0.1 · I → 0.2 · I, c�
 **Rồi `maxShutdownDelaySeconds`** (mặc định 30 s, tối đa 300 s; đặt qua API hoặc `render.yaml` theo `docs/reference/render-deploys-docker.md`): đặt một giá trị khác mặc định rồi đo lại bằng cùng bộ — PO quyết lúc đó. Trên gói free **không thử** (PO, 2026-10-05).
 
 **Hai bài học của S4:** log của Render không phân biệt được kill với cắt log (cùng n=5 sáu lần) — chỉ nhân chứng độc lập với log phân biệt được; và một deploy hay một lần đo đúng lúc instance đang tắt vì ngủ có thể hỏng (`Port scan timeout`) — wake bằng một request, rồi bấm deploy ngay.
+
+## Đo `combined_main` trên Render bằng tài khoản giả có thời hạn (O1-6, A-095) — PO, 2026-10-21
+
+**Ngoại lệ có thời hạn của cổng 2.7** (`docs/design/12-roadmap.md`): 2–3 tài khoản giả, mật khẩu ngẫu nhiên không in, chỉ để đo, thu hồi ngay sau đo; hết hạn khi thu hồi và không quá 72 giờ kể từ lúc seed. Hai công cụ, **không phải mã ứng dụng**:
+
+| Công cụ | Ai chạy, ở đâu | Làm gì |
+|---|---|---|
+| `render_probe_accounts.py` (`seed`, `usage`, `teardown`) | **PO**, trong image `bo19-runtime` (cần `psycopg`), credential `bo19_migrator` qua `--env-file` | dựng `DO-0001`…, ghi mật khẩu và giờ seed vào `out/` (gitignored), đếm `llm_usage` từ lúc seed, thu hồi và ghi giờ xoá |
+| `render_probe_measure.py` (`health`, `login-burst`, `turns`) | máy người triển khai (chỉ cần `httpx`), đọc mật khẩu từ `out/probe_passwords.txt` | đo thời gian đăng nhập đồng thời, lượt chat; kết quả ở `out/measure-<UTC>.jsonl` |
+
+**Nói thẳng về "xoá":** `audit_event`, `chat_session`, `request`… có khoá ngoại tới `employee`; `audit_event` chỉ thêm. Teardown xoá credential, vai trò, quyền lẻ và đặt `is_active = false` (không ai đăng nhập lại được); `employee` chỉ xoá hẳn được khi tài khoản chưa tạo dòng nào (đo chat tạo `chat_session` nên các dòng đó **còn lại, đã thu hồi**, nhãn `RENDER_PROBE_REVOKED`).
+
+**Trần 20 lời gọi Groq cho cả phép đo:** mỗi lượt chat gọi ít nhất `classify_intent` và `extract_slots`. `render_probe_measure.py turns` từ chối quá 8 lượt tổng cộng (≈ 16 lời gọi); số thật do `render_probe_accounts.py usage` đếm — chạy sau mỗi đợt đo.
+
+**Ngưỡng dùng chung ở runbook (mục 20 bước 4, 4b của `11-ops.md`):** lượt chat khi `soffice` chạy, lớn nhất ≤ 15 s; đỉnh bộ nhớ ≤ 460 MiB và `oom_kill` = 0 (đọc ở **Render Metrics** — không có shell); vượt thì dừng và báo PO.
+
+**Chưa có:** phép đo *trong lúc `soffice` chạy* và bước 4b (job `render_document` + tải file) cần một template `ACTIVE` và một request đã gửi trên DB Render; Render hiện chưa có template (không có đường tải template — `config_ops` chưa làm). Chờ PO quyết (mặc định đề xuất: công cụ nạp một template giả có nhãn rồi thu hồi) — xem báo cáo.
