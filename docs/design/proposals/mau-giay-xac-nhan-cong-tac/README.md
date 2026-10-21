@@ -1,6 +1,6 @@
 # Đề xuất — mẫu `tpl_work_confirmation.docx` mới (M1.1) và cơ chế biến thể `contract_type` / "đã nghỉ việc"
 
-**Trạng thái:** mục 4 (cơ chế) **PO duyệt 2026-10-21** kèm điều kiện, đã làm trên nhánh `build/m11-mau-enum`; mẫu vẫn là bản NHÁP chờ tên công ty, địa danh và các câu ở mục 6 · **Ngày:** 2026-10-21 · **Căn cứ:** quyết định của PO 2026-10-21 (phiếu `.doc` là sai loại — dựng mẫu mới theo thể thức Phụ lục I Nghị định 30/2020/NĐ-CP); mốc M1.1 của `12-roadmap.md`; `proposals/ac-1-1-dau-vao-cua-po.md` mục E.
+**Trạng thái:** mục 4 (cơ chế) **PO duyệt 2026-10-21** kèm điều kiện, đã làm trên nhánh `build/m11-enum-mau`; mẫu vẫn là bản NHÁP chờ tên công ty, địa danh và các câu ở mục 6 · **Ngày:** 2026-10-21 · **Căn cứ:** quyết định của PO 2026-10-21 (phiếu `.doc` là sai loại — dựng mẫu mới theo thể thức Phụ lục I Nghị định 30/2020/NĐ-CP); mốc M1.1 của `12-roadmap.md`; `proposals/ac-1-1-dau-vao-cua-po.md` mục E.
 
 **Mục 4 đã được PO duyệt (2026-10-21) và làm xong trong mã** — `render_values` trả mã `ENUM` và chuỗi rỗng cho slot không bắt buộc; kiểu rule `not_in_future` có trong từ vựng nhưng **chưa bật** cho `employment_end_date` (cần data migration sau khi mã này live). Điều kiện của PO: điều kiện trong mẫu bao cả mệnh đề của slot không bắt buộc (không in nhãn rỗng) — test trên PDF thật. Mẫu **chưa tải** vào hệ thống thật: còn chờ tên công ty, địa danh.
 
