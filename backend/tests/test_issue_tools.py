@@ -38,6 +38,7 @@ class IssueBase(FlowMixin, unittest.TestCase):
         cls.version_id = make_template_version(cls.db)
         with cls.db.connect("bo19_migrator", autocommit=True) as c:
             reg = c.execute("select document_register_id from request_type where code = 'WORK_CONFIRMATION'").fetchone()[0]
+            c.execute("delete from document_register_format")  # data migration 0003 đã nạp khuôn số thật (M1.2); fixture dùng khuôn GIẢ của riêng nó
             c.execute("insert into document_register_format (id, document_register_id, series, format_pattern, symbol, seq_min_digits, effective_from) "
                       "values (%s, %s, 'TRIAL', 'TRIAL-{seq}/{year}/{symbol}', 'THU-NGHIEM', 3, timestamptz '2020-01-01 00:00:00+00')", (uuid.uuid4(), reg))
 

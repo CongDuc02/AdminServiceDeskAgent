@@ -244,6 +244,7 @@ class KhoiDongLai(DocBase):
         with self.db.connect(autocommit=True) as c:  # siêu người dùng + replica: văn bản ISSUED của test trước còn trỏ tới dòng sổ
             c.execute("set session_replication_role = replica")
             reg = c.execute("select document_register_id from request_type where code = 'WORK_CONFIRMATION'").fetchone()[0]
+            c.execute("delete from document_register_format")  # data migration 0003 đã nạp khuôn số thật (M1.2); fixture dùng khuôn GIẢ của riêng nó
             c.execute("insert into document_register_format (id, document_register_id, series, format_pattern, symbol, seq_min_digits, effective_from) "
                       "values (%s, %s, 'TRIAL', 'TRIAL-{seq}/{year}/{symbol}', 'THU-NGHIEM', 3, timestamptz '2020-01-01 00:00:00+00') on conflict do nothing", (uuid.uuid4(), reg))
             c.execute("delete from document_register_entry")  # bộ đếm sạch cho mỗi test: số kỳ vọng tính từ 001

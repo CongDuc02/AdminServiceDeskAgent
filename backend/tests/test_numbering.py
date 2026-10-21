@@ -398,5 +398,36 @@ class DieuKien(NumberingBase):
             self.assertNotIn(f"from bo19.tool_layer.{forbidden}", src)
 
 
+class KhuonSoThat(NumberingBase):
+    """Khuôn THẬT của data migration `0003` (M1.2, PO 2026-10-21): không xoá dòng khuôn của migration, chỉ dọn sổ và bộ đếm."""
+
+    def setUp(self):
+        with self.db.connect(autocommit=True) as c:
+            c.execute("set session_replication_role = replica")
+            c.execute("delete from document_register_entry")
+            c.execute("delete from document_register_counter")
+            c.execute("update document_register set reset_policy = 'YEARLY' where id = %s", (REGISTER,))
+        self.sys = system_context()
+
+    def test_hai_dong_khuon_va_gia_tri(self):
+        with self.db.connect("bo19_migrator") as c:
+            rows = c.execute("select series, format_pattern, symbol, seq_min_digits, effective_from = timestamptz '2026-10-21 00:00:00+07' from document_register_format "
+                             "where document_register_id = %s order by series", (REGISTER,)).fetchall()
+        self.assertEqual(rows, [("OFFICIAL", "{seq}/GXN-{symbol}", "ABC", 2, True), ("TRIAL", "{seq}/GXN-{symbol}-TN", "ABC", 2, True)])
+
+    def test_dai_trial_so_co_hau_to_tn_dem_02_chu_so_va_lap_lai_moi_nam(self):
+        at = lambda y, m: dt.datetime(y, m, 15, tzinfo=UTC)
+        nums = [self.assign(self.make_document(), at(2026, 11 if i < 10 else 12)).formatted_number for i in range(10)]
+        self.assertEqual(nums[:3], ["01/GXN-ABC-TN", "02/GXN-ABC-TN", "03/GXN-ABC-TN"])
+        self.assertEqual(nums[8:], ["09/GXN-ABC-TN", "10/GXN-ABC-TN"])  # số < 10 thêm số 0; từ 10 không đệm thêm
+        self.assertEqual(self.assign(self.make_document(), at(2027, 1)).formatted_number, "01/GXN-ABC-TN")  # đánh lại từ 01 sang năm (ND30, ADR-043)
+
+    def test_dai_official_khong_co_hau_to_tn(self):
+        official = self.assign(self.make_document(mode="PRODUCTION"), dt.datetime(2026, 11, 15, tzinfo=UTC))
+        self.assertEqual((official.series, official.formatted_number), ("OFFICIAL", "01/GXN-ABC"))
+        trial = self.assign(self.make_document(), dt.datetime(2026, 11, 15, tzinfo=UTC))
+        self.assertEqual((trial.series, trial.formatted_number), ("TRIAL", "01/GXN-ABC-TN"))  # hai dải không chung bộ đếm (D-009) và không bao giờ trùng dạng
+
+
 if __name__ == "__main__":
     unittest.main()

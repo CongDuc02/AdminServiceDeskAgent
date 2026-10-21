@@ -33,7 +33,7 @@ Hiện chỉ có **mẫu giữ chỗ** do tôi dựng (`MẪU GIẢ — chỉ đ
 
 ### A2. M1.2 — định dạng số và ký hiệu (`document_register_format`, dải `TRIAL`)
 
-Hiện dùng định dạng giả `TRIAL-{seq}/{year}/{symbol}`, ký hiệu `THU-NGHIEM` (A-100). Anh giao:
+~~Hiện dùng định dạng giả `TRIAL-{seq}/{year}/{symbol}`, ký hiệu `THU-NGHIEM` (A-100).~~ **Đã thay (2026-10-21):** khuôn thật ở data migration `0003` — mục E. Anh giao:
 
 1. **Ít nhất ba số văn bản thật** đã cấp cho giấy xác nhận công tác, nguyên văn (số và ký hiệu); nếu được, hai năm khác nhau để thấy cách reset.
 2. **Ký hiệu** (`symbol`) nguyên văn, gồm phần viết tắt tên cơ quan/đơn vị.

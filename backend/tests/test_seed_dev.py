@@ -128,10 +128,9 @@ class SeedTrenPostgres(unittest.TestCase):
     def test_1_lan_dau_nap_dung_du_lieu_gia_co_nhan(self):
         report, stdout = self.seed()
         self.assertEqual((report.employees_created, report.roles_created, report.grants_created, report.credentials_written), (5, 5, 2, 5))
-        self.assertEqual(report.formats_created, 1)
         fmt = self.query("select f.series, f.format_pattern, f.symbol, f.seq_min_digits, f.document_register_id = t.document_register_id from document_register_format f "
-                         "join request_type t on t.code = 'WORK_CONFIRMATION'")
-        self.assertEqual(fmt, [("TRIAL", "TRIAL-{seq}/{year}/{symbol}", "THU-NGHIEM", 3, True)])  # định dạng GIẢ, dải TRIAL, đúng sổ của WORK_CONFIRMATION (B9b2, A-100)
+                         "join request_type t on t.code = 'WORK_CONFIRMATION' order by f.series")
+        self.assertEqual(fmt, [("OFFICIAL", "{seq}/GXN-{symbol}", "ABC", 2, True), ("TRIAL", "{seq}/GXN-{symbol}-TN", "ABC", 2, True)])  # khuôn THẬT từ data migration 0003 (M1.2); seed không nạp khuôn giả nữa
         rows = self.query("select employee_code, source, full_name, national_id, date_of_birth, is_active from employee order by 1")
         self.assertEqual([r[0] for r in rows], ["GIA-0001", "GIA-0002", "GIA-0003", "GIA-0101", "GIA-0102"])
         for code, source, name, national_id, dob, active in rows:
@@ -170,8 +169,8 @@ class SeedTrenPostgres(unittest.TestCase):
         before_hash = self.query("select employee_id, password_hash from employee_credential order by 1")
         before_file = self.pw_file.read_bytes()
         report, stdout = self.seed()
-        self.assertEqual((report.employees_created, report.roles_created, report.grants_created, report.credentials_written, report.formats_created), (0, 0, 0, 0, 0))
-        self.assertEqual(self.query("select count(*) from document_register_format"), [(1,)])
+        self.assertEqual((report.employees_created, report.roles_created, report.grants_created, report.credentials_written), (0, 0, 0, 0))
+        self.assertEqual(self.query("select count(*) from document_register_format"), [(2,)])  # hai dòng của data migration 0003; seed không thêm
         self.assertEqual(self.query("select employee_id, password_hash from employee_credential order by 1"), before_hash)
         self.assertEqual(self.pw_file.read_bytes(), before_file)
         self.assertNotIn("SEED_DEV_PASSWORDS_FILE", stdout)  # không ghi file thì không nhắc file
@@ -236,6 +235,23 @@ class SeedTrenPostgres(unittest.TestCase):
             self.seed()
         self.assertEqual(str(cm.exception), "SEED_DB_NOT_NON_PRODUCTION")
         self.assertEqual(self.query("select count(*) from employee"), before)
+
+    def test_7b_thieu_khuon_so_trial_thi_seed_dung_thay_vi_de_ac_1_1_hong_o_no_format(self):
+        with self.db.connect("bo19_migrator", autocommit=True) as c:
+            saved = c.execute("select id, document_register_id, series, format_pattern, symbol, seq_min_digits, effective_from from document_register_format where series = 'TRIAL'").fetchall()
+            c.execute("delete from document_register_format where series = 'TRIAL'")
+
+        def restore():
+            with self.db.connect("bo19_migrator", autocommit=True) as c:
+                for row in saved:
+                    c.execute("insert into document_register_format (id, document_register_id, series, format_pattern, symbol, seq_min_digits, effective_from) values (%s, %s, %s, %s, %s, %s, %s)", row)
+
+        self.addCleanup(restore)
+        before = self.query("select count(*) from employee")
+        with self.assertRaises(seed_dev.SeedRefused) as cm:
+            self.seed()
+        self.assertEqual(str(cm.exception), "SEED_NO_TRIAL_FORMAT")
+        self.assertEqual(self.query("select count(*) from employee"), before)  # từ chối trước khi ghi gì
 
     def test_8_noi_bang_role_khac_migrator_bi_tu_choi(self):
         with self.assertRaises(seed_dev.SeedRefused) as cm:
