@@ -11,6 +11,7 @@ Cần BO19_TEST_PG_SUPERUSER_DSN và chạy trên Linux (tín hiệu POSIX). Ch�
 from __future__ import annotations
 
 from tests import _guard  # noqa: F401 — chốt chặn mạng và khoá API của bộ test (tests/_guard.py)
+from tests.static_support import shared_build
 
 import json
 import os
@@ -101,7 +102,7 @@ class EntrypointBase(unittest.TestCase):
         cls.db.drop()
 
     def env(self, **extra: str) -> dict[str, str]:
-        return {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": self.db.dsn("bo19_app"), "BO19_LLM_API_KEY": LLM_KEY, "BO19_SESSION_SECRET": SECRET, "BO19_RENDER_FINGERPRINT_KEY": FP_KEY, "BO19_SHUTDOWN_DELAY_SECONDS": "5", **extra}
+        return {"BO19_ENVIRONMENT": "dev", "BO19_STATIC_DIR": str(shared_build()), "BO19_DATABASE_URL": self.db.dsn("bo19_app"), "BO19_LLM_API_KEY": LLM_KEY, "BO19_SESSION_SECRET": SECRET, "BO19_RENDER_FINGERPRINT_KEY": FP_KEY, "BO19_SHUTDOWN_DELAY_SECONDS": "5", **extra}
 
     def start(self, module: str, **extra: str) -> Proc:
         p = Proc(module, self.env(**extra))

@@ -14,6 +14,7 @@ Cần BO19_TEST_PG_SUPERUSER_DSN (PostgreSQL mới, ví dụ pgvector/pgvector:0
 from __future__ import annotations
 
 from tests import _guard  # noqa: F401 — chốt chặn mạng và khoá API của bộ test (tests/_guard.py)
+from tests.static_support import shared_build
 
 import io
 import json
@@ -82,7 +83,7 @@ class AC17(unittest.TestCase):
         self.addCleanup(logging.getLogger().removeHandler, h)
 
     def start(self, user: str, entry: Entry = Entry.API, **over):
-        env = {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": self.dsn(user), "BO19_SESSION_SECRET": SECRET, "BO19_LLM_API_KEY": LLM_KEY, "BO19_RENDER_FINGERPRINT_KEY": FP_KEY}
+        env = {"BO19_ENVIRONMENT": "dev", "BO19_STATIC_DIR": str(shared_build()), "BO19_DATABASE_URL": self.dsn(user), "BO19_SESSION_SECRET": SECRET, "BO19_LLM_API_KEY": LLM_KEY, "BO19_RENDER_FINGERPRINT_KEY": FP_KEY}
         env = {**env, **over}
         env = {k: v for k, v in env.items() if v is not None}
         return runner.run(entry, load_settings(env), env, migrations_root=self.root / "m")
@@ -142,8 +143,8 @@ class AC17(unittest.TestCase):
         self.set_operating_mode(None)  # chưa có dòng nào — D-009
         report = self.start("bo19_app")
         self.assertTrue(report.ok, report.failures)
-        self.assertEqual(report.passed, ("1", "2", "5", "10", "11", "12", "13", "15", "16", "17", "19", "20", "21", "22", "23"))
-        self.assertEqual(report.pending, ("3", "4a", "4b", "4c", "8", "9"))  # chưa làm — không tính là đạt
+        self.assertEqual(report.passed, ("1", "2", "5", "8", "10", "11", "12", "13", "15", "16", "17", "19", "20", "21", "22", "23"))
+        self.assertEqual(report.pending, ("3", "4a", "4b", "4c", "9"))  # chưa làm — không tính là đạt
         self.assertEqual(report.skipped, ())
         info = [json.loads(x) for x in self.out.getvalue().splitlines() if '"STARTUP_CHECK_INFO"' in x]
         self.assertEqual([(i["step"], i["mode"], i["source"]) for i in info], [("15", "NON_PRODUCTION", "DEFAULT_NO_ROW")])

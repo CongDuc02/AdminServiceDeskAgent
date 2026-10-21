@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from fastapi import Request
 
@@ -22,6 +23,7 @@ class AppState:
     turn_margin_s: int = 10
     storage: ObjectStorage | None = None  # B8b — object storage cho `stored_file_fetch`; `None` (nhóm biến chưa cấu hình, bước kiểm #14 cảnh báo) thì endpoint tải file trả FILE_UNAVAILABLE. `entrypoints.api_main` dựng
     file_fetch: FileFetchLimits = FileFetchLimits()  # B8c — WV-26..30: số lượt tải đồng thời, chờ chỗ, hạn chót, Retry-After; test dựng giá trị nhỏ
+    static_dir: Path | None = None  # B10a — bản build client; `None` (test, chạy không client) thì `api` không phục vụ tĩnh. `entrypoints` đặt từ `Settings.static_dir` sau bước kiểm #8
     drain_s: float = 25.0  # cửa sổ chờ lượt đang chạy khi tắt tiến trình (`BO19_SHUTDOWN_DELAY_SECONDS`)
 
 

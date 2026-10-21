@@ -13,6 +13,7 @@ Chạy từ backend/:  PYTHONPATH=src python -m unittest tests.test_combined_mai
 from __future__ import annotations
 
 from tests import _guard  # noqa: F401 — chốt chặn mạng và khoá API của bộ test (tests/_guard.py)
+from tests.static_support import shared_build
 
 import io
 import os
@@ -84,7 +85,7 @@ class CombinedMain(DocBase):
     # ---- dựng tiến trình -------------------------------------------------------------------------------------------------------
 
     def env(self, **extra: str | None) -> dict[str, str]:
-        env = {"BO19_ENVIRONMENT": "dev", "BO19_DATABASE_URL": self.db.dsn("bo19_app"), "BO19_SESSION_SECRET": SECRET, "BO19_LLM_API_KEY": LLM_KEY, "BO19_RENDER_FINGERPRINT_KEY": FP_KEY,
+        env = {"BO19_ENVIRONMENT": "dev", "BO19_STATIC_DIR": str(shared_build()), "BO19_DATABASE_URL": self.db.dsn("bo19_app"), "BO19_SESSION_SECRET": SECRET, "BO19_LLM_API_KEY": LLM_KEY, "BO19_RENDER_FINGERPRINT_KEY": FP_KEY,
                "PORT": str(free_port()), "BO19_OBJECT_STORAGE_ENDPOINT_URL": os.environ["BO19_TEST_S3_ENDPOINT"], "BO19_OBJECT_STORAGE_BUCKET": self.bucket,
                "BO19_OBJECT_STORAGE_ACCESS_KEY_ID": os.environ["BO19_TEST_S3_ACCESS_KEY_ID"], "BO19_OBJECT_STORAGE_SECRET_ACCESS_KEY": os.environ["BO19_TEST_S3_SECRET_ACCESS_KEY"]}
         env.update({k: v for k, v in extra.items() if v is not None})

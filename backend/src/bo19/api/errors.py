@@ -109,6 +109,9 @@ def _is_api_path(path: str) -> bool:
     return path == "/api" or path.startswith("/api/")
 
 
+is_api_path = _is_api_path  # cho `api.static` — luật 404 phân đôi theo đúng hàm này
+
+
 # Mã con của fields[].code (mục Danh mục error_code của 05-api.md) theo kiểu lỗi của pydantic. Không bao giờ chép `input` hay `msg`:
 # giá trị đã gửi có thể là mật khẩu.
 def _field_code(pydantic_type: str, ctx: dict | None = None) -> str:
@@ -144,7 +147,7 @@ def install_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(StarletteHTTPException)
     async def _http_exception(request: Request, exc: StarletteHTTPException):
         if not _is_api_path(request.url.path):
-            return await _default_http_exception_handler(request, exc)  # ngoài /api: phục vụ tĩnh sẽ xử lý khi có bản build client (bước #8)
+            return await _default_http_exception_handler(request, exc)  # ngoài /api: tuyến lạ do `api.static` xử lý (B10a); không có bản build (test) thì mặc định của framework
         # 404 và 405 cùng là NOT_FOUND: danh mục không có mã 405, và 404 không để lộ thêm gì (O1-8).
         return error_response(request, "NOT_FOUND" if exc.status_code in (404, 405) else "INTERNAL_ERROR")
 

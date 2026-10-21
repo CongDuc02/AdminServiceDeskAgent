@@ -8,7 +8,8 @@
 #   1. có gói PHÁT TRIỂN — gói nằm trong requirements-dev-linux.lock mà không nằm trong requirements-linux.lock (import-linter, grimp, rich, pygments, …), hoặc `pytest`;
 #   2. có poppler (`pdftotext`, `pdffonts`) — công cụ của target `test`;
 #   3. thiếu thứ image triển khai CẦN: `soffice`, `fc-match`, bốn file Liberation Serif, quy tắc fontconfig;
-#   4. không chạy bằng user `bo19`, hoặc lệnh khởi động không phải `api_main`.
+#   4. không chạy bằng user `bo19`, hoặc lệnh khởi động không phải `api_main`;
+#   5. (B10a) thiếu bản build client: /app/static/index.html và mọi asset nó tham chiếu; hoặc có node/npm/node_modules trong image (giai đoạn Node không được lọt vào runtime).
 # Đặt stage `test` làm stage cuối của Dockerfile thì bước 1 và 2 đỏ (CI kiểm điều đó bằng đột biến — B8b).
 set -euo pipefail
 
@@ -39,6 +40,16 @@ for f in /usr/local/share/fonts/bo19/LiberationSerif-Regular.ttf /usr/local/shar
          /usr/local/share/fonts/bo19/LiberationSerif-BoldItalic.ttf /usr/local/share/fonts/bo19/LICENSE /etc/fonts/conf.d/50-bo19-times-new-roman.conf; do
   if docker run --rm --entrypoint sh "$IMAGE" -c "test -s $f"; then say "đạt — có $f"; else say "ĐỎ — thiếu $f"; fail=1; fi
 done
+
+echo "== $IMAGE: bản build client (B10a) và không có Node"
+if docker run --rm --entrypoint sh "$IMAGE" -c 'test -s /app/static/index.html'; then say "đạt — có /app/static/index.html"; else say "ĐỎ — thiếu /app/static/index.html"; fail=1; fi
+ASSETS="$(docker run --rm --entrypoint sh "$IMAGE" -c "grep -oE '(src|href)=\"/assets/[^\"?#]+' /app/static/index.html | sed -E 's/^(src|href)=\"//'" 2>/dev/null || true)"
+if [ -z "$ASSETS" ]; then say "ĐỎ — index.html không tham chiếu asset nào"; fail=1; else
+  for a in $ASSETS; do if docker run --rm --entrypoint sh "$IMAGE" -c "test -s /app/static$a"; then say "đạt — có asset $a"; else say "ĐỎ — thiếu asset $a"; fail=1; fi; done; fi
+for tool in node npm npx; do
+  if docker run --rm --entrypoint sh "$IMAGE" -c "command -v $tool >/dev/null 2>&1"; then say "ĐỎ — image runtime có \`$tool\`"; fail=1; else say "đạt — không có \`$tool\`"; fi
+done
+if docker run --rm --entrypoint sh "$IMAGE" -c 'test -e /app/node_modules -o -e /client'; then say "ĐỎ — image runtime có node_modules hoặc /client"; fail=1; else say "đạt — không có node_modules, /client"; fi
 
 echo "== $IMAGE: user và lệnh khởi động"
 USER_NAME="$(docker image inspect "$IMAGE" --format '{{.Config.User}}')"

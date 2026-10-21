@@ -3,7 +3,7 @@
 #   backend    — dựng image runtime (không --target) và kiểm nó; dựng target test; import-linter (AC-1.12) + toàn bộ test TRONG image target test (có soffice, font), gồm các ca cần PostgreSQL (container pgvector ghim digest, ADR-033) và SeaweedFS
 #   contracts  — check_grants.py --local-migrated (AC-1.6: Lệch 0) + test của bộ kiểm
 #   lock       — so lock bằng cách sinh lại (ADR-030): lệch một byte là fail; cài lock vào venv sạch bằng --require-hashes
-# ESLint chưa có: client chưa có khung (frontend/package.json rỗng). Phần ESLint của AC-1.12 hoãn tới khi dựng khung client.
+# B10a: job `frontend` — ESLint (AC-1.12), kiểm lệch type sinh từ openapi.yaml, tsc, Vitest, vite build; Node LTS ghim theo digest (ADR-042).
 # Tài liệu: docs/reference/import-linter-2.15.md; docs/design/06-structure.md mục Luật import; ADR-030 ghi chú Cập nhật.
 name: ci
 
@@ -23,6 +23,7 @@ env:
   # Cùng digest với Dockerfile (giai đoạn runtime) và với ADR-033 (PostgreSQL 18 + pgvector của bộ kiểm local).
   PY_IMAGE: python:3.11-slim@sha256:bab1b7ef4b450c81002278d035eff85ebe394ae94df904f7a3ba14f7e16e487b
   PG_IMAGE: pgvector/pgvector:0.8.1-pg18@sha256:508c5290cda481d4f5f846446a26e9c1b804766828a394a5861de1b348a18b4c
+  NODE_IMAGE: node:24-trixie-slim@sha256:a6155384446670e9719bdc4fd0ebe4d4b29fb32a8d6aa523da3547a6cfbcf22c
 
 jobs:
   backend:
@@ -54,6 +55,25 @@ jobs:
               set -euo pipefail
               lint-imports --no-cache --no-logo
               python -m unittest discover -s tests -v'
+
+  frontend:
+    name: frontend — ESLint, type sinh, tsc, Vitest, build (AC-1.12)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+      - name: npm ci, ESLint, kiểm lệch type sinh, tsc, Vitest, vite build — trong ảnh Node ghim theo digest
+        run: |
+          docker run --rm -v "$PWD":/repo -w /repo/frontend -e CI=1 -e npm_config_update_notifier=false "$NODE_IMAGE" bash -c '
+            set -euo pipefail
+            npm ci --no-audit --no-fund
+            npm run lint
+            npm run check:api
+            npm run typecheck
+            npm test
+            npm run build'
 
   contracts:
     name: contracts — check_grants và test của bộ kiểm
