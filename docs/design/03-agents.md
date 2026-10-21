@@ -237,16 +237,17 @@ Các thao tác dưới đây chỉ đi vào từ `api` với **người thật**
 
 **`finalize_issue` hoàn tất một lệnh phát hành, không tự ra lệnh phát hành.** Node này (mục 6.4) chạy trong `queue_worker` vì bản render cuối — chứa `document_number` và `issued_date` — gồm chuyển đổi file có thời lượng không cố định (A-025). Nó chỉ chạy khi có bản ghi lệnh phát hành của một người mang `document.issue`, và `audit_event` của việc chuyển `ISSUED` ghi người ra lệnh đó làm tác nhân. Thứ tự bên trong node:
 
+0. Kiểm `approved_content_hash` (INV-01) trên bảng giá trị sẽ được render — **trước khi cấp số** (B9b2, ADR-041 mục 2): hash chỉ phụ thuộc giá trị biến, không phụ thuộc số, và lệch thì không có lối ra (A-077) nên không tiêu số vô ích.
 1. `document_number_assign` — giao dịch riêng, commit. Số phải có trước khi render vì nó được in trên văn bản.
-2. `docx_render` bản cuối, có `document_number` và `issued_date`, rồi `pdf_export`.
-3. Kiểm `approved_content_hash` (INV-01), rồi `render_integrity_check` trên bản cuối vừa ghi.
+2. `docx_render` bản cuối, có `document_number`, `issued_date` và người ký (họ tên, chức danh — ADR-041 mục 4), rồi `pdf_export`.
+3. `render_integrity_check` trên bản cuối vừa ghi.
 4. Giao dịch cuối: `document_transition` sang `ISSUED`, cùng `request → FULFILLED` nếu mọi artifact đã tới trạng thái cuối.
 
 Hệ quả của việc chốt nơi cấp số:
 
 - **Số bị tiêu trong `queue_worker`, không trong luồng request đồng bộ.** Lệnh đã ghi mà job chưa chạy — ví dụ worker ngừng — không để lại số nào treo.
 - **Retry giữa chừng không tiêu số mới:** `document_number_assign` idempotent theo `document_id`; khoá render theo input nên lần render lại trùng khoá và không ghi đè (mục 5.6).
-- **Nhánh `VOIDED` treo ở `finalize_issue`, và chỉ ở đó.** Khi node bỏ cuộc sau khi đã có số — hết lượt retry, `approved_content_hash` lệch, hoặc bản cuối trượt `render_integrity_check` — nó chuyển số sang `VOIDED` kèm lý do trong một giao dịch, giữ document ở `SIGNED`/`SEALED`, rồi vào `halt_for_human`. `document_issue` không tiêu số, nên không có thất bại nào ở đó sinh ra số `VOIDED`.
+- **Nhánh `VOIDED` treo ở `finalize_issue`, và chỉ ở đó.** Khi node bỏ cuộc sau khi đã có số — hết lượt retry, hoặc bản cuối trượt `render_integrity_check` (`approved_content_hash` lệch thì dừng **trước** khi cấp số, nên không sinh số `VOIDED` — ADR-041) — nó chuyển số sang `VOIDED` kèm lý do trong một giao dịch, giữ document ở `SIGNED`/`SEALED`, rồi vào `halt_for_human`. `document_issue` không tiêu số, nên không có thất bại nào ở đó sinh ra số `VOIDED`.
 - **Việc chốt này đổi hành vi so với sequence diagram (d) của `02-architecture.md`.** Bất biến của nhánh lỗi giữ nguyên — số đã lấy thì `VOIDED`, không tái sử dụng, document ở nguyên trạng thái trước. Nhưng thời điểm và kênh báo lỗi khác: cán bộ nhận xác nhận đã ghi lệnh, còn kết quả thành công hay `VOIDED` đến sau, qua thông báo và `halt_for_human`. (d) và bảng chủ sở hữu chuyển đổi của `document` đã được sửa cho khớp ở vòng sửa lần 2.
 
 **Khoảng hoàn tất phát hành — cờ dẫn xuất `issue_in_progress`, không phải trạng thái mới.** Từ lúc `document_issue` ghi lệnh phát hành tới lúc `finalize_issue` commit `ISSUED` hoặc bỏ cuộc, document **đã có** lệnh phát hành nhưng **chưa** `ISSUED`. Suốt khoảng này document đứng yên ở trạng thái trước lệnh — `SEALED`, hoặc `SIGNED` nếu không cần dấu; máy trạng thái không đổi. Khoảng này có hai đoạn:
@@ -819,6 +820,37 @@ flowchart TD
 - **State thêm khoá `requires_seal`** (`route_after_signature` đặt, đọc từ DB, để cạnh điều kiện rẽ `await_seal`/`await_issue`; thread cũ chưa có khoá — đọc bằng `.get`; `schema_version` vẫn 1 vì chưa thread nào chạy ngoài dev).
 - **Chạy lại sau lần chạy dở (ADR-040 mục 9):** `resume_document` tiếp bằng `invoke(None)` khi thread không chờ mà `Snapshot.pending` (còn node kế **hoặc** task đã xong chưa thành checkpoint). Bản đầu coi `next` rỗng là `END` — sai sau `SIGKILL`; test tiến trình thật bắt được.
 - **Lỗi → job `FAILED`** (như B9a, ADR-039 mục 5); mã mới trong `failure.py`: `NO_ELIGIBLE_SIGNER` (vĩnh viễn), `RENDER_CHECKSUM_MISMATCH`/`RENDER_OBJECT_MISSING` ở `route_signing` (đã có, tạm).
+
+### 6.4.3 Lát Sprint 1 của `document_graph` — B9b2: `finalize_issue` *(ADR-041, PO duyệt 2026-10-20 và 2026-10-21)*
+
+Nối tiếp mục 6.4.2: `await_issue` nay được đánh thức bởi lệnh phát hành, rồi `finalize_issue` hoàn tất và graph tới `END`. **Chưa có** `notify_issued`, `halt_for_human`, `route_takeover` (Sprint 2). Job `finalize_issue` do `document_issue` enqueue (B9b1); handler gọi `DocumentRunner.run_finalize_issue`.
+
+```mermaid
+flowchart TD
+    GATE[document_issue - lenh phat hanh - ISSUE_ORDERED]
+    await_issue[[await_issue - INTERRUPT]]
+    finalize_issue[finalize_issue - kiem hash, cap so, render FINAL, kiem byte, ISSUED]
+    END_B([END])
+    FAILED([job FAILED kem ma, so VOIDED neu da cap])
+
+    GATE -.->|job finalize_issue| await_issue
+    await_issue --> finalize_issue
+    finalize_issue -->|thanh cong hoac da ISSUED| END_B
+    finalize_issue -->|loi vinh vien hoac het luot thu| FAILED
+```
+
+| Bước trong node | Việc | Tool | Lỗi (mã node = mã job) |
+|---|---|---|---|
+| 0. `issue_prepare` | Lệnh phát hành thuộc `document`; `document` ở `SIGNED` (không cần dấu) hoặc `SEALED`; dựng bảng giá trị; tính `approved_content_hash` bằng `domain.content_hash` và so với giá trị đã ghi ở cổng 1. Đã `ISSUED` đúng với lệnh này → node kết thúc | `issue_prepare` (chỉ đọc) | `CONTENT_HASH_MISMATCH` (vĩnh viễn, chưa tiêu số), `NO_ISSUE_ORDER`, `STALE_STATUS`, `RENDER_INPUT_INVALID` |
+| 1. cấp số | Idempotent theo `document_id` | `document_number_assign` | `NO_REGISTER`, `NO_FORMAT`, `BAD_FORMAT`, `NUMBER_FORMAT_COLLISION` (cấu hình — vĩnh viễn, chưa có số) |
+| 2. render `FINAL` | Điền `document_number`, `issued_date`, người ký vào **chính bảng giá trị đã kiểm hash**; `docx_render` rồi `pdf_export`; hai object mang metadata `ISSUED` | `docx_render`, `pdf_export` | `PLACEHOLDER_REMAINS` (vĩnh viễn), `RENDER_CONVERSION_FAILED`, `FONT_MISSING`, `RENDER_CHECKSUM_MISMATCH` |
+| 3. kiểm byte | Đọc lại hai object so với checksum đã commit | `render_integrity_check` | `RENDER_CHECKSUM_MISMATCH`, `RENDER_OBJECT_MISSING` |
+| 4. `ISSUED` | Một giao dịch: ghim bản cuối, `document → ISSUED`, `request → FULFILLED`, `audit_event` (người ra lệnh là tác nhân) | `document_mark_issued` | `ILLEGAL_TRANSITION`, `STALE_STATUS` (lỗi lập trình) |
+
+- **Giá trị `SYSTEM` điền-sau-duyệt** (ADR-041 mục 4): `document_number` = số đã định dạng; `issued_date` = ngày cấp số `dd/mm/yyyy` (A-098); `signer_user_id` = `"<họ tên>, <chức danh>"` của người có quyết định `SIGNED` (PO 2026-10-20; `09-security.md` mục 3.5). Tên biến khác → `RENDER_INPUT_INVALID`.
+- **Bỏ cuộc (Sprint 1):** node ném mã; `classify` quyết vĩnh viễn/tạm; khi job sắp `FAILED` (vĩnh viễn, hoặc hết `max_attempts`) handler chuyển dòng sổ `ASSIGNED` của `document` sang `VOIDED` kèm lý do (`document_number_void_open`), `document` ở nguyên `SIGNED`/`SEALED`. `halt_for_human` thay phần này ở Sprint 2.
+- **Chạy lại:** ADR-041 mục 5 liệt từng điểm chết và kết quả — mọi điểm hội tụ về cùng một số, cùng cặp object, cùng một `ISSUED`; có test giết tiến trình thật.
+- **`WAKES`:** `ISSUE_ORDERED` ↔ `await_issue`. Thứ tự chờ không đổi (`WAIT_ORDER`).
 
 ### 6.5 Checkpointer và PII
 

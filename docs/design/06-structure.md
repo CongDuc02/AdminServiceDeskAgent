@@ -581,6 +581,15 @@ Chạy trước khi tiến trình phục vụ request hay giành job đầu tiê
 - **Phát hiện đáng chú ý:** (1) test tiến trình thật bắt được lỗi có sẵn từ B9a — `Snapshot.finished` coi checkpoint có task đã xong là graph đã kết thúc sau `SIGKILL` (ADR-040 mục 9); (2) D-006 chỉ cần so người thụ hưởng ở Sprint 1, không cần tính E(P, d) ở thao tác cổng.
 - **Không làm ở B9b1:** `finalize_issue`, `document_number_assign` trong luồng, bản `FINAL`, `ISSUED` (B9b2); `document_request_changes`, `document_reject`, `halt_for_human`, tiếp quản (Sprint 2); đường thoát tự duyệt (Sprint 3); client (B10).
 
+**Triển khai ở B9b2 (2026-10-21) — `finalize_issue`, số `TRIAL`, bản `FINAL`, `ISSUED`** *(ADR-041; kế hoạch `proposals/b9b-ke-hoach.md` đã duyệt 2026-10-20)*:
+
+- **`tool_layer/tools/`:** `issue_prepare` (chỉ đọc: lệnh, trạng thái, bảng giá trị, kiểm `approved_content_hash`, người ký); `final_values` (hàm thuần điền ba biến `SYSTEM`); `document_transition.document_mark_issued` (một giao dịch: ghim `ISSUED`, `ISSUED`, `request → FULFILLED`, `audit_event` của người ra lệnh); `numbering.document_number_void_open` (huỷ số `ASSIGNED` đang mở của một `document` chưa `ISSUED`). `docx_render` và `pdf_export` nhận `object_metadata` cho bản `FINAL`.
+- **Kernel:** `value_columns["ISSUED"]` và `on_enter_now["ISSUED"] = issued_at` cho `document`.
+- **Graph:** node `finalize_issue` sau `await_issue`; `WAKES["ISSUE_ORDERED"] = await_issue`; `DocumentRunner.run_finalize_issue`; `queue_worker/handlers/finalize_issue.py` (huỷ số khi job sắp `FAILED`), đăng ký ở `build_handlers`; mã `CONTENT_HASH_MISMATCH` và các mã cấu hình số vào `failure.py`.
+- **`tools/seed-dev/`:** thêm một `document_register_format` dải `TRIAL` **giả có nhãn** (`TRIAL-{seq}/{year}/{symbol}`, ký hiệu `THU-NGHIEM`) — chỉ local; định dạng thật là M1.1 + Nghị định 30/2020/NĐ-CP `[CẦN XÁC MINH]` (A-100).
+- **Không migration; không đổi `openapi.yaml`; không biến môi trường mới.**
+- **Không làm ở B9b2:** `notify_issued`, `halt_for_human`, tiếp quản và phát hành lại sau lỗi (Sprint 2); thu hồi (Sprint 2–3); client (B10).
+
 **Triển khai ở B9a2 (2026-10-16) — `combined_main` và đo O1-6** *(kế hoạch đã duyệt: `proposals/b9a2-ke-hoach.md`; ADR-033, mục Cập nhật 2026-10-16; số đo ở `docs/reference/combined-main-b9a2.md`)*:
 
 - **`combined_main`:** chỉ ghép hàm có sẵn — `api_main.open_api` / `_Server` (nay có `on_exit`) và `worker_main.open_document_runner` + `Dispatcher`. Bước kiểm là **hợp** mọi cột cộng **#18** (`checks_environment.step_18`: `BO19_ENVIRONMENT = dev`, mã `STARTUP_18_COMBINED_ONLY_IN_DEV`); bước #18 hết là "chưa làm". Vòng poll ở luồng riêng, một job một lúc; một pool dùng chung.
