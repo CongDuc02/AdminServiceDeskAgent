@@ -281,8 +281,10 @@ class MarkIssued(IssueBase):
     def test_sai_trang_thai(self):
         doc, _, officer = self.pending_seal()
         decision = self.order_for(doc, officer[0])
+        entry = self.assign(doc, decision)  # dòng sổ và bản FINAL đều HỢP LỆ: chỉ trạng thái `PENDING_SEAL` là sai
         with self.assertRaises(dtn.StaleDocument):
-            self.mark(doc, decision, uuid.uuid4(), self.final_render(doc))
+            self.mark(doc, decision, entry.entry_id, self.final_render(doc))
+        self.assertEqual(document_row(self.db, doc.document_id)["status"], "PENDING_SEAL")
 
     def test_da_issued_voi_dong_so_khac_la_stale(self):
         doc, _, _, decision = self.issued_ready()
