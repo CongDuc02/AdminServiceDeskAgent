@@ -1,6 +1,6 @@
 # Kế hoạch B10a — client nửa nhân viên: khung SPA, `/login`, `/chat`, `/my-requests`, ESLint của AC-1.12, bước kiểm #8, luật 404 phía client
 
-**Trạng thái:** đề xuất, **chờ PO duyệt** — chưa viết dòng mã nào · **Ngày:** 2026-10-21 · **Căn cứ:** `12-roadmap.md` (Sprint 1, dòng B10a·B10b; AC-1.12; AC-1.1 nửa nhân viên; O1-8), mục Cây frontend, Luật import, Đặc tả luật ESLint, Tuyến, Phục vụ tĩnh và luật 404, Auth flow của `06-structure.md`; ADR-013, ADR-018; mục Chat, Yêu cầu, Tải file của `05-api.md` · **Migration:** không · **Biến môi trường mới:** không · **Đổi `openapi.yaml`:** không (client dùng contract như đã có; nếu lúc làm thấy cần thêm trường, dừng và báo diff trước — luật PO 2026-10-21) · **Chặn bởi:** không. Backend của nửa nhân viên đã có từ B3, B6b, B8b, B9b2: `POST/DELETE /auth/session`, `GET /me`, `POST /chat-sessions`, `GET …/messages`, `POST …/turns` (SSE), `GET /requests`, `GET /requests/{id}` (nay có `documents`), `confirm-slots`, `submit`, `downloadRender`.
+**Trạng thái:** **PO duyệt 2026-10-21 — sáu câu theo mặc định** (mục Quyết định của PO ở cuối); ADR-042 và cập nhật ADR-018 đã ghi · **Ngày:** 2026-10-21 · **Căn cứ:** `12-roadmap.md` (Sprint 1, dòng B10a·B10b; AC-1.12; AC-1.1 nửa nhân viên; O1-8), mục Cây frontend, Luật import, Đặc tả luật ESLint, Tuyến, Phục vụ tĩnh và luật 404, Auth flow của `06-structure.md`; ADR-013, ADR-018; mục Chat, Yêu cầu, Tải file của `05-api.md` · **Migration:** không · **Biến môi trường mới:** không · **Đổi `openapi.yaml`:** không (client dùng contract như đã có; nếu lúc làm thấy cần thêm trường, dừng và báo diff trước — luật PO 2026-10-21) · **Chặn bởi:** không. Backend của nửa nhân viên đã có từ B3, B6b, B8b, B9b2: `POST/DELETE /auth/session`, `GET /me`, `POST /chat-sessions`, `GET …/messages`, `POST …/turns` (SSE), `GET /requests`, `GET /requests/{id}` (nay có `documents`), `confirm-slots`, `submit`, `downloadRender`.
 
 ## Mục tiêu
 
@@ -49,3 +49,7 @@ Một nhánh `build/b10a-client`, ba mốc commit để PO xem được từng p
 ## Open Questions
 
 Sáu câu ở trên. Không có mục mở khác của roadmap bị chặn bởi B10a.
+
+## Quyết định của PO (2026-10-21)
+
+Sáu câu **theo mặc định**: (1) làm mới = lấy lại khi mở màn hình và khi lấy lại tiêu điểm, cộng `refetchInterval` 10 s chỉ ở trang chi tiết yêu cầu khi còn `document` chưa cuối — **giải pháp tạm tới `GET /signals` (Sprint 3), ghi vào ADR-018**; (2) React Router, Vitest + Testing Library + MSW, npm — **ADR-042**; (3) tải bản `FINAL` qua lối `fetch` duy nhất rồi lưu blob; (4) CSS modules, không thư viện UI; (5) một nhánh `build/b10a-client`, ba mốc commit; (6) Node LTS ghim theo digest. Bắt đầu B10a.
