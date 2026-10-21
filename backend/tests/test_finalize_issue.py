@@ -231,6 +231,20 @@ class SauKhiCoSo(FinalizeBase):
         keys = [o["Key"] for o in self.raw.list_objects_v2(Bucket=self.bucket, Prefix=f"renders/{document_id_for(rid)}/").get("Contents", [])]
         self.assertEqual(len(keys), 2)  # chỉ cặp .docx/.pdf của bản nháp
 
+    def test_bien_dien_sau_duyet_khong_co_nguon_thi_huy_so_va_khong_ghi_ban_final(self):
+        """Template khai một biến điền-sau-duyệt ngoài ba biến hệ thống biết (`document_number`, `issued_date`, `signer_user_id`): không điền bừa — dừng vĩnh viễn, số đã cấp thì `VOIDED`."""
+        from tests.doc_support import VARIABLES
+
+        retire_active_templates(self.db)
+        make_template(self.db, self.pool, self.storage, variables=(*VARIABLES, ("approver_name", "SYSTEM", None, True, None, None, ())))
+        rid, _ = self.to_sealed()
+        self.order(rid)
+        self.assertEqual(self.drain(), 1)
+        self.assertEqual(self.jobs(rid, "finalize_issue"), [("FAILED", 1, "RENDER_INPUT_INVALID")])
+        (entry,) = self.entries(rid)
+        self.assertEqual((entry[2], entry[3]), ("VOIDED", "RENDER_INPUT_INVALID"))
+        self.assertEqual((self.final_render(rid), self.status(rid)), ([], "SEALED"))
+
     def test_loi_tam_con_luot_giu_so_va_lan_sau_phat_hanh_dung_so_do(self):
         rid, _ = self.to_sealed()
         self.order(rid)

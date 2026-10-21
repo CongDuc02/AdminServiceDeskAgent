@@ -118,6 +118,23 @@ class IssuePrepare(IssueBase):
         self.assertEqual(self.prepare_status(free), "SIGNED")
         self.assertFalse(self.prepare(free, decision2).already)
 
+    def test_signed_con_can_dau_la_trang_thai_thoang_qua_khong_phai_cho_phat_hanh(self):
+        """`SIGNED` mà `requires_seal` còn đúng chỉ là khoảnh khắc giữa hai câu UPDATE của `document_sign` — không phát hành từ đó."""
+        doc, _, officer = self.pending_seal()
+        decision = self.order_for(doc, officer[0])
+        with self.db.connect("bo19_migrator") as c:
+            c.execute("update document set status = 'SIGNED' where id = %s", (doc.document_id,))
+        with self.assertRaises(ip.StaleDocument):
+            self.prepare(doc, decision)
+
+    def test_phien_ban_template_da_go_van_phat_hanh_duoc(self):
+        """Bản `FINAL` còn render được từ phiên bản `RETIRED` (ADR-015 chốt 3): văn bản đã duyệt bằng phiên bản đó không bị chặn chỉ vì template đã bị thay sau khi duyệt."""
+        doc, _, _, decision = self.issued_ready()
+        with self.db.connect(autocommit=True) as c:
+            c.execute("set session_replication_role = replica")
+            c.execute("update template_version set status = 'RETIRED', retired_at = now() where id = %s", (doc.version_id,))
+        self.assertFalse(self.prepare(doc, decision).already)
+
     def prepare_status(self, doc) -> str:
         return document_row(self.db, doc.document_id)["status"]
 
