@@ -1,0 +1,7 @@
+/* Một cột, đọc được ở 360 px (B10a). Không thư viện UI (ADR-042). */
+:root { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.5; color: #1b1b1f; }
+body { margin: 0; }
+a { color: #283593; }
+input, textarea { font: inherit; padding: 0.4rem 0.5rem; border: 1px solid #b0b0b8; border-radius: 6px; }
+h1 { font-size: 1.4rem; }
+h2 { font-size: 1.1rem; margin-top: 1.5rem; }

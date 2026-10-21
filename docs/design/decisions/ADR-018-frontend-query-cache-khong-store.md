@@ -90,3 +90,13 @@
 **Next.js, render phía server.** Loại vì cần một tiến trình Node phục vụ trang, tức một origin khác hoặc một proxy trước `api` — trái quyết định B1 của ADR-013 là `api` phục vụ tĩnh.
 
 **dependency-cruiser.** Kiểm tốt đồ thị import, nhưng `fetch` và `EventSource` là **biến toàn cục**, không phải import, nên luật quan trọng nhất ở đây nằm ngoài tầm của nó. Dùng ESLint cho cả hai loại luật là một công cụ thay vì hai.
+
+## Cập nhật 2026-10-21 (PO duyệt, B10a) — làm mới tạm thời khi chưa có `GET /signals`
+
+Stream tín hiệu `GET /signals` thuộc Sprint 3 (mục Endpoint → sprint của `12-roadmap.md`), nên B10a và B10b chưa có nguồn tín hiệu. **Giải pháp tạm tới khi `GET /signals` có mặt:**
+
+- mọi query lấy lại khi **màn hình mở** và khi **cửa sổ lấy lại tiêu điểm** (`refetchOnWindowFocus`) — đúng luật đã có cho query ngoài chủ đề;
+- thêm **`refetchInterval` 10 s CHỈ ở trang chi tiết yêu cầu** (`/my-requests/:requestId`) và **chỉ khi còn gì để chờ**: `request` đang `SUBMITTED`/`IN_REVIEW`/`APPROVED` (chờ hệ thống hoặc cán bộ — lúc đó có thể chưa có `document` nào) **hoặc** còn `document` chưa ở trạng thái cuối; không polling khi `request` chờ chính người tạo (`DRAFT`, `NEEDS_INFO`, `CHANGES_REQUESTED`) hay đã kết thúc; dừng khi tab ẩn;
+- không `EventSource` ở B10a/B10b; module `signalSource.ts` giữ nguyên là vỏ.
+
+Khi Sprint 3 dựng `GET /signals`: gỡ `refetchInterval`, giữ `refetchOnWindowFocus`, bật luật invalidate theo tiền tố ở trên. Việc gỡ là một mục trong lát stream tín hiệu, không phải nợ ngầm.

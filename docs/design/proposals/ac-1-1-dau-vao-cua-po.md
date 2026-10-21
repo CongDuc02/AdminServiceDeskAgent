@@ -77,6 +77,34 @@ Mã chỉ hỗ trợ ba chỗ giữ `{seq}`, `{year}`, `{symbol}` (token lạ �
 
 **Không cần cho AC-1.1:** dải `OFFICIAL`, số cuối cùng đã cấp trong năm (chỉ cần trước `PRODUCTION`), cột CSV hồ sơ (cổng 3.8), A-071 (nhịp sprint).
 
+
+## D. Cập nhật 2026-10-21 — sau khi PO giao mẫu `.doc` và quyết khuôn số
+
+### D1. Mẫu `.doc` của PO — **đã gỡ khỏi repo (2026-10-21)**; sha256 `fad306192f9eb5374f00bf37d1f19e40dcc787ac3647ba5aa14ad4bafd8fdc8e`, 34.304 byte
+
+> PO kết luận: đây là phiếu khai của nhân viên, **sai loại**; và là file của bên thứ ba trong repo công khai. File đã bị gỡ, kể cả khỏi lịch sử nhánh `build/b10a-client` (viết lại trước khi merge). Phần dưới giữ lại như **ghi chép đã đọc**, không còn file đối chiếu trong repo. Mẫu thay thế: mục E.
+
+Đọc bằng LibreOffice (chuyển sang `.docx`/`.txt`, không chép từ trí nhớ). **Điều quan trọng: đây là PHIẾU KHAI của nhân viên, không phải giấy xác nhận do công ty phát hành.** Nội dung: Quốc hiệu, tiêu đề `GIẤY XÁC NHẬN CÔNG TÁC`, `Kính gửi (1): Ban Giám đốc Công ty…`, các dòng nhân viên tự khai (họ tên, địa chỉ, số CMND/ngày cấp/nơi cấp, công ty, địa chỉ công ty, điện thoại, fax, vị trí công tác, chức danh/chức vụ, **loại hợp đồng lao động** đánh dấu "x", ngày vào làm việc, ngày kết thúc, vị trí công việc theo quá trình công tác, lý do xin xác nhận), lời cam đoan "Tôi xin cam đoan… trước pháp luật và trước Công ty", "Kính trình Giám đốc/Tổng Giám đốc xem xét và xác nhận", rồi hai khối: **`XÁC NHẬN CỦA CÔNG TY`** (ký, ghi rõ họ tên, chức vụ và đóng dấu) và **`NGƯỜI KHAI`** (ký, ghi rõ họ tên). Có chú thích đánh số (1)–(10) trong thân nhưng **không có nội dung chú thích** trong file.
+
+Điều này **khác** với thứ hệ thống đang sinh (`WORK_CONFIRMATION` → giấy do công ty phát hành, có `Số:`, ngày, người ký in họ tên và chức danh). Cần anh trả lời trước khi tôi dựng mẫu `.docx`:
+
+1. **Văn bản hệ thống phát hành là phiếu này (điền sẵn thông tin từ hồ sơ, rồi công ty xác nhận, nhân viên ký ở "Người khai"), hay một giấy xác nhận riêng của công ty?** Nếu là phiếu này: khối "Người khai" cần chữ ký của chính nhân viên — luồng ký hiện chỉ có chữ ký của người ký phía công ty (`document.sign`) và dấu; chữ ký "Người khai" là bước mới, không có trong máy trạng thái (đổi thiết kế → hỏi trước).
+2. **Slot chưa có trong `WORK_CONFIRMATION`:** địa chỉ nhân viên; số CMND **ngày cấp** và **nơi cấp** (có `national_id` nhưng không có hai trường này; phiếu ghi "CMND" — loại giấy tờ cũ); điện thoại, fax, địa chỉ **công ty** (thường là chữ cố định trong mẫu); vị trí công tác **và** chức danh/chức vụ (hiện chỉ có `job_title`); "vị trí công việc theo quá trình công tác" (lịch sử, không có nguồn trong `employee`). Thêm slot là thêm `slot_definition` (data migration) và có thể thêm cột nguồn `employee` — theo quy trình migration, báo trước.
+3. **Loại hợp đồng:** phiếu liệt `Không xác định thời hạn` · `Xác định thời hạn 01 năm` · `… 02 năm` · `… 03 năm` · `Khác (ghi rõ)`. Ba giá trị hiện có (`PROBATION`, `FIXED_TERM`, `INDEFINITE`) **không có "thử việc"** trong phiếu và **không phân biệt 1/2/3 năm**: `FIXED_TERM` gộp ba mục, `Khác` không ánh xạ được. Cần anh quyết: giữ ba giá trị và ghi thời hạn ở trường riêng, hay đổi `ck_employee_contract_type` (migration, A-013 (a)).
+4. **Chữ ký/Quốc hiệu/tiêu đề:** phiếu có Quốc hiệu "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM / Độc lập – Tự do – Hạnh phúc" (dùng gạch ngang dài `–`), không có tên công ty ở đầu trang và không có dòng `Số:` — anh chỉ ra chỗ đặt `Số: …/GXN-…` và tên công ty.
+
+**Font:** thân phiếu dùng **Times New Roman** (87 chỗ khai) cỡ 14 pt (28 half-point) và 13 pt; khổ A4 (11906 × 16838 twip). Ngoài ra có **`Webdings`** (5 chỗ — ô vuông đánh dấu "x" của loại hợp đồng) và **`Arial`** (1 chỗ), hai font **ngoài bộ đã qua cổng 1.6** (chỉ Liberation Serif thay Times New Roman, ADR-036): chốt tải lên sẽ từ chối (`TEMPLATE_FONTS_INVALID`). Cách xử lý đề xuất: thay ô vuông Webdings bằng ký tự Unicode (☐/☒) trong font thuộc bộ, bỏ Arial — **cần anh đồng ý**, và kiểm ký tự đó có trong Liberation Serif hay cần font khác (sẽ tra tài liệu gốc của font, không từ trí nhớ).
+
+### D2. M1.2 — khuôn số `Số: {seq}/GXN-{VIẾT_TẮT}` (PO quyết)
+
+Kiểm từ văn bản gốc, trích nguyên văn ở **`docs/reference/nghi-dinh-30-2020-so-ky-hieu-van-ban.md`**:
+
+- **Đánh lại số mỗi năm: CÓ** — Điều 15 khoản 1: "bắt đầu liên tiếp từ số 01 vào ngày 01 tháng 01 và kết thúc vào ngày 31 tháng 12 hàng năm. Số và ký hiệu văn bản của cơ quan, tổ chức là duy nhất trong một năm".
+- **Số nhỏ hơn 10 có thêm số 0: CÓ** — Phụ lục I, Phần I, khoản 3.c: "với những số nhỏ hơn 10 phải ghi thêm số 0 phía trước" → `seq_min_digits = 2` (`01`…`09`).
+- **`GXN` không có trong Phụ lục III** (27 loại văn bản hành chính; có `GGT` cho Giấy giới thiệu, không có "Giấy xác nhận") — là **ký hiệu loại do công ty tự đặt**; chữ viết tắt tên cơ quan, tổ chức do **người đứng đầu quy định** (Phụ lục I khoản 3.b). Dấu `/` giữa số và ký hiệu, `-` giữa các nhóm chữ viết tắt, không cách chữ, ký hiệu in hoa: khuôn của anh khớp.
+- **`{VIẾT_TẮT}` anh chưa điền** (tin nhắn ghi `VIẾT_TẮT = <…>`): cần giá trị.
+- **Xung đột với schema — cần anh quyết (đổi hành vi đã thiết kế → hỏi trước):** khuôn **không có năm** nhưng schema đòi chuỗi số **duy nhất qua mọi năm** (`uq_register_entry_number`, mục 4.3 của `04-data.md`). Sang năm sau, số đầu tiên `01/GXN-…` trùng chuỗi của năm trước → `finalize_issue` hỏng (`NUMBER_FORMAT_COLLISION`) ngay ngày đầu năm. Hai hướng: **(a, đề xuất)** migration `0015` đổi ràng buộc thành duy nhất theo (sổ, dải, **kỳ**, chuỗi số) — đúng chữ "duy nhất trong một năm" của Điều 15, tương thích ngược (nới ràng buộc, không đổi dữ liệu cũ); **(b)** đưa năm vào ký hiệu (`{seq}/{year}/GXN-…`), không migration nhưng khác khuôn anh chọn. Chọn (a) thì `NUMBER_FORMAT_COLLISION` vẫn bắt trùng chuỗi **trong cùng năm**, và kiểm "mẫu thiếu `{year}` ở sổ `YEARLY`" của `document_number_assign` đổi nghĩa (sổ `YEARLY` không cần `{year}` nữa). Cần cập nhật `04-data.md` mục 4.3, `03-agents.md`, test `test_numbering` — tôi làm sau khi anh chọn.
+
 ## Open Questions
 
 Ba mục anh quyết thêm: cách xử lý biến thể `contract_type` (sau khi có mẫu), số lời gọi Groq tối đa cho lần chạy, và có tải bản vbpl (Cơ sở dữ liệu quốc gia) cho câu hỏi hiệu lực Nghị định 30/2020 không.

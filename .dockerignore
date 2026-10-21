@@ -5,13 +5,14 @@
 .git
 .gitignore
 .gitattributes
-# Không cần cho image: tài liệu, bộ kiểm, cấu hình công cụ, frontend (giai đoạn 1 chưa có ở S2).
+# Không cần cho image: tài liệu, bộ kiểm, cấu hình công cụ. `frontend/` VÀO build context (giai đoạn client-build, B10a) nhưng không mang node_modules hay dist cục bộ.
 docs/
 tools/
 .claude/
 .github/
-frontend/
 backend/tests/
+frontend/node_modules/
+frontend/dist/
 **/__pycache__/
 **/*.py[cod]
 **/.venv/

@@ -48,6 +48,7 @@ ENV_NAMES: Mapping[str, str] = {
     "object_storage_region": "BO19_OBJECT_STORAGE_REGION",
     "object_storage_access_key_id": "BO19_OBJECT_STORAGE_ACCESS_KEY_ID",
     "object_storage_secret_access_key": "BO19_OBJECT_STORAGE_SECRET_ACCESS_KEY",
+    "static_dir": "BO19_STATIC_DIR",
 }
 
 DEFAULT_LLM_BASE_URL = "https://api.groq.com/openai/v1"  # ADR-032 mốc 1, ADR-035; đổi sang provider khác là đổi biến này, khoá và hồ sơ model — không đổi mã
@@ -84,6 +85,8 @@ class Settings:
     object_storage_secret_access_key: str | None = field(default=None, repr=False)
     # B9a — khoá HMAC của dấu vân tay input render (ADR-009, ADR-039, A-097). SECRET riêng, không dẫn xuất từ secret phiên; bước kiểm #24 là nơi chặn khi thiếu hay ngắn.
     render_fingerprint_key: str | None = field(default=None, repr=False)
+    # B10a — thư mục bản build client mà `api` phục vụ (06-structure.md mục 10.4; bước kiểm #8). Mặc định là nơi Dockerfile chép bản build vào; chỉ đổi khi chạy ngoài image (dev không Docker).
+    static_dir: str = "/app/static"
     problems: tuple[tuple[str, str], ...] = ()  # (trường, mã) — mã dạng CONFIG_<TÊN>_MISSING | _INVALID
 
     def problem(self, name: str) -> str | None:
@@ -182,5 +185,6 @@ def load_settings(env: Mapping[str, str] = os.environ) -> Settings:
         values["object_storage_endpoint_url"] = None
         problems.append(("object_storage_endpoint_url", _code("object_storage_endpoint_url", "INVALID")))
     values["object_storage_region"] = _get(env, "object_storage_region") or "us-east-1"
+    values["static_dir"] = _get(env, "static_dir") or "/app/static"
 
     return Settings(problems=tuple(problems), **values)  # type: ignore[arg-type]

@@ -16,6 +16,7 @@ import os
 import signal
 import sys
 import threading
+from pathlib import Path
 from collections.abc import Callable
 
 import uvicorn
@@ -58,7 +59,7 @@ def open_api(settings: Settings, pool: Pool) -> tuple[IntakeRunner, FastAPI]:
     supervisor = TurnSupervisor(runner, pool, deadline_s=settings.turn_deadline_s)
     app = create_app(AppState(pool=pool, session_secret=settings.session_secret, verifier=PasswordVerifier.from_settings(settings), supervisor=supervisor,
                               turn_deadline_s=settings.turn_deadline_s, turn_margin_s=settings.turn_margin_s, drain_s=float(settings.shutdown_delay_s),
-                              storage=storage_from_settings(settings)))
+                              storage=storage_from_settings(settings), static_dir=Path(settings.static_dir)))
     return runner, app
 
 

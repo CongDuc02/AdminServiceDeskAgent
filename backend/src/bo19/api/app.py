@@ -1,7 +1,7 @@
 """app factory — mount `/api/v1`, luật 404, middleware trace (mục Cây backend của 06-structure.md, bo19.api; mục Phục vụ tĩnh và luật 404 — phía api).
 
-Không chứa business logic. Router thật nằm ở `api/routers/`. B3 chưa phục vụ bản build client (chưa có bản build; bước kiểm khởi động #8 chưa làm):
-chỉ có luật phía `/api` — đường lạ thuộc `/api` trả `ErrorEnvelope` `NOT_FOUND` (O1-8). Phần "mọi GET lạ còn lại → index.html" thêm khi có client.
+Không chứa business logic. Router thật nằm ở `api/routers/`. Luật phía `/api` (B3): đường lạ thuộc `/api` trả `ErrorEnvelope` `NOT_FOUND` (O1-8). **B10a:** khi `AppState.static_dir` có giá trị, `api.static` phục vụ bản build client — asset thật, file lạ dưới `/assets` → 404,
+mọi GET lạ còn lại → `index.html`; bước kiểm khởi động #8 bảo đảm bản build có mặt.
 """
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from bo19.api.deps.state import AppState
 from bo19.api.errors import install_exception_handlers
 from bo19.api.files_gate import FileGate
 from bo19.api.routers import auth, chat, documents, files, requests
+from bo19.api.static import install_static
 from bo19.api.trace import TraceMiddleware
 from bo19.config import working_values as wv
 
@@ -54,4 +55,6 @@ def create_app(state: AppState, *, routers: Sequence[APIRouter] | None = None) -
     for router in default_routers() if routers is None else routers:
         v1.include_router(router)
     app.include_router(v1)
+    if state.static_dir is not None:
+        install_static(app, state.static_dir)  # SAU CÙNG: catch-all GET chỉ nhận cái các tuyến trên không nhận
     return app

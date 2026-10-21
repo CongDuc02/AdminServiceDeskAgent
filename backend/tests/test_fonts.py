@@ -272,8 +272,16 @@ class ThuTuStageCuaDockerfile(unittest.TestCase):
 
     def test_runtime_la_stage_cuoi(self):
         stages = self.stages()
-        self.assertEqual([name for _, name in stages], ["base", "test", "runtime"])
+        self.assertEqual([name for _, name in stages], ["client-build", "base", "test", "runtime"])  # B10a: client-build đứng đầu; `runtime` vẫn là stage CUỐI
         self.assertEqual(stages[-1][1], "runtime")
+
+    def test_client_build_la_node_lts_ghim_digest_va_chi_dist_vao_base(self):
+        stages = dict((name, base) for base, name in self.stages())
+        self.assertRegex(stages["client-build"], r"^node:24-[a-z]+-slim@sha256:[0-9a-f]{64}$")  # ADR-042: Node LTS ghim theo digest
+        text = (REPO / "Dockerfile").read_text(encoding="utf-8")
+        copies = re.findall(r"^COPY --from=client-build (\S+) (\S+)", text, re.M)
+        self.assertEqual(copies, [("/client/dist", "/app/static")])  # chỉ dist; không node_modules, không Node
+        self.assertLess(text.index("COPY --from=client-build"), text.index("AS test"))  # ở `base`, đúng đặc tả mục Đặc tả Dockerfile của 06-structure.md
 
     def test_test_khong_nam_sau_runtime_va_runtime_khong_dua_tren_test(self):
         stages = dict((name, base) for base, name in self.stages())
