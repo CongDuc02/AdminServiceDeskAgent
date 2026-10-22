@@ -22,6 +22,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
 from bo19.config import working_values as wv
+from bo19.observability import mem_info
 from bo19.observability.log import get_logger
 from bo19.persistence.pool import Pool
 from bo19.tool_layer import jobs
@@ -58,11 +59,13 @@ def new_worker_id() -> str:
 
 class Dispatcher:
     def __init__(self, pool: Pool, handlers: Mapping[str, Handler], *, worker_id: str | None = None, poll_s: float = wv.JOB_POLL_S, lease_s: float = wv.JOB_LEASE_S,
-                 heartbeat_s: float = wv.JOB_HEARTBEAT_S, drain_s: float = 25.0, on_drain_expired: Callable[[], object] | None = None) -> None:
+                 heartbeat_s: float = wv.JOB_HEARTBEAT_S, drain_s: float = 25.0, on_drain_expired: Callable[[], object] | None = None,
+                 mem_watch: Callable[[str, str], mem_info.JobMemWatch] | None = None) -> None:
         self.pool, self.handlers = pool, dict(handlers)
         self.worker_id = worker_id or new_worker_id()
         self.poll_s, self.lease_s, self.heartbeat_s, self.drain_s = poll_s, lease_s, heartbeat_s, drain_s
         self.on_drain_expired = on_drain_expired
+        self._mem_watch = mem_watch or (lambda job_id, job_type: mem_info.JobMemWatch(job_id, job_type))  # quan sát bộ nhớ cgroup trong lúc job chạy (A-095): chỉ log, không đổi hành vi
         self._stop = threading.Event()
         self._drain_deadline: float | None = None
 
@@ -109,6 +112,8 @@ class Dispatcher:
         outcome: dict[str, BaseException | None] = {}
         done = threading.Event()
         log.info("JOB_START", job_id=str(job.id), job_type=job.job_type, attempt=job.attempts)
+        watch = self._mem_watch(str(job.id), job.job_type)
+        watch.start()
 
         def work() -> None:
             try:
@@ -147,6 +152,7 @@ class Dispatcher:
                     return
         finally:
             beat_stop.set()
+            watch.stop()  # `MEM_JOB_DONE`; không bao giờ ném
         error = outcome.get("error")
         if error is None:
             ok = jobs.succeed(self.pool, job)
