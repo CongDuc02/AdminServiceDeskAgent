@@ -12,6 +12,11 @@ Lệnh con:
   turns         N lượt chat tuần tự (mỗi lượt một phiên chat mới): thời gian từ lúc gửi `POST …/turns` tới `turn.reply`. Ngưỡng của runbook: lớn nhất ≤ 15 s
                 (WV-02 − 5 s) khi `soffice` đang chạy; lượt KHÔNG có `soffice` chạy là số tham chiếu (baseline)
 
+  job-window    MỘT request thật từ chat tới `submit` (job `render_document` vào hàng đợi, `soffice` chạy trên instance), rồi `--turns-during` lượt chat đo NGAY trong lúc đó.
+                Mỗi lượt ghi thời điểm bắt đầu/kết thúc so với lúc `submit` và so với lúc request/văn bản đổi trạng thái (≈ job render xong) → `overlaps_job`.
+                **Nói thẳng:** công cụ không nhìn thấy `soffice` — "trong lúc job chạy" là khoảng [submit, văn bản đổi trạng thái], cận trên của khoảng `soffice` thật (gồm cả chờ hàng đợi);
+                đối chiếu với log Render (`render_document` bắt đầu/xong) khi đọc kết quả. Cần template `ACTIVE` (`render_probe_template.py install`)
+
 **Trần lời gọi Groq cho cả phép đo: 20 (PO, 2026-10-21).** Mỗi lượt gọi LLM ít nhất `classify_intent` và `extract_slots` (hai lời gọi; có thể nhiều hơn khi sửa/ thử lại). Công cụ đếm số LƯỢT đã chạy ở `out/probe_budget.json`
 và từ chối quá `--max-turns-total` (mặc định 8 lượt ≈ 16 lời gọi, chừa dư cho lệch). **Số thật** đo bằng `render_probe_accounts.py usage` (đếm `llm_usage` từ lúc seed) — PO chạy sau mỗi lần.
 
@@ -172,10 +177,119 @@ def turns(url: str, account: str, n: int, *, label: str = "", pause_s: float = 8
     return summary
 
 
+def stream_turn(client: httpx.Client, headers: dict, session_id: str, text: str) -> tuple[list[tuple[str, float]], dict | None, int, float]:
+    """Một lượt: (sự kiện với giờ tương đối, dữ liệu `turn.reply`, mã HTTP, giờ bắt đầu monotonic)."""
+    t1 = time.monotonic()
+    events: list[tuple[str, float]] = []
+    reply: dict | None = None
+    with client.stream("POST", f"{API}/chat-sessions/{session_id}/turns", headers={**headers, "Idempotency-Key": str(uuid.uuid4()), "Accept": "text/event-stream"}, json={"text": text}) as resp:
+        status, name = resp.status_code, ""
+        for line in resp.iter_lines():
+            if line.startswith("event:"):
+                name = line[6:].strip()
+                events.append((name, time.monotonic() - t1))
+                if name in DONE_EVENTS and name != "turn.reply":
+                    break
+            elif line.startswith("data:") and name == "turn.reply":
+                try:
+                    reply = json.loads(line[5:].strip())
+                except ValueError:
+                    reply = None
+                break
+    return events, reply, status, t1
+
+
+def _job_done(entry: dict) -> bool:
+    return bool(entry["documents"] and entry["documents"][0] != "DRAFT") or entry["request"] == "IN_REVIEW"
+
+
+def job_window(url: str, account: str, turns_during: int, *, label: str = "soffice", wait_s: float = 90.0, max_total: int = MAX_TURNS_TOTAL, out: Path = OUT, stamp: str = "",
+               at: dt.datetime | None = None, echo=print, sleep=time.sleep) -> dict:
+    import threading
+
+    load_window(out, at or now())
+    budget = read_budget(out)
+    if budget["turns_done"] + 1 + turns_during > max_total:  # một lượt dựng request + các lượt đo
+        raise Refused("MEASURE_LLM_BUDGET")
+    password = password_of(out, account)
+    stamp = stamp or now().strftime("%Y%m%dT%H%M%SZ")
+    timeline: list[dict] = []
+    stop = threading.Event()
+    with httpx.Client(base_url=url, timeout=httpx.Timeout(60, connect=15)) as client:
+        r, _ = login(client, account, password)
+        if r.status_code != 200:
+            raise Refused("MEASURE_LOGIN_FAILED_" + str(r.status_code))
+        headers = {"Cookie": cookie_of(r), **CSRF}
+
+        def new_session() -> str:
+            body = client.post(f"{API}/chat-sessions", headers={**headers, "Idempotency-Key": str(uuid.uuid4())}).json()
+            return body.get("id") or body.get("chat_session_id")
+
+        def spend() -> None:
+            budget["turns_done"] += 1
+            (out / "probe_budget.json").write_text(json.dumps(budget), encoding="utf-8")  # ghi sau MỖI lượt
+
+        events, reply, status, _ = stream_turn(client, headers, new_session(), TEXT)
+        spend()
+        builder_s = next((round(t, 2) for n, t in events if n == "turn.reply"), None)
+        rid = ((reply or {}).get("active_request") or {}).get("id")
+        if not rid:
+            raise Refused("MEASURE_NO_ACTIVE_REQUEST")  # lượt dựng request không ra request (có thể agent hỏi lại): dừng, không tự thêm lượt
+        detail = client.get(f"{API}/requests/{rid}", headers=headers).json()
+        proposed = [{"slot_name": x["slot_name"], "expected_row_version": x["row_version"]} for x in detail.get("slots", []) if x.get("value_status") == "PROPOSED" and x.get("row_version") is not None]
+        if proposed:
+            detail = client.post(f"{API}/requests/{rid}/actions/confirm-slots", headers=headers, json={"confirmations": proposed}).json()
+        if not detail.get("submit_ready"):
+            raise Refused("MEASURE_NOT_SUBMIT_READY")
+        t_submit = time.monotonic()
+        sub = client.post(f"{API}/requests/{rid}/actions/submit", headers={**headers, "Idempotency-Key": str(uuid.uuid4())}, json={"expected_row_version": detail["row_version"]})
+        if sub.status_code >= 400:
+            raise Refused("MEASURE_SUBMIT_FAILED_" + str(sub.status_code))
+
+        def watch() -> None:
+            last = None
+            while not stop.is_set():
+                try:
+                    d = client.get(f"{API}/requests/{rid}", headers=headers).json()
+                    state = (d.get("status"), tuple(x.get("status") for x in d.get("documents", [])))
+                    if state != last:
+                        timeline.append({"t": round(time.monotonic() - t_submit, 2), "request": state[0], "documents": list(state[1])})
+                        last = state
+                except (httpx.HTTPError, ValueError):
+                    pass
+                stop.wait(1.0)
+
+        watcher = threading.Thread(target=watch, daemon=True)
+        watcher.start()
+        rows = []
+        for i in range(turns_during):
+            events, reply, status, t1 = stream_turn(client, headers, new_session(), TEXT)
+            spend()
+            done = next((t for n, t in events if n == "turn.reply"), None)
+            start_rel = t1 - t_submit
+            rows.append({"i": i + 1, "http_status": status, "turn_s": None if done is None else round(done, 2), "start_after_submit_s": round(start_rel, 2),
+                         "end_after_submit_s": round(start_rel + (events[-1][1] if events else 0), 2)})
+            if i + 1 < turns_during:
+                sleep(2)
+        t_end = time.monotonic()
+        while time.monotonic() - t_end < wait_s and not any(_job_done(e) for e in timeline):
+            time.sleep(1)
+        stop.set()
+        watcher.join(timeout=5)
+    changed = next((e["t"] for e in timeline if _job_done(e)), None)
+    for row in rows:
+        row["overlaps_job"] = changed is None or row["start_after_submit_s"] < changed  # chưa thấy đổi trạng thái: coi mọi lượt là trong lúc (cận trên)
+    res = {"measure": "job_window", "label": label, "request_status_timeline": timeline, "job_done_after_submit_s": changed, "turns": rows, "builder_turn_s": builder_s,
+           "turns_done_total": budget["turns_done"]}
+    record(out, stamp, res)
+    echo(json.dumps(res))
+    return res
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name in ("health", "login-burst", "turns"):
+    for name in ("health", "login-burst", "turns", "job-window"):
         p = sub.add_parser(name)
         p.add_argument("--url", required=True, help="https://<service>.onrender.com")
         if name == "health":
@@ -183,6 +297,8 @@ def main() -> int:
         else:
             p.add_argument("--account", default="DO-0001")
             p.add_argument("--n", type=int, default=4 if name == "login-burst" else 6)
+        if name == "job-window":
+            p.add_argument("--turns-during", type=int, default=2, help="số lượt chat đo ngay sau submit")
         if name == "turns":
             p.add_argument("--label", default="", help="baseline (không soffice) hoặc soffice")
             p.add_argument("--pause", type=float, default=8.0)
@@ -195,6 +311,8 @@ def main() -> int:
             return 0 if health(a.url, a.timeout)["healthz_after_s"] is not None else 1
         if a.cmd == "login-burst":
             login_burst(a.url, a.account, a.n)
+        elif a.cmd == "job-window":
+            job_window(a.url, a.account, a.turns_during)
         else:
             turns(a.url, a.account, a.n, label=a.label, pause_s=a.pause)
     except Refused as e:
