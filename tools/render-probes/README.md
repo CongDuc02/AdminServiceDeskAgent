@@ -143,7 +143,7 @@ Chỉ khác ngưỡng gốc ở mốc "không thấy": 0.1 · I → 0.2 · I, c�
 
 **Nói thẳng về "xoá":** `audit_event`, `chat_session`, `request`… có khoá ngoại tới `employee`; `audit_event` chỉ thêm. Teardown xoá credential, vai trò, quyền lẻ và đặt `is_active = false` (không ai đăng nhập lại được); `employee` chỉ xoá hẳn được khi tài khoản chưa tạo dòng nào (đo chat tạo `chat_session` nên các dòng đó **còn lại, đã thu hồi**, nhãn `RENDER_PROBE_REVOKED`).
 
-**Trần 20 lời gọi Groq cho cả phép đo:** mỗi lượt chat gọi ít nhất `classify_intent` và `extract_slots`. `render_probe_measure.py turns` từ chối quá 8 lượt tổng cộng (≈ 16 lời gọi); số thật do `render_probe_accounts.py usage` đếm — chạy sau mỗi đợt đo.
+**Trần 28 lời gọi Groq cho cả phép đo (PO, 2026-10-22; trước đó 20):** mỗi lượt chat gọi ít nhất `classify_intent` và `extract_slots`. `render_probe_measure.py` từ chối quá 14 lượt tổng cộng (≈ 28 lời gọi); số thật do `render_probe_accounts.py usage` đếm — chạy sau mỗi đợt đo.
 
 **Ngưỡng dùng chung ở runbook (mục 20 bước 4, 4b của `11-ops.md`):** lượt chat khi `soffice` chạy, lớn nhất ≤ 15 s; đỉnh bộ nhớ ≤ 460 MiB và `oom_kill` = 0 (đọc ở **Render Metrics** — không có shell); vượt thì dừng và báo PO.
 

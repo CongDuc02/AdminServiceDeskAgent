@@ -88,6 +88,14 @@ Bản gốc: `docs/reference/bo-luat-lao-dong-2019-loai-hop-dong-thu-viec.md` (B
 - **Câu 9 — dải `TRIAL`:** `{seq}/GXN-{symbol}-TN` đồng ý. **Câu 1:** ký hiệu `ABC`.
 - **Đã có (2026-10-21, lần hai):** tên công ty **Công ty TNHH Giải pháp ABC** (in hoa trên mẫu: `CÔNG TY TNHH GIẢI PHÁP ABC`), địa danh **Hà Nội**, ký hiệu `ABC`. **Tên công ty là HƯ CẤU, dùng cho đồ án** (PO). Mẫu dựng lại bằng `--company-name`, `--place`; PDF xem trước dựng lại. README mục 6: PO giữ mặc định. **Câu 2–7** — **mặc định đã áp** (chủ ngữ "Công ty"; khối ký một dòng + chú thích; `Lưu: VT.`; không trích yếu; không in `date_of_birth`, `national_id`, `copies_count`, `language`; câu chữ ba mệnh đề như bản nháp). 
 
+### Duyệt PDF nháp lần một (PO, 2026-10-22) — năm điều chỉnh, đã làm bốn, ghi một
+
+1. **Khối ký ba tầng (đụng A-100, PO duyệt):** bỏ dòng hướng dẫn "(Ký, ghi rõ họ tên, chức danh và đóng dấu)" — hướng dẫn biểu mẫu, không in trên văn bản phát hành; CHỨC VỤ in hoa đậm → bốn dòng trống cho chữ ký và dấu → họ tên đậm; bỏ dấu phẩy. Hai biến `SYSTEM` mới `signer_title`, `signer_name` (A-100, ADR-041 mục Cập nhật).
+2. **Số:** bản xem trước dùng nhầm số dải `OFFICIAL`; đã sửa. **Đường phát hành thật ở `NON_PRODUCTION` cấp dải `TRIAL`** — chứng minh bằng test đầu-cuối trên mẫu này (`test_finalize_issue.MauThatKhoiKyBaTang`): `01/GXN-ABC-TN`, và bằng `test_numbering.KhuonSoThat` (dải theo `operating_mode` đã ghim, D-009).
+3. **Bỏ "Ông/Bà":** prompt `draft_free_content` bản `1.2` viết câu không chủ ngữ ("Giấy xác nhận này được cấp để bổ sung hồ sơ vay vốn tại ngân hàng."); `07-prompts.md` mục 4.4 và mục Phiên bản, ví dụ mẫu, test.
+4. **Tiêu ngữ:** đường kẻ ngang riêng dưới dòng chữ (viền dưới của chính đoạn, thụt hai bên đúng bằng phần dư của ô) thay cho gạch chân chữ; độ dài đo từ PDF xuất ra (171,25 pt).
+5. **Ý tưởng, CHƯA làm (PO):** `PROBATION` có ngày bắt đầu quá xa (vượt thời gian thử việc tối đa theo Điều 25 Bộ luật Lao động 2019 — `docs/reference/bo-luat-lao-dong-2019-loai-hop-dong-thu-viec.md` mới trích Điều 20 và 24, **chưa** có Điều 25) → cảnh báo người duyệt ở cổng 1. Cần: trích Điều 25 nguyên văn vào `docs/reference/` trước khi dựa vào bất kỳ con số nào; chưa có ngưỡng nào được chọn; không chặn, chỉ cảnh báo; cần thiết kế chỗ hiển thị cho người duyệt.
+
 ## Open Questions
 
 Chín câu ở mục 6. Hai điều **chưa đối chiếu** ở mục 2 (hình học tuyệt đối; chữ ký/dấu) và việc kiểm hiệu lực Bộ luật Lao động sau 2019 vẫn mở.

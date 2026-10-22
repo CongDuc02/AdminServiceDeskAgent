@@ -20,11 +20,11 @@ POSITIVE, _, NEGATIVE = TEXT.partition("KHÔNG viết (")
 
 
 class P4Giong(unittest.TestCase):
-    def test_phien_ban_1_1(self):
-        self.assertEqual(DRAFT_FREE_CONTENT.version, "1.1")
+    def test_phien_ban_1_2(self):
+        self.assertEqual(DRAFT_FREE_CONTENT.version, "1.2")  # tăng minor khi đổi wording (07-prompts.md mục 7)
 
     def test_quy_dinh_giong_va_ngoi_cua_ben_phat_hanh(self):
-        for needle in ("bên PHÁT HÀNH", "Kính gửi", 'gọi là "Ông/Bà"', "CẤM giọng đơn xin", "không dùng ngôi thứ nhất"):
+        for needle in ("bên PHÁT HÀNH", "Kính gửi", "KHÔNG CHỦ NGỮ", "CẤM giọng đơn xin", "không dùng ngôi thứ nhất"):
             self.assertIn(needle, TEXT, needle)
 
     def test_cam_dich_danh_tung_cum_don_xin(self):
@@ -49,10 +49,19 @@ class P4Giong(unittest.TestCase):
         bodies = self.few_shot_bodies()
         self.assertEqual(len(bodies), 2)
         for body in bodies:
-            self.assertTrue(body.startswith("Giấy xác nhận này được cấp để Ông/Bà "), body)
+            self.assertTrue(body.startswith("Giấy xác nhận này được cấp để "), body)
+            self.assertNotIn("Ông/Bà", body)  # PO 2026-10-22: câu không chủ ngữ, không gọi người được cấp
+            self.assertFalse(re.search(r"\b(ông|bà|anh|chị|bạn|quý vị)\b", body.lower()), body)
             self.assertFalse(any(p in body.lower() for p in REQUEST_PHRASES), body)
             self.assertFalse(re.search(r"\b(tôi|chúng tôi)\b", body.lower()), body)  # không ngôi thứ nhất
             self.assertEqual(free_content.validate_body(body, max_length=400), [], body)  # qua chính phép kiểm của hệ thống
+
+    def test_ong_ba_chi_xuat_hien_trong_phan_cam_va_vi_du_khong_viet(self):
+        """Prompt 1.2: "Ông/Bà" chỉ được NHẮC để cấm; không còn trong chỉ dẫn dạng khẳng định hay ví dụ đúng."""
+        self.assertNotIn("Ông/Bà", POSITIVE.split("Ví dụ (dữ liệu giả):")[1])  # hai ví dụ đúng
+        self.assertNotIn('gọi là "Ông/Bà"', TEXT)  # chỉ dẫn cũ của bản 1.1
+        self.assertIn("không gọi người được cấp bằng đại từ hay danh xưng", TEXT)
+        self.assertIn("Ông/Bà", NEGATIVE)  # có ví dụ "KHÔNG viết" cho ca này
 
     def test_vi_du_khong_viet_co_nhan_va_nam_sau_vi_du_dung(self):
         self.assertTrue(NEGATIVE, "thiếu ví dụ 'KHÔNG viết'")

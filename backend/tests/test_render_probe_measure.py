@@ -213,8 +213,9 @@ class Turns(Base):
         self.run_turns(3, max_total=8)
         self.assertEqual(rpm.read_budget(self.out)["turns_done"], 8)
 
-    def test_mac_dinh_tran_la_tam_luot(self):
-        self.assertEqual(rpm.MAX_TURNS_TOTAL, 8)  # ≈ 16 lời gọi Groq (2 mỗi lượt) trong trần 20 của PO
+    def test_mac_dinh_tran_la_muoi_bon_luot_du_n6_khi_soffice_chay(self):
+        self.assertEqual(rpm.MAX_TURNS_TOTAL, 14)  # ≈ 28 lời gọi Groq (2 mỗi lượt) — trần của PO 2026-10-22
+        self.assertEqual(2 + 6 * (1 + 1), rpm.MAX_TURNS_TOTAL)  # 2 baseline + 6 cửa sổ job × (1 dựng request + 1 lượt đo): n = 6 theo runbook
 
     def test_sai_mat_khau_thi_dung_o_dang_nhap_va_khong_ton_luot(self):
         (self.out / "probe_passwords.txt").write_text("DO-0001\tSAI\n", encoding="utf-8")
@@ -245,11 +246,11 @@ class JobWindow(Base):
         self.assertEqual(rpm.read_budget(self.out)["turns_done"], 2)
 
     def test_tran_luot_tinh_ca_luot_dung_request(self):
-        (self.out / "probe_budget.json").write_text(json.dumps({"turns_done": 6}), encoding="utf-8")
+        (self.out / "probe_budget.json").write_text(json.dumps({"turns_done": 12}), encoding="utf-8")
         with self.assertRaises(rpm.Refused) as cm:
-            self.run_window(turns_during=2)  # 6 + 1 + 2 > 8
+            self.run_window(turns_during=2)  # 12 + 1 + 2 > 14
         self.assertEqual(str(cm.exception), "MEASURE_LLM_BUDGET")
-        self.assertEqual(rpm.read_budget(self.out)["turns_done"], 6)
+        self.assertEqual(rpm.read_budget(self.out)["turns_done"], 12)
 
     def test_luot_dung_request_khong_ra_request_thi_dung_khong_them_luot(self):
         Fake.reply_has_request = False

@@ -241,7 +241,8 @@ def make_nodes(deps: DocumentDeps) -> dict[str, NodeFn]:  # noqa: C901 — một
             return {}
         assigned = run.call_tool(document_number_assign, pool, run.sys, document_id=document_id, issue_decision_id=decision_id)
         system = final_values.system_values(prep.fill_after_approval, formatted_number=assigned.formatted_number, issued_date=assigned.issued_date,
-                                            signer=final_values.signer_line(prep.signer_full_name, prep.signer_job_title))
+                                            signer=final_values.signer_line(prep.signer_full_name, prep.signer_job_title),
+                                            signer_name=prep.signer_full_name, signer_title=prep.signer_job_title)
         if system.unresolved:
             log.warning("FINAL_VARIABLE_UNRESOLVED", variables=",".join(system.unresolved))
             raise NodeError("RENDER_INPUT_INVALID")

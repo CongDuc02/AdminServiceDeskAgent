@@ -14,7 +14,7 @@ from bo19.domain import free_content
 
 SUFFIX = "cấp khi phát hành"
 # Nhãn hiển thị của biến điền-sau-duyệt đã biết (WORK_CONFIRMATION); biến lạ hiện tên biến — vẫn nhận ra được vì khuôn không đổi.
-_LABELS = {"document_number": "Số văn bản", "issued_date": "Ngày ban hành", "signer_user_id": "Người ký"}
+_LABELS = {"document_number": "Số văn bản", "issued_date": "Ngày ban hành", "signer_user_id": "Người ký", "signer_title": "Chức vụ người ký", "signer_name": "Họ tên người ký"}
 _MARKER = re.compile(r"\[[^\[\]\r\n]{1,80}?\s[—–-]\s+" + SUFFIX + r"\s*\]", re.IGNORECASE)
 
 
@@ -27,5 +27,8 @@ def contains_marker(text: str) -> bool:
 
 
 def placeholder_variables(values: Mapping[str, str]) -> tuple[str, ...]:
-    """TÊN các biến mà giá trị là dấu giữ chỗ — của hệ thống hay giữ chỗ chung. Không trả giá trị."""
-    return tuple(sorted(name for name, value in values.items() if contains_marker(value) or free_content.is_placeholder(value)))
+    """TÊN các biến mà giá trị là dấu giữ chỗ — của hệ thống hay giữ chỗ chung. Không trả giá trị.
+
+    **Chuỗi RỖNG đúng nghĩa (`""`) không phải dấu giữ chỗ:** đó là giá trị có chủ đích của slot không bắt buộc vắng (`render_values`, PO 2026-10-21) — mẫu bao cả mệnh đề của nó trong điều kiện nên
+    không in chỗ trống. Biến BẮT BUỘC mà rỗng đã bị chặn từ `build_values` (`PLACEHOLDER_VALUE`). Chuỗi chỉ có khoảng trắng vẫn là dấu giữ chỗ."""
+    return tuple(sorted(name for name, value in values.items() if value != "" and (contains_marker(value) or free_content.is_placeholder(value))))

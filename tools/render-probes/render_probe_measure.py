@@ -17,8 +17,8 @@ Lệnh con:
                 **Nói thẳng:** công cụ không nhìn thấy `soffice` — "trong lúc job chạy" là khoảng [submit, văn bản đổi trạng thái], cận trên của khoảng `soffice` thật (gồm cả chờ hàng đợi);
                 đối chiếu với log Render (`render_document` bắt đầu/xong) khi đọc kết quả. Cần template `ACTIVE` (`render_probe_template.py install`)
 
-**Trần lời gọi Groq cho cả phép đo: 20 (PO, 2026-10-21).** Mỗi lượt gọi LLM ít nhất `classify_intent` và `extract_slots` (hai lời gọi; có thể nhiều hơn khi sửa/ thử lại). Công cụ đếm số LƯỢT đã chạy ở `out/probe_budget.json`
-và từ chối quá `--max-turns-total` (mặc định 8 lượt ≈ 16 lời gọi, chừa dư cho lệch). **Số thật** đo bằng `render_probe_accounts.py usage` (đếm `llm_usage` từ lúc seed) — PO chạy sau mỗi lần.
+**Trần lời gọi Groq cho cả phép đo: 28 (PO, 2026-10-22; trước đó 20).** Mỗi lượt gọi LLM ít nhất `classify_intent` và `extract_slots` (hai lời gọi; có thể nhiều hơn khi sửa/ thử lại). Công cụ đếm số LƯỢT đã chạy ở `out/probe_budget.json`
+và từ chối quá 14 lượt (≈ 28 lời gọi). Kế hoạch: 2 lượt baseline + 6 cửa sổ job × (1 dựng request + 1 đo) = 14 → n = 6 lượt chat khi `soffice` chạy. **Số thật** đo bằng `render_probe_accounts.py usage` (đếm `llm_usage` từ lúc seed) — PO chạy sau mỗi lần.
 
 Chặn: không có cửa sổ (`probe_window.json`), cửa sổ đã thu hồi hoặc hết hạn → từ chối. Chỉ đo lên URL do `--url` khai (HTTPS).
 """
@@ -41,7 +41,7 @@ OUT = Path(os.environ.get("PROBE_OUT", str(REPO / "tools" / "render-probes" / "o
 API = "/api/v1"
 CSRF = {"X-BO19-CSRF": "1"}
 TEXT = "xin giấy xác nhận công tác gửi Công ty ABC, mục đích bổ sung hồ sơ vay vốn"
-MAX_TURNS_TOTAL = 8
+MAX_TURNS_TOTAL = 14  # PO 2026-10-22: trần 28 lời gọi Groq cho cả phép đo (≈ 2 mỗi lượt) để đủ n = 6 lượt chat khi `soffice` chạy; dừng và báo nếu `usage` cho thấy > 2 lời gọi mỗi lượt
 DONE_EVENTS = ("turn.reply", "turn.error", "turn.abandoned")
 
 

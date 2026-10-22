@@ -12,7 +12,7 @@ Cỡ chữ thống nhất trong một văn bản (chú thích 1 của bảng Ph�
 
 Tên công ty và địa danh là CHỮ CỐ ĐỊNH trong mẫu (không phải biến): PO điền bằng `--company-name`, `--place`. Mặc định là giữ chỗ trong ngoặc vuông — chỉ để xem bố cục.
 Biến của mẫu (docxtpl): full_name, department_name, job_title, recipient_org, contract_type (ENUM — chưa có cơ chế trong mã, xem proposals/mau-giay-xac-nhan-cong-tac.md), employment_start_date, employment_end_date,
-purpose_statement (FREE_CONTENT), document_number, issued_date, signer_user_id (SYSTEM, điền sau duyệt).
+purpose_statement (FREE_CONTENT), document_number, issued_date, signer_title, signer_name (SYSTEM, điền sau duyệt; khối ký ba tầng — PO 2026-10-22, A-100).
 """
 from __future__ import annotations
 
@@ -34,6 +34,8 @@ from docx.oxml.ns import qn
 from docx.shared import Cm, Mm, Pt
 
 FONT = "Times New Roman"
+CELL_PADDING_CM = 0.38  # lề trái + phải mặc định của ô bảng Word (2 × 0,19 cm)
+MOTTO_WIDTH_CM = 6.04  # chiều ngang "Độc lập - Tự do - Hạnh phúc" cỡ 14 đậm (Liberation Serif Bold), đo từ PDF xuất bằng `pdftotext -bbox`: 171,25 pt
 
 # (tên biến, giá trị GIẢ) — chỉ dùng cho PDF xem trước; mọi giá trị là dữ liệu giả có nhãn.
 FAKE_COMMON = {
@@ -42,10 +44,11 @@ FAKE_COMMON = {
     "job_title": "Chuyên viên (GIẢ)",
     "recipient_org": "Ngân hàng Mẫu (GIẢ)",
     "employment_start_date": "02/03/2022",
-    "purpose_statement": "Giấy xác nhận này được cấp để Ông/Bà bổ sung hồ sơ vay vốn tại ngân hàng.",
-    "document_number": "01/GXN-ABC",
+    "purpose_statement": "Giấy xác nhận này được cấp để bổ sung hồ sơ vay vốn tại ngân hàng.",  # câu không chủ ngữ (P4 bản 1.2)
+    "document_number": "01/GXN-ABC-TN",  # NON_PRODUCTION cấp dải TRIAL: `{seq}/GXN-{symbol}-TN` (data migration 0003; test_numbering.KhuonSoThat) — bản xem trước có watermark nên là số TRIAL
     "issued_date": "21/10/2026",
-    "signer_user_id": "Trần Thị Mẫu (GIẢ), Giám đốc (GIẢ)",
+    "signer_title": "GIÁM ĐỐC (GIẢ)",  # `final_values` viết HOA chức vụ; ở đây điền sẵn dạng hoa
+    "signer_name": "Trần Thị Mẫu (GIẢ)",
 }
 # Ba biến thể để duyệt: không xác định thời hạn đang làm; thử việc đang làm; xác định thời hạn đã nghỉ (thể thức "đã từng công tác", EC-WC-02).
 SAMPLES = (
@@ -55,7 +58,7 @@ SAMPLES = (
 )
 VARIABLES = (
     "full_name", "department_name", "job_title", "recipient_org", "contract_type", "employment_start_date", "employment_end_date",
-    "purpose_statement", "document_number", "issued_date", "signer_user_id",
+    "purpose_statement", "document_number", "issued_date", "signer_title", "signer_name",
 )
 
 
@@ -164,7 +167,9 @@ def build(company_name: str, place: str) -> bytes:
     number = _para(left, "", 13, align=WD_ALIGN_PARAGRAPH.CENTER, before=6)  # ô 3 — Số: cỡ 13, đứng
     _jinja(number, 13, ("Số: ", {}), ("{{ document_number }}", {}))
     _para(right, "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM", 13, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)  # ô 1
-    _para(right, "Độc lập - Tự do - Hạnh phúc", 14, bold=True, underline=True, align=WD_ALIGN_PARAGRAPH.CENTER, before=0)
+    motto = _para(right, "Độc lập - Tự do - Hạnh phúc", 14, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, before=0)
+    side = (10.5 - CELL_PADDING_CM - (MOTTO_WIDTH_CM + 0.08)) / 2  # trừ lề trong của ô (2 × 0,19 cm) và chừa 0,8 mm để dòng chữ không xuống dòng
+    _rule(motto, side, side)  # đường kẻ ngang riêng dưới dòng chữ, dài bằng dòng chữ (Phụ lục I, Phần I mục II.1.b) — viền dưới của chính đoạn, thụt hai bên đúng bằng phần dư của ô
     date = _para(right, "", 14, italic=True, align=WD_ALIGN_PARAGRAPH.CENTER, before=6)  # ô 4 — địa danh và ngày: nghiêng, 14
     _jinja(date, 14,
            (f"{place}, ", {"italic": True}),
@@ -202,11 +207,13 @@ def build(company_name: str, place: str) -> bytes:
     _para(fl, "Nơi nhận:", 12, bold=True, italic=True, before=14)
     _para(fl, "- Như trên;", 11)
     _para(fl, "- Lưu: VT.", 11)
-    _para(fr, "(Ký, ghi rõ họ tên, chức danh và đóng dấu)", 13, italic=True, align=WD_ALIGN_PARAGRAPH.CENTER, before=14)
+    # Khối ký ba tầng (PO 2026-10-22, A-100; Phụ lục I Phần I mục II.7.đ): CHỨC VỤ in hoa đậm (ô 7a) → chỗ ký và đóng dấu → họ tên đậm (ô 7b). Không in hướng dẫn biểu mẫu, không dấu phẩy nối tên và chức danh.
+    title = _para(fr, "", 14, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, before=14)
+    _jinja(title, 14, ("{{ signer_title }}", {"bold": True}))
     for _ in range(4):  # chỗ ký và đóng dấu
         _para(fr, "", 14)
     signer = _para(fr, "", 14, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
-    _jinja(signer, 14, ("{{ signer_user_id }}", {"bold": True}))
+    _jinja(signer, 14, ("{{ signer_name }}", {"bold": True}))
     doc.core_properties.title = "Giấy xác nhận công tác"  # `title` giữ nguyên qua LibreOffice sang PDF (ADR-038, M1.1)
     doc.core_properties.author = "BO-19"
     doc.core_properties.comments = "Mẫu nháp — chưa duyệt"
