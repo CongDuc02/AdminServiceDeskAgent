@@ -28,7 +28,7 @@ from bo19.ai_gateway.gateway import build_gateway
 from bo19.api.deps.state import AppState
 from bo19.api.turns import TurnSupervisor
 from bo19.config.settings import Settings, load_settings
-from bo19.observability import reaper
+from bo19.observability import reaper, tmp_info
 from bo19.observability.log import configure_logging
 from bo19.observability.shutdown import ShutdownLog
 from bo19.orchestrator.runner import IntakeRunner
@@ -115,6 +115,7 @@ def serve(shutdown: ShutdownLog) -> int:
 
 def main() -> None:
     configure_logging()
+    tmp_info.log_tmp_info()  # A-095: `/tmp` là đĩa hay bộ nhớ — chỉ quan sát
     shutdown = ShutdownLog("bo19.api")
     install_original_signal_handlers(shutdown)  # NGAY từ đầu: SIGTERM tới trong lúc bước kiểm/dựng app không được giết tiến trình bằng hành vi mặc định (-15, không log) — `run_server` thấy tín hiệu đã ghi và không chạy uvicorn
     code = serve(shutdown)
