@@ -203,7 +203,7 @@ def _job_done(entry: dict) -> bool:
     return bool(entry["documents"] and entry["documents"][0] != "DRAFT") or entry["request"] == "IN_REVIEW"
 
 
-def job_window(url: str, account: str, turns_during: int, *, label: str = "soffice", wait_s: float = 90.0, doc_wait_s: float = 15.0, max_total: int = MAX_TURNS_TOTAL, out: Path = OUT, stamp: str = "",
+def job_window(url: str, account: str, turns_during: int, *, concurrent_logins: int = 0, label: str = "soffice", wait_s: float = 90.0, doc_wait_s: float = 15.0, max_total: int = MAX_TURNS_TOTAL, out: Path = OUT, stamp: str = "",
                at: dt.datetime | None = None, echo=print, sleep=time.sleep) -> dict:
     import threading
 
@@ -265,6 +265,19 @@ def job_window(url: str, account: str, turns_during: int, *, label: str = "soffi
         t_wait = time.monotonic()
         while time.monotonic() - t_wait < doc_wait_s and not any(e["documents"] for e in timeline):
             time.sleep(0.2)
+        logins: dict | None = None
+        if concurrent_logins:  # bước 4b: N đăng nhập argon2id ĐỒNG THỜI ngay khi job đã vào hàng đợi (trần WV-16b = 4); mỗi lần tính vào ngưỡng 20/15 phút
+            def one(_i: int) -> dict:
+                with httpx.Client(base_url=url, timeout=30) as other:
+                    resp, secs = login(other, account, password)
+                body = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+                return {"status": resp.status_code, "ms": round(secs * 1000), "error_code": body.get("error_code")}
+
+            t_login = time.monotonic()
+            with cf.ThreadPoolExecutor(max_workers=concurrent_logins) as pool:
+                results = list(pool.map(one, range(concurrent_logins)))
+            logins = {"n": concurrent_logins, "start_after_submit_s": round(t_login - t_submit, 2), "results": results, "all_ok": all(200 <= r["status"] < 300 for r in results),
+                      "max_ms": max(r["ms"] for r in results), "rate_limited": any(r["error_code"] == "RATE_LIMITED" for r in results)}
         rows = []
         for i in range(turns_during):
             events, reply, status, t1 = stream_turn(client, headers, new_session(), TEXT)
@@ -285,7 +298,7 @@ def job_window(url: str, account: str, turns_during: int, *, label: str = "soffi
     for row in rows:
         # trùng khoảng [văn bản xuất hiện, job xong]: lượt nào kết thúc trước khi văn bản xuất hiện, hay bắt đầu sau khi job xong, thì KHÔNG tính là "khi soffice chạy"
         row["overlaps_job"] = (doc_at is not None and row["end_after_submit_s"] > doc_at) and (changed is None or row["start_after_submit_s"] < changed)
-    res = {"measure": "job_window", "label": label, "request_status_timeline": timeline, "job_visible_after_submit_s": doc_at, "job_done_after_submit_s": changed, "turns": rows, "builder_turn_s": builder_s,
+    res = {"measure": "job_window", "label": label, "concurrent_logins": logins, "request_status_timeline": timeline, "job_visible_after_submit_s": doc_at, "job_done_after_submit_s": changed, "turns": rows, "builder_turn_s": builder_s,
            "turns_done_total": budget["turns_done"]}
     record(out, stamp, res)
     echo(json.dumps(res))
@@ -305,6 +318,7 @@ def main() -> int:
             p.add_argument("--n", type=int, default=4 if name == "login-burst" else 6)
         if name == "job-window":
             p.add_argument("--turns-during", type=int, default=2, help="số lượt chat đo ngay sau submit")
+            p.add_argument("--concurrent-logins", type=int, default=0, help="bước 4b: số đăng nhập đồng thời trong lúc job chạy (4 = trần argon2id đồng thời)")
         if name == "turns":
             p.add_argument("--label", default="", help="baseline (không soffice) hoặc soffice")
             p.add_argument("--pause", type=float, default=8.0)
@@ -318,7 +332,7 @@ def main() -> int:
         if a.cmd == "login-burst":
             login_burst(a.url, a.account, a.n)
         elif a.cmd == "job-window":
-            job_window(a.url, a.account, a.turns_during)
+            job_window(a.url, a.account, a.turns_during, concurrent_logins=a.concurrent_logins)
         else:
             turns(a.url, a.account, a.n, label=a.label, pause_s=a.pause)
     except Refused as e:

@@ -78,6 +78,7 @@ class TrenPostgres(unittest.TestCase):
         self.out = Path(self.tmp.name)
         self.lines: list[str] = []
         with self.db.connect("bo19_migrator", autocommit=True) as c:
+            c.execute("delete from llm_usage where chat_session_id in (select id from chat_session where employee_id in (select id from employee where source like 'RENDER_PROBE_%'))")
             c.execute("delete from chat_session where employee_id in (select id from employee where source like 'RENDER_PROBE_%')")
             c.execute("delete from employee_credential where employee_id in (select id from employee where source like 'RENDER_PROBE_%')")
             c.execute("delete from employee_role where employee_id in (select id from employee where source like 'RENDER_PROBE_%')")
@@ -159,6 +160,36 @@ class TrenPostgres(unittest.TestCase):
                 c.execute("insert into llm_usage (id, call_name, model_tier, chat_session_id, input_tokens, outcome, trace_id, created_at) values (%s, 'classify_intent', 'CHEAP', %s, 1, 'OK', %s, %s)",
                           (uuid.uuid4(), session, str(uuid.uuid4()), when))
         self.assertEqual(rpa.usage(self.dsn(), allow_host=self.host, out=self.out, echo=self.lines.append), 2)  # chỉ hai dòng sau giờ seed
+
+    def test_seed_lan_hai_them_do_0004_giu_gio_seed_dau_tai_khoan_da_seed_va_truong_template(self):
+        self.seed()
+        win = json.loads((self.out / rpa.WINDOW).read_text(encoding="utf-8"))
+        win.update({"template_version_id": "tv-1", "template_installed_at": "2026-10-22T07:36:54+00:00", "template_retired_at": None})
+        (self.out / rpa.WINDOW).write_text(json.dumps(win), encoding="utf-8")
+        self.teardown()  # thu hồi ba tài khoản đầu
+        later = T0 + dt.timedelta(hours=4)
+        data = self.seed(count=1, first=4, now=later)
+        self.assertEqual(data["accounts"], ["DO-0004"])
+        self.assertEqual(data["first_seeded_at"], "2026-10-22T08:00:00+00:00")  # giờ seed ĐẦU của ngoại lệ
+        self.assertEqual(data["accounts_all"], ["DO-0001", "DO-0002", "DO-0003", "DO-0004"])
+        self.assertEqual((data["template_version_id"], data["template_installed_at"]), ("tv-1", "2026-10-22T07:36:54+00:00"))  # retire sau đo vẫn tìm được template
+        self.assertIsNone(data["torn_down_at"])
+        self.assertEqual(self.query("select count(*) from employee where source = 'RENDER_PROBE_FAKE'"), [(1,)])  # chỉ một tài khoản đang mở
+        summary = self.teardown()  # thu hồi cuối: phủ cả bốn mã đã seed
+        self.assertGreaterEqual(summary["credentials_deleted"], 1)
+        self.assertEqual(self.query("select count(*) from employee_credential c join employee e on e.id = c.employee_id where e.employee_code like 'DO-%%'"), [(0,)])
+
+    def test_usage_dem_tu_gio_seed_dau_khong_phai_lan_seed_gan_nhat(self):
+        self.seed()
+        win = json.loads((self.out / rpa.WINDOW).read_text(encoding="utf-8"))
+        win["seeded_at"], win["first_seeded_at"] = "2026-10-22T10:00:00+00:00", "2026-10-22T08:00:00+00:00"
+        (self.out / rpa.WINDOW).write_text(json.dumps(win), encoding="utf-8")
+        session = uuid.uuid4()
+        with self.db.connect("bo19_migrator", autocommit=True) as c:
+            c.execute("insert into chat_session (id, employee_id) values (%s, %s)", (session, rpa.employee_id("DO-0001")))
+            c.execute("insert into llm_usage (id, call_name, model_tier, chat_session_id, input_tokens, outcome, trace_id, created_at) values (%s, 'classify_intent', 'CHEAP', %s, 1, 'OK', %s, '2026-10-22T09:00:00+00:00')",
+                      (uuid.uuid4(), session, str(uuid.uuid4())))
+        self.assertEqual(rpa.usage(self.dsn(), allow_host=self.host, out=self.out, echo=self.lines.append), 1)  # dòng 09:00 trước lần seed gần nhất (10:00) nhưng sau lần seed đầu (08:00)
 
     def test_chay_lai_seed_khong_nhan_doi_tai_khoan(self):
         self.seed()

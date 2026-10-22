@@ -156,3 +156,10 @@ Chỉ khác ngưỡng gốc ở mốc "không thấy": 0.1 · I → 0.2 · I, c�
 **Trình tự đo (từng bước; mỗi bước PO hoặc tôi, ghi giờ vào roadmap):** (1) `seed`; (2) `health`; (3) `login-burst --n 4`; (4) `turns --n 2 --label baseline` rồi `usage` để biết số lời gọi thật mỗi lượt; (5) `install` template giả; (6) `job-window` (nhiều lần, theo số lời gọi còn lại); (7) `retire` template; (8) `teardown`. Memory đỉnh và `oom_kill` ở Render Metrics (PO đọc).
 
 **Số học của trần 20 lời gọi (mỗi lượt ≥ 2 lời gọi: `classify_intent`, `extract_slots`):** mỗi `job-window` tốn 1 lượt dựng request + `--turns-during` lượt đo. Với trần 8 lượt: 2 lượt baseline + 3 cửa sổ job × (1 + 1 lượt đo) = 8 → **chỉ 3 mẫu "lượt chat khi `soffice` chạy"**, ít hơn n ≥ 6 của runbook. Muốn đủ n ≥ 6 phải nới trần (≈ 14 lượt ≈ 28 lời gọi) hoặc chấp nhận n = 3 và ghi rõ. Số thật mỗi lượt có thể hơn 2 — kiểm bằng `usage` sau bước (4) trước khi chạy tiếp.
+
+**Kết quả thực tế của lần đo đầu (2026-10-22) và bước 4b (PO duyệt):**
+- **Mỗi tài khoản chỉ có một request đang mở** (lượt đo đầu tạo request, `cancel` chỉ từ `DRAFT`), nên mỗi tài khoản cho **một** cửa sổ job. Hai cửa sổ (DO-0002, DO-0003) × 3 lượt đo cho n = 6; mẫu đầu (DO-0001) bị loại vì kết thúc trước khi văn bản xuất hiện.
+- **Bước 4b** (4 đăng nhập đồng thời + job `render_document`; phần "tải file" **chưa đo** vì owner chỉ tải được bản `FINAL`): thu hồi ba tài khoản đầu (`teardown`), `seed --first 4 --count 1` (DO-0004; giữ giờ seed đầu, mọi mã đã seed và các trường template trong `probe_window.json`), rồi
+  `render_probe_measure.py job-window --account DO-0004 --turns-during 0 --concurrent-logins 4` — một lượt dựng request (lượt Groq cuối của trần 14) rồi bốn đăng nhập đồng thời ngay khi job đã vào hàng đợi. **Đỉnh bộ nhớ và `oom_kill` đọc từ dòng log `MEM_INFO` / `MEM_JOB_DONE` trong Render Logs** (Render Free không có biểu đồ Memory/CPU). Ngưỡng dừng giữ: đỉnh > 460 MiB hoặc `oom_kill` > 0.
+- `usage` đếm từ **lần seed đầu** (`first_seeded_at`), không phải lần seed gần nhất.
+

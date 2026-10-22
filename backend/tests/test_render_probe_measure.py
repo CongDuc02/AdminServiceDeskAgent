@@ -285,6 +285,17 @@ class JobWindow(Base):
         self.assertIsNotNone(res["job_done_after_submit_s"])
         self.assertEqual(rpm.read_budget(self.out)["turns_done"], 2)
 
+    def test_4b_dang_nhap_dong_thoi_trong_luc_job_chay_khong_ton_luot_do(self):
+        Fake.done_after_polls = 100
+        logins_before = Fake.logins
+        res = self.run_window(turns_during=0, concurrent_logins=4)
+        burst = res["concurrent_logins"]
+        self.assertEqual((burst["n"], burst["all_ok"], burst["rate_limited"]), (4, True, False))
+        self.assertEqual(Fake.logins - logins_before, 1 + 4)  # một lần đăng nhập của phiên đo + bốn lần đồng thời
+        self.assertEqual(res["turns"], [])
+        self.assertEqual(rpm.read_budget(self.out)["turns_done"], 1)  # chỉ lượt dựng request: đúng lượt Groq cuối của trần 14
+        self.assertGreaterEqual(burst["start_after_submit_s"], res["job_visible_after_submit_s"] - 0.5)  # bắn SAU khi job đã vào hàng đợi
+
     def test_tran_luot_tinh_ca_luot_dung_request(self):
         (self.out / "probe_budget.json").write_text(json.dumps({"turns_done": 12}), encoding="utf-8")
         with self.assertRaises(rpm.Refused) as cm:
