@@ -54,6 +54,55 @@ class Docx(unittest.TestCase):
         self.assertEqual(str(cm.exception), "TEMPLATE_STORAGE_ENV_MISSING")
 
 
+class KiemTraStorage(unittest.TestCase):
+    ENV = {"BO19_OBJECT_STORAGE_ENDPOINT_URL": "https://abc.r2.cloudflarestorage.com", "BO19_OBJECT_STORAGE_BUCKET": "bo19-render-dev", "BO19_OBJECT_STORAGE_REGION": "auto",
+           "BO19_OBJECT_STORAGE_ACCESS_KEY_ID": "K" * 32, "BO19_OBJECT_STORAGE_SECRET_ACCESS_KEY": "BI_MAT_KHONG_DUOC_IN" + "S" * 20}
+
+    def storage(self, *, put_denied=False):
+        from bo19.object_storage import StorageError
+
+        class Fake:
+            deleted: list = []
+
+            def reachable(self): return True
+            def list_keys(self, prefix): return iter([])
+            def put_if_absent(self, key, data, **kw):
+                if put_denied:
+                    raise StorageError("ACCESS_DENIED")
+            def delete(self, key): Fake.deleted.append(key)
+
+        return Fake()
+
+    def test_tat_ca_dat(self):
+        out: list[str] = []
+        self.assertEqual(rpt.check_storage(self.ENV, storage=self.storage(), echo=out.append), 0)
+        text = "\n".join(out)
+        self.assertIn("CHECK_PUT OK", text)
+        self.assertIn("CHECK_RESULT OK", text)
+        self.assertIn("bucket_is_render_dev=True", text)
+        self.assertIn("endpoint_r2=True", text)
+
+    def test_doc_dat_ghi_bi_tu_choi_noi_dung_la_token_khong_co_quyen_ghi_va_khong_lo_bi_mat(self):
+        out: list[str] = []
+        self.assertEqual(rpt.check_storage(self.ENV, storage=self.storage(put_denied=True), echo=out.append), 1)
+        text = "\n".join(out)
+        self.assertIn("CHECK_REACHABLE OK", text)
+        self.assertIn("CHECK_LIST OK", text)
+        self.assertIn("CHECK_PUT ACCESS_DENIED", text)
+        self.assertIn("CHECK_RESULT FAILED", text)
+        for secret in ("BI_MAT", "abc.r2", "KKKKKKKK"):
+            self.assertNotIn(secret, text)
+
+    def test_hinh_dang_bat_bucket_sai_va_khoang_trang_thua(self):
+        env = {**self.ENV, "BO19_OBJECT_STORAGE_BUCKET": "bo19-dev ", "BO19_OBJECT_STORAGE_ENDPOINT_URL": "https://x.example.test"}
+        out: list[str] = []
+        rpt.check_storage(env, storage=self.storage(), echo=out.append)
+        text = out[0]
+        self.assertIn("bucket_is_render_dev=False", text)
+        self.assertIn("endpoint_r2=False", text)
+        self.assertIn("edge_whitespace=True", text)
+
+
 @unittest.skipUnless(pg_support.SUPERUSER_DSN, "cần BO19_TEST_PG_SUPERUSER_DSN")
 class TrenPostgresVaS3(s3_support.S3Base):
     @classmethod
