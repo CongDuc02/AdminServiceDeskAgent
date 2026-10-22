@@ -42,6 +42,7 @@ class Fake(BaseHTTPRequestHandler):
     polls_after_submit = 0
     done_after_polls = 3
     confirm_calls = 0
+    login_status = 200
 
     def log_message(self, *a):  # im lặng
         pass
@@ -79,6 +80,11 @@ class Fake(BaseHTTPRequestHandler):
                 return self._json(429, {"error_code": "RATE_LIMITED"})
             if body.get("password") != PASSWORD:
                 return self._json(401, {"error_code": "INVALID_CREDENTIALS"})
+            if Fake.login_status == 204:  # thật: 204 No Content, cookie ở header
+                self.send_response(204)
+                self.send_header("set-cookie", COOKIE + "; Path=/; Secure; HttpOnly")
+                self.end_headers()
+                return
             return self._json(200, {"employee_code": body.get("employee_code")}, {"set-cookie": COOKIE + "; Path=/; Secure; HttpOnly"})
         if self.headers.get("Cookie") != COOKIE:
             return self._json(401, {"error_code": "UNAUTHENTICATED"})
@@ -118,7 +124,7 @@ class Base(unittest.TestCase):
         cls.server.server_close()
 
     def setUp(self):
-        Fake.logins, Fake.rate_limit_after = 0, None
+        Fake.logins, Fake.rate_limit_after, Fake.login_status = 0, None, 200
         Fake.reply_has_request, Fake.submit_ready, Fake.confirmed, Fake.submitted, Fake.polls_after_submit, Fake.done_after_polls, Fake.confirm_calls = True, True, False, False, 0, 3, 0
         self.tmp = tempfile.TemporaryDirectory(prefix="bo19-measure-")
         self.addCleanup(self.tmp.cleanup)
@@ -184,6 +190,23 @@ class LoginBurst(Base):
         everything = self.everything_written()
         self.assertNotIn(PASSWORD, everything)
         self.assertNotIn("COOKIE-GIA", everything)
+
+
+class DangNhap204(Base):
+    """Đăng nhập thật trả 204 No Content (lần đo đầu trên Render, 2026-10-22, báo `all_ok = false` oan vì kiểm == 200)."""
+
+    def test_burst_204_la_thanh_cong(self):
+        Fake.login_status = 204
+        res = rpm.login_burst(self.url, "DO-0001", 4, out=self.out, stamp="t204", at=T0, echo=self.lines.append)
+        self.assertEqual([r["status"] for r in res["results"]], [204] * 4)
+        self.assertTrue(res["all_ok"])
+
+    def test_turns_va_job_window_dung_204(self):
+        Fake.login_status = 204
+        res = rpm.turns(self.url, "DO-0001", 1, out=self.out, stamp="t204b", at=T0, echo=self.lines.append, sleep=lambda s: None)
+        self.assertEqual(res["replies"], 1)
+        window = rpm.job_window(self.url, "DO-0001", 1, out=self.out, stamp="t204c", at=T0, echo=self.lines.append, sleep=lambda s: None, wait_s=2)
+        self.assertEqual(len(window["turns"]), 1)
 
 
 class Turns(Base):

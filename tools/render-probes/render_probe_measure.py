@@ -120,7 +120,7 @@ def login_burst(url: str, account: str, n: int, *, out: Path = OUT, stamp: str =
 
     with cf.ThreadPoolExecutor(max_workers=n) as pool:
         results = list(pool.map(one, range(n)))
-    res = {"measure": "login_burst", "n": n, "results": results, "all_ok": all(r["status"] == 200 for r in results), "max_ms": max(r["ms"] for r in results),
+    res = {"measure": "login_burst", "n": n, "results": results, "all_ok": all(200 <= r["status"] < 300 for r in results), "max_ms": max(r["ms"] for r in results),
            "rate_limited": any(r["error_code"] == "RATE_LIMITED" for r in results)}
     record(out, stamp or now().strftime("%Y%m%dT%H%M%SZ"), res)
     echo(json.dumps(res))
@@ -143,7 +143,7 @@ def turns(url: str, account: str, n: int, *, label: str = "", pause_s: float = 8
     rows: list[dict] = []
     with httpx.Client(base_url=url, timeout=httpx.Timeout(60, connect=15)) as client:
         r, _ = login(client, account, password)
-        if r.status_code != 200:
+        if not r.is_success:  # đăng nhập thành công là 204 No Content (openapi, POST /auth/session)
             raise Refused("MEASURE_LOGIN_FAILED_" + str(r.status_code))
         headers = {"Cookie": cookie_of(r), **CSRF}
         for i in range(n):
@@ -217,7 +217,7 @@ def job_window(url: str, account: str, turns_during: int, *, label: str = "soffi
     stop = threading.Event()
     with httpx.Client(base_url=url, timeout=httpx.Timeout(60, connect=15)) as client:
         r, _ = login(client, account, password)
-        if r.status_code != 200:
+        if not r.is_success:  # đăng nhập thành công là 204 No Content (openapi, POST /auth/session)
             raise Refused("MEASURE_LOGIN_FAILED_" + str(r.status_code))
         headers = {"Cookie": cookie_of(r), **CSRF}
 
