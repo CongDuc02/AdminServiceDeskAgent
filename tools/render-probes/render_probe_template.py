@@ -15,6 +15,10 @@ Lệnh con:
   retire    chuyển `template_version` sang `RETIRED` (`retired_at`) — NGAY sau đo; ghi **giờ retire**. Đặt `RETIRED` khi còn `document` đang chờ render thì job đó trượt
             `TEMPLATE_NOT_ACTIVE_AT_RENDER`: chỉ retire khi không còn job `render_document` chạy
 
+  check     (không chạm DB) chẩn đoán nhóm `BO19_OBJECT_STORAGE_*` khi `install` trượt `ACCESS_DENIED`: hình dạng các biến (endpoint, tên bucket, độ dài khoá — KHÔNG in giá trị) và bốn phép thử trên
+            tiền tố `probe-check/` — `reachable`, liệt kê, ghi một object nhỏ, xoá nó — mỗi phép in `OK` hoặc mã lỗi. `ACCESS_DENIED` gộp ba nguyên nhân (khoá sai, bí mật/vùng sai, token thiếu quyền ghi hoặc
+            không thuộc bucket này): các phép đọc đạt mà phép ghi trượt nghĩa là token không có quyền ghi vào bucket đó
+
 Chặn: `--allow-host` đúng host DSN; role `bo19_migrator`; DB `NON_PRODUCTION`; cửa sổ ngoại lệ còn hiệu lực (`probe_window.json`, chưa thu hồi, chưa hết hạn); tài khoản `DO-0001` tồn tại;
 **không có phiên bản `ACTIVE` nào khác** của loại `WORK_CONFIRMATION` (không đè lên template thật — `uq_template_version_one_active`) và chưa có template giả đang `ACTIVE`.
 Object nằm ở bucket `bo19-render-dev` dưới `templates/<uuid>/source.docx`; template giả sau khi retire vẫn còn dòng trong DB (chỉ thêm — `template_version` đã `RETIRED`) và object trong bucket.
@@ -115,6 +119,38 @@ def storage_from_env(env=os.environ):
                                              region=env.get("BO19_OBJECT_STORAGE_REGION") or "auto"))
 
 
+def check_storage(env=os.environ, *, storage=None, echo=print) -> int:
+    """Chẩn đoán object storage, không lộ bí mật: hình dạng biến + bốn phép thử. Mã thoát 0 khi cả bốn đạt."""
+    from bo19.object_storage import StorageError
+
+    endpoint, bucket = env.get("BO19_OBJECT_STORAGE_ENDPOINT_URL", ""), env.get("BO19_OBJECT_STORAGE_BUCKET", "")
+    shape = {"endpoint_https": endpoint.startswith("https://"), "endpoint_r2": endpoint.rstrip("/").endswith(".r2.cloudflarestorage.com"), "bucket_is_render_dev": bucket == "bo19-render-dev",
+             "region": env.get("BO19_OBJECT_STORAGE_REGION") or None, "key_id_len": len(env.get("BO19_OBJECT_STORAGE_ACCESS_KEY_ID", "")), "secret_len": len(env.get("BO19_OBJECT_STORAGE_SECRET_ACCESS_KEY", "")),
+             "edge_whitespace": any(env.get(k, "") != env.get(k, "").strip() for k in ("BO19_OBJECT_STORAGE_ENDPOINT_URL", "BO19_OBJECT_STORAGE_BUCKET", "BO19_OBJECT_STORAGE_ACCESS_KEY_ID",
+                                                                                                "BO19_OBJECT_STORAGE_SECRET_ACCESS_KEY"))}
+    echo("CHECK_SHAPE " + " ".join(f"{k}={v}" for k, v in shape.items()))
+    storage = storage or storage_from_env(env)
+    key = f"probe-check/{uuid.uuid4()}"
+
+    def attempt(name: str, fn) -> bool:
+        try:
+            fn()
+            echo(f"CHECK_{name} OK")
+            return True
+        except StorageError as e:
+            echo(f"CHECK_{name} {e.code}")
+        except Exception as e:  # noqa: BLE001 — chỉ tên lớp lỗi
+            echo(f"CHECK_{name} {type(e).__name__}")
+        return False
+
+    ok = [attempt("REACHABLE", lambda: (_ for _ in ()).throw(StorageError("UNAVAILABLE")) if not storage.reachable() else None),
+          attempt("LIST", lambda: list(storage.list_keys("probe-check/"))[:1]),
+          attempt("PUT", lambda: storage.put_if_absent(key, b"probe", content_type="application/octet-stream")),
+          attempt("DELETE", lambda: storage.delete(key))]
+    echo("CHECK_RESULT " + ("OK" if all(ok) else "FAILED"))
+    return 0 if all(ok) else 1
+
+
 def _window(out: Path, at: dt.datetime) -> dict:
     w = acc.read_window(out)
     if not w or w.get("torn_down_at"):
@@ -186,7 +222,14 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name in ("install", "retire"):
         sub.add_parser(name).add_argument("--allow-host", required=True, help="host của DSN Render (khai tường minh)")
+    sub.add_parser("check")
     a = ap.parse_args()
+    if a.cmd == "check":  # không cần DSN
+        try:
+            return check_storage()
+        except TemplateRefused as e:
+            print(f"PROBE_REFUSED {e}", file=sys.stderr)
+            return 1
     dsn = os.environ.get(ENV_DSN, "")
     if not dsn:
         print(f"THIẾU {ENV_DSN}", file=sys.stderr)
@@ -199,6 +242,13 @@ def main() -> int:
     except (TemplateRefused, acc.ProbeRefused) as e:
         print(f"PROBE_REFUSED {e}", file=sys.stderr)
         return 1
+    except Exception as e:  # noqa: BLE001
+        from bo19.object_storage import StorageError
+
+        if isinstance(e, StorageError):  # thay cho traceback: chỉ mã; chạy `check` để chẩn đoán
+            print(f"PROBE_REFUSED TEMPLATE_STORAGE_{e.code} (chạy `check` để chẩn đoán, không lộ bí mật)", file=sys.stderr)
+            return 1
+        raise
     except psycopg.Error as e:
         print(f"PROBE_DB_ERROR {type(e).__name__}", file=sys.stderr)
         return 1

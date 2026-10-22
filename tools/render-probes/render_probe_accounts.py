@@ -62,8 +62,8 @@ class ProbeRefused(Exception):
     """Lý do từ chối, chỉ là một mã (không chứa DSN hay giá trị)."""
 
 
-def codes(count: int) -> list[str]:
-    return [f"DO-{i:04d}" for i in range(1, count + 1)]
+def codes(count: int, first: int = 1) -> list[str]:
+    return [f"DO-{i:04d}" for i in range(first, first + count)]
 
 
 def employee_id(code: str) -> uuid.UUID:
@@ -100,10 +100,10 @@ def _connect(dsn: str, *, allow_host: str) -> psycopg.Connection:
     return conn
 
 
-def seed(dsn: str, *, allow_host: str, confirmed: bool, count: int, hours: int, out: Path = OUT, now: dt.datetime | None = None, verifier=None, echo=print) -> dict:
+def seed(dsn: str, *, allow_host: str, confirmed: bool, count: int, hours: int, first: int = 1, out: Path = OUT, now: dt.datetime | None = None, verifier=None, echo=print) -> dict:
     if not confirmed:
         raise ProbeRefused("PROBE_EXCEPTION_NOT_CONFIRMED")
-    if not 1 <= count <= MAX_ACCOUNTS or not 1 <= hours <= MAX_HOURS:
+    if not 1 <= count <= MAX_ACCOUNTS or not 1 <= hours <= MAX_HOURS or not 1 <= first <= 99:
         raise ProbeRefused("PROBE_LIMITS")
     now = now or dt.datetime.now(dt.timezone.utc)
     window = read_window(out)
@@ -114,7 +114,7 @@ def seed(dsn: str, *, allow_host: str, confirmed: bool, count: int, hours: int, 
     with _connect(dsn, allow_host=allow_host) as conn:
         created = 0
         passwords: dict[str, str] = {}
-        for code in codes(count):
+        for code in codes(count, first):
             eid = employee_id(code)
             created += conn.execute(
                 "insert into employee (id, employee_code, full_name, department_code, department_name, job_title, contract_type, employment_start_date, source, synced_at) "
@@ -127,7 +127,15 @@ def seed(dsn: str, *, allow_host: str, confirmed: bool, count: int, hours: int, 
                          (eid, verifier.hash(password), sd.ALGORITHM))
             passwords[code] = password
         sd.write_passwords(out / PASSWORDS, passwords)  # ghi file TRƯỚC khi commit: mất file sau khi đã commit hash là mất mật khẩu
-        data = {"seeded_at": now.isoformat(timespec="seconds"), "expires_at": (now + dt.timedelta(hours=hours)).isoformat(timespec="seconds"), "accounts": codes(count), "torn_down_at": None}
+        data = {"seeded_at": now.isoformat(timespec="seconds"), "expires_at": (now + dt.timedelta(hours=hours)).isoformat(timespec="seconds"), "accounts": codes(count, first), "torn_down_at": None}
+        if window:  # seed lần hai trong CÙNG ngoại lệ (ví dụ thêm DO-0004 cho bước 4b sau khi thu hồi ba tài khoản đầu): giữ giờ seed đầu, mọi tài khoản đã seed, và các trường template
+            data["first_seeded_at"] = window.get("first_seeded_at") or window["seeded_at"]
+            data["accounts_all"] = sorted(set(window.get("accounts_all") or window.get("accounts") or []) | set(data["accounts"]))
+            for key in ("template_installed_at", "template_version_id", "template_retired_at"):
+                if key in window:
+                    data[key] = window[key]
+        else:
+            data["first_seeded_at"], data["accounts_all"] = data["seeded_at"], list(data["accounts"])
         write_window(out, data)
         conn.commit()
     echo(f"PROBE_SEEDED accounts={count} seeded_at={data['seeded_at']} expires_at={data['expires_at']}")  # không in mật khẩu
@@ -140,15 +148,16 @@ def usage(dsn: str, *, allow_host: str, out: Path = OUT, echo=print) -> int:
     if not window:
         raise ProbeRefused("PROBE_NO_WINDOW")
     with _connect(dsn, allow_host=allow_host) as conn:
-        n = conn.execute("select count(*) from llm_usage where created_at >= %s::timestamptz", (window["seeded_at"],)).fetchone()[0]
-    echo(f"PROBE_LLM_USAGE since={window['seeded_at']} rows={n}")
+        since = window.get("first_seeded_at") or window["seeded_at"]  # trần Groq tính cho CẢ ngoại lệ, kể từ lần seed đầu
+        n = conn.execute("select count(*) from llm_usage where created_at >= %s::timestamptz", (since,)).fetchone()[0]
+    echo(f"PROBE_LLM_USAGE since={since} rows={n}")
     return n
 
 
 def teardown(dsn: str, *, allow_host: str, out: Path = OUT, now: dt.datetime | None = None, echo=print) -> dict:
     now = now or dt.datetime.now(dt.timezone.utc)
     window = read_window(out) or {"accounts": codes(MAX_ACCOUNTS)}
-    ids = [employee_id(c) for c in window["accounts"]]
+    ids = [employee_id(c) for c in (window.get("accounts_all") or window["accounts"])]  # thu hồi mọi tài khoản đã seed trong ngoại lệ
     with _connect(dsn, allow_host=allow_host) as conn:
         creds = conn.execute("delete from employee_credential where employee_id = any(%s)", (ids,)).rowcount
         roles = conn.execute("delete from employee_role where employee_id = any(%s)", (ids,)).rowcount
@@ -181,6 +190,7 @@ def main() -> int:
         if name == "seed":
             p.add_argument("--confirm-gate-2-7-exception", action="store_true", help="xác nhận đây là ngoại lệ có thời hạn của cổng 2.7")
             p.add_argument("--count", type=int, default=3)
+            p.add_argument("--first", type=int, default=1, help="số thứ tự tài khoản đầu (DO-000N); 4 để thêm DO-0004 sau khi đã thu hồi ba tài khoản đầu")
             p.add_argument("--hours", type=int, default=MAX_HOURS)
     a = ap.parse_args()
     dsn = os.environ.get(ENV_DSN, "")
@@ -189,7 +199,7 @@ def main() -> int:
         return 2
     try:
         if a.cmd == "seed":
-            seed(dsn, allow_host=a.allow_host, confirmed=a.confirm_gate_2_7_exception, count=a.count, hours=a.hours)
+            seed(dsn, allow_host=a.allow_host, confirmed=a.confirm_gate_2_7_exception, count=a.count, hours=a.hours, first=a.first)
         elif a.cmd == "usage":
             usage(dsn, allow_host=a.allow_host)
         else:

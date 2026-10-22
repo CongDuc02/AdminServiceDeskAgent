@@ -42,6 +42,7 @@ class Fake(BaseHTTPRequestHandler):
     polls_after_submit = 0
     done_after_polls = 3
     confirm_calls = 0
+    login_status = 200
 
     def log_message(self, *a):  # im lặng
         pass
@@ -79,6 +80,11 @@ class Fake(BaseHTTPRequestHandler):
                 return self._json(429, {"error_code": "RATE_LIMITED"})
             if body.get("password") != PASSWORD:
                 return self._json(401, {"error_code": "INVALID_CREDENTIALS"})
+            if Fake.login_status == 204:  # thật: 204 No Content, cookie ở header
+                self.send_response(204)
+                self.send_header("set-cookie", COOKIE + "; Path=/; Secure; HttpOnly")
+                self.end_headers()
+                return
             return self._json(200, {"employee_code": body.get("employee_code")}, {"set-cookie": COOKIE + "; Path=/; Secure; HttpOnly"})
         if self.headers.get("Cookie") != COOKIE:
             return self._json(401, {"error_code": "UNAUTHENTICATED"})
@@ -118,7 +124,7 @@ class Base(unittest.TestCase):
         cls.server.server_close()
 
     def setUp(self):
-        Fake.logins, Fake.rate_limit_after = 0, None
+        Fake.logins, Fake.rate_limit_after, Fake.login_status = 0, None, 200
         Fake.reply_has_request, Fake.submit_ready, Fake.confirmed, Fake.submitted, Fake.polls_after_submit, Fake.done_after_polls, Fake.confirm_calls = True, True, False, False, 0, 3, 0
         self.tmp = tempfile.TemporaryDirectory(prefix="bo19-measure-")
         self.addCleanup(self.tmp.cleanup)
@@ -186,6 +192,23 @@ class LoginBurst(Base):
         self.assertNotIn("COOKIE-GIA", everything)
 
 
+class DangNhap204(Base):
+    """Đăng nhập thật trả 204 No Content (lần đo đầu trên Render, 2026-10-22, báo `all_ok = false` oan vì kiểm == 200)."""
+
+    def test_burst_204_la_thanh_cong(self):
+        Fake.login_status = 204
+        res = rpm.login_burst(self.url, "DO-0001", 4, out=self.out, stamp="t204", at=T0, echo=self.lines.append)
+        self.assertEqual([r["status"] for r in res["results"]], [204] * 4)
+        self.assertTrue(res["all_ok"])
+
+    def test_turns_va_job_window_dung_204(self):
+        Fake.login_status = 204
+        res = rpm.turns(self.url, "DO-0001", 1, out=self.out, stamp="t204b", at=T0, echo=self.lines.append, sleep=lambda s: None)
+        self.assertEqual(res["replies"], 1)
+        window = rpm.job_window(self.url, "DO-0001", 1, out=self.out, stamp="t204c", at=T0, echo=self.lines.append, sleep=lambda s: None, wait_s=2)
+        self.assertEqual(len(window["turns"]), 1)
+
+
 class Turns(Base):
     def run_turns(self, n, **kw):
         return rpm.turns(self.url, "DO-0001", n, out=self.out, stamp="t4", at=T0, echo=self.lines.append, sleep=lambda s: self.slept.append(s), **kw)
@@ -239,11 +262,39 @@ class JobWindow(Base):
         self.assertEqual([e["request"] for e in res["request_status_timeline"]][:1], ["SUBMITTED"])
         self.assertEqual(rpm.read_budget(self.out)["turns_done"], 3)  # một lượt dựng request + hai lượt đo
 
+    def test_luot_ket_thuc_truoc_khi_van_ban_xuat_hien_khong_tinh_la_trong_luc_job(self):
+        """Lần đo đầu trên Render: lượt xong lúc 1,3 s, văn bản xuất hiện lúc 2 s — không được đếm là trùng job."""
+        timeline = [{"t": 2.0, "request": "SUBMITTED", "documents": ["DRAFT"]}, {"t": 15.0, "request": "IN_REVIEW", "documents": ["PENDING_APPROVAL"]}]
+        doc_at = next(e["t"] for e in timeline if e["documents"])
+        changed = next(e["t"] for e in timeline if rpm._job_done(e))
+        early = {"start_after_submit_s": 0.69, "end_after_submit_s": 1.28}
+        inside = {"start_after_submit_s": 2.5, "end_after_submit_s": 4.0}
+        late = {"start_after_submit_s": 16.0, "end_after_submit_s": 17.0}
+        overlaps = lambda r: r["end_after_submit_s"] > doc_at and r["start_after_submit_s"] < changed
+        self.assertEqual([overlaps(early), overlaps(inside), overlaps(late)], [False, True, False])
+
+    def test_job_window_do_sau_khi_van_ban_xuat_hien_va_ghi_job_visible(self):
+        Fake.done_after_polls = 100
+        res = self.run_window(turns_during=2)
+        self.assertIsNotNone(res["job_visible_after_submit_s"])
+        self.assertTrue(all(t["overlaps_job"] for t in res["turns"]))  # văn bản có sẵn ngay ở máy chủ giả, job chưa xong
+
     def test_job_xong_thi_ghi_gio_va_danh_dau_luot_sau_do_khong_con_trong_luc_job(self):
         Fake.done_after_polls = 0  # lần hỏi đầu sau submit đã thấy IN_REVIEW
         res = self.run_window(turns_during=1)
         self.assertIsNotNone(res["job_done_after_submit_s"])
         self.assertEqual(rpm.read_budget(self.out)["turns_done"], 2)
+
+    def test_4b_dang_nhap_dong_thoi_trong_luc_job_chay_khong_ton_luot_do(self):
+        Fake.done_after_polls = 100
+        logins_before = Fake.logins
+        res = self.run_window(turns_during=0, concurrent_logins=4)
+        burst = res["concurrent_logins"]
+        self.assertEqual((burst["n"], burst["all_ok"], burst["rate_limited"]), (4, True, False))
+        self.assertEqual(Fake.logins - logins_before, 1 + 4)  # một lần đăng nhập của phiên đo + bốn lần đồng thời
+        self.assertEqual(res["turns"], [])
+        self.assertEqual(rpm.read_budget(self.out)["turns_done"], 1)  # chỉ lượt dựng request: đúng lượt Groq cuối của trần 14
+        self.assertGreaterEqual(burst["start_after_submit_s"], res["job_visible_after_submit_s"] - 0.5)  # bắn SAU khi job đã vào hàng đợi
 
     def test_tran_luot_tinh_ca_luot_dung_request(self):
         (self.out / "probe_budget.json").write_text(json.dumps({"turns_done": 12}), encoding="utf-8")
