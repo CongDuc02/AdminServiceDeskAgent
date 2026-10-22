@@ -54,7 +54,7 @@ class RenderTrial(unittest.TestCase):
         self.assertEqual(len(summary["runs"]), 2)
         for run in summary["runs"]:
             self.assertEqual((run["job_status"], run["job_attempts"], run["job_error_code"], run["document_status"]), ("SUCCEEDED", 1, None, "PENDING_APPROVAL"))
-            self.assertEqual([(f["attempt_no"], f["outcome"], f["prompt_module_version"]) for f in run["free_content"]], [(1, "PASSED", "1.1")])
+            self.assertEqual([(f["attempt_no"], f["outcome"], f["prompt_module_version"]) for f in run["free_content"]], [(1, "PASSED", "1.2")])
             pdf = run["pdf"]
             self.assertEqual((pdf["render_row"], pdf["db_watermark_text_ok"], pdf["pdf_subject_ok"], pdf["pdf_author_neutral"], pdf["pdfinfo_ran"]), (True, True, True, True, True))
         self.assertEqual(summary["calls_used"], 2)

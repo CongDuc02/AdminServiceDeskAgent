@@ -22,11 +22,11 @@ from tests.render_support import pdf_text, require_tool
 
 TEMPLATE = Path(__file__).resolve().parents[2] / "docs" / "design" / "proposals" / "mau-giay-xac-nhan-cong-tac" / "tpl_work_confirmation.docx"
 VARIABLES = frozenset({"full_name", "department_name", "job_title", "recipient_org", "contract_type", "employment_start_date", "employment_end_date",
-                       "purpose_statement", "document_number", "issued_date", "signer_user_id"})
+                       "purpose_statement", "document_number", "issued_date", "signer_title", "signer_name"})
 BASE = {
     "full_name": "Nguyễn Văn Mẫu (GIẢ)", "department_name": "Phòng Mẫu (GIẢ)", "job_title": "Chuyên viên (GIẢ)", "recipient_org": "Ngân hàng Mẫu (GIẢ)",
-    "employment_start_date": "02/03/2022", "employment_end_date": "", "purpose_statement": "Câu mục đích giả.", "document_number": "01/GXN-ABC",
-    "issued_date": "21/10/2026", "signer_user_id": "Trần Thị Mẫu (GIẢ), Giám đốc (GIẢ)", "contract_type": "INDEFINITE",
+    "employment_start_date": "02/03/2022", "employment_end_date": "", "purpose_statement": "Câu mục đích giả.", "document_number": "01/GXN-ABC-TN",
+    "issued_date": "21/10/2026", "signer_title": "GIÁM ĐỐC (GIẢ)", "signer_name": "Trần Thị Mẫu (GIẢ)", "contract_type": "INDEFINITE",
 }
 CLAUSES = {
     "PROBATION": "trong thời gian thử việc",
@@ -97,11 +97,23 @@ class MauNhap(unittest.TestCase):
         self.assertNotIn("[TÊN CÔNG TY]", body)
         self.assertNotIn("[Địa danh]", body)
 
-    def test_so_va_nguoi_ky_dung_cho(self):
+    def test_so_dai_trial_va_kinh_gui(self):
         body = fill()
-        self.assertIn("Số: 01/GXN-ABC", body)
-        self.assertIn("Trần Thị Mẫu (GIẢ), Giám đốc (GIẢ)", body)
+        self.assertIn("Số: 01/GXN-ABC-TN", body)  # NON_PRODUCTION cấp dải TRIAL (data migration 0003)
         self.assertIn("Kính gửi: Ngân hàng Mẫu (GIẢ)", body)
+
+    def test_khoi_ky_ba_tang_chuc_vu_hoa_khoang_ky_ho_ten_khong_dau_phay_khong_huong_dan(self):
+        """PO 2026-10-22 (A-100): CHỨC VỤ in hoa đậm → chỗ ký và đóng dấu (4 dòng trống) → họ tên đậm; không dòng hướng dẫn biểu mẫu."""
+        doc = Document(io.BytesIO(fill_docx(TEMPLATE.read_bytes(), BASE, declared=VARIABLES, operating_mode="NON_PRODUCTION")))
+        cells = [c for table in doc.tables for row in table.rows for c in row.cells]
+        sign = next(c for c in cells if "GIÁM ĐỐC (GIẢ)" in c.text)
+        paragraphs = [p.text for p in sign.paragraphs]
+        at_title, at_name = paragraphs.index("GIÁM ĐỐC (GIẢ)"), paragraphs.index("Trần Thị Mẫu (GIẢ)")
+        self.assertEqual(paragraphs[at_title + 1 : at_name], [""] * 4)  # bốn dòng trống giữa chức vụ và họ tên
+        self.assertTrue(all(r.bold for p in sign.paragraphs if p.text for r in p.runs))  # cả chức vụ và họ tên đậm
+        self.assertNotIn(",", "".join(paragraphs))  # không dấu phẩy nối tên và chức danh
+        self.assertNotIn("Ký, ghi rõ", fill())  # hướng dẫn biểu mẫu không in trên văn bản phát hành
+        self.assertNotIn("đóng dấu)", fill())
 
 
 def pdf(**over: str) -> str:

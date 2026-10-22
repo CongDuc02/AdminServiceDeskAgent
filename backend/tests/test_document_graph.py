@@ -46,7 +46,7 @@ class DuongThang(DocBase):
         rid = self.submitted_request()
         self.run_render(rid)
         (name, rnd, attempt, outcome, version, body), = self.free_content(rid)
-        self.assertEqual((name, rnd, attempt, outcome, version, body), ("purpose_statement", 0, 1, "PASSED", "1.1", BODY_OK))
+        self.assertEqual((name, rnd, attempt, outcome, version, body), ("purpose_statement", 0, 1, "PASSED", "1.2", BODY_OK))
         fp = self.rows("select input_fingerprint, fingerprint_key_id from document_free_content where document_id = %s", document_id_for(rid))[0]
         self.assertEqual((len(bytes(fp[0])), fp[1]), (32, "render-fp-v1"))
         render = self.rows("select render_kind, revision_round, watermark_text, operating_mode from document_render where document_id = %s", document_id_for(rid))

@@ -45,6 +45,83 @@ def polls(n_at: dict[float, int], gone_at: float | None, end: float, step: float
     return out
 
 
+class Check(unittest.TestCase):
+    """`--check` (2026-10-22): thử nối một lần; không bao giờ in DSN, host hay thông điệp lỗi."""
+
+    def run_check(self, connect):
+        import os
+        fake = types.ModuleType("psycopg")
+        fake.connect = connect
+        saved = sys.modules.get("psycopg")
+        sys.modules["psycopg"] = fake
+        os.environ["BO19_S4_POLL_DSN"] = "postgresql://bo19_app:BI_MAT_KHONG_DUOC_IN@host-bi-mat.example.test/db"
+        out: list[str] = []
+        try:
+            code = s4.check(echo=out.append)
+        finally:
+            os.environ.pop("BO19_S4_POLL_DSN", None)
+            sys.modules["psycopg"] = saved if saved is not None else types.ModuleType("psycopg")
+        return code, "\n".join(out)
+
+    def test_noi_duoc_in_ok_va_role(self):
+        class Conn:
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def execute(self, sql): return types.SimpleNamespace(fetchone=lambda: ("bo19_app",))
+
+        code, out = self.run_check(lambda dsn, **kw: Conn())
+        self.assertEqual((code, out), (0, "CHECK_OK role=bo19_app"))
+
+    def test_loi_chi_in_ten_lop_va_sqlstate_khong_in_dsn_hay_host(self):
+        class Err(Exception):
+            sqlstate = "28P01"
+
+        def boom(dsn, **kw):
+            raise Err("password authentication failed for user bo19_app at host-bi-mat.example.test")
+
+        code, out = self.run_check(boom)
+        self.assertEqual((code, out), (1, "CHECK_FAILED Err sqlstate=28P01"))
+        for secret in ("BI_MAT", "host-bi-mat", "bo19_app"):
+            self.assertNotIn(secret, out)
+
+    def test_chan_doan_khi_khong_co_sqlstate_chi_in_co_va_so(self):
+        class Err(Exception):
+            sqlstate = None
+
+        def boom(dsn, **kw):
+            raise Err("could not translate host name host-bi-mat.example.test")
+
+        from unittest import mock
+        with mock.patch("socket.getaddrinfo", side_effect=OSError):  # test không chạm mạng (chốt chặn của bộ test)
+            code, out = self.run_check(boom)
+        self.assertEqual(code, 1)
+        self.assertIn("CHECK_DIAG", out)
+        self.assertIn("host_has_dot=True", out)
+        self.assertIn("user=bo19_app", out)
+        for secret in ("BI_MAT", "host-bi-mat", "example.test"):
+            self.assertNotIn(secret, out)
+
+    def test_diagnose_phat_hien_cr_nhay_khoang_trang_host_noi_bo_va_dns(self):
+        base = "postgresql://bo19_app:BI_MAT@dpg-abc123-a/db?sslmode=require"
+        d = s4.diagnose(base + "\r", resolve=lambda h, p: (_ for _ in ()).throw(OSError()))
+        self.assertTrue(d["dsn_edge_whitespace"])
+        self.assertTrue(d["dsn_has_cr_lf_or_quote"])
+        self.assertFalse(d["host_has_dot"])  # địa chỉ nội bộ của Render không có dấu chấm: chỉ nối được từ trong Render
+        self.assertFalse(d["dns_resolves"])
+        ok = s4.diagnose("postgresql://u:x@dpg-abc123-a.singapore-postgres.render.com/db?sslmode=require", resolve=lambda h, p: [1], connect=lambda a, t: None)
+        self.assertEqual((ok["host_ends_render_com"], ok["sslmode"], ok["dns_resolves"], ok["tcp_connects"], ok["port"]), (True, "require", True, True, 5432))
+        blocked = s4.diagnose("postgresql://u:x@h.example.test/db", resolve=lambda h, p: [1], connect=lambda a, t: (_ for _ in ()).throw(OSError()))
+        self.assertFalse(blocked["tcp_connects"])
+        self.assertNotIn("BI_MAT", repr(d))
+
+    def test_thieu_bien(self):
+        import os
+        os.environ.pop("BO19_S4_POLL_DSN", None)
+        out: list[str] = []
+        sys.modules["psycopg"] = types.ModuleType("psycopg")
+        self.assertEqual(s4.check(echo=out.append), 2)
+
+
 class Kich(unittest.TestCase):
     def test_kill_5s_n_dung_o_5_va_ket_noi_bien_mat_ngay(self):
         n_at = {0.0: 0, **{k + 0.17: k for k in range(1, 6)}}  # n=1 ở 0.17 s ... n=5 ở 5.17 s

@@ -45,7 +45,7 @@ class Marker(unittest.TestCase):
     def test_ten_bien_co_gia_tri_giu_cho_chi_tra_ten(self):
         values = {"a": "Nguyễn Thị Giang", "b": provisional.marker_for("document_number"), "c": "...", "d": "N/A", "e": "[điền sau]", "f": "  ", "g": "Trần Văn Bình"}
         self.assertEqual(provisional.placeholder_variables(values), ("b", "c", "d", "e", "f"))
-        self.assertEqual(provisional.placeholder_variables({"a": "Nguyễn Thị Giang"}), ())
+        self.assertEqual(provisional.placeholder_variables({"a": "Nguyễn Thị Giang", "h": ""}), ())  # "" đúng nghĩa: slot không bắt buộc vắng (có chủ đích); "  " thì vẫn là dấu giữ chỗ ở trên
         self.assertEqual(provisional.placeholder_variables({}), ())
 
 

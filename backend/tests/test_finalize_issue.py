@@ -21,6 +21,7 @@ import io
 import re
 import unittest
 import uuid
+from pathlib import Path
 from unittest import mock
 
 from docx import Document
@@ -304,6 +305,71 @@ class SauKhiCoSo(FinalizeBase):
         self.assertEqual(out.status, "ENDED")
         self.assertEqual([(e[0], e[2]) for e in self.entries(rid)], [(1, "VOIDED"), (2, "ASSIGNED")])
         self.assertEqual(self.status(rid), "ISSUED")
+
+
+
+REAL_TEMPLATE = Path(__file__).resolve().parents[2] / "docs" / "design" / "proposals" / "mau-giay-xac-nhan-cong-tac" / "tpl_work_confirmation.docx"
+REAL_VARIABLES = (
+    ("full_name", "DIRECT_SLOT", "full_name", False, None, None, ()),
+    ("department_name", "DIRECT_SLOT", "department_name", False, None, None, ()),
+    ("job_title", "DIRECT_SLOT", "job_title", False, None, None, ()),
+    ("recipient_org", "DIRECT_SLOT", "recipient_org", False, None, None, ()),
+    ("contract_type", "DIRECT_SLOT", "contract_type", False, None, None, ()),  # ENUM: bảng giá trị nhận MÃ, mẫu chọn câu chữ (PO 2026-10-21)
+    ("employment_start_date", "DIRECT_SLOT", "employment_start_date", False, None, None, ()),
+    ("employment_end_date", "DIRECT_SLOT", "employment_end_date", False, None, None, ()),  # slot `○`, vắng → chuỗi rỗng, mẫu bỏ cả mệnh đề
+    ("purpose_statement", "FREE_CONTENT", None, False, "Một câu hành chính ngắn, giọng bên phát hành, nêu mục đích cấp giấy xác nhận.", 400, ("purpose",)),
+    ("document_number", "SYSTEM", None, True, None, None, ()),
+    ("issued_date", "SYSTEM", None, True, None, None, ()),
+    ("signer_title", "SYSTEM", None, True, None, None, ()),
+    ("signer_name", "SYSTEM", None, True, None, None, ()),
+)
+
+
+class MauThatKhoiKyBaTang(FinalizeBase):
+    """Mẫu MỚI của PO (`tpl_work_confirmation.docx`) và khuôn số THẬT của data migration `0003` đi trọn đường phát hành (PO 2026-10-22): NON_PRODUCTION cấp dải TRIAL, khối ký ba tầng."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        with cls.db.connect("bo19_migrator", autocommit=True) as c:  # trả lại hai dòng khuôn của data migration (lớp cha đã thay bằng khuôn giả)
+            reg = c.execute("select document_register_id from request_type where code = 'WORK_CONFIRMATION'").fetchone()[0]
+            c.execute("delete from document_register_format")
+            c.execute("insert into document_register_format (id, document_register_id, series, format_pattern, symbol, seq_min_digits, effective_from) values "
+                      "(%s, %s, 'TRIAL', '{seq}/GXN-{symbol}-TN', 'ABC', 2, timestamptz '2026-10-21 00:00:00+07'), (%s, %s, 'OFFICIAL', '{seq}/GXN-{symbol}', 'ABC', 2, timestamptz '2026-10-21 00:00:00+07')",
+                      (uuid.uuid4(), reg, uuid.uuid4(), reg))
+
+    def test_phat_hanh_mau_that_so_trial_tn_khoi_ky_ba_tang_khong_co_ong_ba_khong_dong_nghi_viec(self):
+        from tests.doc_support import make_template
+        retire_active_templates(self.db)
+        self.version_id = make_template(self.db, self.pool, self.storage, variables=REAL_VARIABLES, data=REAL_TEMPLATE.read_bytes())
+        rid, signer_id = self.to_sealed()
+        did = document_id_for(rid)
+        self.order(rid)
+        self.assertEqual(self.drain(), 1)
+        self.assertEqual(self.status(rid), "ISSUED")
+        (seq, number, status, _), = self.entries(rid)
+        self.assertEqual((self.scalar("select series from document_register_entry where document_id = %s", did), seq, number, status), ("TRIAL", 1, "01/GXN-ABC-TN", "ASSIGNED"))  # NON_PRODUCTION → dải TRIAL
+        (_, docx_key, pdf_key, watermark), = self.final_render(rid)
+        self.assertEqual(watermark, WATERMARK_TEXT)
+        flat = re.sub(r"\s+", " ", pdf_text(self.fetch(pdf_key)))  # `-layout`: hai cột xen nhau, nên chỉ kiểm các đoạn không bị ngắt dòng
+        self.assertIn("Số: 01/GXN-ABC-TN", flat)
+        self.assertIn("CÔNG TY TNHH GIẢI", flat)  # tên công ty hư cấu của đồ án xuống hai dòng trong cột hẹp
+        self.assertIn("PHÁP ABC", flat)
+        self.assertRegex(flat, r"Hà Nội, ngày \d{2} tháng \d{2} năm \d{4}")  # thời gian viết đủ theo Phụ lục I, tách từ dd/mm/yyyy
+        self.assertIn("Hiện đang làm việc tại Công ty từ ngày 01/01/2020, theo hợp đồng lao động không xác định thời hạn.", flat)  # ENUM → mệnh đề INDEFINITE
+        self.assertNotIn("Đã làm việc", flat)  # vắng employment_end_date: không dòng nghỉ việc nào
+        self.assertNotIn("Ông/Bà", flat)
+        self.assertNotIn("cấp khi phát hành", flat)
+        self.assertNotIn("Ký, ghi rõ", flat)  # hướng dẫn biểu mẫu không in
+        # khối ký ba tầng đọc từ chính bản FINAL .docx (PDF `-layout` xen hai cột): chức vụ HOA → bốn dòng trống → họ tên; không dấu phẩy nối tên và chức danh
+        doc = Document(io.BytesIO(self.fetch(docx_key)))
+        cell = next(c for table in doc.tables for row in table.rows for c in row.cells if SIGNER_NAME in c.text)
+        paragraphs = [p.text for p in cell.paragraphs]
+        at_title, at_name = paragraphs.index("TRƯỞNG PHÒNG HÀNH CHÍNH (GIẢ)"), paragraphs.index(SIGNER_NAME)
+        self.assertEqual(paragraphs[at_title + 1 : at_name], [""] * 4)
+        self.assertNotIn(",", "".join(paragraphs))
+        self.assertNotIn(SIGNER_TITLE, flat)  # không còn chức danh viết thường trên văn bản
+
 
 
 if __name__ == "__main__":

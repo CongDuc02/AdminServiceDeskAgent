@@ -1,5 +1,6 @@
 """`domain.final_values` (B9b2, ADR-041 mục 4): giá trị của ba biến `SYSTEM` điền-sau-duyệt ở bản `FINAL`. Hàm thuần — không DB, không object storage.
 
+- (PO 2026-10-22, A-100) thêm `signer_title` (CHỨC VỤ in hoa) và `signer_name` (họ tên) cho khối ký ba tầng; `signer_user_id` một dòng giữ lại;
 - đổi theo TÊN biến: `document_number` = số đã định dạng, `issued_date` = `dd/mm/yyyy` (A-098), `signer_user_id` = `"<họ tên>, <chức danh>"` (PO, 2026-10-20: họ tên và chức danh, không mã);
 - biến điền-sau-duyệt có tên khác không có nguồn: trả về trong `unresolved`, không điền bừa; biến không điền-sau-duyệt không bị đụng;
 - `repr` không mang giá trị.
@@ -58,8 +59,19 @@ class SystemValues(unittest.TestCase):
         self.assertIn("document_number", text)
         self.assertIn("x", text)
 
-    def test_tap_biet_nguon_la_ba_ten(self):
-        self.assertEqual(fv.RESOLVABLE, {"document_number", "issued_date", "signer_user_id"})
+    def test_khoi_ky_ba_tang_chuc_vu_in_hoa_ho_ten_rieng_khong_dau_phay(self):
+        out = self.build(["signer_title", "signer_name"], signer_name="Trần Thị Mẫu (GIẢ)", signer_title="Giám đốc (giả)")
+        self.assertEqual(out.values, {"signer_title": "GIÁM ĐỐC (GIẢ)", "signer_name": "Trần Thị Mẫu (GIẢ)"})  # chức vụ HOA đủ dấu tiếng Việt; họ tên giữ nguyên
+        self.assertNotIn(",", "".join(out.values.values()))  # không dấu phẩy nối tên và chức danh
+        self.assertEqual(self.build(["signer_title"], signer_title="phó Trưởng phòng Hành chính").values["signer_title"], "PHÓ TRƯỞNG PHÒNG HÀNH CHÍNH")
+
+    def test_khong_co_ten_hay_chuc_vu_thi_khong_co_nguon_va_khong_dien_bua(self):
+        out = self.build(["signer_title", "signer_name"])
+        self.assertEqual(out.values, {})
+        self.assertEqual(out.unresolved, ("signer_name", "signer_title"))
+
+    def test_tap_biet_nguon_la_nam_ten(self):
+        self.assertEqual(fv.RESOLVABLE, {"document_number", "issued_date", "signer_user_id", "signer_title", "signer_name"})
 
 
 if __name__ == "__main__":

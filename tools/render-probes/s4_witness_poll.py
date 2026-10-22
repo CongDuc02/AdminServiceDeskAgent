@@ -58,6 +58,58 @@ def poll(duration: float, interval: float, like: str) -> int:
     return 0
 
 
+def diagnose(dsn: str, *, resolve=None, connect=None) -> dict:
+    """Chẩn đoán KHÔNG lộ bí mật khi `--check` trượt mà không có `sqlstate` (lỗi trước khi tới PostgreSQL): chỉ cờ đúng/sai và số, không bao giờ in host, mật khẩu hay DSN.
+    `OperationalError` không `sqlstate` là lỗi tầng kết nối: sai host (địa chỉ NỘI BỘ của Render chỉ nối được từ trong Render), cổng/tường lửa, `sslmode`, hay ký tự thừa trong DSN
+    (CR/LF, dấu nháy, khoảng trắng ở đầu/cuối — thường do file env tạo bằng PowerShell hay soạn thảo Windows)."""
+    import socket
+    from urllib.parse import parse_qs, urlsplit
+
+    resolve = resolve or socket.getaddrinfo
+    connect = connect or (lambda addr, timeout: socket.create_connection(addr, timeout=timeout).close())
+    out: dict = {"dsn_edge_whitespace": dsn != dsn.strip(), "dsn_has_cr_lf_or_quote": any(c in dsn for c in '\r\n"\''), "dsn_is_url": dsn.strip().startswith(("postgresql://", "postgres://"))}
+    try:
+        parts = urlsplit(dsn.strip().strip('"\''))
+        host, port = parts.hostname or "", parts.port or 5432
+        out.update({"user": parts.username, "host_has_dot": "." in host, "host_ends_render_com": host.endswith(".render.com"), "port": port, "sslmode": (parse_qs(parts.query).get("sslmode") or [None])[0]})
+    except ValueError as e:  # ví dụ cổng không phải số
+        out["url_parse_error"] = type(e).__name__
+        return out
+    try:
+        resolve(host, port)
+        out["dns_resolves"] = True
+    except OSError:
+        out["dns_resolves"] = False
+        return out
+    try:
+        connect((host, port), 5)
+        out["tcp_connects"] = True
+    except OSError:
+        out["tcp_connects"] = False
+    return out
+
+
+def check(*, echo=print) -> int:
+    """Thử nối MỘT lần trước khi chạy poller 25 phút: in `OK` và role đang nối, hoặc tên lớp lỗi và `sqlstate` — không bao giờ in DSN, host hay thông điệp lỗi (có thể mang host).
+    Lý do (2026-10-22): một lần chạy poller 25 phút ghi 469 dòng `OperationalError` mà không ai biết sớm."""
+    import psycopg
+
+    dsn = os.environ.get("BO19_S4_POLL_DSN", "")
+    if not dsn:
+        echo("THIẾU BO19_S4_POLL_DSN")
+        return 2
+    try:
+        with psycopg.connect(dsn, connect_timeout=10, application_name="s4-poller-check") as conn:
+            who = conn.execute("select current_user").fetchone()[0]
+        echo(f"CHECK_OK role={who}")
+        return 0
+    except Exception as e:  # noqa: BLE001 — chỉ tên lớp lỗi và sqlstate
+        echo(f"CHECK_FAILED {type(e).__name__} sqlstate={getattr(e, 'sqlstate', None)}")
+        if getattr(e, "sqlstate", None) is None:  # lỗi trước khi tới PostgreSQL: in chẩn đoán không lộ bí mật
+            echo("CHECK_DIAG " + " ".join(f"{k}={v}" for k, v in diagnose(dsn).items()))
+        return 1
+
+
 def ts(s: str) -> float:
     return datetime.fromisoformat(s).timestamp()
 
@@ -121,8 +173,11 @@ def main() -> int:
     ap.add_argument("--interval", type=float, default=0.25)
     ap.add_argument("--like", default="s4 boot=%")
     ap.add_argument("--analyze", metavar="FILE")
+    ap.add_argument("--check", action="store_true", help="thử nối một lần rồi thoát (không poll)")
     ap.add_argument("--sigterm", help="giờ SIGTERM_RECEIVED trong log (ISO UTC), để in mốc so với SIGTERM")
     a = ap.parse_args()
+    if a.check:
+        return check()
     if a.analyze:
         return analyze(a.analyze, a.sigterm)
     return poll(a.duration, a.interval, a.like)

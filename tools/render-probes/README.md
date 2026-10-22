@@ -118,6 +118,8 @@ Chỉ khác ngưỡng gốc ở mốc "không thấy": 0.1 · I → 0.2 · I, c�
 
 **Điều kiện để đo lại.** Bộ poll chỉ đọc một kết nối PostgreSQL mà app phải mở sẵn. Khối cần khôi phục từ lịch sử git: bản `api_main.py` ở commit `83591ee` (kết nối nhân chứng mở lúc khởi động, `application_name` = `s4 boot=<boot_utc> n=<k>`, vòng giữ `SHUTDOWN_HOLD`, ghi mọi tín hiệu, log uvicorn có giờ UTC) và `backend/tests/test_spike_s4.py` cùng commit. Chỉ bật khi đặt `BO19_S4_HOLD_S` (ví dụ 120). Nếu start command đã là `combined_main` (O1-6), khối đó phải được đặt vào entrypoint thật Render chạy.
 
+**Trước khi chạy poller 25 phút, thử nối một lần (2026-10-22):** `... python /tools/s4_witness_poll.py --check` in `CHECK_OK role=<role>` hoặc `CHECK_FAILED <lớp lỗi> sqlstate=<mã>` — không bao giờ in DSN hay host. Lần chạy đầu của lần đo combined_main ghi 469 dòng `OperationalError` (25 phút, không dòng nào nối được) mà không ai biết sớm; DSN phải là của `bo19_app` (poller chỉ thấy phiên cùng role).
+
 **Cách đo**, một lần deploy sạch rồi một lần ngủ:
 
 1. Deploy bản có khối S4 lên gói trả phí, đặt `BO19_S4_HOLD_S=120`. Kiểm log có `WITNESS_OPEN` và `S4_ARMED … witness=True`.
@@ -143,7 +145,7 @@ Chỉ khác ngưỡng gốc ở mốc "không thấy": 0.1 · I → 0.2 · I, c�
 
 **Nói thẳng về "xoá":** `audit_event`, `chat_session`, `request`… có khoá ngoại tới `employee`; `audit_event` chỉ thêm. Teardown xoá credential, vai trò, quyền lẻ và đặt `is_active = false` (không ai đăng nhập lại được); `employee` chỉ xoá hẳn được khi tài khoản chưa tạo dòng nào (đo chat tạo `chat_session` nên các dòng đó **còn lại, đã thu hồi**, nhãn `RENDER_PROBE_REVOKED`).
 
-**Trần 20 lời gọi Groq cho cả phép đo:** mỗi lượt chat gọi ít nhất `classify_intent` và `extract_slots`. `render_probe_measure.py turns` từ chối quá 8 lượt tổng cộng (≈ 16 lời gọi); số thật do `render_probe_accounts.py usage` đếm — chạy sau mỗi đợt đo.
+**Trần 28 lời gọi Groq cho cả phép đo (PO, 2026-10-22; trước đó 20):** mỗi lượt chat gọi ít nhất `classify_intent` và `extract_slots`. `render_probe_measure.py` từ chối quá 14 lượt tổng cộng (≈ 28 lời gọi); số thật do `render_probe_accounts.py usage` đếm — chạy sau mỗi đợt đo.
 
 **Ngưỡng dùng chung ở runbook (mục 20 bước 4, 4b của `11-ops.md`):** lượt chat khi `soffice` chạy, lớn nhất ≤ 15 s; đỉnh bộ nhớ ≤ 460 MiB và `oom_kill` = 0 (đọc ở **Render Metrics** — không có shell); vượt thì dừng và báo PO.
 
