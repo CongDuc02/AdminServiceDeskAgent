@@ -10,7 +10,7 @@ Quyết định: PO, 2026-10-05 (kế hoạch B3) — seed chỉ trên Postgres 
 | `employee` | 5 nhân viên giả: `GIA-0001`…`GIA-0003` (vai trò `EMPLOYEE`), `GIA-0101`, `GIA-0102` (vai trò `ADMIN_OFFICER`). `source = 'SEED_DEV_FAKE'`, tên có "(GIẢ)", không `national_id`, không ngày sinh |
 | `employee_role` | mỗi nhân viên một vai trò như trên |
 | `employee_credential` | hash `argon2id` (tham số WV-16 của cấu hình) của mật khẩu sinh ngẫu nhiên |
-| `document_register_format` | **một** dòng giả cho sổ của `WORK_CONFIRMATION`, dải `TRIAL`: mẫu `TRIAL-{seq}/{year}/{symbol}`, ký hiệu `THU-NGHIEM`, ba chữ số (B9b2; PO 2026-10-20). **Chỉ local** — không có trong data migration nên không lên Render; thể thức thật là mẫu M1.1 + Nghị định 30/2020/NĐ-CP `[CẦN XÁC MINH]` (A-100). Cần data migration `0002` đã áp (`SEED_NO_DOCUMENT_REGISTER` nếu không) |
+| `document_register_format` | **Không nạp.** Khuôn số thật của hai dải (`{seq}/GXN-{symbol}-TN` cho `TRIAL`, `{seq}/GXN-{symbol}` cho `OFFICIAL`, `symbol = ABC`) nằm ở data migration `0003` (M1.2, PO 2026-10-21) — số cấp ra dạng `01/GXN-ABC-TN`. Seed từ chối chạy (`SEED_NO_TRIAL_FORMAT`) nếu `0003` chưa áp. Trước đây (B9b2) seed nạp một khuôn giả `TRIAL-{seq}/{year}/{symbol}` — đã bỏ |
 | `employee_permission_grant` | **hai** dòng: `document.sign` cho `GIA-0101` và `GIA-0102` — luôn có ≥ 2 người đủ quyền ký (PO, 2026-10-20), để người thụ hưởng không thể là người ký duy nhất. **Không** cấp `operating_mode.change` cho ai — lớp 1 của ADR-023 |
 
 ## Mật khẩu — ở đâu, và ai đọc

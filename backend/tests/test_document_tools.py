@@ -268,19 +268,64 @@ class Values(DocBase):
                       "values (%s, %s, 'purpose_statement', 0, 2, %s, 'Bản FAILED của lần sinh lại không được dùng làm giá trị hiện hành.', 'FAILED', '1.0', %s, 'k')", (uuid.uuid4(), did, self.version_id, b"\x04" * 32))
         self.assertEqual(self.build(did).values["purpose_statement"], BODY_OK)
 
-    def test_dinh_dang_date_va_kieu_chua_ho_tro(self):
+    def enum_document(self, extra=()):
+        """Mẫu có thêm biến `DIRECT_SLOT` cho `employment_start_date` (DATE), `contract_type` (ENUM) và `extra`; trả (request, document)."""
         from tests.doc_support import template_docx
         retire_active_templates(self.db)
-        variables = VARIABLES + (("start_date", "DIRECT_SLOT", "employment_start_date", False, None, None, ()), ("contract", "DIRECT_SLOT", "contract_type", False, None, None, ()))
+        variables = VARIABLES + (("start_date", "DIRECT_SLOT", "employment_start_date", False, None, None, ()), ("contract", "DIRECT_SLOT", "contract_type", False, None, None, ())) + tuple(extra)
         vid = make_template(self.db, self.pool, self.storage, variables=variables, data=template_docx())
         self.version_id = vid
         rid = self.submitted_request()
         did = document_id_for(rid)
         dt_.document_create_draft(self.pool, self.sys, document_id=did, request_id=rid, template_version_id=vid)
+        return rid, did
+
+    def test_dinh_dang_date_va_enum_la_ma(self):
+        rid, did = self.enum_document()
         built = self.build(did)
         self.assertEqual(built.values["start_date"], "01/01/2020")  # 2020-01-01 trong employee giả của test
-        self.assertNotIn("contract", built.values)  # ENUM chưa hỗ trợ (A-098): không đoán câu chữ
+        self.assertEqual(built.values["contract"], "INDEFINITE")  # ENUM: đúng MÃ, không phải chữ hiển thị (M1.1, PO 2026-10-21)
+        self.assertNotIn((rv.VARIABLE_MISSING, "contract"), {(i.code, i.variable) for i in built.issues})
+
+    def test_enum_ngoai_tap_one_of_la_variable_missing(self):
+        rid, did = self.enum_document()
+        with self.db.connect(autocommit=True) as c:
+            c.execute("set session_replication_role = replica")
+            c.execute("update request_slot set value = to_jsonb('FREELANCE'::text) where request_id = %s and slot_name = 'contract_type'", (rid,))
+        built = self.build(did)
+        self.assertNotIn("contract", built.values)  # không đoán chữ cho mã lạ
         self.assertIn((rv.VARIABLE_MISSING, "contract"), {(i.code, i.variable) for i in built.issues})
+
+    def test_slot_khong_bat_buoc_vang_la_chuoi_rong_khong_phai_loi(self):
+        rid, did = self.enum_document((("end_date", "DIRECT_SLOT", "employment_end_date", False, None, None, ()),))
+        with self.db.connect(autocommit=True) as c:
+            self.assertEqual(c.execute("select is_required from slot_definition where request_type_code = 'WORK_CONFIRMATION' and slot_name = 'employment_end_date'").fetchone(), (False,))
+        built = self.build(did)
+        self.assertEqual(built.values["end_date"], "")  # `employment_end_date` là slot `○`: vắng thì rỗng
+        self.assertEqual([i for i in built.issues if i.variable == "end_date"], [])
+
+    def test_slot_khong_bat_buoc_co_gia_tri_duoc_dinh_dang_va_sai_nguon_van_la_loi(self):
+        rid, did = self.enum_document((("end_date", "DIRECT_SLOT", "employment_end_date", False, None, None, ()),))
+        with self.db.connect(autocommit=True) as c:
+            c.execute("set session_replication_role = replica")
+            c.execute("insert into request_slot (request_id, request_type_code, slot_name, value, value_status, confirmed_at) values (%s, 'WORK_CONFIRMATION', 'employment_end_date', to_jsonb('2026-09-15'::text), 'CONFIRMED', now()) "
+                      "on conflict (request_id, slot_name) do update set value = excluded.value, value_status = excluded.value_status, confirmed_at = excluded.confirmed_at", (rid,))
+        self.assertEqual(self.build(did).values["end_date"], "15/09/2026")
+        with self.db.connect(autocommit=True) as c:
+            c.execute("set session_replication_role = replica")
+            c.execute("update request_slot set value_status = 'PROPOSED' where request_id = %s and slot_name = 'employment_end_date'", (rid,))
+        built = self.build(did)
+        self.assertNotIn("end_date", built.values)
+        self.assertIn((rv.WRONG_SOURCE, "end_date"), {(i.code, i.variable) for i in built.issues})  # HR_PROFILE chưa CONFIRMED
+
+    def test_slot_bat_buoc_vang_van_la_variable_missing(self):
+        rid, did = self.enum_document()
+        with self.db.connect(autocommit=True) as c:
+            c.execute("set session_replication_role = replica")
+            c.execute("delete from request_slot where request_id = %s and slot_name = 'employment_start_date'", (rid,))
+        built = self.build(did)
+        self.assertNotIn("start_date", built.values)
+        self.assertIn((rv.VARIABLE_MISSING, "start_date"), {(i.code, i.variable) for i in built.issues})
 
     def test_seal_chua_xac_dinh_va_template_het_hieu_luc(self):
         rid, did = self.ready()

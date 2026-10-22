@@ -11,7 +11,7 @@ Dòng `document_render` chỉ thêm khi cả `.docx` lẫn `.pdf` đã commit (k
 `watermark_text` của dòng `document_render` = chuỗi đã nằm trong input của lần render (đi theo `DocxRender`; ADR-038) — **lời khai của tool, không phải kết quả đọc lại PDF**: runtime không đọc lại PDF. Việc kiểm `/Subject` bằng `pdfinfo` ở CI và
 ở phép kiểm sau UAT (`tools/render-audit/`, mục 18 của 11-ops.md).
 
-`object_metadata` (B9b2, ADR-041 mục 2): như ở `docx_render` — hai trường của bản ghim `ISSUED` trong cùng lệnh `PUT` của `.pdf`.
+`object_metadata` (B9b2, ADR-041 mục 2): như ở `docx_render` — ba trường của bản ghim `ISSUED` trong cùng lệnh `PUT` của `.pdf`.
 
 `audit_event`: `document.pdf_export`, cùng giao dịch với dòng `document_render`.
 """

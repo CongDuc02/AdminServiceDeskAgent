@@ -245,7 +245,7 @@ def make_nodes(deps: DocumentDeps) -> dict[str, NodeFn]:  # noqa: C901 — một
         if system.unresolved:
             log.warning("FINAL_VARIABLE_UNRESOLVED", variables=",".join(system.unresolved))
             raise NodeError("RENDER_INPUT_INVALID")
-        metadata = {"bo19-pin-reason": "ISSUED", "bo19-document-number": assigned.formatted_number}  # trong CÙNG lệnh PUT (mục 5.3 của 04-data.md)
+        metadata = {"bo19-pin-reason": "ISSUED", "bo19-document-number": assigned.formatted_number, "bo19-issued-date": assigned.issued_date.isoformat()}  # trong CÙNG lệnh PUT (mục 5.3 của 04-data.md)
         try:
             docx = run.call_tool(docx_render, pool, deps.storage, run.sys, document_id=document_id, render_kind="FINAL", values={**prep.values, **system.values}, object_metadata=metadata)
             pdf = run.call_tool(pdf_export, pool, deps.storage, run.sys, docx, object_metadata=metadata)

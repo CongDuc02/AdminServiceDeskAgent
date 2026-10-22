@@ -48,6 +48,7 @@ class FinalizeBase(GateGraphBase):
         super().setUpClass()
         with cls.db.connect("bo19_migrator", autocommit=True) as c:
             reg = c.execute("select document_register_id from request_type where code = 'WORK_CONFIRMATION'").fetchone()[0]
+            c.execute("delete from document_register_format")  # data migration 0003 đã nạp khuôn số thật (M1.2); fixture dùng khuôn GIẢ của riêng nó
             c.execute("insert into document_register_format (id, document_register_id, series, format_pattern, symbol, seq_min_digits, effective_from) "
                       "values (%s, %s, 'TRIAL', 'TRIAL-{seq}/{year}/{symbol}', 'THU-NGHIEM', 3, timestamptz '2020-01-01 00:00:00+00')", (uuid.uuid4(), reg))
 
@@ -145,7 +146,8 @@ class DuongThang(FinalizeBase):
         # metadata của bản ghim ISSUED nằm trong CÙNG lệnh PUT: hai object FINAL có, bản nháp không
         for key in (docx_key, pdf_key):
             meta = self.raw.head_object(Bucket=self.bucket, Key=key)["Metadata"]
-            self.assertEqual(meta, {"bo19-pin-reason": "ISSUED", "bo19-document-number": number}, key)
+            iso = "-".join(reversed(issued_date.split("/")))  # `issued_date` in trên văn bản là dd/mm/yyyy; metadata mang ISO yyyy-mm-dd (số không có năm nên đối soát cần ngày — ADR-043)
+            self.assertEqual(meta, {"bo19-pin-reason": "ISSUED", "bo19-document-number": number, "bo19-issued-date": iso}, key)
         draft_keys = self.rows("select docx_object_key, pdf_object_key from document_render where document_id = %s and render_kind = 'DRAFT'", did)[0]
         for key in draft_keys:
             self.assertEqual(self.raw.head_object(Bucket=self.bucket, Key=key)["Metadata"], {}, key)

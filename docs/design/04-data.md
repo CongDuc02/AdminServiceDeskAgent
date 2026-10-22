@@ -286,7 +286,7 @@ erDiagram
 | `source` | text | — | — | Enum `slot_source` |
 | `sensitivity` | text | — | — | Enum `slot_sensitivity`. **Phân loại hiện hành**; luật xoá đọc cột này tại lúc xoá (mục 8.2) |
 | `is_required` | boolean | — | — | — |
-| `validation_rules` | jsonb | — | `{}` | Đối tượng khoá theo **kiểu rule**: `non_blank`, `min_tokens`, `int_range`, `one_of` (từ vựng v1, `proposals/validation-rules-vocabulary.md`, PO duyệt 2026-10-09). Kiểu lạ hay tham số sai → cấu hình không hợp lệ. Do `tool_layer` diễn giải (F6) |
+| `validation_rules` | jsonb | — | `{}` | Đối tượng khoá theo **kiểu rule**: `non_blank`, `min_tokens`, `int_range`, `one_of`, `not_in_future` (kiểu thứ năm, `DATE`, thêm 2026-10-21; từ vựng v1, `proposals/validation-rules-vocabulary.md`, PO duyệt 2026-10-09). Kiểu lạ hay tham số sai → cấu hình không hợp lệ. Do `tool_layer` diễn giải (F6) |
 | `description` | text | — | — | `INT`. Đầu vào của `slot_specs` |
 | `label_vi` | text | — | — | **Thêm ở B6a (migration `0011`, PO duyệt R4 2026-10-09).** Nhãn tiếng Việt hiển thị cho người dùng — khuôn trả lời và màn hình xác nhận; không rỗng (`ck_slot_definition_label_not_blank`). Khác `description`: cái đó viết cho LLM |
 | `display_order` | smallint | — | 0 | — |
@@ -637,6 +637,8 @@ Lập luận và phương án bị loại ở ADR-011. Mục này chỉ mô tả
 
 Mẫu cụ thể trông thế nào là `[CẦN XÁC MINH]` theo Nghị định 30/2020/NĐ-CP (A-009, A-036). Không chỗ nào trong thiết kế giả định hình dạng của nó; tập token là thứ duy nhất được chốt.
 
+**Khuôn của PO cho `WORK_CONFIRMATION` (mốc M1.2, 2026-10-21):** chữ in trên văn bản là `Số: {seq}/GXN-{VIẾT_TẮT}` — nhãn `Số:` nằm trong **mẫu `.docx`**, còn `format_pattern` chỉ là `{seq}/GXN-{symbol}` với `symbol = ABC` và `seq_min_digits = 2` (số nhỏ hơn 10 thêm số 0 phía trước, đánh lại từ 01 mỗi năm — Phụ lục I và Điều 15 của Nghị định 30/2020, trích ở `docs/reference/nghi-dinh-30-2020-so-ky-hieu-van-ban.md`). `GXN` do công ty tự đặt (không có trong Phụ lục III). Khuôn **không có `{year}`** nên chuỗi số lặp lại mỗi năm — hợp lệ nhờ `0015`. Dòng `document_register_format` thật đã vào data migration `0003` (2026-10-21): `TRIAL` = `{seq}/GXN-{symbol}-TN` (PO: số thử nghiệm không bao giờ trùng dạng số thật), `OFFICIAL` = `{seq}/GXN-{symbol}`, `effective_from` 2026-10-21 00:00 +07.
+
 **`document_register_counter`** — PK (sổ, `series`, `period_key`), `next_seq ≥ 1`. `period_key` là năm bốn chữ số khi `YEARLY`, `ALL` khi `NEVER`.
 
 **`document_register_entry`**
@@ -645,7 +647,7 @@ Mẫu cụ thể trông thế nào là `[CẦN XÁC MINH]` theo Nghị định 3
 |---|---|---|---|
 | `document_register_id`, `series`, `period_key` | | — | FK ghép tới bộ đếm |
 | `seq` | bigint | — | `UNIQUE (sổ, series, period_key, seq)` — không trùng số |
-| `formatted_number` | text | — | Chuỗi số đã định dạng, **lưu nguyên**. `UNIQUE (sổ, series, formatted_number)` |
+| `formatted_number` | text | — | Chuỗi số đã định dạng, **lưu nguyên**. `UNIQUE (sổ, series, period_key, formatted_number)` — duy nhất trong **kỳ**, không qua mọi kỳ (migration `0015`, ADR-043) |
 | `format_id` | uuid | — | FK ghép (`format_id`, sổ, `series`): mẫu phải thuộc đúng sổ và đúng dải |
 | `document_id` | uuid | — | FK ghép (`document_id`, `series`) → `document (id, register_series)` |
 | `issue_decision_id` | uuid | — | FK tới `decision_record` loại `ISSUE_ORDERED` — lệnh phát hành của người mang `document.issue` |
@@ -678,7 +680,7 @@ Mẫu cụ thể trông thế nào là `[CẦN XÁC MINH]` theo Nghị định 3
 | Bất biến | Nơi thực thi |
 |---|---|
 | Không trùng số trong (sổ, dải, kỳ) | `uq_register_entry_seq` |
-| Không trùng chuỗi số trong (sổ, dải) — kể cả khi mẫu cấu hình sai, ví dụ sổ `YEARLY` mà mẫu thiếu `{year}` | `uq_register_entry_number`: giao dịch cấp số hỏng, không phát số trùng |
+| Không trùng chuỗi số trong (sổ, dải, **kỳ**) — kể cả khi mẫu cấu hình sai, ví dụ đổi mẫu giữa kỳ làm hai `seq` ra cùng chữ. Sổ `YEARLY` với mẫu không có `{year}` là **hợp lệ**: số lặp lại ở kỳ khác (Nghị định 30/2020 Điều 15 khoản 1; ADR-043) | `uq_register_entry_number` (`0015`): giao dịch cấp số hỏng, không phát số trùng trong kỳ |
 | **Số không tái sử dụng** | `uq_register_entry_seq` — đứng ở dòng sổ, không ở bộ đếm. Kể cả khi bộ đếm bị ghi lùi, dòng mới vẫn đụng dòng cũ |
 | Một văn bản có tối đa một số đang `ASSIGNED` | `uq_register_entry_one_assigned_per_document` |
 | Dải của số khớp chế độ đã ghim (D-009) | `fk_register_entry_document_series` |
@@ -717,7 +719,7 @@ Khoảng từ lúc có lệnh phát hành tới lúc `ISSUED` — cờ dẫn xu�
 - **Ghim ở hai thời điểm, cùng giao dịch với chuyển trạng thái:**
   1. `document_approve_content`: bản đang hiện cho người duyệt được ghim với lý do `APPROVED_CONTENT` và ghi vào `approved_render_id`. Đây là bản gắn với `document` suốt `SIGNED` và `SEALED` — thoả F3 cho `SEALED`. Ghim ngay ở `APPROVED` chứ không đợi `SEALED`, vì nội dung bất biến từ `APPROVED`, và văn bản không cần dấu cũng phải được phủ.
   2. Giao dịch cuối của `finalize_issue`: bản cuối được ghim với lý do `ISSUED` và ghi vào `final_render_id`.
-- **Object metadata cho bản ghim `ISSUED` — thêm ở Phase 11 (đề xuất, PO duyệt).** Chỉ tại bước ghim này, object `.docx`/`.pdf` mang thêm hai trường metadata ở tầng `object_storage` (không phải cột DB, không phải khoá): `x-bo19-pin-reason = ISSUED` và `x-bo19-document-number` (giá trị `document_register_entry.formatted_number`). Không PII — số hành chính công khai, in ngay trên chính văn bản. Không gắn cho bản `DRAFT` hay bản ghim `APPROVED_CONTENT`. `postgresql` vẫn là nguồn sự thật duy nhất cho vận hành bình thường — hai trường này chỉ đọc trong đối soát sau khôi phục (mục Backup & Restore của `11-ops.md`), không đường truy vấn đường-nóng nào (`stored_file_fetch`, `docx_render`, `render_integrity_check`) đọc chúng. Giới hạn: chỉ tồn tại trên object ghi **sau** khi thay đổi này triển khai, không phủ ngược văn bản đã phát hành trước đó.
+- **Object metadata cho bản ghim `ISSUED` — thêm ở Phase 11 (đề xuất, PO duyệt).** Chỉ tại bước ghim này, object `.docx`/`.pdf` mang thêm **ba** trường metadata ở tầng `object_storage` (không phải cột DB, không phải khoá): `x-bo19-pin-reason = ISSUED`, `x-bo19-document-number` (giá trị `document_register_entry.formatted_number`) và **`x-bo19-issued-date`** (ngày cấp số theo múi giờ tổ chức, ISO `yyyy-mm-dd` — thêm 2026-10-21, PO duyệt, ADR-043: khuôn số không có năm nên số một mình không phân biệt hai năm). Không PII — số hành chính công khai, in ngay trên chính văn bản. Không gắn cho bản `DRAFT` hay bản ghim `APPROVED_CONTENT`. `postgresql` vẫn là nguồn sự thật duy nhất cho vận hành bình thường — ba trường này chỉ đọc trong đối soát sau khôi phục (mục Backup & Restore của `11-ops.md`), không đường truy vấn đường-nóng nào (`stored_file_fetch`, `docx_render`, `render_integrity_check`) đọc chúng. Giới hạn: chỉ tồn tại trên object ghi **sau** khi thay đổi này triển khai, không phủ ngược văn bản đã phát hành trước đó.
 - **`document_render.watermark_text` — thêm ở B9a (PO duyệt 2026-10-13, ADR-038, migration `0014`).** Cột `text`, nullable: chuỗi watermark **đã đưa vào input** của lần render này (`BẢN THỬ NGHIỆM — KHÔNG CÓ GIÁ TRỊ PHÁP LÝ` ở `NON_PRODUCTION`; `NULL` ở `PRODUCTION`). `CHECK ck_document_render_watermark`: `NON_PRODUCTION` thì có và không rỗng. Ghi trong cùng `INSERT` của `pdf_export` (bảng không có `UPDATE`). **Nó là lời khai của tool về lệnh đã ra, không phải kết quả đọc lại từ file**: runtime không đọc lại PDF. Bằng chứng về file là phép kiểm sau UAT (mục Runbook — kiểm watermark của `11-ops.md`): `pdfinfo` đọc `/Subject`, so với cột này; checksum nối byte đã kiểm với byte đã commit. Lý do có cột: khoá object theo input — nếu chuỗi không nằm trong input thì đổi chuỗi sẽ trả bản cũ (`reused`) mà DB không biết nó mang chuỗi nào; nay chuỗi nằm trong input nên đổi chuỗi cho khoá khác, và cột cho biết mỗi bản mang chuỗi nào. Bản render ghi trước B9a không có cột này — chưa có bản nào (không có đường ghi `document_render` ngoài test).
 - **Bản trung gian** — không ghim — xoá được theo thời hạn lưu (mục 5.6). Chúng chứa dữ liệu `PER` và `RES` (giá trị `HR_PROFILE`, biến nội dung tự do), nên việc giữ chúng không phải vô hại.
 
@@ -738,7 +740,7 @@ Module lưu trữ của `tool_layer` là nơi duy nhất ghi `stored_object`. D�
 
 Độ dài lease: `TBD` (A-031), bắt buộc dài hơn hẳn timeout của lớp tool chạm `object_storage`.
 
-**Riêng cho lần ghi gắn với bước ghim `ISSUED`** (mục 5.1): hai trường object metadata (`x-bo19-pin-reason`, `x-bo19-document-number`) được set trong **cùng lệnh `PUT`** ở bước 3, không phải một lệnh riêng sau đó — tránh cửa sổ race giữa ghi byte và gắn metadata. Bước 2, 4, 5 không đổi. Các lần ghi khác (bản nháp, bản ghim `APPROVED_CONTENT`) không mang hai trường này.
+**Riêng cho lần ghi gắn với bước ghim `ISSUED`** (mục 5.1): ba trường object metadata (`x-bo19-pin-reason`, `x-bo19-document-number`, `x-bo19-issued-date`) được set trong **cùng lệnh `PUT`** ở bước 3, không phải một lệnh riêng sau đó — tránh cửa sổ race giữa ghi byte và gắn metadata. Bước 2, 4, 5 không đổi. Các lần ghi khác (bản nháp, bản ghim `APPROVED_CONTENT`) không mang ba trường này.
 
 ### 5.4 Ba ca của L2
 

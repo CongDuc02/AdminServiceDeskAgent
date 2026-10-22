@@ -14,7 +14,7 @@ chữ của file đã điền (kể cả file đã có sẵn ở khoá này) cò
 `TEMPLATE_NOT_ACTIVE`: bản `DRAFT` chỉ render từ phiên bản `ACTIVE`; bản `FINAL` còn render được từ phiên bản `RETIRED` (văn bản đã duyệt bằng phiên bản đó có thể đã bị thay từ lúc duyệt — `finalize_issue` render lại đúng nó,
 ADR-015 chốt 3), nhưng không từ phiên bản `UPLOADED`.
 
-`object_metadata` (B9b2, ADR-041 mục 2): hai trường metadata của bản ghim `ISSUED` (`bo19-pin-reason`, `bo19-document-number`; mục 5.1 và 5.3 của 04-data.md) đi trong CÙNG lệnh `PUT` của `.docx`; chỉ `finalize_issue` truyền. Không vào `input_hash`.
+`object_metadata` (B9b2, ADR-041 mục 2): ba trường metadata của bản ghim `ISSUED` (`bo19-pin-reason`, `bo19-document-number`, `bo19-issued-date` — ADR-043; mục 5.1 và 5.3 của 04-data.md) đi trong CÙNG lệnh `PUT` của `.docx`; chỉ `finalize_issue` truyền. Không vào `input_hash`.
 
 `audit_event`: một dòng `document.docx_render` mỗi lần gọi (mã và tham chiếu, không giá trị). Lỗi chỉ mang mã và TÊN biến.
 """

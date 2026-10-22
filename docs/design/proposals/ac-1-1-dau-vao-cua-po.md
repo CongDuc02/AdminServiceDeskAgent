@@ -33,7 +33,7 @@ Hiện chỉ có **mẫu giữ chỗ** do tôi dựng (`MẪU GIẢ — chỉ đ
 
 ### A2. M1.2 — định dạng số và ký hiệu (`document_register_format`, dải `TRIAL`)
 
-Hiện dùng định dạng giả `TRIAL-{seq}/{year}/{symbol}`, ký hiệu `THU-NGHIEM` (A-100). Anh giao:
+~~Hiện dùng định dạng giả `TRIAL-{seq}/{year}/{symbol}`, ký hiệu `THU-NGHIEM` (A-100).~~ **Đã thay (2026-10-21):** khuôn thật ở data migration `0003` — mục E. Anh giao:
 
 1. **Ít nhất ba số văn bản thật** đã cấp cho giấy xác nhận công tác, nguyên văn (số và ký hiệu); nếu được, hai năm khác nhau để thấy cách reset.
 2. **Ký hiệu** (`symbol`) nguyên văn, gồm phần viết tắt tên cơ quan/đơn vị.
@@ -104,6 +104,13 @@ Kiểm từ văn bản gốc, trích nguyên văn ở **`docs/reference/nghi-din
 - **`GXN` không có trong Phụ lục III** (27 loại văn bản hành chính; có `GGT` cho Giấy giới thiệu, không có "Giấy xác nhận") — là **ký hiệu loại do công ty tự đặt**; chữ viết tắt tên cơ quan, tổ chức do **người đứng đầu quy định** (Phụ lục I khoản 3.b). Dấu `/` giữa số và ký hiệu, `-` giữa các nhóm chữ viết tắt, không cách chữ, ký hiệu in hoa: khuôn của anh khớp.
 - **`{VIẾT_TẮT}` anh chưa điền** (tin nhắn ghi `VIẾT_TẮT = <…>`): cần giá trị.
 - **Xung đột với schema — cần anh quyết (đổi hành vi đã thiết kế → hỏi trước):** khuôn **không có năm** nhưng schema đòi chuỗi số **duy nhất qua mọi năm** (`uq_register_entry_number`, mục 4.3 của `04-data.md`). Sang năm sau, số đầu tiên `01/GXN-…` trùng chuỗi của năm trước → `finalize_issue` hỏng (`NUMBER_FORMAT_COLLISION`) ngay ngày đầu năm. Hai hướng: **(a, đề xuất)** migration `0015` đổi ràng buộc thành duy nhất theo (sổ, dải, **kỳ**, chuỗi số) — đúng chữ "duy nhất trong một năm" của Điều 15, tương thích ngược (nới ràng buộc, không đổi dữ liệu cũ); **(b)** đưa năm vào ký hiệu (`{seq}/{year}/GXN-…`), không migration nhưng khác khuôn anh chọn. Chọn (a) thì `NUMBER_FORMAT_COLLISION` vẫn bắt trùng chuỗi **trong cùng năm**, và kiểm "mẫu thiếu `{year}` ở sổ `YEARLY`" của `document_number_assign` đổi nghĩa (sổ `YEARLY` không cần `{year}` nữa). Cần cập nhật `04-data.md` mục 4.3, `03-agents.md`, test `test_numbering` — tôi làm sau khi anh chọn.
+
+## E. Cập nhật 2026-10-21 (lần hai) — quyết định của PO sau mục D
+
+- **Phiếu `.doc` là sai loại và đã gỡ khỏi repo** (mục D1). Thay bằng mẫu `.docx` **mới** theo thể thức Phụ lục I Nghị định 30/2020, dựng bằng công cụ, kèm PDF xem trước bằng dữ liệu giả: **`proposals/mau-giay-xac-nhan-cong-tac/README.md`** (đối chiếu thể thức từng thành phần với bản Công báo, biến của mẫu, **đề xuất** cơ chế `ENUM` / slot không bắt buộc / "đã nghỉ việc" chờ duyệt, và chín câu hỏi).
+- **`contract_type`: giữ `PROBATION` / `FIXED_TERM` / `INDEFINITE`.** Kiểm từ văn bản gốc (`docs/reference/bo-luat-lao-dong-2019-loai-hop-dong-thu-viec.md`): Điều 20 khoản 1 có đúng hai loại hợp đồng; thử việc theo Điều 24 là thỏa thuận trong hợp đồng hoặc hợp đồng thử việc. Không migration cho `ck_employee_contract_type`. Bốn câu D1 (phiếu khai của nhân viên, slot thiếu, Webdings/Arial) **không còn áp dụng** — mẫu mới chỉ dùng Times New Roman và đúng slot `WORK_CONFIRMATION`.
+- **Khuôn số (M1.2):** PO chọn (a) — migration `0015` (ADR-043); `VIẾT_TẮT = ABC`; `seq_min_digits = 2`. **Còn mở:** cách đánh dấu dải `TRIAL` (mặc định đề xuất `{seq}/GXN-{symbol}-TN`) — dòng `document_register_format` thật vào data migration khi PO chốt; `ABC` là ký hiệu thật hay giữ chỗ.
+- **Phép đo Render cần đăng nhập:** ngoại lệ có thời hạn của cổng 2.7 (`12-roadmap.md`); công cụ đo từ xa sẽ có kế hoạch riêng.
 
 ## Open Questions
 
