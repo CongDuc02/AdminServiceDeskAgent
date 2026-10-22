@@ -45,6 +45,53 @@ def polls(n_at: dict[float, int], gone_at: float | None, end: float, step: float
     return out
 
 
+class Check(unittest.TestCase):
+    """`--check` (2026-10-22): thử nối một lần; không bao giờ in DSN, host hay thông điệp lỗi."""
+
+    def run_check(self, connect):
+        import os
+        fake = types.ModuleType("psycopg")
+        fake.connect = connect
+        saved = sys.modules.get("psycopg")
+        sys.modules["psycopg"] = fake
+        os.environ["BO19_S4_POLL_DSN"] = "postgresql://bo19_app:BI_MAT_KHONG_DUOC_IN@host-bi-mat.example.test/db"
+        out: list[str] = []
+        try:
+            code = s4.check(echo=out.append)
+        finally:
+            os.environ.pop("BO19_S4_POLL_DSN", None)
+            sys.modules["psycopg"] = saved if saved is not None else types.ModuleType("psycopg")
+        return code, "\n".join(out)
+
+    def test_noi_duoc_in_ok_va_role(self):
+        class Conn:
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def execute(self, sql): return types.SimpleNamespace(fetchone=lambda: ("bo19_app",))
+
+        code, out = self.run_check(lambda dsn, **kw: Conn())
+        self.assertEqual((code, out), (0, "CHECK_OK role=bo19_app"))
+
+    def test_loi_chi_in_ten_lop_va_sqlstate_khong_in_dsn_hay_host(self):
+        class Err(Exception):
+            sqlstate = "28P01"
+
+        def boom(dsn, **kw):
+            raise Err("password authentication failed for user bo19_app at host-bi-mat.example.test")
+
+        code, out = self.run_check(boom)
+        self.assertEqual((code, out), (1, "CHECK_FAILED Err sqlstate=28P01"))
+        for secret in ("BI_MAT", "host-bi-mat", "bo19_app"):
+            self.assertNotIn(secret, out)
+
+    def test_thieu_bien(self):
+        import os
+        os.environ.pop("BO19_S4_POLL_DSN", None)
+        out: list[str] = []
+        sys.modules["psycopg"] = types.ModuleType("psycopg")
+        self.assertEqual(s4.check(echo=out.append), 2)
+
+
 class Kich(unittest.TestCase):
     def test_kill_5s_n_dung_o_5_va_ket_noi_bien_mat_ngay(self):
         n_at = {0.0: 0, **{k + 0.17: k for k in range(1, 6)}}  # n=1 ở 0.17 s ... n=5 ở 5.17 s

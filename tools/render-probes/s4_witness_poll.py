@@ -58,6 +58,25 @@ def poll(duration: float, interval: float, like: str) -> int:
     return 0
 
 
+def check(*, echo=print) -> int:
+    """Thử nối MỘT lần trước khi chạy poller 25 phút: in `OK` và role đang nối, hoặc tên lớp lỗi và `sqlstate` — không bao giờ in DSN, host hay thông điệp lỗi (có thể mang host).
+    Lý do (2026-10-22): một lần chạy poller 25 phút ghi 469 dòng `OperationalError` mà không ai biết sớm."""
+    import psycopg
+
+    dsn = os.environ.get("BO19_S4_POLL_DSN", "")
+    if not dsn:
+        echo("THIẾU BO19_S4_POLL_DSN")
+        return 2
+    try:
+        with psycopg.connect(dsn, connect_timeout=10, application_name="s4-poller-check") as conn:
+            who = conn.execute("select current_user").fetchone()[0]
+        echo(f"CHECK_OK role={who}")
+        return 0
+    except Exception as e:  # noqa: BLE001 — chỉ tên lớp lỗi và sqlstate
+        echo(f"CHECK_FAILED {type(e).__name__} sqlstate={getattr(e, 'sqlstate', None)}")
+        return 1
+
+
 def ts(s: str) -> float:
     return datetime.fromisoformat(s).timestamp()
 
@@ -121,8 +140,11 @@ def main() -> int:
     ap.add_argument("--interval", type=float, default=0.25)
     ap.add_argument("--like", default="s4 boot=%")
     ap.add_argument("--analyze", metavar="FILE")
+    ap.add_argument("--check", action="store_true", help="thử nối một lần rồi thoát (không poll)")
     ap.add_argument("--sigterm", help="giờ SIGTERM_RECEIVED trong log (ISO UTC), để in mốc so với SIGTERM")
     a = ap.parse_args()
+    if a.check:
+        return check()
     if a.analyze:
         return analyze(a.analyze, a.sigterm)
     return poll(a.duration, a.interval, a.like)
