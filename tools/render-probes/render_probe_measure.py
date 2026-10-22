@@ -203,7 +203,7 @@ def _job_done(entry: dict) -> bool:
     return bool(entry["documents"] and entry["documents"][0] != "DRAFT") or entry["request"] == "IN_REVIEW"
 
 
-def job_window(url: str, account: str, turns_during: int, *, label: str = "soffice", wait_s: float = 90.0, max_total: int = MAX_TURNS_TOTAL, out: Path = OUT, stamp: str = "",
+def job_window(url: str, account: str, turns_during: int, *, label: str = "soffice", wait_s: float = 90.0, doc_wait_s: float = 15.0, max_total: int = MAX_TURNS_TOTAL, out: Path = OUT, stamp: str = "",
                at: dt.datetime | None = None, echo=print, sleep=time.sleep) -> dict:
     import threading
 
@@ -261,6 +261,10 @@ def job_window(url: str, account: str, turns_during: int, *, label: str = "soffi
 
         watcher = threading.Thread(target=watch, daemon=True)
         watcher.start()
+        # Lần đo đầu (2026-10-22) bắt đầu 0,7 s sau `submit` và xong lúc 1,3 s — TRƯỚC khi `document` có dòng (≈ 2 s) nên không trùng job. Nay đợi tới khi văn bản xuất hiện (job đã vào hàng đợi) rồi mới đo.
+        t_wait = time.monotonic()
+        while time.monotonic() - t_wait < doc_wait_s and not any(e["documents"] for e in timeline):
+            time.sleep(0.2)
         rows = []
         for i in range(turns_during):
             events, reply, status, t1 = stream_turn(client, headers, new_session(), TEXT)
@@ -270,16 +274,18 @@ def job_window(url: str, account: str, turns_during: int, *, label: str = "soffi
             rows.append({"i": i + 1, "http_status": status, "turn_s": None if done is None else round(done, 2), "start_after_submit_s": round(start_rel, 2),
                          "end_after_submit_s": round(start_rel + (events[-1][1] if events else 0), 2)})
             if i + 1 < turns_during:
-                sleep(2)
+                sleep(0.5)  # các lượt đo nằm trong cùng cửa sổ `soffice` (≈ 13 s): không nghỉ dài giữa chúng
         t_end = time.monotonic()
         while time.monotonic() - t_end < wait_s and not any(_job_done(e) for e in timeline):
             time.sleep(1)
         stop.set()
         watcher.join(timeout=5)
     changed = next((e["t"] for e in timeline if _job_done(e)), None)
+    doc_at = next((e["t"] for e in timeline if e["documents"]), None)  # văn bản có dòng ≈ job `render_document` vào hàng đợi
     for row in rows:
-        row["overlaps_job"] = changed is None or row["start_after_submit_s"] < changed  # chưa thấy đổi trạng thái: coi mọi lượt là trong lúc (cận trên)
-    res = {"measure": "job_window", "label": label, "request_status_timeline": timeline, "job_done_after_submit_s": changed, "turns": rows, "builder_turn_s": builder_s,
+        # trùng khoảng [văn bản xuất hiện, job xong]: lượt nào kết thúc trước khi văn bản xuất hiện, hay bắt đầu sau khi job xong, thì KHÔNG tính là "khi soffice chạy"
+        row["overlaps_job"] = (doc_at is not None and row["end_after_submit_s"] > doc_at) and (changed is None or row["start_after_submit_s"] < changed)
+    res = {"measure": "job_window", "label": label, "request_status_timeline": timeline, "job_visible_after_submit_s": doc_at, "job_done_after_submit_s": changed, "turns": rows, "builder_turn_s": builder_s,
            "turns_done_total": budget["turns_done"]}
     record(out, stamp, res)
     echo(json.dumps(res))

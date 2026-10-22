@@ -262,6 +262,23 @@ class JobWindow(Base):
         self.assertEqual([e["request"] for e in res["request_status_timeline"]][:1], ["SUBMITTED"])
         self.assertEqual(rpm.read_budget(self.out)["turns_done"], 3)  # một lượt dựng request + hai lượt đo
 
+    def test_luot_ket_thuc_truoc_khi_van_ban_xuat_hien_khong_tinh_la_trong_luc_job(self):
+        """Lần đo đầu trên Render: lượt xong lúc 1,3 s, văn bản xuất hiện lúc 2 s — không được đếm là trùng job."""
+        timeline = [{"t": 2.0, "request": "SUBMITTED", "documents": ["DRAFT"]}, {"t": 15.0, "request": "IN_REVIEW", "documents": ["PENDING_APPROVAL"]}]
+        doc_at = next(e["t"] for e in timeline if e["documents"])
+        changed = next(e["t"] for e in timeline if rpm._job_done(e))
+        early = {"start_after_submit_s": 0.69, "end_after_submit_s": 1.28}
+        inside = {"start_after_submit_s": 2.5, "end_after_submit_s": 4.0}
+        late = {"start_after_submit_s": 16.0, "end_after_submit_s": 17.0}
+        overlaps = lambda r: r["end_after_submit_s"] > doc_at and r["start_after_submit_s"] < changed
+        self.assertEqual([overlaps(early), overlaps(inside), overlaps(late)], [False, True, False])
+
+    def test_job_window_do_sau_khi_van_ban_xuat_hien_va_ghi_job_visible(self):
+        Fake.done_after_polls = 100
+        res = self.run_window(turns_during=2)
+        self.assertIsNotNone(res["job_visible_after_submit_s"])
+        self.assertTrue(all(t["overlaps_job"] for t in res["turns"]))  # văn bản có sẵn ngay ở máy chủ giả, job chưa xong
+
     def test_job_xong_thi_ghi_gio_va_danh_dau_luot_sau_do_khong_con_trong_luc_job(self):
         Fake.done_after_polls = 0  # lần hỏi đầu sau submit đã thấy IN_REVIEW
         res = self.run_window(turns_during=1)
